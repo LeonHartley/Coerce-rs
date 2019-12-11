@@ -1,11 +1,94 @@
-use std::sync::Arc;
+use crate::actor::context::ActorContext;
+use crate::actor::message::{HandleFuture, Handler, Message};
+use crate::actor::scheduler::ActorScheduler;
+use crate::actor::Actor;
+use std::collections::HashMap;
+use std::error::Error;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
-pub struct Aaa {}
+extern crate tokio;
+extern crate uuid;
 
-impl Test for Aaa {}
+pub mod actor;
 
-pub trait Test {}
+pub struct LoginRequest {}
 
-fn main() {
-    let a: Arc<dyn Test> = Arc::new(Aaa {});
+#[derive(Debug)]
+pub enum LoginResponse {
+    Ok,
+    Unauthorised,
+}
+
+impl Message for LoginRequest {
+    type Result = LoginResponse;
+}
+
+pub struct StatusRequest {}
+
+#[derive(Debug)]
+pub enum StatusResponse {
+    Ok(PlayerStatus),
+    Unauthorised,
+}
+
+impl Message for StatusRequest {
+    type Result = StatusResponse;
+}
+
+
+#[derive(Debug)]
+pub enum PlayerStatus {
+    Idle,
+    Active,
+}
+
+pub struct TestActor {
+    status: PlayerStatus
+}
+
+impl TestActor {
+    pub fn new() -> TestActor {
+        TestActor { status: PlayerStatus::Idle }
+    }
+}
+
+impl Actor for TestActor {}
+
+impl Handler<LoginRequest> for TestActor {
+    fn handle(&mut self, message: LoginRequest) -> HandleFuture<LoginResponse> {
+        self.status = PlayerStatus::Active;
+
+        Box::pin(async {
+            println!("player is now active!");
+            LoginResponse::Ok
+        })
+    }
+}
+
+impl Handler<StatusRequest> for TestActor {
+    fn handle(&mut self, message: StatusRequest) -> HandleFuture<StatusResponse> {
+        let res = StatusResponse::Ok(match self.status {
+            PlayerStatus::Active => PlayerStatus::Active,
+            PlayerStatus::Idle => PlayerStatus::Idle
+        });
+
+        Box::pin(async move { res })
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut ctx = ActorContext::new();
+    let mut addr = ctx.lock().unwrap().new_actor(TestActor::new());
+    let mut addr1 = ctx.lock().unwrap().new_actor(TestActor::new());
+
+    let res = addr.send(LoginRequest {}).await;
+    let player_status = addr.send(StatusRequest {}).await;
+
+    println!("{:?}", res.unwrap());
+    println!("{:?}", player_status.unwrap());
+    Ok(())
 }

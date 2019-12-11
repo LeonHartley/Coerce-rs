@@ -29,16 +29,12 @@ version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "coerce-actor"
+name = "coerce-rt"
 version = "0.1.0"
 dependencies = [
  "tokio 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "coerce-rt"
-version = "0.1.0"
 
 [[package]]
 name = "fnv"
