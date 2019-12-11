@@ -36,7 +36,7 @@ impl ActorScheduler {
             let mut actor = Arc::new(a);
 
             while let Some(msg) = rx.recv().await {
-                let msg: Box<dyn ActorMessageHandler<A>> = msg;
+                let mut msg: Box<dyn ActorMessageHandler<A>> = msg;
                 msg.handle(actor.clone()).await;
                 println!("handled message");
             }
@@ -69,9 +69,17 @@ where
     ) -> MessageResult<Msg::Result>
     where
         A: Handler<Msg>,
+        Msg::Result: Send + Sync,
     {
-        self.sender.send(Box::new(ActorMessage::new(msg))).await;
+        let (mut tx, mut rx) = tokio::sync::oneshot::channel();
+        self.sender.send(Box::new(ActorMessage::new(msg, tx))).await;
 
-        MessageResult::Error
+        match rx.await {
+            Ok(res) => MessageResult::Ok(res),
+            Err(e) => {
+                println!("{:?}", e);
+                MessageResult::Error
+            }
+        }
     }
 }

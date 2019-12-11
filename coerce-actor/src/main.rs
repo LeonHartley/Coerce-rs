@@ -14,9 +14,9 @@ extern crate uuid;
 
 pub mod actor;
 
-#[derive(Clone)]
 pub struct LoginRequest {}
 
+#[derive(Debug)]
 pub enum LoginResponse {
     Ok,
     Unauthorised,
@@ -31,7 +31,7 @@ pub struct TestActor {}
 impl Actor for TestActor {}
 
 impl Handler<LoginRequest> for TestActor {
-    fn handle(&self, message: &LoginRequest) -> HandleFuture<LoginResponse> {
+    fn handle(&self, message: LoginRequest) -> HandleFuture<LoginResponse> {
         Box::pin(async {
             println!("yooo!");
 
@@ -48,5 +48,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let res = addr.send(LoginRequest {}).await;
 
+    println!("{:?}", res);
     Ok(())
 }
