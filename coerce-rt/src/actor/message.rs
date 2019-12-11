@@ -10,8 +10,19 @@ pub trait Message {
 
 pub type HandleFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
 
-pub trait Handler<Msg: Message + Send + Sync> {
-    fn handle(&mut self, message: Msg) -> HandleFuture<Msg::Result>;
+pub trait Handler<Msg: Message + Send + Sync>
+where
+    Msg::Result: 'static + Send + Sync,
+{
+    fn handle(&mut self, message: Msg) -> HandleFuture<Msg::Result> {
+        let res = self.handle_sync(message);
+
+        Box::pin(async move { res })
+    }
+
+    fn handle_sync(&mut self, message: Msg) -> Msg::Result {
+        unreachable!()
+    }
 }
 
 #[derive(Debug)]
@@ -24,7 +35,7 @@ pub struct ActorMessage<A: Actor, M: Message>
 where
     A: Handler<M> + Send + Sync,
     M: Send + Sync,
-    M::Result: Send + Sync,
+    M::Result: 'static + Send + Sync,
 {
     msg: Option<M>,
     sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
@@ -71,6 +82,7 @@ where
         ) where
             A: Handler<M> + Send + Sync,
             M: Send + Sync,
+            M::Result: 'static + Send + Sync,
         {
             response.send(actor.as_ref().lock().await.handle(message).await);
         }

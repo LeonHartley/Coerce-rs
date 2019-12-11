@@ -46,12 +46,14 @@ pub enum PlayerStatus {
 
 pub struct TestActor {
     status: PlayerStatus,
+    i: i32,
 }
 
 impl TestActor {
     pub fn new() -> TestActor {
         TestActor {
             status: PlayerStatus::Idle,
+            i: 0,
         }
     }
 }
@@ -59,24 +61,20 @@ impl TestActor {
 impl Actor for TestActor {}
 
 impl Handler<LoginRequest> for TestActor {
-    fn handle(&mut self, message: LoginRequest) -> HandleFuture<LoginResponse> {
+    fn handle_sync(&mut self, message: LoginRequest) -> LoginResponse {
+        self.i = self.i + 1;
         self.status = PlayerStatus::Active;
-
-        Box::pin(async {
-            println!("player is now active!");
-            LoginResponse::Ok
-        })
+        println!("player is now active! {}", self.i);
+        LoginResponse::Ok
     }
 }
 
 impl Handler<StatusRequest> for TestActor {
-    fn handle(&mut self, message: StatusRequest) -> HandleFuture<StatusResponse> {
-        let res = StatusResponse::Ok(match self.status {
+    fn handle_sync(&mut self, message: StatusRequest) -> StatusResponse {
+        StatusResponse::Ok(match self.status {
             PlayerStatus::Active => PlayerStatus::Active,
             PlayerStatus::Idle => PlayerStatus::Idle,
-        });
-
-        Box::pin(async move { res })
+        })
     }
 }
 
@@ -86,10 +84,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut addr = ctx.lock().unwrap().new_actor(TestActor::new());
     let mut addr1 = ctx.lock().unwrap().new_actor(TestActor::new());
 
-    let res = addr.send(LoginRequest {}).await;
+    loop {
+        let player_status = addr.send(StatusRequest {}).await;
+        let res = addr.send(LoginRequest {}).await;
+    }
+
     let player_status = addr.send(StatusRequest {}).await;
 
-    println!("{:?}", res.unwrap());
-    println!("{:?}", player_status.unwrap());
+    //    println!("{:?}", res);
+    println!("{:?}", player_status);
     Ok(())
 }

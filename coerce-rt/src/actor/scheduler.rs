@@ -35,11 +35,15 @@ impl ActorScheduler {
             let mut rx = rx;
             let mut actor = Arc::new(tokio::sync::Mutex::new(a));
 
+            actor.lock().await.started().await;
+
             while let Some(msg) = rx.recv().await {
                 let mut msg: Box<dyn ActorMessageHandler<A>> = msg;
                 msg.handle(actor.clone()).await;
                 println!("handled message");
             }
+
+            actor.lock().await.stopped().await;
         });
 
         actor_ref
