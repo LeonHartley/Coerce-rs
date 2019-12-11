@@ -46,8 +46,8 @@ impl ActorScheduler {
     }
 
     pub fn run<F, A: Actor>(actor: &mut A, callback: &mut F)
-        where
-            F: (FnMut(&mut A) -> ()),
+    where
+        F: (FnMut(&mut A) -> ()),
     {
         callback(actor)
     }
@@ -60,16 +60,16 @@ pub struct ActorRef<A: Actor + Sync + Send + 'static> {
 }
 
 impl<A> ActorRef<A>
-    where
-        A: Actor + Sync + Send + 'static,
+where
+    A: Actor + Sync + Send + 'static,
 {
     pub async fn send<Msg: Message + Sync + Send + 'static>(
         &mut self,
         msg: Msg,
     ) -> MessageResult<Msg::Result>
-        where
-            A: Handler<Msg>,
-            Msg::Result: Send + Sync,
+    where
+        A: Handler<Msg>,
+        Msg::Result: Send + Sync,
     {
         let (mut tx, mut rx) = tokio::sync::oneshot::channel();
         self.sender.send(Box::new(ActorMessage::new(msg, tx))).await;

@@ -38,7 +38,6 @@ impl Message for StatusRequest {
     type Result = StatusResponse;
 }
 
-
 #[derive(Debug)]
 pub enum PlayerStatus {
     Idle,
@@ -46,12 +45,14 @@ pub enum PlayerStatus {
 }
 
 pub struct TestActor {
-    status: PlayerStatus
+    status: PlayerStatus,
 }
 
 impl TestActor {
     pub fn new() -> TestActor {
-        TestActor { status: PlayerStatus::Idle }
+        TestActor {
+            status: PlayerStatus::Idle,
+        }
     }
 }
 
@@ -72,7 +73,7 @@ impl Handler<StatusRequest> for TestActor {
     fn handle(&mut self, message: StatusRequest) -> HandleFuture<StatusResponse> {
         let res = StatusResponse::Ok(match self.status {
             PlayerStatus::Active => PlayerStatus::Active,
-            PlayerStatus::Idle => PlayerStatus::Idle
+            PlayerStatus::Idle => PlayerStatus::Idle,
         });
 
         Box::pin(async move { res })

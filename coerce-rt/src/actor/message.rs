@@ -8,7 +8,7 @@ pub trait Message {
     type Result;
 }
 
-pub type HandleFuture<T> = Pin<Box<dyn Future<Output=T> + Send + Sync>>;
+pub type HandleFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
 
 pub trait Handler<Msg: Message + Send + Sync> {
     fn handle(&mut self, message: Msg) -> HandleFuture<Msg::Result>;
@@ -21,10 +21,10 @@ pub enum MessageResult<T> {
 }
 
 pub struct ActorMessage<A: Actor, M: Message>
-    where
-        A: Handler<M> + Send + Sync,
-        M: Send + Sync,
-        M::Result: Send + Sync,
+where
+    A: Handler<M> + Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
 {
     msg: Option<M>,
     sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
@@ -32,17 +32,17 @@ pub struct ActorMessage<A: Actor, M: Message>
 }
 
 pub trait ActorMessageHandler<A>: Sync + Send
-    where
-        A: Actor + Sync + Send,
+where
+    A: Actor + Sync + Send,
 {
     fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> HandleFuture<()>;
 }
 
 impl<A: 'static + Actor, M: 'static + Message> ActorMessageHandler<A> for ActorMessage<A, M>
-    where
-        A: Handler<M> + Send + Sync,
-        M: Send + Sync,
-        M::Result: Send + Sync,
+where
+    A: Handler<M> + Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
 {
     fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> HandleFuture<()> {
         self.handle_msg(actor)
@@ -50,10 +50,10 @@ impl<A: 'static + Actor, M: 'static + Message> ActorMessageHandler<A> for ActorM
 }
 
 impl<A: 'static + Actor, M: 'static + Message> ActorMessage<A, M>
-    where
-        A: Handler<M> + Send + Sync,
-        M: Send + Sync,
-        M::Result: Send + Sync,
+where
+    A: Handler<M> + Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
 {
     pub fn new(msg: M, sender: tokio::sync::oneshot::Sender<M::Result>) -> ActorMessage<A, M> {
         ActorMessage {
