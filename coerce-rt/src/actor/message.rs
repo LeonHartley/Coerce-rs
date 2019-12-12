@@ -8,12 +8,12 @@ pub trait Message {
     type Result;
 }
 
-pub type HandleFuture<T> = Pin<Box<dyn Future<Output=T> + Send + Sync>>;
+pub type HandleFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
 
 #[async_trait]
 pub trait Handler<Msg: Message + Send + Sync>
-    where
-        Msg::Result: 'static + Send + Sync,
+where
+    Msg::Result: 'static + Send + Sync,
 {
     async fn handle(&mut self, message: Msg) -> Msg::Result;
 }
@@ -25,10 +25,10 @@ pub enum MessageResult<T> {
 }
 
 pub struct ActorMessage<A: Actor, M: Message>
-    where
-        A: Handler<M> + Send + Sync,
-        M: Send + Sync,
-        M::Result: 'static + Send + Sync,
+where
+    A: Handler<M> + Send + Sync,
+    M: Send + Sync,
+    M::Result: 'static + Send + Sync,
 {
     msg: Option<M>,
     sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
@@ -37,29 +37,29 @@ pub struct ActorMessage<A: Actor, M: Message>
 
 #[async_trait]
 pub trait ActorMessageHandler<A>: Sync + Send
-    where
-        A: Actor + Sync + Send,
+where
+    A: Actor + Sync + Send,
 {
-    async fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> ();
+    async fn handle(&mut self, actor: &mut A) -> ();
 }
 
 #[async_trait]
 impl<A: 'static + Actor, M: 'static + Message> ActorMessageHandler<A> for ActorMessage<A, M>
-    where
-        A: Handler<M> + Send + Sync,
-        M: Send + Sync,
-        M::Result: Send + Sync,
+where
+    A: Handler<M> + Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
 {
-    async fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> () {
+    async fn handle(&mut self, actor: &mut A) -> () {
         self.handle_msg(actor).await;
     }
 }
 
 impl<A: 'static + Actor, M: 'static + Message> ActorMessage<A, M>
-    where
-        A: Handler<M> + Send + Sync,
-        M: Send + Sync,
-        M::Result: Send + Sync,
+where
+    A: Handler<M> + Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
 {
     pub fn new(msg: M, sender: tokio::sync::oneshot::Sender<M::Result>) -> ActorMessage<A, M> {
         ActorMessage {
@@ -69,10 +69,10 @@ impl<A: 'static + Actor, M: 'static + Message> ActorMessage<A, M>
         }
     }
 
-    pub async fn handle_msg(&mut self, actor: Arc<tokio::sync::Mutex<A>>) {
+    pub async fn handle_msg(&mut self, actor: &mut A) {
         let sender = self.sender.take();
         let msg = self.msg.take();
 
-        sender.unwrap().send(actor.as_ref().lock().await.handle(msg.unwrap()).await);
+        sender.unwrap().send(actor.handle(msg.unwrap()).await);
     }
 }

@@ -60,6 +60,7 @@ impl TestActor {
     }
 }
 
+#[async_trait]
 impl Actor for TestActor {}
 
 #[async_trait]

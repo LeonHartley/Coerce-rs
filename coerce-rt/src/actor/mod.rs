@@ -12,6 +12,7 @@ pub mod scheduler;
 
 pub type ActorId = Uuid;
 
+#[async_trait]
 pub trait Actor {
     fn started(&mut self) -> HandleFuture<()> {
         Box::pin(async {})

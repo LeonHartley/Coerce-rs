@@ -33,17 +33,15 @@ impl ActorScheduler {
 
         tokio::spawn(async move {
             let mut rx = rx;
-            let mut actor = Arc::new(tokio::sync::Mutex::new(a));
-
-            actor.lock().await.started().await;
+            let mut actor = a;
 
             while let Some(msg) = rx.recv().await {
                 let mut msg: Box<dyn ActorMessageHandler<A>> = msg;
-                msg.handle(actor.clone()).await;
+                msg.handle(&mut actor).await;
                 println!("handled message");
             }
 
-            actor.lock().await.stopped().await;
+            actor.stopped().await;
         });
 
         actor_ref
