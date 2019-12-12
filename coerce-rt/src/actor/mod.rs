@@ -14,11 +14,11 @@ pub type ActorId = Uuid;
 
 #[async_trait]
 pub trait Actor {
-    fn started(&mut self) -> HandleFuture<()> {
-        Box::pin(async {})
+    async fn started(&mut self) {
+        println!("actor started");
     }
 
-    fn stopped(&mut self) -> HandleFuture<()> {
-        Box::pin(async {})
+    async fn stopped(&mut self) {
+        println!("actor stopped");
     }
 }

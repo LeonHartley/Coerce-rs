@@ -91,7 +91,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let player_status = addr.send(StatusRequest {}).await;
 
-    //    println!("{:?}", res);
-    println!("{:?}", player_status);
     Ok(())
 }

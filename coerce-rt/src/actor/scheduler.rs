@@ -18,7 +18,7 @@ impl ActorScheduler {
 
     pub fn register<A: Actor + Sync + Send>(
         &self,
-        mut a: A,
+        mut actor: A,
         ctx: Arc<Mutex<ActorContext>>,
     ) -> ActorRef<A> {
         let id = ActorId::new_v4();
@@ -32,13 +32,10 @@ impl ActorScheduler {
         };
 
         tokio::spawn(async move {
-            let mut rx = rx;
-            let mut actor = a;
+            actor.started().await;
 
-            while let Some(msg) = rx.recv().await {
-                let mut msg: Box<dyn ActorMessageHandler<A>> = msg;
+            while let Some(mut msg) = rx.recv().await {
                 msg.handle(&mut actor).await;
-                println!("handled message");
             }
 
             actor.stopped().await;
