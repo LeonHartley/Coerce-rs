@@ -58,6 +58,19 @@ pub struct ActorRef<A: Actor + Sync + Send + 'static> {
     sender: tokio::sync::mpsc::Sender<Box<dyn ActorMessageHandler<A> + Sync + Send>>,
 }
 
+impl<A> Clone for ActorRef<A>
+where
+    A: Actor + Sync + Send + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            context: self.context.clone(),
+            sender: self.sender.clone(),
+        }
+    }
+}
+
 impl<A> ActorRef<A>
 where
     A: Actor + Sync + Send + 'static,
@@ -70,7 +83,7 @@ where
         A: Handler<Msg>,
         Msg::Result: Send + Sync,
     {
-        let (mut tx, mut rx) = tokio::sync::oneshot::channel();
+        let (mut tx, rx) = tokio::sync::oneshot::channel();
         self.sender.send(Box::new(ActorMessage::new(msg, tx))).await;
 
         match rx.await {

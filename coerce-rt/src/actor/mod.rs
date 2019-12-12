@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::mem::transmute;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
+use crate::actor::scheduler::ActorRef;
 
 pub mod context;
 pub mod message;
