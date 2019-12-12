@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 tokio = { version = "0.2.2", features = ["full"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
+async-trait = { version = "0.1" }

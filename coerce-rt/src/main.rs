@@ -9,6 +9,8 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+#[macro_use]
+extern crate async_trait;
 extern crate tokio;
 extern crate uuid;
 
@@ -60,8 +62,9 @@ impl TestActor {
 
 impl Actor for TestActor {}
 
+#[async_trait]
 impl Handler<LoginRequest> for TestActor {
-    fn handle_sync(&mut self, message: LoginRequest) -> LoginResponse {
+    async fn handle(&mut self, message: LoginRequest) -> LoginResponse {
         self.i = self.i + 1;
         self.status = PlayerStatus::Active;
         println!("player is now active! {}", self.i);
@@ -69,8 +72,9 @@ impl Handler<LoginRequest> for TestActor {
     }
 }
 
+#[async_trait]
 impl Handler<StatusRequest> for TestActor {
-    fn handle_sync(&mut self, message: StatusRequest) -> StatusResponse {
+    async fn handle(&mut self, message: StatusRequest) -> StatusResponse {
         StatusResponse::Ok(match self.status {
             PlayerStatus::Active => PlayerStatus::Active,
             PlayerStatus::Idle => PlayerStatus::Idle,
@@ -83,11 +87,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ctx = ActorContext::new();
     let mut addr = ctx.lock().unwrap().new_actor(TestActor::new());
     let mut addr1 = ctx.lock().unwrap().new_actor(TestActor::new());
-
-    loop {
-        let player_status = addr.send(StatusRequest {}).await;
-        let res = addr.send(LoginRequest {}).await;
-    }
 
     let player_status = addr.send(StatusRequest {}).await;
 

@@ -8,21 +8,14 @@ pub trait Message {
     type Result;
 }
 
-pub type HandleFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
+pub type HandleFuture<T> = Pin<Box<dyn Future<Output=T> + Send + Sync>>;
 
+#[async_trait]
 pub trait Handler<Msg: Message + Send + Sync>
-where
-    Msg::Result: 'static + Send + Sync,
+    where
+        Msg::Result: 'static + Send + Sync,
 {
-    fn handle(&mut self, message: Msg) -> HandleFuture<Msg::Result> {
-        let res = self.handle_sync(message);
-
-        Box::pin(async move { res })
-    }
-
-    fn handle_sync(&mut self, message: Msg) -> Msg::Result {
-        unreachable!()
-    }
+    async fn handle(&mut self, message: Msg) -> Msg::Result;
 }
 
 #[derive(Debug)]
@@ -32,39 +25,41 @@ pub enum MessageResult<T> {
 }
 
 pub struct ActorMessage<A: Actor, M: Message>
-where
-    A: Handler<M> + Send + Sync,
-    M: Send + Sync,
-    M::Result: 'static + Send + Sync,
+    where
+        A: Handler<M> + Send + Sync,
+        M: Send + Sync,
+        M::Result: 'static + Send + Sync,
 {
     msg: Option<M>,
     sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
     _a: PhantomData<A>,
 }
 
+#[async_trait]
 pub trait ActorMessageHandler<A>: Sync + Send
-where
-    A: Actor + Sync + Send,
+    where
+        A: Actor + Sync + Send,
 {
-    fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> HandleFuture<()>;
+    async fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> ();
 }
 
+#[async_trait]
 impl<A: 'static + Actor, M: 'static + Message> ActorMessageHandler<A> for ActorMessage<A, M>
-where
-    A: Handler<M> + Send + Sync,
-    M: Send + Sync,
-    M::Result: Send + Sync,
+    where
+        A: Handler<M> + Send + Sync,
+        M: Send + Sync,
+        M::Result: Send + Sync,
 {
-    fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> HandleFuture<()> {
-        self.handle_msg(actor)
+    async fn handle(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> () {
+        self.handle_msg(actor).await;
     }
 }
 
 impl<A: 'static + Actor, M: 'static + Message> ActorMessage<A, M>
-where
-    A: Handler<M> + Send + Sync,
-    M: Send + Sync,
-    M::Result: Send + Sync,
+    where
+        A: Handler<M> + Send + Sync,
+        M: Send + Sync,
+        M::Result: Send + Sync,
 {
     pub fn new(msg: M, sender: tokio::sync::oneshot::Sender<M::Result>) -> ActorMessage<A, M> {
         ActorMessage {
@@ -74,22 +69,10 @@ where
         }
     }
 
-    pub fn handle_msg(&mut self, actor: Arc<tokio::sync::Mutex<A>>) -> HandleFuture<()> {
-        async fn run<A: Actor, M: Message>(
-            response: tokio::sync::oneshot::Sender<M::Result>,
-            message: M,
-            actor: Arc<tokio::sync::Mutex<A>>,
-        ) where
-            A: Handler<M> + Send + Sync,
-            M: Send + Sync,
-            M::Result: 'static + Send + Sync,
-        {
-            response.send(actor.as_ref().lock().await.handle(message).await);
-        }
-
+    pub async fn handle_msg(&mut self, actor: Arc<tokio::sync::Mutex<A>>) {
         let sender = self.sender.take();
         let msg = self.msg.take();
 
-        Box::pin(run(sender.unwrap(), msg.unwrap(), actor))
+        sender.unwrap().send(actor.as_ref().lock().await.handle(msg.unwrap()).await);
     }
 }
