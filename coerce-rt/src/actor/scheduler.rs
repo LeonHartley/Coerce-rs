@@ -11,6 +11,8 @@ use uuid::Uuid;
 
 pub struct ActorScheduler {}
 
+pub type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
+
 impl ActorScheduler {
     pub fn new() -> ActorScheduler {
         ActorScheduler {}
@@ -23,7 +25,7 @@ impl ActorScheduler {
     ) -> ActorRef<A> {
         let id = ActorId::new_v4();
         let (mut tx, mut rx) =
-            tokio::sync::mpsc::channel::<Box<dyn ActorMessageHandler<A> + Sync + Send>>(100);
+            tokio::sync::mpsc::channel::<MessageHandler<A>>(100);
 
         let actor_ref = ActorRef {
             id,
@@ -55,7 +57,7 @@ impl ActorScheduler {
 pub struct ActorRef<A: Actor + Sync + Send + 'static> {
     id: Uuid,
     context: Arc<Mutex<ActorContext>>,
-    sender: tokio::sync::mpsc::Sender<Box<dyn ActorMessageHandler<A> + Sync + Send>>,
+    sender: tokio::sync::mpsc::Sender<MessageHandler<A>>,
 }
 
 impl<A> Clone for ActorRef<A>
