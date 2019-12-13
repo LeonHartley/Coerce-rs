@@ -71,6 +71,11 @@ where
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum ActorRefError {
+    ActorUnavailable
+}
+
 impl<A> ActorRef<A>
 where
     A: Actor + Sync + Send + 'static,
@@ -78,7 +83,7 @@ where
     pub async fn send<Msg: Message + Sync + Send + 'static>(
         &mut self,
         msg: Msg,
-    ) -> MessageResult<Msg::Result>
+    ) -> Result<Msg::Result, ActorRefError>
     where
         A: Handler<Msg>,
         Msg::Result: Send + Sync,
@@ -87,10 +92,10 @@ where
         self.sender.send(Box::new(ActorMessage::new(msg, tx))).await;
 
         match rx.await {
-            Ok(res) => MessageResult::Ok(res),
+            Ok(res) => Ok(res),
             Err(e) => {
                 println!("{:?}", e);
-                MessageResult::Error
+                Err(ActorRefError::ActorUnavailable)
             }
         }
     }

@@ -13,7 +13,7 @@ pub type HandleFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
 #[async_trait]
 pub trait Handler<Msg: Message + Send + Sync>
 where
-    Msg::Result: 'static + Send + Sync,
+    Msg::Result: Send + Sync,
 {
     async fn handle(&mut self, message: Msg) -> Msg::Result;
 }
