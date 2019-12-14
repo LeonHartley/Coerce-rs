@@ -14,7 +14,7 @@ impl ActorContext {
             scheduler: ActorScheduler::new(),
         };
 
-        let mut ctx = Arc::new(Mutex::new(base));
+        let ctx = Arc::new(Mutex::new(base));
 
         ctx.lock().unwrap().ctx = Some(ctx.clone());
 

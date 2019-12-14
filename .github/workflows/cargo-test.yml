@@ -1,6 +1,6 @@
 on: [push]
 
-name: CI
+name: coerce-rs tests
 
 jobs:
   build_and_test:

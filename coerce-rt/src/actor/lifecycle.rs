@@ -20,7 +20,7 @@ impl<A> Handler<Status> for A
 where
     A: 'static + Actor + Sync + Send,
 {
-    async fn handle(&mut self, message: Status, ctx: &mut ActorHandlerContext) -> ActorStatus {
+    async fn handle(&mut self, _message: Status, ctx: &mut ActorHandlerContext) -> ActorStatus {
         ctx.get_status().clone()
     }
 }
@@ -30,7 +30,7 @@ impl<A> Handler<Stop> for A
 where
     A: 'static + Actor + Sync + Send,
 {
-    async fn handle(&mut self, message: Stop, ctx: &mut ActorHandlerContext) -> ActorStatus {
+    async fn handle(&mut self, _message: Stop, ctx: &mut ActorHandlerContext) -> ActorStatus {
         ctx.set_status(Stopping);
 
         Stopping

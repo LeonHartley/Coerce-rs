@@ -1,16 +1,16 @@
-use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
-use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
+
+use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::lifecycle::{actor_loop, Stop};
 use crate::actor::message::{
     ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
 };
 use crate::actor::{Actor, ActorId};
-use std::any::{Any, TypeId};
-use std::borrow::BorrowMut;
+use std::any::{Any};
+
 use std::collections::HashMap;
-use std::mem::transmute;
-use std::ops::DerefMut;
-use std::sync::mpsc::Sender;
+
+
+
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
@@ -25,12 +25,12 @@ impl ActorScheduler {
         }
     }
 
-    pub fn register<A: Actor>(&mut self, mut actor: A, ctx: Arc<Mutex<ActorContext>>) -> ActorRef<A>
+    pub fn register<A: Actor>(&mut self, actor: A, _ctx: Arc<Mutex<ActorContext>>) -> ActorRef<A>
     where
-        A: Sync + Send,
+        A: 'static + Sync + Send,
     {
         let id = ActorId::new_v4();
-        let (mut tx, mut rx) = tokio::sync::mpsc::channel(100);
+        let (tx, rx) = tokio::sync::mpsc::channel(100);
 
         let actor_ref = ActorRef {
             id: id.clone(),
@@ -47,7 +47,7 @@ impl ActorScheduler {
 
     pub fn get_actor<A: Actor>(&mut self, id: &ActorId) -> Option<ActorRef<A>>
     where
-        A: Sync + Send,
+        A: 'static + Sync + Send,
     {
         match self.actors.get(id) {
             Some(actor) => Some(ActorRef::<A>::from(actor.clone())),
@@ -121,7 +121,7 @@ where
         A: Handler<Msg>,
         Msg::Result: Send + Sync,
     {
-        let (mut tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender.send(Box::new(ActorMessage::new(msg, tx))).await;
 
         match rx.await {
