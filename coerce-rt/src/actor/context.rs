@@ -1,7 +1,6 @@
-use crate::actor::scheduler::ActorScheduler;
+use crate::actor::scheduler::{ActorScheduler, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 use std::sync::{Arc, Mutex};
-use crate::actor::scheduler::actor::RegisterActor;
 
 pub struct ActorContext {
     scheduler: ActorRef<ActorScheduler>,
