@@ -1,4 +1,7 @@
-use crate::util::{GetStatusRequest, GetStatusResponse, SetStatusRequest, SetStatusResponse, TestActor, TestActorStatus, GetCounterRequest};
+use crate::util::{
+    GetCounterRequest, GetStatusRequest, GetStatusResponse, SetStatusRequest, SetStatusResponse,
+    TestActor, TestActorStatus,
+};
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Exec, Handler, Message, MessageResult};
 use coerce_rt::actor::Actor;
@@ -100,22 +103,30 @@ pub async fn test_actor_exec_chain_mutation() {
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
     let initial_status = actor_ref.send(GetStatusRequest()).await;
 
-    actor_ref.exec(|mut actor| {
-        actor.counter = 1;
-    }).await;
+    let _ = actor_ref
+        .exec(|mut actor| {
+            actor.counter = 1;
+        })
+        .await;
 
-    actor_ref.exec(|mut actor| {
-        actor.counter = 2;
-    }).await;
+    let _ = actor_ref
+        .exec(|mut actor| {
+            actor.counter = 2;
+        })
+        .await;
 
-    actor_ref.exec(|mut actor| {
-        actor.counter = 3;
-    }).await;
+    let _ = actor_ref
+        .exec(|mut actor| {
+            actor.counter = 3;
+        })
+        .await;
 
-    actor_ref.exec(|mut actor| {
-        actor.counter = 4;
-    }).await;
+    let _ = actor_ref
+        .exec(|mut actor| {
+            actor.counter = 4;
+        })
+        .await;
 
-    let counter = actor_ref.send(GetCounterRequest()).await;
+    let counter = actor_ref.exec(|mut actor| actor.counter).await;
     assert_eq!(counter, Ok(4));
 }

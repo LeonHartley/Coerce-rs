@@ -128,9 +128,10 @@ where
         }
     }
 
-    pub async fn exec<F>(&mut self, f: F) -> Result<(), ActorRefError>
+    pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefError>
     where
-        F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+        F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
+        R: 'static + Send + Sync,
     {
         self.send(Exec::new(f)).await
     }

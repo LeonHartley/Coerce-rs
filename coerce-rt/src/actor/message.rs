@@ -79,19 +79,19 @@ where
     }
 }
 
-pub struct Exec<F, A>
+pub struct Exec<F, A, R>
 where
-    F: (FnMut(&mut A) -> ()),
+    F: (FnMut(&mut A) -> R),
 {
     func: F,
     _a: PhantomData<A>,
 }
 
-impl<F, A> Exec<F, A>
+impl<F, A, R> Exec<F, A, R>
 where
-    F: (FnMut(&mut A) -> ()),
+    F: (FnMut(&mut A) -> R),
 {
-    pub fn new(f: F) -> Exec<F, A> {
+    pub fn new(f: F) -> Exec<F, A, R> {
         Exec {
             func: f,
             _a: PhantomData,
@@ -99,23 +99,25 @@ where
     }
 }
 
-impl<F, A> Message for Exec<F, A>
+impl<F, A, R> Message for Exec<F, A, R>
 where
-    for<'r> F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+    for<'r> F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
+    R: 'static + Send + Sync,
 {
-    type Result = ();
+    type Result = R;
 }
 
 #[async_trait]
-impl<F, A> Handler<Exec<F, A>> for A
+impl<F, A, R> Handler<Exec<F, A, R>> for A
 where
     A: 'static + Actor + Sync + Send,
-    F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+    F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
+    R: 'static + Send + Sync,
 {
-    async fn handle(&mut self, message: Exec<F, A>, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: Exec<F, A, R>, ctx: &mut ActorHandlerContext) -> R {
         let mut message = message;
         let mut func = message.func;
 
-        func(self);
+        func(self)
     }
 }
