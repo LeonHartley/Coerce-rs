@@ -3,9 +3,10 @@ use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 use std::sync::{Arc, Mutex};
 
 lazy_static! {
-    static ref CURRENT_CONTEXT: ActorContext = { println!("test"); ActorContext::new() };
+    static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
 }
 
+#[derive(Clone)]
 pub struct ActorContext {
     scheduler: ActorRef<ActorScheduler>,
 }
@@ -17,8 +18,31 @@ impl ActorContext {
         }
     }
 
-    pub fn current_scheduler() -> ActorRef<ActorScheduler> {
-        CURRENT_CONTEXT.scheduler.clone()
+    pub fn current_context() -> ActorContext {
+        CURRENT_CONTEXT.clone()
+    }
+
+    pub async fn new_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
+    where
+        A: 'static + Sync + Send,
+    {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let actor_ref = self.scheduler.send(RegisterActor(actor, tx)).await;
+
+        match rx.await {
+            Ok(true) => actor_ref,
+            _ => Err(ActorRefError::ActorUnavailable),
+        }
+    }
+
+    pub async fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
+    where
+        A: 'static + Sync + Send,
+    {
+        match self.scheduler.send(GetActor::new(id)).await {
+            Ok(a) => a,
+            Err(_) => None,
+        }
     }
 }
 

@@ -51,7 +51,10 @@ impl Actor for TestActor {}
 
 #[tokio::test]
 pub async fn test_actor_req_res() {
-    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = ActorContext::new()
+        .new_actor(TestActor::new())
+        .await
+        .unwrap();
 
     let response = actor_ref.send(GetStatusRequest()).await;
 
@@ -60,7 +63,10 @@ pub async fn test_actor_req_res() {
 
 #[tokio::test]
 pub async fn test_actor_req_res_mutation() {
-    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = ActorContext::new()
+        .new_actor(TestActor::new())
+        .await
+        .unwrap();
 
     let initial_status = actor_ref.send(GetStatusRequest()).await;
     let _ = actor_ref
@@ -78,7 +84,10 @@ pub async fn test_actor_req_res_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_mutation() {
-    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = ActorContext::new()
+        .new_actor(TestActor::new())
+        .await
+        .unwrap();
     let initial_status = actor_ref.send(GetStatusRequest()).await;
 
     actor_ref
@@ -97,7 +106,10 @@ pub async fn test_actor_exec_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_chain_mutation() {
-    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = ActorContext::new()
+        .new_actor(TestActor::new())
+        .await
+        .unwrap();
 
     let a = actor_ref
         .exec(|mut actor| {
@@ -106,23 +118,24 @@ pub async fn test_actor_exec_chain_mutation() {
         .await;
 
     let _ = actor_ref.exec(|mut actor| actor.counter = 2).await;
-    let _ = actor_ref.exec(|mut actor| actor.counter = 3).await;
-    let _ = actor_ref.exec(|mut actor| actor.counter = 4).await;
 
     let counter = actor_ref.exec(|actor| actor.counter).await;
-    assert_eq!(counter, Ok(4));
+    assert_eq!(counter, Ok(2));
 }
 
 #[tokio::test]
 pub async fn test_actor_notify() {
-    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
-//
-//    for i in 1..=25 as i32 {
-//        let _ = actor_ref
-//            .notify_exec(move |mut actor| actor.counter = i)
-//            .await;
-//    }
+    let mut actor_ref = ActorContext::new()
+        .new_actor(TestActor::new())
+        .await
+        .unwrap();
 
-//    let counter = actor_ref.exec(|actor| actor.counter).await;
-//    assert_eq!(counter, Ok(25));
+    for i in 1..=25 as i32 {
+        let _ = actor_ref
+            .notify_exec(move |mut actor| actor.counter = i)
+            .await;
+    }
+
+    let counter = actor_ref.exec(|actor| actor.counter).await;
+    assert_eq!(counter, Ok(25));
 }

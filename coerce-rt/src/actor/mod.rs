@@ -27,28 +27,14 @@ pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefError>
 where
     A: 'static + Sync + Send,
 {
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    let actor_ref = ActorContext::current_scheduler()
-        .send(RegisterActor(actor, tx))
-        .await;
-
-    match rx.await {
-        Ok(true) => actor_ref,
-        _ => Err(ActorRefError::ActorUnavailable)
-    }
+    ActorContext::current_context().new_actor(actor).await
 }
 
 pub async fn get_actor<A: Actor>(id: ActorId) -> Option<ActorRef<A>>
 where
     A: 'static + Sync + Send,
 {
-    match ActorContext::current_scheduler()
-        .send(GetActor::new(id))
-        .await
-    {
-        Ok(a) => a,
-        Err(_) => None,
-    }
+    ActorContext::current_context().get_actor(id).await
 }
 
 #[derive(Clone)]

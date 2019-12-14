@@ -17,7 +17,10 @@ impl Actor for TestActor {}
 
 #[tokio::test]
 pub async fn test_context_get_actor() {
-    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = ActorContext::new()
+        .new_actor(TestActor::new())
+        .await
+        .unwrap();
 
     let _ = actor_ref
         .exec(|mut actor| {

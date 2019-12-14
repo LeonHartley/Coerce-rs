@@ -20,9 +20,12 @@ pub struct ActorScheduler {
 
 impl ActorScheduler {
     pub fn new() -> ActorRef<ActorScheduler> {
-        start_actor(ActorScheduler {
-            actors: HashMap::new(),
-        }, None)
+        start_actor(
+            ActorScheduler {
+                actors: HashMap::new(),
+            },
+            None,
+        )
     }
 }
 
@@ -104,7 +107,10 @@ where
     }
 }
 
-fn start_actor<A: Actor>(actor: A, on_start: Option<tokio::sync::oneshot::Sender<bool>>) -> ActorRef<A>
+fn start_actor<A: Actor>(
+    actor: A,
+    on_start: Option<tokio::sync::oneshot::Sender<bool>>,
+) -> ActorRef<A>
 where
     A: 'static + Send + Sync,
 {

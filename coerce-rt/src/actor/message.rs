@@ -82,7 +82,7 @@ where
         let sender = self.sender.take();
         match sender.unwrap().send(result) {
             Ok(_) => println!("send OK"),
-            Err(e) => println!("send err")
+            Err(e) => println!("send err"),
         }
     }
 }
