@@ -119,16 +119,16 @@ where
         Msg::Result: Send + Sync,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.sender
+        match self
+            .sender
             .send(Box::new(ActorMessage::new(msg, Some(tx))))
-            .await;
-
-        match rx.await {
-            Ok(res) => Ok(res),
-            Err(e) => {
-                println!("{:?}", e);
-                Err(ActorRefError::ActorUnavailable)
-            }
+            .await
+        {
+            Ok(_) => match rx.await {
+                Ok(res) => Ok(res),
+                Err(e) => Err(ActorRefError::ActorUnavailable),
+            },
+            Err(e) => Err(ActorRefError::ActorUnavailable),
         }
     }
 
@@ -138,11 +138,14 @@ where
         A: Handler<Msg>,
         Msg::Result: Send + Sync,
     {
-        self.sender
+        match self
+            .sender
             .send(Box::new(ActorMessage::new(msg, None)))
-            .await;
-
-        Ok(())
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(ActorRefError::ActorUnavailable),
+        }
     }
 
     pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefError>
