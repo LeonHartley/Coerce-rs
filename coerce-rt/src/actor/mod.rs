@@ -25,7 +25,7 @@ pub trait Actor {
 #[derive(Clone)]
 pub struct BoxedActorRef {
     id: Uuid,
-    sender: tokio::sync::mpsc::Sender<Box<dyn Any>>,
+    sender: tokio::sync::mpsc::Sender<Box<dyn Any + Sync + Send>>,
 }
 
 pub struct ActorRef<A: Actor>

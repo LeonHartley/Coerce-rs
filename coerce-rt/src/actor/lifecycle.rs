@@ -37,12 +37,6 @@ where
     }
 }
 
-pub async fn timer_loop<A: Actor>(mut actor: A)
-where
-    A: 'static + Sync + Send,
-{
-}
-
 pub async fn actor_loop<A: Actor>(
     mut actor: A,
     mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,

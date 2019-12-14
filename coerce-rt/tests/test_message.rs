@@ -51,8 +51,8 @@ impl Actor for TestActor {}
 
 #[tokio::test]
 pub async fn test_actor_req_res() {
-    let ctx = ActorContext::new();
-    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let mut ctx = ActorContext::new();
+    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
 
     let response = actor_ref.send(GetStatusRequest()).await;
 
@@ -61,8 +61,8 @@ pub async fn test_actor_req_res() {
 
 #[tokio::test]
 pub async fn test_actor_req_res_mutation() {
-    let ctx = ActorContext::new();
-    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let mut ctx = ActorContext::new();
+    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
 
     let initial_status = actor_ref.send(GetStatusRequest()).await;
     let _ = actor_ref
@@ -80,8 +80,8 @@ pub async fn test_actor_req_res_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_mutation() {
-    let ctx = ActorContext::new();
-    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let mut ctx = ActorContext::new();
+    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
     let initial_status = actor_ref.send(GetStatusRequest()).await;
 
     actor_ref
@@ -100,8 +100,8 @@ pub async fn test_actor_exec_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_chain_mutation() {
-    let ctx = ActorContext::new();
-    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let mut ctx = ActorContext::new();
+    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
 
     let _ = actor_ref
         .exec(|mut actor| {
@@ -119,8 +119,8 @@ pub async fn test_actor_exec_chain_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_notify() {
-    let ctx = ActorContext::new();
-    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let mut ctx = ActorContext::new();
+    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
 
     for i in 1..=25 as i32 {
         let _ = actor_ref

@@ -1,39 +1,32 @@
 use crate::actor::scheduler::ActorScheduler;
-use crate::actor::{Actor, ActorId, ActorRef};
+use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 use std::sync::{Arc, Mutex};
+use crate::actor::scheduler::actor::RegisterActor;
 
 pub struct ActorContext {
-    ctx: Option<Arc<Mutex<ActorContext>>>,
-    scheduler: ActorScheduler,
+    scheduler: ActorRef<ActorScheduler>,
 }
 
 impl ActorContext {
-    pub fn new() -> Arc<Mutex<ActorContext>> {
-        let base = ActorContext {
-            ctx: None,
+    pub fn new() -> ActorContext {
+        ActorContext {
             scheduler: ActorScheduler::new(),
-        };
-
-        let ctx = Arc::new(Mutex::new(base));
-
-        ctx.lock().unwrap().ctx = Some(ctx.clone());
-
-        ctx
+        }
     }
 
-    pub fn new_actor<A: Actor>(&mut self, actor: A) -> ActorRef<A>
+    pub async fn new_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
     where
         A: 'static + Sync + Send,
     {
-        self.scheduler
-            .register(actor, self.ctx.as_ref().unwrap().clone())
+        self.scheduler.send(RegisterActor(actor)).await
     }
 
     pub fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
     where
         A: 'static + Sync + Send,
     {
-        self.scheduler.get_actor(&id)
+//        self.scheduler.get_actor(&id)
+        None
     }
 }
 
