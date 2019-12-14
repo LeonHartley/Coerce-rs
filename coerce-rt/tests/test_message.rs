@@ -68,6 +68,7 @@ pub async fn test_actor_req_res_mutation() {
     let _ = actor_ref
         .send(SetStatusRequest(TestActorStatus::Active))
         .await;
+
     let current_status = actor_ref.send(GetStatusRequest()).await;
 
     assert_eq!(initial_status, Ok(GetStatusResponse::None));
@@ -101,7 +102,6 @@ pub async fn test_actor_exec_mutation() {
 pub async fn test_actor_exec_chain_mutation() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
-    let _initial_status = actor_ref.send(GetStatusRequest()).await;
 
     let _ = actor_ref
         .exec(|mut actor| {
@@ -109,23 +109,9 @@ pub async fn test_actor_exec_chain_mutation() {
         })
         .await;
 
-    let _ = actor_ref
-        .exec(|mut actor| {
-            actor.counter = 2;
-        })
-        .await;
-
-    let _ = actor_ref
-        .exec(|mut actor| {
-            actor.counter = 3;
-        })
-        .await;
-
-    let _ = actor_ref
-        .exec(|mut actor| {
-            actor.counter = 4;
-        })
-        .await;
+    let _ = actor_ref.exec(|mut actor| actor.counter = 2).await;
+    let _ = actor_ref.exec(|mut actor| actor.counter = 3).await;
+    let _ = actor_ref.exec(|mut actor| actor.counter = 4).await;
 
     let counter = actor_ref.exec(|actor| actor.counter).await;
     assert_eq!(counter, Ok(4));
