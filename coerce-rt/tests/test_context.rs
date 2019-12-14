@@ -17,7 +17,9 @@ impl Actor for TestActor {}
 
 #[tokio::test]
 pub async fn test_context_get_actor() {
-    let mut actor_ref = ActorContext::new()
+    let mut ctx = ActorContext::new();
+
+    let mut actor_ref = ctx
         .new_actor(TestActor::new())
         .await
         .unwrap();
@@ -28,7 +30,7 @@ pub async fn test_context_get_actor() {
         })
         .await;
 
-    let mut actor = get_actor::<TestActor>(actor_ref.id).await.unwrap();
+    let mut actor = ctx.get_actor::<TestActor>(actor_ref.id).await.unwrap();
 
     let counter = actor.exec(|actor| actor.counter).await;
 
