@@ -25,11 +25,10 @@ impl ActorScheduler {
         }
     }
 
-    pub fn register<A: Actor + Sync + Send>(
-        &mut self,
-        mut actor: A,
-        ctx: Arc<Mutex<ActorContext>>,
-    ) -> ActorRef<A> {
+    pub fn register<A: Actor>(&mut self, mut actor: A, ctx: Arc<Mutex<ActorContext>>) -> ActorRef<A>
+    where
+        A: Sync + Send,
+    {
         let id = ActorId::new_v4();
         let (mut tx, mut rx) = tokio::sync::mpsc::channel(100);
 
@@ -38,20 +37,26 @@ impl ActorScheduler {
             sender: tx.clone(),
         };
 
-        let boxed_ref = BoxedActorRef::from(actor_ref.clone());
+        let _ = self
+            .actors
+            .insert(id, BoxedActorRef::from(actor_ref.clone()));
         tokio::spawn(actor_loop(actor, rx));
 
         actor_ref
     }
 
-    pub fn run<F, A: Actor>(actor: &mut A, callback: &mut F)
+    pub fn get_actor<A: Actor>(&mut self, id: &ActorId) -> Option<ActorRef<A>>
     where
-        F: (FnMut(&mut A) -> ()),
+        A: Sync + Send,
     {
-        callback(actor)
+        match self.actors.get(id) {
+            Some(actor) => Some(ActorRef::<A>::from(actor.clone())),
+            None => None,
+        }
     }
 }
 
+#[derive(Clone)]
 pub struct BoxedActorRef {
     id: Uuid,
     sender: tokio::sync::mpsc::Sender<Box<dyn Any>>,
