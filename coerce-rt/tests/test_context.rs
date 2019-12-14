@@ -12,26 +12,6 @@ extern crate async_trait;
 pub mod util;
 
 #[async_trait]
-impl Handler<SetStatusRequest> for TestActor {
-    async fn handle(
-        &mut self,
-        message: SetStatusRequest,
-        _ctx: &mut ActorHandlerContext,
-    ) -> SetStatusResponse {
-        self.status = Some(message.0);
-
-        SetStatusResponse::Ok
-    }
-}
-
-#[async_trait]
-impl Handler<GetCounterRequest> for TestActor {
-    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorHandlerContext) -> i32 {
-        self.counter
-    }
-}
-
-#[async_trait]
 impl Actor for TestActor {}
 
 #[tokio::test]

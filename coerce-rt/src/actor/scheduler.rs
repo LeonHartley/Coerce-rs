@@ -1,5 +1,5 @@
 use crate::actor::context::{ActorContext, ActorStatus};
-use crate::actor::lifecycle::{actor_loop, Stop};
+use crate::actor::lifecycle::{actor_loop, Status, Stop};
 use crate::actor::message::{
     ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
 };
@@ -136,6 +136,10 @@ where
         R: 'static + Send + Sync,
     {
         self.send(Exec::new(f)).await
+    }
+
+    pub async fn status(&mut self) -> Result<ActorStatus, ActorRefError> {
+        self.send(Status {}).await
     }
 
     pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefError> {

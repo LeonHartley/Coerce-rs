@@ -14,24 +14,24 @@ pub mod util;
 impl Actor for TestActor {}
 
 #[tokio::test]
-pub async fn test_actor_context_lifecycle_started() {
+pub async fn test_actor_lifecycle_started() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
 
-    let status = actor_ref.send(Status {}).await;
+    let status = actor_ref.status().await;
 
     actor_ref.stop().await;
     assert_eq!(status, Ok(ActorStatus::Started))
 }
 
 #[tokio::test]
-pub async fn test_actor_context_lifecycle_stopping() {
+pub async fn test_actor_lifecycle_stopping() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
 
-    let status = actor_ref.send(Status {}).await;
+    let status = actor_ref.status().await;
     let stopping = actor_ref.stop().await;
-    let msg_send = actor_ref.send(Status {}).await;
+    let msg_send = actor_ref.status().await;
 
     assert_eq!(status, Ok(ActorStatus::Started));
     assert_eq!(stopping, Ok(ActorStatus::Stopping));
