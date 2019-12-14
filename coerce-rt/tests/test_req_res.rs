@@ -15,7 +15,7 @@ pub mod util;
 impl Handler<GetStatusRequest> for TestActor {
     async fn handle(
         &mut self,
-        message: GetStatusRequest,
+        _message: GetStatusRequest,
         _ctx: &mut ActorHandlerContext,
     ) -> GetStatusResponse {
         match self.status {
@@ -41,7 +41,7 @@ impl Handler<SetStatusRequest> for TestActor {
 
 #[async_trait]
 impl Handler<GetCounterRequest> for TestActor {
-    async fn handle(&mut self, message: GetCounterRequest, ctx: &mut ActorHandlerContext) -> i32 {
+    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorHandlerContext) -> i32 {
         self.counter
     }
 }
@@ -101,7 +101,7 @@ pub async fn test_actor_exec_mutation() {
 pub async fn test_actor_exec_chain_mutation() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
-    let initial_status = actor_ref.send(GetStatusRequest()).await;
+    let _initial_status = actor_ref.send(GetStatusRequest()).await;
 
     let _ = actor_ref
         .exec(|mut actor| {
@@ -127,6 +127,6 @@ pub async fn test_actor_exec_chain_mutation() {
         })
         .await;
 
-    let counter = actor_ref.exec(|mut actor| actor.counter).await;
+    let counter = actor_ref.exec(|actor| actor.counter).await;
     assert_eq!(counter, Ok(4));
 }

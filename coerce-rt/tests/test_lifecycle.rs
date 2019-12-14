@@ -1,8 +1,8 @@
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
+use coerce_rt::actor::context::{ActorContext, ActorStatus};
 use coerce_rt::actor::lifecycle::Status;
 use coerce_rt::actor::scheduler::ActorRefError;
 use coerce_rt::actor::Actor;
-use std::time::Duration;
+
 use util::TestActor;
 
 #[macro_use]

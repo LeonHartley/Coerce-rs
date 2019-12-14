@@ -1,6 +1,6 @@
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+
 use coerce_rt::actor::message::{Handler, Message, MessageResult};
-use coerce_rt::actor::Actor;
+
 
 pub struct TestActor {
     pub status: Option<TestActorStatus>,
