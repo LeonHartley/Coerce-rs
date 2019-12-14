@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::{ActorContext, ActorStatus};
+use coerce_rt::actor::context::{new_actor, ActorContext, ActorStatus};
 use coerce_rt::actor::lifecycle::Status;
 use coerce_rt::actor::{Actor, ActorRefError};
 
@@ -14,8 +14,7 @@ impl Actor for TestActor {}
 
 #[tokio::test]
 pub async fn test_actor_lifecycle_started() {
-    let mut ctx = ActorContext::new();
-    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
 
     let status = actor_ref.status().await;
 
@@ -25,8 +24,7 @@ pub async fn test_actor_lifecycle_started() {
 
 #[tokio::test]
 pub async fn test_actor_lifecycle_stopping() {
-    let mut ctx = ActorContext::new();
-    let mut actor_ref = ctx.new_actor(TestActor::new()).await.unwrap();
+    let mut actor_ref = new_actor(TestActor::new()).await.unwrap();
 
     let status = actor_ref.status().await;
     let stopping = actor_ref.stop().await;

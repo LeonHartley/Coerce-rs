@@ -1,8 +1,9 @@
-use crate::actor::context::{ActorHandlerContext, ActorStatus};
+use crate::actor::context::{ActorHandlerContext, ActorStatus, ActorContext};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
 use std::any::Any;
 use uuid::Uuid;
+use crate::actor::scheduler::{RegisterActor, GetActor};
 
 pub mod context;
 pub mod lifecycle;
@@ -20,6 +21,29 @@ pub trait Actor {
     async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {
         println!("actor stopped");
     }
+}
+
+
+pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefError>
+    where
+        A: 'static + Sync + Send,
+{
+    ActorContext::current_scheduler()
+        .send(RegisterActor(actor))
+        .await
+}
+
+pub async fn get_actor<A: Actor>(id: ActorId) -> Option<ActorRef<A>>
+    where
+        A: 'static + Sync + Send,
+{
+    match ActorContext::current_scheduler()
+        .send(GetActor::new(id))
+        .await
+        {
+            Ok(a) => a,
+            Err(_) => None,
+        }
 }
 
 #[derive(Clone)]

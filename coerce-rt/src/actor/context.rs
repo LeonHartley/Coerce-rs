@@ -2,6 +2,10 @@ use crate::actor::scheduler::{ActorScheduler, GetActor, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 use std::sync::{Arc, Mutex};
 
+lazy_static! {
+    static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
+}
+
 pub struct ActorContext {
     scheduler: ActorRef<ActorScheduler>,
 }
@@ -13,21 +17,8 @@ impl ActorContext {
         }
     }
 
-    pub async fn new_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
-    where
-        A: 'static + Sync + Send,
-    {
-        self.scheduler.send(RegisterActor(actor)).await
-    }
-
-    pub async fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
-    where
-        A: 'static + Sync + Send,
-    {
-        match self.scheduler.send(GetActor::new(id)).await {
-            Ok(a) => a,
-            Err(_) => None,
-        }
+    pub fn current_scheduler() -> ActorRef<ActorScheduler> {
+        CURRENT_CONTEXT.scheduler.clone()
     }
 }
 
