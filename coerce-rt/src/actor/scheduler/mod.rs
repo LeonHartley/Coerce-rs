@@ -48,7 +48,7 @@ impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler where A: 'static + S
     }
 }
 
-pub fn start_actor<A: Actor>(actor: A) -> ActorRef<A> where A: 'static + Send + Sync {
+fn start_actor<A: Actor>(actor: A) -> ActorRef<A> where A: 'static + Send + Sync {
     let id = ActorId::new_v4();
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 
