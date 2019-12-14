@@ -39,6 +39,13 @@ impl Message for SetStatusRequest {
     type Result = SetStatusResponse;
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct GetCounterRequest();
+
+impl Message for GetCounterRequest {
+    type Result = i32;
+}
+
 impl TestActor {
     pub fn new() -> TestActor {
         TestActor {
