@@ -1,5 +1,5 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
-use crate::actor::context::{ActorContext, ActorHandlerContext};
+use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::message::{ActorMessage, ActorMessageHandler, Handler, Message, MessageResult};
 use crate::actor::{Actor, ActorId};
 use std::any::{Any, TypeId};
@@ -9,6 +9,7 @@ use std::mem::transmute;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
+use crate::actor::lifecycle::Stop;
 
 pub struct ActorScheduler {}
 
@@ -118,5 +119,9 @@ where
                 Err(ActorRefError::ActorUnavailable)
             }
         }
+    }
+
+    pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefError> {
+        self.send(Stop{}).await
     }
 }
