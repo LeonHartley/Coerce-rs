@@ -1,4 +1,4 @@
-use crate::actor::context::{ActorContext, ActorStatus, ActorHandlerContext};
+use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{actor_loop, Status, Stop};
 use crate::actor::message::{
     ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
@@ -8,6 +8,7 @@ use std::any::Any;
 
 use std::collections::HashMap;
 
+use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
@@ -18,9 +19,9 @@ pub struct ActorScheduler {
 }
 
 impl ActorScheduler {
-    pub fn new() -> ActorRef<ActorScheduler>  {
+    pub fn new() -> ActorRef<ActorScheduler> {
         start_actor(ActorScheduler {
-            actors: HashMap::new()
+            actors: HashMap::new(),
         })
     }
 }
@@ -28,16 +29,54 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {}
 
-pub struct RegisterActor<A: Actor>(pub A) where A: 'static + Sync + Send;
+pub struct RegisterActor<A: Actor>(pub A)
+where
+    A: 'static + Sync + Send;
 
-impl<A: Actor> Message for RegisterActor<A> where A: 'static + Sync + Send {
+impl<A: Actor> Message for RegisterActor<A>
+where
+    A: 'static + Sync + Send,
+{
     type Result = ActorRef<A>;
 }
 
+pub struct GetActor<A: Actor>
+where
+    A: 'static + Sync + Send,
+{
+    id: ActorId,
+    _a: PhantomData<A>,
+}
+
+impl<A: Actor> Message for GetActor<A>
+where
+    A: 'static + Sync + Send,
+{
+    type Result = Option<ActorRef<A>>;
+}
+
+impl<A: Actor> GetActor<A>
+where
+    A: 'static + Sync + Send,
+{
+    pub fn new(id: ActorId) -> GetActor<A> {
+        GetActor {
+            id,
+            _a: PhantomData,
+        }
+    }
+}
+
 #[async_trait]
-impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler where A: 'static + Sync + Send {
-    async fn handle(&mut self, message: RegisterActor<A>, ctx: &mut ActorHandlerContext) -> ActorRef<A>
-    {
+impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler
+where
+    A: 'static + Sync + Send,
+{
+    async fn handle(
+        &mut self,
+        message: RegisterActor<A>,
+        ctx: &mut ActorHandlerContext,
+    ) -> ActorRef<A> {
         let actor = start_actor(message.0);
 
         let _ = self
@@ -48,7 +87,27 @@ impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler where A: 'static + S
     }
 }
 
-fn start_actor<A: Actor>(actor: A) -> ActorRef<A> where A: 'static + Send + Sync {
+#[async_trait]
+impl<A: Actor> Handler<GetActor<A>> for ActorScheduler
+where
+    A: 'static + Sync + Send,
+{
+    async fn handle(
+        &mut self,
+        message: GetActor<A>,
+        ctx: &mut ActorHandlerContext,
+    ) -> Option<ActorRef<A>> {
+        match self.actors.get(&message.id) {
+            Some(actor) => Some(ActorRef::<A>::from(actor.clone())),
+            None => None,
+        }
+    }
+}
+
+fn start_actor<A: Actor>(actor: A) -> ActorRef<A>
+where
+    A: 'static + Send + Sync,
+{
     let id = ActorId::new_v4();
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 

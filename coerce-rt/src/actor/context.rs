@@ -1,4 +1,4 @@
-use crate::actor::scheduler::{ActorScheduler, RegisterActor};
+use crate::actor::scheduler::{ActorScheduler, GetActor, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 use std::sync::{Arc, Mutex};
 
@@ -20,12 +20,14 @@ impl ActorContext {
         self.scheduler.send(RegisterActor(actor)).await
     }
 
-    pub fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
+    pub async fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
     where
         A: 'static + Sync + Send,
     {
-//        self.scheduler.get_actor(&id)
-        None
+        match self.scheduler.send(GetActor::new(id)).await {
+            Ok(a) => a,
+            Err(_) => None,
+        }
     }
 }
 
