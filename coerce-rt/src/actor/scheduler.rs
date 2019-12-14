@@ -1,7 +1,7 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{actor_loop, Stop};
-use crate::actor::message::{ActorMessage, ActorMessageHandler, Handler, Message, MessageResult};
+use crate::actor::message::{ActorMessage, ActorMessageHandler, Handler, Message, MessageResult, MessageHandler};
 use crate::actor::{Actor, ActorId};
 use std::any::{Any, TypeId};
 use std::borrow::BorrowMut;
@@ -15,8 +15,6 @@ use uuid::Uuid;
 pub struct ActorScheduler {
     actors: HashMap<ActorId, BoxedActorRef>,
 }
-
-pub type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 impl ActorScheduler {
     pub fn new() -> ActorScheduler {
@@ -38,10 +36,7 @@ impl ActorScheduler {
             sender: tx.clone(),
         };
 
-        let boxed_ref = BoxedActorRef {
-            id,
-            sender: unsafe { std::mem::transmute(tx.clone()) },
-        };
+        let boxed_ref = BoxedActorRef::from(actor_ref.clone());
 
         tokio::spawn(actor_loop(actor, rx));
 
@@ -77,6 +72,18 @@ where
         ActorRef {
             id: b.id,
             sender: unsafe { std::mem::transmute(b.sender) },
+        }
+    }
+}
+
+impl<A: Actor> From<ActorRef<A>> for BoxedActorRef
+where
+    A: 'static + Send + Sync,
+{
+    fn from(r: ActorRef<A>) -> Self {
+        BoxedActorRef {
+            id: r.id,
+            sender: unsafe { std::mem::transmute(r.sender) },
         }
     }
 }

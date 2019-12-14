@@ -1,7 +1,6 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorHandlerContext, ActorStatus};
-use crate::actor::message::{Handler, Message};
-use crate::actor::scheduler::MessageHandler;
+use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::Actor;
 
 pub struct Status {}
@@ -38,8 +37,10 @@ where
     }
 }
 
-pub async fn actor_loop<A: Actor>(mut actor: A, mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>)
-where
+pub async fn actor_loop<A: Actor>(
+    mut actor: A,
+    mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
+) where
     A: 'static + Send + Sync,
 {
     let mut ctx = ActorHandlerContext::new(Starting);

@@ -9,7 +9,7 @@ pub trait Message {
     type Result;
 }
 
-pub type HandleFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
+pub (crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 #[async_trait]
 pub trait Handler<Msg: Message + Send + Sync>

@@ -1,5 +1,5 @@
 use crate::actor::context::{ActorContext, ActorHandlerContext};
-use crate::actor::message::{HandleFuture, Handler, Message};
+use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorRef;
 use std::any::Any;
 use std::marker::PhantomData;
