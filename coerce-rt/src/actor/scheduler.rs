@@ -1,6 +1,6 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
-use crate::actor::lifecycle::Stop;
+use crate::actor::lifecycle::{actor_loop, Stop};
 use crate::actor::message::{ActorMessage, ActorMessageHandler, Handler, Message, MessageResult};
 use crate::actor::{Actor, ActorId};
 use std::any::{Any, TypeId};
@@ -8,59 +8,42 @@ use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::mem::transmute;
 use std::ops::DerefMut;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-pub struct ActorScheduler {}
+pub struct ActorScheduler {
+    actors: HashMap<ActorId, BoxedActorRef>,
+}
 
 pub type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 impl ActorScheduler {
     pub fn new() -> ActorScheduler {
-        ActorScheduler {}
+        ActorScheduler {
+            actors: HashMap::new(),
+        }
     }
 
     pub fn register<A: Actor + Sync + Send>(
-        &self,
+        &mut self,
         mut actor: A,
         ctx: Arc<Mutex<ActorContext>>,
     ) -> ActorRef<A> {
         let id = ActorId::new_v4();
-        let (mut tx, mut rx) = tokio::sync::mpsc::channel::<MessageHandler<A>>(100);
+        let (mut tx, mut rx) = tokio::sync::mpsc::channel(100);
 
         let actor_ref = ActorRef {
-            id,
-            context: ctx.clone(),
+            id: id.clone(),
             sender: tx.clone(),
         };
 
-        tokio::spawn(async move {
-            let mut ctx = ActorHandlerContext::new(Starting);
+        let boxed_ref = BoxedActorRef {
+            id,
+            sender: unsafe { std::mem::transmute(tx.clone()) },
+        };
 
-            actor.started(&mut ctx).await;
-
-            match ctx.get_status() {
-                Stopping => {}
-                _ => {}
-            };
-
-            ctx.set_status(Started);
-
-            while let Some(mut msg) = rx.recv().await {
-                msg.handle(&mut actor, &mut ctx).await;
-
-                match ctx.get_status() {
-                    Stopping => break,
-                    _ => {}
-                }
-            }
-
-            ctx.set_status(Stopping);
-
-            actor.stopped(&mut ctx).await;
-
-            ctx.set_status(Stopped);
-        });
+        tokio::spawn(actor_loop(actor, rx));
 
         actor_ref
     }
@@ -73,10 +56,29 @@ impl ActorScheduler {
     }
 }
 
-pub struct ActorRef<A: Actor + Sync + Send + 'static> {
+pub struct BoxedActorRef {
     id: Uuid,
-    context: Arc<Mutex<ActorContext>>,
+    sender: tokio::sync::mpsc::Sender<Box<dyn Any>>,
+}
+
+pub struct ActorRef<A: Actor>
+where
+    A: 'static + Send + Sync,
+{
+    id: Uuid,
     sender: tokio::sync::mpsc::Sender<MessageHandler<A>>,
+}
+
+impl<A: Actor> From<BoxedActorRef> for ActorRef<A>
+where
+    A: 'static + Send + Sync,
+{
+    fn from(b: BoxedActorRef) -> Self {
+        ActorRef {
+            id: b.id,
+            sender: unsafe { std::mem::transmute(b.sender) },
+        }
+    }
 }
 
 impl<A> Clone for ActorRef<A>
@@ -86,7 +88,6 @@ where
     fn clone(&self) -> Self {
         Self {
             id: self.id.clone(),
-            context: self.context.clone(),
             sender: self.sender.clone(),
         }
     }
@@ -97,15 +98,13 @@ pub enum ActorRefError {
     ActorUnavailable,
 }
 
-impl<A> ActorRef<A>
+impl<A: Actor> ActorRef<A>
 where
-    A: Actor + Sync + Send + 'static,
+    A: Sync + Send + 'static,
 {
-    pub async fn send<Msg: Message + Sync + Send + 'static>(
-        &mut self,
-        msg: Msg,
-    ) -> Result<Msg::Result, ActorRefError>
+    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefError>
     where
+        Msg: 'static + Send + Sync,
         A: Handler<Msg>,
         Msg::Result: Send + Sync,
     {

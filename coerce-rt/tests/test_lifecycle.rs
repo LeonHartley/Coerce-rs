@@ -31,7 +31,6 @@ pub async fn test_actor_context_lifecycle_stopping() {
 
     let status = actor_ref.send(Status {}).await;
     let stopping = actor_ref.stop().await;
-
     let msg_send = actor_ref.send(Status {}).await;
 
     assert_eq!(status, Ok(ActorStatus::Started));
