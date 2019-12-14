@@ -1,6 +1,4 @@
-
 use coerce_rt::actor::message::{Handler, Message, MessageResult};
-
 
 pub struct TestActor {
     pub status: Option<TestActorStatus>,

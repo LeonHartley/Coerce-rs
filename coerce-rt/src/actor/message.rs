@@ -1,10 +1,7 @@
 use crate::actor::context::ActorHandlerContext;
 use crate::actor::Actor;
 
-
 use std::marker::PhantomData;
-
-
 
 pub trait Message {
     type Result;
@@ -106,7 +103,6 @@ where
 {
     type Result = R;
 }
-
 
 #[async_trait]
 impl<F, A, R> Handler<Exec<F, A, R>> for A

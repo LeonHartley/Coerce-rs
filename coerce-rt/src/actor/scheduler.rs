@@ -1,15 +1,12 @@
-
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::lifecycle::{actor_loop, Stop};
 use crate::actor::message::{
     ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
 };
 use crate::actor::{Actor, ActorId};
-use std::any::{Any};
+use std::any::Any;
 
 use std::collections::HashMap;
-
-
 
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
