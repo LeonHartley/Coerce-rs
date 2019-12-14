@@ -1,3 +1,4 @@
+use crate::actor::context::ActorHandlerContext;
 use crate::actor::Actor;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -15,7 +16,7 @@ pub trait Handler<Msg: Message + Send + Sync>
 where
     Msg::Result: Send + Sync,
 {
-    async fn handle(&mut self, message: Msg) -> Msg::Result;
+    async fn handle(&mut self, message: Msg, ctx: &mut ActorHandlerContext) -> Msg::Result;
 }
 
 #[derive(Debug)]
@@ -40,7 +41,7 @@ pub trait ActorMessageHandler<A>: Sync + Send
 where
     A: Actor + Sync + Send,
 {
-    async fn handle(&mut self, actor: &mut A) -> ();
+    async fn handle(&mut self, actor: &mut A, ctx: &mut ActorHandlerContext) -> ();
 }
 
 #[async_trait]
@@ -50,8 +51,8 @@ where
     M: Send + Sync,
     M::Result: Send + Sync,
 {
-    async fn handle(&mut self, actor: &mut A) -> () {
-        self.handle_msg(actor).await;
+    async fn handle(&mut self, actor: &mut A, ctx: &mut ActorHandlerContext) -> () {
+        self.handle_msg(actor, ctx).await;
     }
 }
 
@@ -69,10 +70,10 @@ where
         }
     }
 
-    pub async fn handle_msg(&mut self, actor: &mut A) {
+    pub async fn handle_msg(&mut self, actor: &mut A, ctx: &mut ActorHandlerContext) {
         let sender = self.sender.take();
         let msg = self.msg.take();
 
-        sender.unwrap().send(actor.handle(msg.unwrap()).await);
+        sender.unwrap().send(actor.handle(msg.unwrap(), ctx).await);
     }
 }

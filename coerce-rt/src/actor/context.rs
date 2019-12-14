@@ -13,6 +13,7 @@ impl ActorContext {
             ctx: None,
             scheduler: Arc::new(ActorScheduler::new()),
         };
+
         let mut ctx = Arc::new(Mutex::new(base));
 
         ctx.lock().unwrap().ctx = Some(ctx.clone());
@@ -23,5 +24,31 @@ impl ActorContext {
     pub fn new_actor<A: Actor + Sync + Send + 'static>(&self, actor: A) -> ActorRef<A> {
         self.scheduler
             .register(actor, self.ctx.as_ref().unwrap().clone())
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum ActorStatus {
+    Starting,
+    Started,
+    Stopping,
+    Stopped,
+}
+
+pub struct ActorHandlerContext {
+    status: ActorStatus,
+}
+
+impl ActorHandlerContext {
+    pub fn new(status: ActorStatus) -> ActorHandlerContext {
+        ActorHandlerContext { status }
+    }
+
+    pub fn set_status(&mut self, state: ActorStatus) {
+        self.status = state
+    }
+
+    pub fn get_status(&self) -> &ActorStatus {
+        &self.status
     }
 }
