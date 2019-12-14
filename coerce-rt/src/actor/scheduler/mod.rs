@@ -111,7 +111,7 @@ where
     let id = ActorId::new_v4();
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 
-    tokio::spawn(actor_loop(actor, rx, on_start));
+    tokio::spawn(actor_loop(id.clone(), actor, rx, on_start));
 
     ActorRef {
         id: id.clone(),

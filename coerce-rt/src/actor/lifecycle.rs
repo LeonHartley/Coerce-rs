@@ -1,7 +1,7 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorHandlerContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
-use crate::actor::Actor;
+use crate::actor::{Actor, ActorId};
 
 pub struct Status();
 
@@ -38,13 +38,14 @@ where
 }
 
 pub async fn actor_loop<A: Actor>(
+    id: ActorId,
     mut actor: A,
     mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
 ) where
     A: 'static + Send + Sync,
 {
-    println!("actor starting");
+    println!("[{}] actor starting", &id);
     let mut ctx = ActorHandlerContext::new(Starting);
 
     actor.started(&mut ctx).await;
@@ -60,10 +61,9 @@ pub async fn actor_loop<A: Actor>(
         on_start.send(true);
     }
 
-
-    println!("actor begin handling msgs");
+    println!("[{}] actor begin handling msgs", &id);
     while let Some(mut msg) = rx.recv().await {
-        println!("actor recv");
+        println!("[{}] actor recv", &id);
         msg.handle(&mut actor, &mut ctx).await;
 
         match ctx.get_status() {
@@ -72,7 +72,7 @@ pub async fn actor_loop<A: Actor>(
         }
     }
 
-    println!("actor stopping");
+    println!("[{}] actor stopping", &id);
 
     ctx.set_status(Stopping);
 

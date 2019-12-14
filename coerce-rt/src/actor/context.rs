@@ -3,7 +3,7 @@ use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 use std::sync::{Arc, Mutex};
 
 lazy_static! {
-    static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
+    static ref CURRENT_CONTEXT: ActorContext = { println!("test"); ActorContext::new() };
 }
 
 pub struct ActorContext {

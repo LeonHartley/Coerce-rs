@@ -80,7 +80,10 @@ where
         }
 
         let sender = self.sender.take();
-        sender.unwrap().send(result);
+        match sender.unwrap().send(result) {
+            Ok(_) => println!("send OK"),
+            Err(e) => println!("send err")
+        }
     }
 }
 
