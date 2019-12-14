@@ -1,20 +1,26 @@
-use coerce_rt::actor::context::{ActorContext, ActorStatus};
-use coerce_rt::actor::lifecycle::Status;
-use coerce_rt::actor::{new_actor, Actor, ActorRefError};
+use coerce_rt::actor::context::ActorHandlerContext;
+use coerce_rt::actor::message::{Handler, Message};
+use coerce_rt::actor::{Actor, ActorRef};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
+
+#[macro_use]
+extern crate serde_json;
 
 #[macro_use]
 extern crate async_trait;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum TestActorStatus {
     Inactive,
     Active,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct GetStatusRequest();
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum GetStatusResponse {
     Ok(TestActorStatus),
     None,
@@ -24,10 +30,10 @@ impl Message for GetStatusRequest {
     type Result = GetStatusResponse;
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct SetStatusRequest(pub TestActorStatus);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum SetStatusResponse {
     Ok,
     Unsuccessful,
@@ -37,7 +43,7 @@ impl Message for SetStatusRequest {
     type Result = SetStatusResponse;
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct GetCounterRequest();
 
 impl Message for GetCounterRequest {
@@ -97,30 +103,8 @@ impl Handler<GetCounterRequest> for TestActor {
 impl Actor for TestActor {}
 
 #[tokio::test]
-pub async fn test_actor_lifecycle_started() {
-    let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
-        .await
-        .unwrap();
-
-    let status = actor_ref.status().await;
-
-    actor_ref.stop().await;
-    assert_eq!(status, Ok(ActorStatus::Started))
-}
-
-#[tokio::test]
-pub async fn test_actor_lifecycle_stopping() {
-    let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
-        .await
-        .unwrap();
-
-    let status = actor_ref.status().await;
-    let stopping = actor_ref.stop().await;
-    let msg_send = actor_ref.status().await;
-
-    assert_eq!(status, Ok(ActorStatus::Started));
-    assert_eq!(stopping, Ok(ActorStatus::Stopping));
-    assert_eq!(msg_send, Err(ActorRefError::ActorUnavailable));
+pub async fn test_remote_builder() {
+    let remote = RemoteActorContext::builder()
+        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
+        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest");
 }
