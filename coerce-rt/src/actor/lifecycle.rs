@@ -40,9 +40,11 @@ where
 pub async fn actor_loop<A: Actor>(
     mut actor: A,
     mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
+    on_start: Option<tokio::sync::oneshot::Sender<bool>>,
 ) where
     A: 'static + Send + Sync,
 {
+    println!("actor starting");
     let mut ctx = ActorHandlerContext::new(Starting);
 
     actor.started(&mut ctx).await;
@@ -54,7 +56,14 @@ pub async fn actor_loop<A: Actor>(
 
     ctx.set_status(Started);
 
+    if let Some(on_start) = on_start {
+        on_start.send(true);
+    }
+
+
+    println!("actor begin handling msgs");
     while let Some(mut msg) = rx.recv().await {
+        println!("actor recv");
         msg.handle(&mut actor, &mut ctx).await;
 
         match ctx.get_status() {
@@ -62,6 +71,8 @@ pub async fn actor_loop<A: Actor>(
             _ => {}
         }
     }
+
+    println!("actor stopping");
 
     ctx.set_status(Stopping);
 

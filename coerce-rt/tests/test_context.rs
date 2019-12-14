@@ -2,10 +2,10 @@ use crate::util::{
     GetCounterRequest, GetStatusRequest, GetStatusResponse, SetStatusRequest, SetStatusResponse,
     TestActor, TestActorStatus,
 };
-use coerce_rt::actor::context::{get_actor, new_actor, ActorContext, ActorHandlerContext};
+use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Exec, Handler, Message, MessageResult};
 use coerce_rt::actor::scheduler::{ActorScheduler, RegisterActor};
-use coerce_rt::actor::Actor;
+use coerce_rt::actor::{get_actor, new_actor, Actor};
 
 #[macro_use]
 extern crate async_trait;

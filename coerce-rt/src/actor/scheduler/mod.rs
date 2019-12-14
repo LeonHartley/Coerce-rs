@@ -22,14 +22,14 @@ impl ActorScheduler {
     pub fn new() -> ActorRef<ActorScheduler> {
         start_actor(ActorScheduler {
             actors: HashMap::new(),
-        })
+        }, None)
     }
 }
 
 #[async_trait]
 impl Actor for ActorScheduler {}
 
-pub struct RegisterActor<A: Actor>(pub A)
+pub struct RegisterActor<A: Actor>(pub A, pub tokio::sync::oneshot::Sender<bool>)
 where
     A: 'static + Sync + Send;
 
@@ -77,7 +77,7 @@ where
         message: RegisterActor<A>,
         ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
-        let actor = start_actor(message.0);
+        let actor = start_actor(message.0, Some(message.1));
 
         let _ = self
             .actors
@@ -104,17 +104,17 @@ where
     }
 }
 
-fn start_actor<A: Actor>(actor: A) -> ActorRef<A>
+fn start_actor<A: Actor>(actor: A, on_start: Option<tokio::sync::oneshot::Sender<bool>>) -> ActorRef<A>
 where
     A: 'static + Send + Sync,
 {
     let id = ActorId::new_v4();
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 
-    tokio::spawn(actor_loop(actor, rx));
+    tokio::spawn(actor_loop(actor, rx, on_start));
 
     ActorRef {
         id: id.clone(),
-        sender: tx.clone(),
+        sender: tx,
     }
 }

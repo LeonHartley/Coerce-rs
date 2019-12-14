@@ -1,9 +1,9 @@
-use crate::actor::context::{ActorHandlerContext, ActorStatus, ActorContext};
+use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
+use crate::actor::scheduler::{GetActor, RegisterActor};
 use std::any::Any;
 use uuid::Uuid;
-use crate::actor::scheduler::{RegisterActor, GetActor};
 
 pub mod context;
 pub mod lifecycle;
@@ -23,27 +23,32 @@ pub trait Actor {
     }
 }
 
-
 pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefError>
-    where
-        A: 'static + Sync + Send,
+where
+    A: 'static + Sync + Send,
 {
-    ActorContext::current_scheduler()
-        .send(RegisterActor(actor))
-        .await
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let actor_ref = ActorContext::current_scheduler()
+        .send(RegisterActor(actor, tx))
+        .await;
+
+    match rx.await {
+        Ok(true) => actor_ref,
+        _ => Err(ActorRefError::ActorUnavailable)
+    }
 }
 
 pub async fn get_actor<A: Actor>(id: ActorId) -> Option<ActorRef<A>>
-    where
-        A: 'static + Sync + Send,
+where
+    A: 'static + Sync + Send,
 {
     match ActorContext::current_scheduler()
         .send(GetActor::new(id))
         .await
-        {
-            Ok(a) => a,
-            Err(_) => None,
-        }
+    {
+        Ok(a) => a,
+        Err(_) => None,
+    }
 }
 
 #[derive(Clone)]
@@ -119,9 +124,15 @@ where
         {
             Ok(_) => match rx.await {
                 Ok(res) => Ok(res),
-                Err(e) => Err(ActorRefError::ActorUnavailable),
+                Err(e) => {
+                    println!("got error {}", e);
+                    Err(ActorRefError::ActorUnavailable)
+                }
             },
-            Err(e) => Err(ActorRefError::ActorUnavailable),
+            Err(e) => {
+                println!("got error 1 {}", e);
+                Err(ActorRefError::ActorUnavailable)
+            }
         }
     }
 
