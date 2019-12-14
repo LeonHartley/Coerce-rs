@@ -63,7 +63,7 @@ pub struct ActorRef<A: Actor>
 where
     A: 'static + Send + Sync,
 {
-    id: Uuid,
+    pub id: ActorId,
     sender: tokio::sync::mpsc::Sender<MessageHandler<A>>,
 }
 
