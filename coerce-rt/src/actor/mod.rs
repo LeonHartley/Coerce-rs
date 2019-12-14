@@ -1,8 +1,8 @@
 use crate::actor::context::{ActorHandlerContext, ActorStatus};
-use uuid::Uuid;
-use crate::actor::message::{Message, Handler, ActorMessage, Exec, MessageHandler};
-use std::any::Any;
 use crate::actor::lifecycle::{Status, Stop};
+use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
+use std::any::Any;
+use uuid::Uuid;
 
 pub mod context;
 pub mod lifecycle;
@@ -22,8 +22,6 @@ pub trait Actor {
     }
 }
 
-
-
 #[derive(Clone)]
 pub struct BoxedActorRef {
     id: Uuid,
@@ -31,16 +29,16 @@ pub struct BoxedActorRef {
 }
 
 pub struct ActorRef<A: Actor>
-    where
-        A: 'static + Send + Sync,
+where
+    A: 'static + Send + Sync,
 {
     pub id: ActorId,
     sender: tokio::sync::mpsc::Sender<MessageHandler<A>>,
 }
 
 impl<A: Actor> From<BoxedActorRef> for ActorRef<A>
-    where
-        A: 'static + Send + Sync,
+where
+    A: 'static + Send + Sync,
 {
     fn from(b: BoxedActorRef) -> Self {
         ActorRef {
@@ -51,8 +49,8 @@ impl<A: Actor> From<BoxedActorRef> for ActorRef<A>
 }
 
 impl<A: Actor> From<ActorRef<A>> for BoxedActorRef
-    where
-        A: 'static + Send + Sync,
+where
+    A: 'static + Send + Sync,
 {
     fn from(r: ActorRef<A>) -> Self {
         BoxedActorRef {
@@ -63,8 +61,8 @@ impl<A: Actor> From<ActorRef<A>> for BoxedActorRef
 }
 
 impl<A> Clone for ActorRef<A>
-    where
-        A: Actor + Sync + Send + 'static,
+where
+    A: Actor + Sync + Send + 'static,
 {
     fn clone(&self) -> Self {
         Self {
@@ -80,56 +78,56 @@ pub enum ActorRefError {
 }
 
 impl<A: Actor> ActorRef<A>
-    where
-        A: Sync + Send + 'static,
+where
+    A: Sync + Send + 'static,
 {
     pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefError>
-        where
-            Msg: 'static + Send + Sync,
-            A: Handler<Msg>,
-            Msg::Result: Send + Sync,
+    where
+        Msg: 'static + Send + Sync,
+        A: Handler<Msg>,
+        Msg::Result: Send + Sync,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self
             .sender
             .send(Box::new(ActorMessage::new(msg, Some(tx))))
             .await
-            {
-                Ok(_) => match rx.await {
-                    Ok(res) => Ok(res),
-                    Err(e) => Err(ActorRefError::ActorUnavailable),
-                },
+        {
+            Ok(_) => match rx.await {
+                Ok(res) => Ok(res),
                 Err(e) => Err(ActorRefError::ActorUnavailable),
-            }
+            },
+            Err(e) => Err(ActorRefError::ActorUnavailable),
+        }
     }
 
     pub async fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefError>
-        where
-            Msg: 'static + Send + Sync,
-            A: Handler<Msg>,
-            Msg::Result: Send + Sync,
+    where
+        Msg: 'static + Send + Sync,
+        A: Handler<Msg>,
+        Msg::Result: Send + Sync,
     {
         match self
             .sender
             .send(Box::new(ActorMessage::new(msg, None)))
             .await
-            {
-                Ok(_) => Ok(()),
-                Err(e) => Err(ActorRefError::ActorUnavailable),
-            }
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(ActorRefError::ActorUnavailable),
+        }
     }
 
     pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefError>
-        where
-            F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
-            R: 'static + Send + Sync,
+    where
+        F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
+        R: 'static + Send + Sync,
     {
         self.send(Exec::new(f)).await
     }
 
     pub async fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefError>
-        where
-            F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+    where
+        F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
     {
         self.notify(Exec::new(f)).await
     }

@@ -3,7 +3,7 @@ use crate::actor::lifecycle::{actor_loop, Status, Stop};
 use crate::actor::message::{
     ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
 };
-use crate::actor::{Actor, ActorId, BoxedActorRef, ActorRef};
+use crate::actor::{Actor, ActorId, ActorRef, BoxedActorRef};
 use std::any::Any;
 
 use std::collections::HashMap;
