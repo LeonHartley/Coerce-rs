@@ -21,15 +21,18 @@ impl ActorContext {
         ctx
     }
 
-    pub fn new_actor<A: Actor + Sync + Send + 'static>(&mut self, actor: A) -> ActorRef<A> {
+    pub fn new_actor<A: Actor>(&mut self, actor: A) -> ActorRef<A>
+    where
+        A: 'static + Sync + Send,
+    {
         self.scheduler
             .register(actor, self.ctx.as_ref().unwrap().clone())
     }
 
-    pub fn get_actor<A: Actor + Sync + Send + 'static>(
-        &mut self,
-        id: ActorId,
-    ) -> Option<ActorRef<A>> {
+    pub fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
+    where
+        A: 'static + Sync + Send,
+    {
         self.scheduler.get_actor(&id)
     }
 }

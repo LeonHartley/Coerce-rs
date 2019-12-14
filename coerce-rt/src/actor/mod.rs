@@ -1,5 +1,6 @@
 use crate::actor::context::ActorHandlerContext;
 
+use crate::actor::scheduler::ActorRef;
 use uuid::Uuid;
 
 pub mod context;

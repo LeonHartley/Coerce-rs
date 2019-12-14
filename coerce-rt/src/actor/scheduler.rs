@@ -27,7 +27,7 @@ impl ActorScheduler {
         A: 'static + Sync + Send,
     {
         let id = ActorId::new_v4();
-        let (tx, rx) = tokio::sync::mpsc::channel(100);
+        let (tx, rx) = tokio::sync::mpsc::channel(128);
 
         let actor_ref = ActorRef {
             id: id.clone(),
@@ -119,7 +119,9 @@ where
         Msg::Result: Send + Sync,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.sender.send(Box::new(ActorMessage::new(msg, tx))).await;
+        self.sender
+            .send(Box::new(ActorMessage::new(msg, Some(tx))))
+            .await;
 
         match rx.await {
             Ok(res) => Ok(res),
@@ -130,12 +132,32 @@ where
         }
     }
 
+    pub async fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefError>
+    where
+        Msg: 'static + Send + Sync,
+        A: Handler<Msg>,
+        Msg::Result: Send + Sync,
+    {
+        self.sender
+            .send(Box::new(ActorMessage::new(msg, None)))
+            .await;
+
+        Ok(())
+    }
+
     pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefError>
     where
         F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
         R: 'static + Send + Sync,
     {
         self.send(Exec::new(f)).await
+    }
+
+    pub async fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefError>
+    where
+        F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+    {
+        self.notify(Exec::new(f)).await
     }
 
     pub async fn status(&mut self) -> Result<ActorStatus, ActorRefError> {

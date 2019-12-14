@@ -60,19 +60,27 @@ where
     M: Send + Sync,
     M::Result: Send + Sync,
 {
-    pub fn new(msg: M, sender: tokio::sync::oneshot::Sender<M::Result>) -> ActorMessage<A, M> {
+    pub fn new(
+        msg: M,
+        sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
+    ) -> ActorMessage<A, M> {
         ActorMessage {
             msg: Some(msg),
-            sender: Some(sender),
+            sender,
             _a: PhantomData,
         }
     }
 
     pub async fn handle_msg(&mut self, actor: &mut A, ctx: &mut ActorHandlerContext) {
-        let sender = self.sender.take();
         let msg = self.msg.take();
+        let result = actor.handle(msg.unwrap(), ctx).await;
 
-        sender.unwrap().send(actor.handle(msg.unwrap(), ctx).await);
+        if let &None = &self.sender {
+            return;
+        }
+
+        let sender = self.sender.take();
+        sender.unwrap().send(result);
     }
 }
 
