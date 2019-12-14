@@ -3,7 +3,7 @@ use crate::util::{
     TestActorStatus,
 };
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
-use coerce_rt::actor::message::{Handler, Message, MessageResult};
+use coerce_rt::actor::message::{Exec, Handler, Message, MessageResult};
 use coerce_rt::actor::Actor;
 
 #[macro_use]
@@ -47,7 +47,7 @@ pub async fn test_actor_req_res() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
 
-    let response = actor_ref.send(GetStatusRequest {}).await;
+    let response = actor_ref.send(GetStatusRequest()).await;
 
     assert_eq!(response, Ok(GetStatusResponse::None));
 }
@@ -57,15 +57,66 @@ pub async fn test_actor_req_res_mutation() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
 
-    let initial_status = actor_ref.send(GetStatusRequest {}).await;
+    let initial_status = actor_ref.send(GetStatusRequest()).await;
     let _ = actor_ref
         .send(SetStatusRequest(TestActorStatus::Active))
         .await;
-    let current_status = actor_ref.send(GetStatusRequest {}).await;
+    let current_status = actor_ref.send(GetStatusRequest()).await;
 
     assert_eq!(initial_status, Ok(GetStatusResponse::None));
     assert_eq!(
         current_status,
         Ok(GetStatusResponse::Ok(TestActorStatus::Active))
     );
+}
+
+#[tokio::test]
+pub async fn test_actor_exec_mutation() {
+    let ctx = ActorContext::new();
+    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let initial_status = actor_ref.send(GetStatusRequest()).await;
+
+    actor_ref
+        .exec(|mut actor| {
+            actor.status = Some(TestActorStatus::Active);
+        })
+        .await;
+
+    let current_status = actor_ref.send(GetStatusRequest()).await;
+    assert_eq!(initial_status, Ok(GetStatusResponse::None));
+    assert_eq!(
+        current_status,
+        Ok(GetStatusResponse::Ok(TestActorStatus::Active))
+    );
+}
+
+#[tokio::test]
+pub async fn test_actor_exec_chain_mutation() {
+    let ctx = ActorContext::new();
+    let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
+    let initial_status = actor_ref.send(GetStatusRequest()).await;
+
+    actor_ref.exec(|mut actor| {
+        actor.counter = 1;
+    });
+
+    actor_ref.exec(|mut actor| {
+        actor.counter = 2;
+    });
+
+    actor_ref.exec(|mut actor| {
+        actor.counter = 3;
+    });
+
+    actor_ref
+        .exec(|mut actor| {
+            actor.counter = 4;
+        })
+        .await;
+
+    actor_ref
+        .exec(|actor| {
+            assert_eq!(actor.counter, 4);
+        })
+        .await;
 }

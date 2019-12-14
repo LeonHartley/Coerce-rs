@@ -1,5 +1,6 @@
 use crate::actor::context::ActorHandlerContext;
 use crate::actor::Actor;
+use std::borrow::BorrowMut;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -9,7 +10,7 @@ pub trait Message {
     type Result;
 }
 
-pub (crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
+pub(crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 #[async_trait]
 pub trait Handler<Msg: Message + Send + Sync>
@@ -75,5 +76,46 @@ where
         let msg = self.msg.take();
 
         sender.unwrap().send(actor.handle(msg.unwrap(), ctx).await);
+    }
+}
+
+pub struct Exec<F, A>
+where
+    F: (FnMut(&mut A) -> ()),
+{
+    func: F,
+    _a: PhantomData<A>,
+}
+
+impl<F, A> Exec<F, A>
+where
+    F: (FnMut(&mut A) -> ()),
+{
+    pub fn new(f: F) -> Exec<F, A> {
+        Exec {
+            func: f,
+            _a: PhantomData,
+        }
+    }
+}
+
+impl<F, A> Message for Exec<F, A>
+where
+    for<'r> F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+{
+    type Result = ();
+}
+
+#[async_trait]
+impl<F, A> Handler<Exec<F, A>> for A
+where
+    A: 'static + Actor + Sync + Send,
+    F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+{
+    async fn handle(&mut self, message: Exec<F, A>, ctx: &mut ActorHandlerContext) {
+        let mut message = message;
+        let mut func = message.func;
+
+        func(self);
     }
 }

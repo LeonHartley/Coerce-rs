@@ -4,6 +4,7 @@ use coerce_rt::actor::Actor;
 
 pub struct TestActor {
     pub status: Option<TestActorStatus>,
+    pub counter: i32,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -13,7 +14,7 @@ pub enum TestActorStatus {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct GetStatusRequest {}
+pub struct GetStatusRequest();
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum GetStatusResponse {
@@ -40,6 +41,9 @@ impl Message for SetStatusRequest {
 
 impl TestActor {
     pub fn new() -> TestActor {
-        TestActor { status: None }
+        TestActor {
+            status: None,
+            counter: 0,
+        }
     }
 }

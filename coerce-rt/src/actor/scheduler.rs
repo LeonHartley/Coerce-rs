@@ -1,7 +1,9 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{actor_loop, Stop};
-use crate::actor::message::{ActorMessage, ActorMessageHandler, Handler, Message, MessageResult, MessageHandler};
+use crate::actor::message::{
+    ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
+};
 use crate::actor::{Actor, ActorId};
 use std::any::{Any, TypeId};
 use std::borrow::BorrowMut;
@@ -37,7 +39,6 @@ impl ActorScheduler {
         };
 
         let boxed_ref = BoxedActorRef::from(actor_ref.clone());
-
         tokio::spawn(actor_loop(actor, rx));
 
         actor_ref
@@ -125,6 +126,13 @@ where
                 Err(ActorRefError::ActorUnavailable)
             }
         }
+    }
+
+    pub async fn exec<F>(&mut self, f: F) -> Result<(), ActorRefError>
+    where
+        F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
+    {
+        self.send(Exec::new(f)).await
     }
 
     pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefError> {
