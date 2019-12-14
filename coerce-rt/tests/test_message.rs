@@ -122,12 +122,12 @@ pub async fn test_actor_notify() {
     let ctx = ActorContext::new();
     let mut actor_ref = ctx.lock().unwrap().new_actor(TestActor::new());
 
-    for i in 1..=100 as i32 {
+    for i in 1..=25 as i32 {
         let _ = actor_ref
             .notify_exec(move |mut actor| actor.counter = i)
             .await;
     }
 
     let counter = actor_ref.exec(|actor| actor.counter).await;
-    assert_eq!(counter, Ok(100));
+    assert_eq!(counter, Ok(25));
 }

@@ -3,9 +3,9 @@ use crate::actor::context::{ActorHandlerContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::Actor;
 
-pub struct Status {}
+pub struct Status();
 
-pub struct Stop {}
+pub struct Stop();
 
 impl Message for Status {
     type Result = ActorStatus;
@@ -26,15 +26,21 @@ where
 }
 
 #[async_trait]
-impl<A> Handler<Stop> for A
+impl<A: Actor> Handler<Stop> for A
 where
-    A: 'static + Actor + Sync + Send,
+    A: 'static + Sync + Send,
 {
     async fn handle(&mut self, _message: Stop, ctx: &mut ActorHandlerContext) -> ActorStatus {
         ctx.set_status(Stopping);
 
         Stopping
     }
+}
+
+pub async fn timer_loop<A: Actor>(mut actor: A)
+where
+    A: 'static + Sync + Send,
+{
 }
 
 pub async fn actor_loop<A: Actor>(

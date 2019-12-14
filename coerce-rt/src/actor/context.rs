@@ -1,5 +1,5 @@
-use crate::actor::scheduler::{ActorRef, ActorScheduler};
-use crate::actor::{Actor, ActorId};
+use crate::actor::scheduler::ActorScheduler;
+use crate::actor::{Actor, ActorId, ActorRef};
 use std::sync::{Arc, Mutex};
 
 pub struct ActorContext {
@@ -47,11 +47,15 @@ pub enum ActorStatus {
 
 pub struct ActorHandlerContext {
     status: ActorStatus,
+    timers: Vec<tokio::time::Interval>,
 }
 
 impl ActorHandlerContext {
     pub fn new(status: ActorStatus) -> ActorHandlerContext {
-        ActorHandlerContext { status }
+        ActorHandlerContext {
+            status,
+            timers: vec![],
+        }
     }
 
     pub fn set_status(&mut self, state: ActorStatus) {

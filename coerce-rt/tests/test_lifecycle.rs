@@ -1,7 +1,6 @@
 use coerce_rt::actor::context::{ActorContext, ActorStatus};
 use coerce_rt::actor::lifecycle::Status;
-use coerce_rt::actor::scheduler::ActorRefError;
-use coerce_rt::actor::Actor;
+use coerce_rt::actor::{Actor, ActorRefError};
 
 use util::TestActor;
 
