@@ -35,7 +35,7 @@ impl Handler<EchoMessage> for EchoActor {
 }
 
 pub async fn run() {
-    let mut actor = new_actor(EchoActor {}).await;
+    let mut actor = new_actor(EchoActor {}).await.unwrap();
 
     let hello_world = "hello, world".to_string();
     let result = actor.send(EchoMessage(hello_world.clone())).await;
