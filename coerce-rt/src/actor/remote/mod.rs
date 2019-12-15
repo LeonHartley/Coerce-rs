@@ -1,24 +1,29 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorRef};
+use crate::actor::{get_actor, Actor, ActorId, ActorRef};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 
-struct RemoteActorContext {}
+pub struct RemoteActorContext {
+    handlers: HashMap<String, Box<dyn RemoteMessageHandler>>,
+}
 
 impl RemoteActorContext {
     pub fn builder() -> RemoteActorContextBuilder {
-        RemoteActorContextBuilder {}
+        RemoteActorContextBuilder {
+            handlers: HashMap::new(),
+        }
     }
 }
 
-struct RemoteActorContextBuilder {}
+pub struct RemoteActorContextBuilder {
+    handlers: HashMap<String, Box<dyn RemoteMessageHandler>>,
+}
 
-trait RemoteMessageHandler<A: Actor>
-where
-    A: Send + Sync,
-{
-    fn handle(&mut self, actor: &mut A, buffer: Vec<u8>);
+#[async_trait]
+pub trait RemoteMessageHandler {
+    async fn handle(&self, actor: ActorId, buffer: &[u8]);
 }
 
 pub struct RemoteActorMessageHandler<A: Actor, M: Message>
@@ -31,27 +36,42 @@ where
     _a: PhantomData<A>,
 }
 
-impl<A: Actor, M: Message> RemoteMessageHandler<A> for RemoteActorMessageHandler<A, M>
+#[async_trait]
+impl<A: Actor, M: Message> RemoteMessageHandler for RemoteActorMessageHandler<A, M>
 where
-    A: Handler<M> + Send + Sync,
-    M: DeserializeOwned + Send + Sync,
+    A: 'static + Handler<M> + Send + Sync,
+    M: 'static + DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    fn handle(&mut self, actor: ActorRef<A>, buffer: Vec<u8>) {
-        let buffer = buffer;
-        let message = serde_json::from_slice::<M>(buffer.as_slice());
-        match message {
-            Ok(m) => println!("success!:D"),
-            Err(e) => println!("decode failed"),
-        };
+    async fn handle(&self, actor_id: ActorId, buffer: &[u8]) {
+        let actor = get_actor::<A>(actor_id).await;
+        if let Some(mut actor) = actor {
+            let message = serde_json::from_slice::<M>(buffer);
+            match message {
+                Ok(m) => {
+                    println!("lool");
+                    actor.send(m).await;
+                }
+                Err(e) => println!("decode failed"),
+            };
+        }
+    }
+}
+
+impl RemoteActorContext {
+    pub async fn handle(&mut self, identifier: String, actor_id: ActorId, buffer: &[u8]) {
+        let handler = self.handlers.get(&identifier);
+        if let Some(handler) = handler {
+            handler.handle(actor_id, buffer).await;
+        }
     }
 }
 
 impl RemoteActorContextBuilder {
-    pub fn with_handler<A: Actor, M: Message>(&mut self, identifier: &'static str) -> &mut Self
+    pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &'static str) -> Self
     where
-        A: Handler<M> + Send + Sync,
-        M: DeserializeOwned + Send + Sync,
+        A: 'static + Handler<M> + Send + Sync,
+        M: 'static + DeserializeOwned + Send + Sync,
         M::Result: Serialize + Send + Sync,
     {
         let handler: RemoteActorMessageHandler<A, M> = RemoteActorMessageHandler {
@@ -59,6 +79,14 @@ impl RemoteActorContextBuilder {
             _a: PhantomData,
         };
 
+        self.handlers
+            .insert(String::from(identifier), Box::new(handler));
         self
+    }
+
+    pub fn build(self) -> RemoteActorContext {
+        RemoteActorContext {
+            handlers: self.handlers,
+        }
     }
 }

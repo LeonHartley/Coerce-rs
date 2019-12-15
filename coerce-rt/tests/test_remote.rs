@@ -1,11 +1,10 @@
-use coerce_rt::actor::context::ActorHandlerContext;
+use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::{Actor, ActorRef};
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
+use coerce_rt::actor::remote::*;
+use coerce_rt::actor::{new_actor, Actor, ActorRef};
 
 #[macro_use]
+extern crate serde;
 extern crate serde_json;
 
 #[macro_use]
@@ -31,7 +30,9 @@ impl Message for GetStatusRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub struct SetStatusRequest(pub TestActorStatus);
+pub struct SetStatusRequest {
+    status: TestActorStatus
+}
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum SetStatusResponse {
@@ -86,7 +87,7 @@ impl Handler<SetStatusRequest> for TestActor {
         message: SetStatusRequest,
         _ctx: &mut ActorHandlerContext,
     ) -> SetStatusResponse {
-        self.status = Some(message.0);
+        self.status = Some(message.status);
 
         SetStatusResponse::Ok
     }
@@ -103,8 +104,21 @@ impl Handler<GetCounterRequest> for TestActor {
 impl Actor for TestActor {}
 
 #[tokio::test]
-pub async fn test_remote_builder() {
-    let remote = RemoteActorContext::builder()
-        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
-        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest");
+pub async fn test_remote_handle_from_json() {
+    let mut actor = new_actor(TestActor::new()).await.unwrap();
+
+    let mut remote = RemoteActorContext::builder()
+        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+        .build();
+
+    let initial_status = actor.send(GetStatusRequest()).await;
+
+    remote
+        .handle("TestActor.SetStatusRequest".to_string(), actor.id, b"{\"status\": \"Active\"}")
+        .await;
+
+    let current_status = actor.send(GetStatusRequest()).await;
+
+    assert_eq!(initial_status, Ok(GetStatusResponse::None));
+    assert_eq!(current_status, Ok(GetStatusResponse::Ok(TestActorStatus::Active)));
 }
