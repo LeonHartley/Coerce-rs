@@ -8,7 +8,6 @@ use uuid::Uuid;
 pub mod context;
 pub mod lifecycle;
 pub mod message;
-pub mod remote;
 pub mod scheduler;
 
 pub type ActorId = Uuid;

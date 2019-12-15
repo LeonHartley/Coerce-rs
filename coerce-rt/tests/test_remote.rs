@@ -1,6 +1,7 @@
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
+use coerce_rt::remote::context::RemoteActorContext;
 use coerce_rt::remote::*;
 
 #[macro_use]
@@ -109,7 +110,8 @@ pub async fn test_remote_handle_from_json() {
 
     let mut remote = RemoteActorContext::builder()
         .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-        .build();
+        .build()
+        .await;
 
     let initial_status = actor.send(GetStatusRequest()).await;
 

@@ -1,13 +1,18 @@
-use crate::actor::{ActorRef, Actor, ActorId};
+use crate::actor::message::{Handler, Message};
+use crate::actor::{Actor, ActorId, ActorRef};
+use crate::remote::actor::{RemoteHandler, RemoteRegistry, GetHandler};
 use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
-use std::collections::HashMap;
-use crate::actor::message::{Message, Handler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use crate::remote::actor::RemoteRegistry;
+use std::collections::HashMap;
 
 pub struct RemoteActorContext {
-    handler: ActorRef<RemoteRegistry>
+    handler_ref: ActorRef<RemoteHandler>,
+    registry_ref: ActorRef<RemoteRegistry>,
+}
+
+pub struct RemoteActorContextBuilder {
+    handlers: HashMap<String, Box<dyn RemoteMessageHandler + Send + Sync>>,
 }
 
 impl RemoteActorContext {
@@ -31,9 +36,9 @@ impl RemoteActorContext {
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
+        let handler = self.handler_ref.send(GetHandler(identifier)).await;
 
-        let handler = self.handlers.get(&identifier);
-        if let Some(handler) = handler {
+        if let Ok(Some(handler)) = handler {
             handler.handle(actor_id, buffer, tx).await;
         };
 
@@ -44,27 +49,24 @@ impl RemoteActorContext {
     }
 }
 
-pub struct RemoteActorContextBuilder {
-    handlers: HashMap<String, Box<dyn RemoteMessageHandler>>,
-}
-
 impl RemoteActorContextBuilder {
     pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &'static str) -> Self
-        where
-            A: 'static + Handler<M> + Send + Sync,
-            M: 'static + DeserializeOwned + Send + Sync,
-            M::Result: Serialize + Send + Sync,
+    where
+        A: 'static + Handler<M> + Send + Sync,
+        M: 'static + DeserializeOwned + Send + Sync,
+        M::Result: Serialize + Send + Sync,
     {
-        let handler = RemoteActorMessageHandler::<A, M>::new();
-
-        self.handlers
-            .insert(String::from(identifier), Box::new(handler));
+        self.handlers.insert(
+            String::from(identifier),
+            RemoteActorMessageHandler::<A, M>::new(),
+        );
         self
     }
 
-    pub fn build(self) -> RemoteActorContext {
+    pub async fn build(self) -> RemoteActorContext {
         RemoteActorContext {
-            handler: ,
+            handler_ref: RemoteHandler::new(self.handlers).await,
+            registry_ref: RemoteRegistry::new().await,
         }
     }
 }
