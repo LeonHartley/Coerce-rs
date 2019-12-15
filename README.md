@@ -10,6 +10,9 @@ usually achieved by locking (using `Mutex`, `RwLock` etc).
 Coerce uses Tokio's MPSC channels ([tokio::sync::mpsc::channel][channel]), every actor created spawns a task listening to messages from a
 `Receiver`, handling and awaiting the result of the message. Every reference (`ActorRef<A: Actor>`) holds a `Sender<M> where A: Handler<M>`, which can be cloned. 
 
+Actors can be stopped and actor references can be retrieved by ID (currently `Uuid`) from anywhere in your application. Actors are automatically dropped (and `Stopped`)
+when all references are dropped. 
+
 ### Example
 ```rust
 pub struct EchoActor {}
