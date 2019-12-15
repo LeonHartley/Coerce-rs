@@ -113,25 +113,23 @@ pub async fn test_remote_handle_from_json() {
         .build()
         .await;
 
-    for i in 0..1000 {
-        let initial_status = actor.send(GetStatusRequest()).await;
+    let initial_status = actor.send(GetStatusRequest()).await;
 
-        let res = remote
-            .handle(
-                "TestActor.SetStatusRequest".to_string(),
-                actor.id,
-                b"{\"status\": \"Active\"}",
-            )
-            .await;
+    let res = remote
+        .handle(
+            "TestActor.SetStatusRequest".to_string(),
+            actor.id,
+            b"{\"status\": \"Active\"}",
+        )
+        .await;
 
-        let current_status = actor.send(GetStatusRequest()).await;
+    let current_status = actor.send(GetStatusRequest()).await;
 
-        assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
+    assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
 
-        assert_eq!(initial_status, Ok(GetStatusResponse::None));
-        assert_eq!(
-            current_status,
-            Ok(GetStatusResponse::Ok(TestActorStatus::Active))
-        );
-    }
+    assert_eq!(initial_status, Ok(GetStatusResponse::None));
+    assert_eq!(
+        current_status,
+        Ok(GetStatusResponse::Ok(TestActorStatus::Active))
+    );
 }
