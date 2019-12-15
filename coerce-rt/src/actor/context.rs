@@ -1,6 +1,5 @@
 use crate::actor::scheduler::{ActorScheduler, GetActor, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
-use std::sync::{Arc, Mutex};
 
 lazy_static! {
     static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };

@@ -104,32 +104,66 @@ impl Handler<GetCounterRequest> for TestActor {
 #[async_trait]
 impl Actor for TestActor {}
 
-#[tokio::test]
-pub async fn test_remote_handle_from_json() {
-    let mut actor = new_actor(TestActor::new()).await.unwrap();
+pub struct EchoActor {}
 
-    let mut remote = RemoteActorContext::builder()
-        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-        .build()
-        .await;
+#[async_trait]
+impl Actor for EchoActor {}
 
-    let initial_status = actor.send(GetStatusRequest()).await;
+pub struct EchoMessage(String);
 
-    let res = remote
-        .handle(
-            "TestActor.SetStatusRequest".to_string(),
-            actor.id,
-            b"{\"status\": \"Active\"}",
-        )
-        .await;
-
-    let current_status = actor.send(GetStatusRequest()).await;
-
-    assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
-
-    assert_eq!(initial_status, Ok(GetStatusResponse::None));
-    assert_eq!(
-        current_status,
-        Ok(GetStatusResponse::Ok(TestActorStatus::Active))
-    );
+impl Message for EchoMessage {
+    type Result = String;
 }
+
+#[async_trait]
+impl Handler<EchoMessage> for EchoActor {
+    async fn handle(
+        &mut self,
+        message: EchoMessage,
+        _ctx: &mut ActorHandlerContext,
+    ) -> String {
+        message.0.clone()
+    }
+}
+
+#[tokio::test]
+pub async fn run() {
+    let mut actor = new_actor(EchoActor {}).await.unwrap();
+
+    let hello_world = "hello, world".to_string();
+    let result = actor.send(EchoMessage(hello_world.clone())).await;
+
+    assert_eq!(result, Ok(hello_world));
+}
+//
+//#[tokio::test]
+//pub async fn test_remote_handle_from_json() {
+//    let mut actor = new_actor(TestActor::new()).await.unwrap();
+//
+//    let mut remote = RemoteActorContext::builder()
+//        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+//        .build()
+//        .await;
+//
+//    for i in 0..1000 {
+//        let initial_status = actor.send(GetStatusRequest()).await;
+//
+//        let res = remote
+//            .handle(
+//                "TestActor.SetStatusRequest".to_string(),
+//                actor.id,
+//                b"{\"status\": \"Active\"}",
+//            )
+//            .await;
+//
+//        let current_status = actor.send(GetStatusRequest()).await;
+//
+//        assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
+//
+////        assert_eq!(initial_status, Ok(GetStatusResponse::None));
+//        assert_eq!(
+//            current_status,
+//            Ok(GetStatusResponse::Ok(TestActorStatus::Active))
+//        );
+//    }
+//}

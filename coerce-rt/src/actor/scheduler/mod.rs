@@ -9,7 +9,6 @@ use std::any::Any;
 use std::collections::HashMap;
 
 use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 pub mod timer;
