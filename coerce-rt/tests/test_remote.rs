@@ -1,7 +1,7 @@
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::remote::*;
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
+use coerce_rt::remote::*;
 
 #[macro_use]
 extern crate serde;

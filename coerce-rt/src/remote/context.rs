@@ -1,15 +1,13 @@
-use crate::actor::message::{Handler, Message};
-use crate::actor::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
-use crate::actor::{get_actor, Actor, ActorId, ActorRef};
+use crate::actor::{ActorRef, Actor, ActorId};
+use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
+use std::collections::HashMap;
+use crate::actor::message::{Message, Handler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::HashMap;
-use std::marker::PhantomData;
-
-pub mod handler;
+use crate::remote::actor::RemoteRegistry;
 
 pub struct RemoteActorContext {
-    handlers: HashMap<String, Box<dyn RemoteMessageHandler>>,
+    handler: ActorRef<RemoteRegistry>
 }
 
 impl RemoteActorContext {
@@ -52,10 +50,10 @@ pub struct RemoteActorContextBuilder {
 
 impl RemoteActorContextBuilder {
     pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &'static str) -> Self
-    where
-        A: 'static + Handler<M> + Send + Sync,
-        M: 'static + DeserializeOwned + Send + Sync,
-        M::Result: Serialize + Send + Sync,
+        where
+            A: 'static + Handler<M> + Send + Sync,
+            M: 'static + DeserializeOwned + Send + Sync,
+            M::Result: Serialize + Send + Sync,
     {
         let handler = RemoteActorMessageHandler::<A, M>::new();
 
@@ -66,7 +64,7 @@ impl RemoteActorContextBuilder {
 
     pub fn build(self) -> RemoteActorContext {
         RemoteActorContext {
-            handlers: self.handlers,
+            handler: ,
         }
     }
 }

@@ -24,7 +24,6 @@ where
 {
     _m: PhantomData<M>,
     _a: PhantomData<A>,
-    pub res: Option<tokio::sync::oneshot::Sender<Vec<u8>>>,
 }
 
 impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M>
@@ -37,17 +36,6 @@ where
         RemoteActorMessageHandler {
             _m: PhantomData,
             _a: PhantomData,
-            res: None,
-        }
-    }
-    pub fn with_res(
-        &self,
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
-    ) -> RemoteActorMessageHandler<A, M> {
-        RemoteActorMessageHandler {
-            _m: PhantomData,
-            _a: PhantomData,
-            res: Some(res),
         }
     }
 }
