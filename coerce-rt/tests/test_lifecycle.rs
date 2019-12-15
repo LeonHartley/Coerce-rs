@@ -1,6 +1,7 @@
-use coerce_rt::actor::context::{ActorContext, ActorStatus};
+use coerce_rt::actor::context::{ActorContext, ActorStatus, ActorHandlerContext};
 use coerce_rt::actor::lifecycle::Status;
 use coerce_rt::actor::{new_actor, Actor, ActorRefError};
+use coerce_rt::actor::message::{Handler, Message};
 
 #[macro_use]
 extern crate async_trait;
