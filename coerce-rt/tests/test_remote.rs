@@ -31,7 +31,7 @@ impl Message for GetStatusRequest {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct SetStatusRequest {
-    status: TestActorStatus
+    status: TestActorStatus,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -113,12 +113,21 @@ pub async fn test_remote_handle_from_json() {
 
     let initial_status = actor.send(GetStatusRequest()).await;
 
-    remote
-        .handle("TestActor.SetStatusRequest".to_string(), actor.id, b"{\"status\": \"Active\"}")
+    let res = remote
+        .handle(
+            "TestActor.SetStatusRequest".to_string(),
+            actor.id,
+            b"{\"status\": \"Active\"}",
+        )
         .await;
 
     let current_status = actor.send(GetStatusRequest()).await;
 
+    assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
+
     assert_eq!(initial_status, Ok(GetStatusResponse::None));
-    assert_eq!(current_status, Ok(GetStatusResponse::Ok(TestActorStatus::Active)));
+    assert_eq!(
+        current_status,
+        Ok(GetStatusResponse::Ok(TestActorStatus::Active))
+    );
 }
