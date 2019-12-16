@@ -1,5 +1,5 @@
-use util::*;
 use coerce_rt::actor::context::ActorContext;
+use util::*;
 
 pub mod util;
 
@@ -33,7 +33,9 @@ pub async fn test_actor_req_res_mutation() {
 
     let initial_status = actor_ref.send(GetStatusRequest()).await;
     let _ = actor_ref
-        .send(SetStatusRequest { status: TestActorStatus::Active })
+        .send(SetStatusRequest {
+            status: TestActorStatus::Active,
+        })
         .await;
 
     let current_status = actor_ref.send(GetStatusRequest()).await;

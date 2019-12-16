@@ -1,5 +1,5 @@
-use util::*;
 use coerce_rt::actor::context::ActorContext;
+use util::*;
 
 pub mod util;
 

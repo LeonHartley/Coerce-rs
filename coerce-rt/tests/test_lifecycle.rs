@@ -1,6 +1,6 @@
-use util::*;
 use coerce_rt::actor::context::{ActorContext, ActorStatus};
 use coerce_rt::actor::ActorRefError;
+use util::*;
 
 pub mod util;
 

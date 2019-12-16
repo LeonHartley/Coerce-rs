@@ -1,7 +1,7 @@
+use coerce_rt::actor::context::ActorContext;
 use coerce_rt::remote::context::RemoteActorContext;
 use std::mem::forget;
 use util::*;
-use coerce_rt::actor::context::ActorContext;
 
 pub mod util;
 
@@ -28,7 +28,7 @@ pub async fn test_remote_create_message() {
 
     let actor = remote.inner().new_actor(TestActor::new()).await.unwrap();
     let message = remote
-        .create_message::<TestActor, SetStatusRequest>(
+        .create_message(
             &actor,
             SetStatusRequest {
                 status: TestActorStatus::Active,
