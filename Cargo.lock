@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "coerce-rt"
-version = "0.1.1"
+version = "0.1.2-pre"
 dependencies = [
  "async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
