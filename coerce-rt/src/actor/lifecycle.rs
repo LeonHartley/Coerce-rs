@@ -58,7 +58,7 @@ pub async fn actor_loop<A: Actor>(
     ctx.set_status(Started);
 
     if let Some(on_start) = on_start {
-        on_start.send(true);
+        let _ = on_start.send(true);
     }
 
     trace!(target: "ActorLoop", "[{}] ready", &id);

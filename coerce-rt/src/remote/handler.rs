@@ -1,9 +1,8 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{get_actor, Actor, ActorId, ActorRef};
+use crate::actor::{get_actor, Actor, ActorId};
 use crate::remote::actor::BoxedHandler;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
 #[async_trait]
@@ -62,7 +61,16 @@ where
                 Ok(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        res.send(serde_json::to_string(&result).unwrap().as_bytes().to_vec());
+                        match serde_json::to_string(&result) {
+                            Ok(msg) => {
+                                if let Err(_) = res.send(msg.as_bytes().to_vec()) {
+                                    error!(target: "RemoteHandler", "failed to send message")
+                                }
+                            }
+                            Err(_e) => {
+                                error!(target: "RemoteHandler", "failed to encode message result")
+                            }
+                        }
                     }
                 }
                 Err(e) => error!(target: "RemoteHandler", "failed to decode message, {}", e),

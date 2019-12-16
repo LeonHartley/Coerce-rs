@@ -1,7 +1,6 @@
 use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
-use crate::actor::scheduler::{GetActor, RegisterActor};
 use log::error;
 use std::any::Any;
 use uuid::Uuid;
@@ -107,12 +106,12 @@ where
         {
             Ok(_) => match rx.await {
                 Ok(res) => Ok(res),
-                Err(e) => {
+                Err(_e) => {
                     error!(target: "ActorRef", "error receiving result");
                     Err(ActorRefError::ActorUnavailable)
                 }
             },
-            Err(e) => {
+            Err(_e) => {
                 error!(target: "ActorRef", "error sending message");
                 Err(ActorRefError::ActorUnavailable)
             }
@@ -131,7 +130,7 @@ where
             .await
         {
             Ok(_) => Ok(()),
-            Err(e) => Err(ActorRefError::ActorUnavailable),
+            Err(_e) => Err(ActorRefError::ActorUnavailable),
         }
     }
 

@@ -55,15 +55,11 @@ pub enum ActorStatus {
 
 pub struct ActorHandlerContext {
     status: ActorStatus,
-    timers: Vec<tokio::time::Interval>,
 }
 
 impl ActorHandlerContext {
     pub fn new(status: ActorStatus) -> ActorHandlerContext {
-        ActorHandlerContext {
-            status,
-            timers: vec![],
-        }
+        ActorHandlerContext { status }
     }
 
     pub fn set_status(&mut self, state: ActorStatus) {

@@ -82,7 +82,7 @@ where
         let sender = self.sender.take();
         match sender.unwrap().send(result) {
             Ok(_) => trace!(target: "ActorMessage", "sent result successfully"),
-            Err(e) => trace!(target: "ActorMessage", "failed to send result"),
+            Err(_e) => warn!(target: "ActorMessage", "failed to send result"),
         }
     }
 }
@@ -122,8 +122,8 @@ where
     F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
     R: 'static + Send + Sync,
 {
-    async fn handle(&mut self, message: Exec<F, A, R>, ctx: &mut ActorHandlerContext) -> R {
-        let mut message = message;
+    async fn handle(&mut self, message: Exec<F, A, R>, _ctx: &mut ActorHandlerContext) -> R {
+        let message = message;
         let mut func = message.func;
 
         func(self)

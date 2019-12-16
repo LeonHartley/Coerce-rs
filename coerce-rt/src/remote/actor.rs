@@ -39,7 +39,7 @@ impl Handler<GetHandler> for RemoteHandler {
     async fn handle(
         &mut self,
         message: GetHandler,
-        ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorHandlerContext,
     ) -> Option<BoxedHandler> {
         match self.handlers.get(&message.0) {
             Some(handler) => Some(handler.new_boxed()),

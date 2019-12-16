@@ -1,15 +1,10 @@
-use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
-use crate::actor::lifecycle::{actor_loop, Status, Stop};
-use crate::actor::message::{
-    ActorMessage, ActorMessageHandler, Exec, Handler, Message, MessageHandler, MessageResult,
-};
+use crate::actor::context::ActorHandlerContext;
+use crate::actor::lifecycle::actor_loop;
+use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef, BoxedActorRef};
-use std::any::Any;
 
 use std::collections::HashMap;
-
 use std::marker::PhantomData;
-use uuid::Uuid;
 
 pub mod timer;
 
@@ -77,7 +72,7 @@ where
     async fn handle(
         &mut self,
         message: RegisterActor<A>,
-        ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
         let actor = start_actor(message.0, Some(message.1));
 
@@ -97,7 +92,7 @@ where
     async fn handle(
         &mut self,
         message: GetActor<A>,
-        ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorHandlerContext,
     ) -> Option<ActorRef<A>> {
         match self.actors.get(&message.id) {
             Some(actor) => Some(ActorRef::<A>::from(actor.clone())),

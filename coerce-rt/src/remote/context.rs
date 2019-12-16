@@ -1,6 +1,6 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef};
-use crate::remote::actor::{GetHandler, RemoteHandler, RemoteRegistry};
+use crate::remote::actor::{GetHandler, RemoteHandler};
 use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -8,7 +8,6 @@ use std::collections::HashMap;
 
 pub struct RemoteActorContext {
     handler_ref: ActorRef<RemoteHandler>,
-    registry_ref: ActorRef<RemoteRegistry>,
 }
 
 pub struct RemoteActorContextBuilder {
@@ -44,7 +43,7 @@ impl RemoteActorContext {
 
         match rx.await {
             Ok(res) => Ok(res),
-            Err(e) => Err(RemoteActorError::ActorUnavailable),
+            Err(_e) => Err(RemoteActorError::ActorUnavailable),
         }
     }
 }
@@ -66,7 +65,6 @@ impl RemoteActorContextBuilder {
     pub async fn build(self) -> RemoteActorContext {
         RemoteActorContext {
             handler_ref: RemoteHandler::new(self.handlers).await,
-            registry_ref: RemoteRegistry::new().await,
         }
     }
 }
