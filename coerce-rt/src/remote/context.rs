@@ -6,9 +6,8 @@ use crate::remote::codec::{MessageEncoder, RemoteHandlerMessage};
 use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::any::Any;
+
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct RemoteActorContext {
@@ -123,7 +122,7 @@ impl RemoteActorContextBuilder {
         self
     }
 
-    pub async fn build(mut self) -> RemoteActorContext {
+    pub async fn build(self) -> RemoteActorContext {
         let mut inner = match self.inner {
             Some(ctx) => ctx,
             None => ActorContext::current_context(),

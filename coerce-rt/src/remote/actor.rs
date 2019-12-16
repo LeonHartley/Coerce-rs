@@ -1,8 +1,8 @@
 use crate::actor::context::{ActorContext, ActorHandlerContext};
 use crate::actor::message::{Handler, Message};
-use crate::actor::{new_actor, Actor, ActorRef};
+use crate::actor::{Actor, ActorRef};
 use crate::remote::handler::{RemoteActorMessageMarker, RemoteMessageHandler};
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use std::collections::HashMap;
 
 pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;

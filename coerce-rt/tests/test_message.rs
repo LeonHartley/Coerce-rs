@@ -76,7 +76,7 @@ pub async fn test_actor_exec_chain_mutation() {
         .await
         .unwrap();
 
-    let a = actor_ref
+    let _a = actor_ref
         .exec(|mut actor| {
             actor.counter = 1;
         })

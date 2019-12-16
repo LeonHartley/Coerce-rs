@@ -29,7 +29,7 @@ where
         }
     }
 
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefError>
+    pub async fn send<Msg: Message>(&mut self, _msg: Msg) -> Result<Msg::Result, ActorRefError>
     where
         Msg: 'static + Send + Sync,
         A: Handler<Msg>,

@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{get_actor, Actor, ActorId};
+use crate::actor::{Actor, ActorId};
 use crate::remote::actor::BoxedHandler;
 use crate::remote::codec::{MessageDecoder, MessageEncoder};
 use serde::de::DeserializeOwned;
