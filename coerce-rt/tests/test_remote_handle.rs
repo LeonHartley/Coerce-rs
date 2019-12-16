@@ -126,15 +126,12 @@ impl Handler<GetCounterRequest> for EchoActor {
 
 #[tokio::test]
 pub async fn test_remote_handler_types() {
-    let mut ctx = ActorContext::new();
-    let mut actor = ctx.new_actor(TestActor::new()).await.unwrap();
-
     let echo_get_counter = "EchoActor.GetCounterRequest".to_string();
     let test_get_status = "TestActor.GetStatusRequest".to_string();
     let test_set_status = "TestActor.SetStatusRequest".to_string();
 
     let mut remote = RemoteActorContext::builder()
-        .with_actor_context(ctx)
+        .with_actor_context(ActorContext::new())
         .with_handler::<TestActor, SetStatusRequest>(test_set_status.clone().as_ref())
         .with_handler::<TestActor, GetStatusRequest>(test_get_status.clone().as_ref())
         .with_handler::<EchoActor, GetCounterRequest>(echo_get_counter.clone().as_ref())
