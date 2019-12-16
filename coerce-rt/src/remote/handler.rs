@@ -5,10 +5,10 @@ use crate::remote::actor::BoxedHandler;
 use crate::remote::codec::{MessageDecoder, MessageEncoder};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::any::{Any, TypeId};
 use std::marker::PhantomData;
-
 #[async_trait]
-pub trait RemoteMessageHandler {
+pub trait RemoteMessageHandler: Any {
     async fn handle(
         &self,
         actor: ActorId,
@@ -17,8 +17,38 @@ pub trait RemoteMessageHandler {
     );
 
     fn new_boxed(&self) -> BoxedHandler;
+
+    fn id(&self) -> TypeId;
 }
 
+pub struct RemoteActorMessageMarker<A: Actor, M: Message>
+where
+    A: Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
+{
+    _m: PhantomData<M>,
+    _a: PhantomData<A>,
+}
+
+impl<A: Actor, M: Message> RemoteActorMessageMarker<A, M>
+where
+    Self: Any,
+    A: Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
+{
+    pub fn new() -> RemoteActorMessageMarker<A, M> {
+        RemoteActorMessageMarker {
+            _a: PhantomData,
+            _m: PhantomData,
+        }
+    }
+
+    pub fn id(&self) -> TypeId {
+        self.type_id()
+    }
+}
 pub struct RemoteActorMessageHandler<A: Actor, M: Message>
 where
     A: Send + Sync,
@@ -26,22 +56,18 @@ where
     M::Result: Serialize + Send + Sync,
 {
     context: ActorContext,
-    _m: PhantomData<M>,
-    _a: PhantomData<A>,
+    marker: RemoteActorMessageMarker<A, M>,
 }
 
 impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M>
 where
-    A: Send + Sync,
-    M: DeserializeOwned + Send + Sync,
+    A: 'static + Send + Sync,
+    M: DeserializeOwned + 'static + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
     pub fn new(context: ActorContext) -> Box<RemoteActorMessageHandler<A, M>> {
-        Box::new(RemoteActorMessageHandler {
-            context,
-            _m: PhantomData,
-            _a: PhantomData,
-        })
+        let marker = RemoteActorMessageMarker::new();
+        Box::new(RemoteActorMessageHandler { context, marker })
     }
 }
 
@@ -86,8 +112,11 @@ where
     fn new_boxed(&self) -> BoxedHandler {
         Box::new(Self {
             context: self.context.clone(),
-            _a: PhantomData,
-            _m: PhantomData,
+            marker: RemoteActorMessageMarker::new(),
         })
+    }
+
+    fn id(&self) -> TypeId {
+        self.marker.id()
     }
 }

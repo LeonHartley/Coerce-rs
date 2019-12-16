@@ -4,6 +4,7 @@ use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
 use coerce_rt::remote::context::RemoteActorContext;
+use coerce_rt::remote::handler::RemoteActorMessageMarker;
 use coerce_rt::remote::*;
 use std::mem::forget;
 
@@ -111,6 +112,51 @@ impl Handler<GetCounterRequest> for TestActor {
 #[async_trait]
 impl Actor for TestActor {}
 
+pub struct EchoActor {}
+
+#[async_trait]
+impl Actor for EchoActor {}
+
+#[async_trait]
+impl Handler<GetCounterRequest> for EchoActor {
+    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorHandlerContext) -> i32 {
+        42
+    }
+}
+
+#[tokio::test]
+pub async fn test_remote_handler_types() {
+    let mut ctx = ActorContext::new();
+    let mut actor = ctx.new_actor(TestActor::new()).await.unwrap();
+
+    let echo_get_counter = "EchoActor.GetCounterRequest".to_string();
+    let test_get_status = "TestActor.GetStatusRequest".to_string();
+    let test_set_status = "TestActor.SetStatusRequest".to_string();
+
+    let mut remote = RemoteActorContext::builder()
+        .with_actor_context(ctx)
+        .with_handler::<TestActor, SetStatusRequest>(test_set_status.clone().as_ref())
+        .with_handler::<TestActor, GetStatusRequest>(test_get_status.clone().as_ref())
+        .with_handler::<EchoActor, GetCounterRequest>(echo_get_counter.clone().as_ref())
+        .build()
+        .await;
+
+    assert_eq!(
+        remote.handler_name::<EchoActor, GetCounterRequest>().await,
+        Some(echo_get_counter)
+    );
+    assert_eq!(
+        remote.handler_name::<TestActor, SetStatusRequest>().await,
+        Some(test_set_status)
+    );
+    assert_eq!(
+        remote.handler_name::<TestActor, GetStatusRequest>().await,
+        Some(test_get_status)
+    );
+
+    forget(remote);
+}
+
 #[tokio::test]
 pub async fn test_remote_handle_from_json() {
     create_trace_logger();
@@ -121,6 +167,8 @@ pub async fn test_remote_handle_from_json() {
     let mut remote = RemoteActorContext::builder()
         .with_actor_context(ctx)
         .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
+        .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
         .build()
         .await;
 
@@ -135,6 +183,13 @@ pub async fn test_remote_handle_from_json() {
         .await;
 
     let current_status = actor.send(GetStatusRequest()).await;
+
+    let handler_name = remote.handler_name::<EchoActor, GetCounterRequest>().await;
+
+    assert_eq!(
+        handler_name,
+        Some("EchoActor.GetCounterRequest".to_string())
+    );
 
     assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
 

@@ -1,10 +1,11 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef};
-use crate::remote::actor::{GetHandler, RemoteHandler};
+use crate::remote::actor::{GetHandler, HandlerName, RemoteHandler};
 use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -52,13 +53,25 @@ impl RemoteActorContext {
         }
     }
 
+    pub async fn handler_name<A: Actor, M: Message>(&mut self) -> Option<String>
+    where
+        A: 'static + Send + Sync,
+        M: 'static + Send + Sync,
+        M::Result: Send + Sync,
+    {
+        self.handler_ref
+            .send(HandlerName::<A, M>::new())
+            .await
+            .unwrap()
+    }
+
     pub fn inner(&mut self) -> &mut ActorContext {
         &mut self.inner
     }
 }
 
 impl RemoteActorContextBuilder {
-    pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &'static str) -> Self
+    pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &str) -> Self
     where
         A: 'static + Handler<M> + Send + Sync,
         M: 'static + DeserializeOwned + Send + Sync,
@@ -69,10 +82,9 @@ impl RemoteActorContextBuilder {
             None => ActorContext::current_context(),
         };
 
-        self.handlers.insert(
-            String::from(identifier),
-            RemoteActorMessageHandler::<A, M>::new(ctx),
-        );
+        let handler = RemoteActorMessageHandler::<A, M>::new(ctx);
+
+        self.handlers.insert(String::from(identifier), handler);
 
         self
     }
@@ -89,7 +101,13 @@ impl RemoteActorContextBuilder {
             None => ActorContext::current_context(),
         };
 
-        let handler_ref = RemoteHandler::new(&mut inner, self.handlers).await;
+        let mut handler_types = HashMap::new();
+        for (k, v) in &self.handlers {
+            error!("{:?}, {}", v.id(), &k);
+            let _ = handler_types.insert(v.id(), k.clone());
+        }
+
+        let handler_ref = RemoteHandler::new(&mut inner, self.handlers, handler_types).await;
         RemoteActorContext { inner, handler_ref }
     }
 }
