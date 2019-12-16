@@ -2,6 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef};
 use crate::remote::actor::{GetHandler, HandlerName, RemoteHandler};
+use crate::remote::codec::{MessageEncoder, RemoteHandlerMessage};
 use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -9,6 +10,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct RemoteActorContext {
     inner: ActorContext,
     handler_ref: ActorRef<RemoteHandler>,
@@ -63,6 +65,32 @@ impl RemoteActorContext {
             .send(HandlerName::<A, M>::new())
             .await
             .unwrap()
+    }
+
+    pub async fn create_message<A: Actor, M: Message>(
+        &mut self,
+        actor_ref: &ActorRef<A>,
+        message: M,
+    ) -> Option<RemoteHandlerMessage>
+    where
+        A: 'static + Send + Sync,
+        M: 'static + Serialize + Send + Sync,
+        M::Result: Send + Sync,
+    {
+        match self.handler_name::<A, M>().await {
+            Some(handler_type) => Some(RemoteHandlerMessage {
+                actor_id: actor_ref.id.clone(),
+                handler_type,
+                message: match message.encode() {
+                    Some(s) => match String::from_utf8(s) {
+                        Ok(msg) => msg,
+                        Err(_e) => return None,
+                    },
+                    None => return None,
+                },
+            }),
+            None => None,
+        }
     }
 
     pub fn inner(&mut self) -> &mut ActorContext {

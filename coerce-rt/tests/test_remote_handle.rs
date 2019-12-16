@@ -7,6 +7,7 @@ use coerce_rt::remote::context::RemoteActorContext;
 use coerce_rt::remote::handler::RemoteActorMessageMarker;
 use coerce_rt::remote::*;
 use std::mem::forget;
+use std::time::Duration;
 
 pub mod util;
 
@@ -180,13 +181,6 @@ pub async fn test_remote_handle_from_json() {
         .await;
 
     let current_status = actor.send(GetStatusRequest()).await;
-
-    let handler_name = remote.handler_name::<EchoActor, GetCounterRequest>().await;
-
-    assert_eq!(
-        handler_name,
-        Some("EchoActor.GetCounterRequest".to_string())
-    );
 
     assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
 
