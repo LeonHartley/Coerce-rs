@@ -2,6 +2,8 @@ use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Exec, Handler, Message, MessageResult};
 use coerce_rt::actor::{new_actor, Actor};
 
+pub mod util;
+
 #[macro_use]
 extern crate async_trait;
 

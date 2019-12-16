@@ -1,12 +1,18 @@
+use crate::util::create_trace_logger;
+use chrono::Local;
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
 use coerce_rt::remote::context::RemoteActorContext;
 use coerce_rt::remote::*;
 
+pub mod util;
+
 #[macro_use]
 extern crate serde;
 extern crate serde_json;
+
+extern crate chrono;
 
 #[macro_use]
 extern crate async_trait;
@@ -106,6 +112,8 @@ impl Actor for TestActor {}
 
 #[tokio::test]
 pub async fn test_remote_handle_from_json() {
+    create_trace_logger();
+
     let mut actor = new_actor(TestActor::new()).await.unwrap();
 
     let mut remote = RemoteActorContext::builder()

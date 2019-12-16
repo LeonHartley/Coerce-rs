@@ -1,4 +1,4 @@
-use crate::actor::context::ActorHandlerContext;
+use crate::actor::context::{ActorContext, ActorHandlerContext};
 use crate::actor::message::{Handler, Message};
 use crate::actor::{new_actor, Actor, ActorRef};
 use crate::remote::handler::RemoteMessageHandler;
@@ -17,14 +17,17 @@ impl Actor for RemoteRegistry {}
 impl Actor for RemoteHandler {}
 
 impl RemoteRegistry {
-    pub async fn new() -> ActorRef<RemoteRegistry> {
-        new_actor(RemoteRegistry {}).await.unwrap()
+    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
+        ctx.new_actor(RemoteRegistry {}).await.unwrap()
     }
 }
 
 impl RemoteHandler {
-    pub async fn new(handlers: HashMap<String, BoxedHandler>) -> ActorRef<RemoteHandler> {
-        new_actor(RemoteHandler { handlers }).await.unwrap()
+    pub async fn new(
+        ctx: &mut ActorContext,
+        handlers: HashMap<String, BoxedHandler>,
+    ) -> ActorRef<RemoteHandler> {
+        ctx.new_actor(RemoteHandler { handlers }).await.unwrap()
     }
 }
 

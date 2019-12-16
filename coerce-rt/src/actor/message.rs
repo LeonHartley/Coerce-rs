@@ -76,6 +76,7 @@ where
         let result = actor.handle(msg.unwrap(), ctx).await;
 
         if let &None = &self.sender {
+            trace!(target: "ActorMessage", "no result consumer, message handling complete");
             return;
         }
 

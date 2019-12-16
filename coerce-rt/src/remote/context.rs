@@ -1,3 +1,4 @@
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef};
 use crate::remote::actor::{GetHandler, RemoteHandler};
@@ -5,18 +6,22 @@ use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct RemoteActorContext {
+    inner: ActorContext,
     handler_ref: ActorRef<RemoteHandler>,
 }
 
 pub struct RemoteActorContextBuilder {
+    inner: Option<ActorContext>,
     handlers: HashMap<String, Box<dyn RemoteMessageHandler + Send + Sync>>,
 }
 
 impl RemoteActorContext {
     pub fn builder() -> RemoteActorContextBuilder {
         RemoteActorContextBuilder {
+            inner: None,
             handlers: HashMap::new(),
         }
     }
@@ -59,12 +64,23 @@ impl RemoteActorContextBuilder {
             String::from(identifier),
             RemoteActorMessageHandler::<A, M>::new(),
         );
+
         self
     }
 
-    pub async fn build(self) -> RemoteActorContext {
-        RemoteActorContext {
-            handler_ref: RemoteHandler::new(self.handlers).await,
-        }
+    pub fn with_actor_context(mut self, ctx: ActorContext) -> Self {
+        self.inner = Some(ctx);
+
+        self
+    }
+
+    pub async fn build(mut self) -> RemoteActorContext {
+        let mut inner = self
+            .inner
+            .take()
+            .unwrap_or_else(|| ActorContext::current_context());
+
+        let handler_ref = RemoteHandler::new(&mut inner, self.handlers).await;
+        RemoteActorContext { inner, handler_ref }
     }
 }
