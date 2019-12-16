@@ -1,3 +1,4 @@
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{get_actor, Actor, ActorId};
 use crate::remote::actor::BoxedHandler;
@@ -24,6 +25,7 @@ where
     M: DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
+    context: ActorContext,
     _m: PhantomData<M>,
     _a: PhantomData<A>,
 }
@@ -34,8 +36,9 @@ where
     M: DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    pub fn new() -> Box<RemoteActorMessageHandler<A, M>> {
+    pub fn new(context: ActorContext) -> Box<RemoteActorMessageHandler<A, M>> {
         Box::new(RemoteActorMessageHandler {
+            context,
             _m: PhantomData,
             _a: PhantomData,
         })
@@ -55,7 +58,8 @@ where
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let actor = get_actor::<A>(actor_id).await;
+        let mut context = self.context.clone();
+        let actor = context.get_actor::<A>(actor_id).await;
         if let Some(mut actor) = actor {
             let message = M::decode(buffer.to_vec());
             match message {
@@ -81,6 +85,7 @@ where
 
     fn new_boxed(&self) -> BoxedHandler {
         Box::new(Self {
+            context: self.context.clone(),
             _a: PhantomData,
             _m: PhantomData,
         })

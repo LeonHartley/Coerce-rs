@@ -51,6 +51,10 @@ impl RemoteActorContext {
             Err(_e) => Err(RemoteActorError::ActorUnavailable),
         }
     }
+
+    pub fn inner(&mut self) -> &mut ActorContext {
+        &mut self.inner
+    }
 }
 
 impl RemoteActorContextBuilder {
@@ -60,25 +64,30 @@ impl RemoteActorContextBuilder {
         M: 'static + DeserializeOwned + Send + Sync,
         M::Result: Serialize + Send + Sync,
     {
+        let ctx = match &self.inner {
+            Some(ctx) => ctx.clone(),
+            None => ActorContext::current_context(),
+        };
+
         self.handlers.insert(
             String::from(identifier),
-            RemoteActorMessageHandler::<A, M>::new(),
+            RemoteActorMessageHandler::<A, M>::new(ctx),
         );
 
         self
     }
 
     pub fn with_actor_context(mut self, ctx: ActorContext) -> Self {
-        self.inner = Some(ctx);
+        self.inner = Some(ctx.clone());
 
         self
     }
 
     pub async fn build(mut self) -> RemoteActorContext {
-        let mut inner = self
-            .inner
-            .take()
-            .unwrap_or_else(|| ActorContext::current_context());
+        let mut inner = match self.inner {
+            Some(ctx) => ctx,
+            None => ActorContext::current_context(),
+        };
 
         let handler_ref = RemoteHandler::new(&mut inner, self.handlers).await;
         RemoteActorContext { inner, handler_ref }

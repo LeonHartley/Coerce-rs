@@ -5,6 +5,7 @@ use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
 use coerce_rt::remote::context::RemoteActorContext;
 use coerce_rt::remote::*;
+use std::mem::forget;
 
 pub mod util;
 
@@ -114,9 +115,11 @@ impl Actor for TestActor {}
 pub async fn test_remote_handle_from_json() {
     create_trace_logger();
 
-    let mut actor = new_actor(TestActor::new()).await.unwrap();
+    let mut ctx = ActorContext::new();
+    let mut actor = ctx.new_actor(TestActor::new()).await.unwrap();
 
     let mut remote = RemoteActorContext::builder()
+        .with_actor_context(ctx)
         .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
         .build()
         .await;
@@ -140,4 +143,6 @@ pub async fn test_remote_handle_from_json() {
         current_status,
         Ok(GetStatusResponse::Ok(TestActorStatus::Active))
     );
+
+    forget(remote);
 }
