@@ -1,15 +1,15 @@
+use chrono::Local;
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
 use coerce_rt::remote::context::RemoteActorContext;
+use coerce_rt::remote::handler::RemoteActorMessageMarker;
 use coerce_rt::remote::*;
-
-#[macro_use]
-extern crate serde;
-extern crate serde_json;
-
-#[macro_use]
-extern crate async_trait;
+use env_logger::Builder;
+use log::LevelFilter;
+use std::io::Write;
+use std::mem::forget;
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum TestActorStatus {
@@ -32,7 +32,7 @@ impl Message for GetStatusRequest {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct SetStatusRequest {
-    status: TestActorStatus,
+    pub status: TestActorStatus,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -104,32 +104,30 @@ impl Handler<GetCounterRequest> for TestActor {
 #[async_trait]
 impl Actor for TestActor {}
 
-#[tokio::test]
-pub async fn test_remote_handle_from_json() {
-    let mut actor = new_actor(TestActor::new()).await.unwrap();
+pub struct EchoActor {}
 
-    let mut remote = RemoteActorContext::builder()
-        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-        .build()
-        .await;
+#[async_trait]
+impl Actor for EchoActor {}
 
-    let initial_status = actor.send(GetStatusRequest()).await;
+#[async_trait]
+impl Handler<GetCounterRequest> for EchoActor {
+    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorHandlerContext) -> i32 {
+        42
+    }
+}
 
-    let res = remote
-        .handle(
-            "TestActor.SetStatusRequest".to_string(),
-            actor.id,
-            b"{\"status\": \"Active\"}",
-        )
-        .await;
-
-    let current_status = actor.send(GetStatusRequest()).await;
-
-    assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
-
-    assert_eq!(initial_status, Ok(GetStatusResponse::None));
-    assert_eq!(
-        current_status,
-        Ok(GetStatusResponse::Ok(TestActorStatus::Active))
-    );
+pub fn create_trace_logger() {
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] {} - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.target(),
+                record.args(),
+            )
+        })
+        .filter(None, LevelFilter::Trace)
+        .init();
 }

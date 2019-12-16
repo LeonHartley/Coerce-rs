@@ -1,22 +1,30 @@
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef};
-use crate::remote::actor::{GetHandler, RemoteHandler};
+use crate::remote::actor::{GetHandler, HandlerName, RemoteHandler};
+use crate::remote::codec::{MessageEncoder, RemoteHandlerMessage};
 use crate::remote::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::any::Any;
 use std::collections::HashMap;
+use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct RemoteActorContext {
+    inner: ActorContext,
     handler_ref: ActorRef<RemoteHandler>,
 }
 
 pub struct RemoteActorContextBuilder {
+    inner: Option<ActorContext>,
     handlers: HashMap<String, Box<dyn RemoteMessageHandler + Send + Sync>>,
 }
 
 impl RemoteActorContext {
     pub fn builder() -> RemoteActorContextBuilder {
         RemoteActorContextBuilder {
+            inner: None,
             handlers: HashMap::new(),
         }
     }
@@ -46,25 +54,87 @@ impl RemoteActorContext {
             Err(_e) => Err(RemoteActorError::ActorUnavailable),
         }
     }
+
+    pub async fn handler_name<A: Actor, M: Message>(&mut self) -> Option<String>
+    where
+        A: 'static + Send + Sync,
+        M: 'static + Send + Sync,
+        M::Result: Send + Sync,
+    {
+        self.handler_ref
+            .send(HandlerName::<A, M>::new())
+            .await
+            .unwrap()
+    }
+
+    pub async fn create_message<A: Actor, M: Message>(
+        &mut self,
+        actor_ref: &ActorRef<A>,
+        message: M,
+    ) -> Option<RemoteHandlerMessage>
+    where
+        A: 'static + Send + Sync,
+        M: 'static + Serialize + Send + Sync,
+        M::Result: Send + Sync,
+    {
+        match self.handler_name::<A, M>().await {
+            Some(handler_type) => Some(RemoteHandlerMessage {
+                actor_id: actor_ref.id.clone(),
+                handler_type,
+                message: match message.encode() {
+                    Some(s) => match String::from_utf8(s) {
+                        Ok(msg) => msg,
+                        Err(_e) => return None,
+                    },
+                    None => return None,
+                },
+            }),
+            None => None,
+        }
+    }
+
+    pub fn inner(&mut self) -> &mut ActorContext {
+        &mut self.inner
+    }
 }
 
 impl RemoteActorContextBuilder {
-    pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &'static str) -> Self
+    pub fn with_handler<A: Actor, M: Message>(mut self, identifier: &str) -> Self
     where
         A: 'static + Handler<M> + Send + Sync,
         M: 'static + DeserializeOwned + Send + Sync,
         M::Result: Serialize + Send + Sync,
     {
-        self.handlers.insert(
-            String::from(identifier),
-            RemoteActorMessageHandler::<A, M>::new(),
-        );
+        let ctx = match &self.inner {
+            Some(ctx) => ctx.clone(),
+            None => ActorContext::current_context(),
+        };
+
+        let handler = RemoteActorMessageHandler::<A, M>::new(ctx);
+
+        self.handlers.insert(String::from(identifier), handler);
+
         self
     }
 
-    pub async fn build(self) -> RemoteActorContext {
-        RemoteActorContext {
-            handler_ref: RemoteHandler::new(self.handlers).await,
+    pub fn with_actor_context(mut self, ctx: ActorContext) -> Self {
+        self.inner = Some(ctx.clone());
+
+        self
+    }
+
+    pub async fn build(mut self) -> RemoteActorContext {
+        let mut inner = match self.inner {
+            Some(ctx) => ctx,
+            None => ActorContext::current_context(),
+        };
+
+        let mut handler_types = HashMap::new();
+        for (k, v) in &self.handlers {
+            let _ = handler_types.insert(v.id(), k.clone());
         }
+
+        let handler_ref = RemoteHandler::new(&mut inner, self.handlers, handler_types).await;
+        RemoteActorContext { inner, handler_ref }
     }
 }

@@ -1,12 +1,14 @@
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{get_actor, Actor, ActorId};
 use crate::remote::actor::BoxedHandler;
+use crate::remote::codec::{MessageDecoder, MessageEncoder};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::any::{Any, TypeId};
 use std::marker::PhantomData;
-
 #[async_trait]
-pub trait RemoteMessageHandler {
+pub trait RemoteMessageHandler: Any {
     async fn handle(
         &self,
         actor: ActorId,
@@ -15,29 +17,57 @@ pub trait RemoteMessageHandler {
     );
 
     fn new_boxed(&self) -> BoxedHandler;
+
+    fn id(&self) -> TypeId;
 }
 
+pub struct RemoteActorMessageMarker<A: Actor, M: Message>
+where
+    A: Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
+{
+    _m: PhantomData<M>,
+    _a: PhantomData<A>,
+}
+
+impl<A: Actor, M: Message> RemoteActorMessageMarker<A, M>
+where
+    Self: Any,
+    A: Send + Sync,
+    M: Send + Sync,
+    M::Result: Send + Sync,
+{
+    pub fn new() -> RemoteActorMessageMarker<A, M> {
+        RemoteActorMessageMarker {
+            _a: PhantomData,
+            _m: PhantomData,
+        }
+    }
+
+    pub fn id(&self) -> TypeId {
+        self.type_id()
+    }
+}
 pub struct RemoteActorMessageHandler<A: Actor, M: Message>
 where
     A: Send + Sync,
     M: DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    _m: PhantomData<M>,
-    _a: PhantomData<A>,
+    context: ActorContext,
+    marker: RemoteActorMessageMarker<A, M>,
 }
 
 impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M>
 where
-    A: Send + Sync,
-    M: DeserializeOwned + Send + Sync,
+    A: 'static + Send + Sync,
+    M: DeserializeOwned + 'static + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    pub fn new() -> Box<RemoteActorMessageHandler<A, M>> {
-        Box::new(RemoteActorMessageHandler {
-            _m: PhantomData,
-            _a: PhantomData,
-        })
+    pub fn new(context: ActorContext) -> Box<RemoteActorMessageHandler<A, M>> {
+        let marker = RemoteActorMessageMarker::new();
+        Box::new(RemoteActorMessageHandler { context, marker })
     }
 }
 
@@ -54,34 +84,39 @@ where
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let actor = get_actor::<A>(actor_id).await;
+        let mut context = self.context.clone();
+        let actor = context.get_actor::<A>(actor_id).await;
         if let Some(mut actor) = actor {
-            let message = serde_json::from_slice::<M>(buffer);
+            let message = M::decode(buffer.to_vec());
             match message {
-                Ok(m) => {
+                Some(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        match serde_json::to_string(&result) {
-                            Ok(msg) => {
-                                if let Err(_) = res.send(msg.as_bytes().to_vec()) {
+                        match result.encode() {
+                            Some(buffer) => {
+                                if let Err(_) = res.send(buffer) {
                                     error!(target: "RemoteHandler", "failed to send message")
                                 }
                             }
-                            Err(_e) => {
+                            None => {
                                 error!(target: "RemoteHandler", "failed to encode message result")
                             }
                         }
                     }
                 }
-                Err(e) => error!(target: "RemoteHandler", "failed to decode message, {}", e),
+                None => error!(target: "RemoteHandler", "failed to decode message"),
             };
         }
     }
 
     fn new_boxed(&self) -> BoxedHandler {
         Box::new(Self {
-            _a: PhantomData,
-            _m: PhantomData,
+            context: self.context.clone(),
+            marker: RemoteActorMessageMarker::new(),
         })
+    }
+
+    fn id(&self) -> TypeId {
+        self.marker.id()
     }
 }
