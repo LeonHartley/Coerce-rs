@@ -1,5 +1,6 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{get_actor, Actor, ActorId, ActorRef};
+use crate::remote::actor::BoxedHandler;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -14,7 +15,7 @@ pub trait RemoteMessageHandler {
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
 
-    fn new_boxed(&self) -> Box<dyn RemoteMessageHandler + Send + Sync>;
+    fn new_boxed(&self) -> BoxedHandler;
 }
 
 pub struct RemoteActorMessageHandler<A: Actor, M: Message>
@@ -64,12 +65,15 @@ where
                         res.send(serde_json::to_string(&result).unwrap().as_bytes().to_vec());
                     }
                 }
-                Err(e) => println!("decode failed"),
+                Err(e) => error!(target: "RemoteHandler", "failed to decode message, {}", e),
             };
         }
     }
 
-    fn new_boxed(&self) -> Box<dyn RemoteMessageHandler + Send + Sync> {
-        Box::new(Self { _a: PhantomData, _m: PhantomData })
+    fn new_boxed(&self) -> BoxedHandler {
+        Box::new(Self {
+            _a: PhantomData,
+            _m: PhantomData,
+        })
     }
 }

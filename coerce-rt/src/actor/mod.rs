@@ -2,6 +2,7 @@ use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
 use crate::actor::scheduler::{GetActor, RegisterActor};
+use log::error;
 use std::any::Any;
 use uuid::Uuid;
 
@@ -14,13 +15,9 @@ pub type ActorId = Uuid;
 
 #[async_trait]
 pub trait Actor {
-    async fn started(&mut self, _ctx: &mut ActorHandlerContext) {
-        println!("actor started");
-    }
+    async fn started(&mut self, _ctx: &mut ActorHandlerContext) {}
 
-    async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {
-        println!("actor stopped");
-    }
+    async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {}
 }
 
 pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefError>
@@ -111,12 +108,12 @@ where
             Ok(_) => match rx.await {
                 Ok(res) => Ok(res),
                 Err(e) => {
-                    println!("got error {}", e);
+                    error!(target: "ActorRef", "error receiving result");
                     Err(ActorRefError::ActorUnavailable)
                 }
             },
             Err(e) => {
-                println!("got error 1 {}", e);
+                error!(target: "ActorRef", "error sending message");
                 Err(ActorRefError::ActorUnavailable)
             }
         }

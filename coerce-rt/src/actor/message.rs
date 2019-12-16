@@ -81,8 +81,8 @@ where
 
         let sender = self.sender.take();
         match sender.unwrap().send(result) {
-            Ok(_) => println!("send OK"),
-            Err(e) => println!("send err"),
+            Ok(_) => trace!(target: "ActorMessage", "sent result successfully"),
+            Err(e) => trace!(target: "ActorMessage", "failed to send result"),
         }
     }
 }
