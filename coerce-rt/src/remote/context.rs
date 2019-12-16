@@ -103,7 +103,6 @@ impl RemoteActorContextBuilder {
 
         let mut handler_types = HashMap::new();
         for (k, v) in &self.handlers {
-            error!("{:?}, {}", v.id(), &k);
             let _ = handler_types.insert(v.id(), k.clone());
         }
 
