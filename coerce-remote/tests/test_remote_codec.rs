@@ -1,7 +1,7 @@
 use coerce_rt::actor::context::ActorContext;
-use coerce_rt::remote::context::RemoteActorContext;
 use std::mem::forget;
 use util::*;
+use coerce_remote::context::RemoteActorContext;
 
 pub mod util;
 
