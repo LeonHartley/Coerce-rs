@@ -1,9 +1,9 @@
-use coerce_rt::actor::context::ActorContext;
-use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::{Actor, ActorId, ActorRef};
 use crate::actor::{GetHandler, HandlerName, RemoteHandler};
 use crate::codec::{MessageEncoder, RemoteHandlerMessage};
 use crate::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
+use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::message::{Handler, Message};
+use coerce_rt::actor::{Actor, ActorId, ActorRef};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 

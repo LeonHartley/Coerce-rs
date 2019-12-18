@@ -1,6 +1,6 @@
+use crate::context::RemoteActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId, ActorRefError};
-use crate::context::RemoteActorContext;
 use serde::export::PhantomData;
 
 #[macro_use]

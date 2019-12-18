@@ -1,8 +1,8 @@
+use crate::actor::BoxedHandler;
+use crate::codec::{MessageDecoder, MessageEncoder};
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId};
-use crate::actor::BoxedHandler;
-use crate::codec::{MessageDecoder, MessageEncoder};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};

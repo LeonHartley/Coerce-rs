@@ -51,7 +51,7 @@ pub async fn test_context_get_actor() {
 #[tokio::test]
 pub async fn test_context_get_actor_not_found() {
     let mut ctx = ActorContext::new();
-    let mut actor = ctx.get_actor::<TestActor>(ActorId::new_v4()).await;
+    let actor = ctx.get_actor::<TestActor>(ActorId::new_v4()).await;
 
     assert_eq!(actor.is_none(), true);
 }

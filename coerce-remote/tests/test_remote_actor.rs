@@ -1,5 +1,3 @@
-use util::*;
-
 pub mod util;
 
 #[macro_use]

@@ -1,12 +1,10 @@
 use chrono::Local;
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+use coerce_rt::actor::context::ActorHandlerContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{new_actor, Actor, ActorRef};
 use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
-use std::mem::forget;
-use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum TestActorStatus {

@@ -1,7 +1,7 @@
+use crate::handler::{RemoteActorMessageMarker, RemoteMessageHandler};
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRef};
-use crate::handler::{RemoteActorMessageMarker, RemoteMessageHandler};
 use std::any::TypeId;
 use std::collections::HashMap;
 
