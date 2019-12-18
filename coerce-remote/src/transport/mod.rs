@@ -1,3 +1,2 @@
-pub trait RemotetTransport {
-
+pub trait RemoteTransport {
 }

@@ -1,16 +1,12 @@
 use crate::context::RemoteActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId, ActorRefError};
-use serde::export::PhantomData;
+use std::marker::PhantomData;
 
 #[macro_use]
 extern crate async_trait;
 
-#[macro_use]
 extern crate serde_json;
-
-#[macro_use]
-extern crate lazy_static;
 
 #[macro_use]
 extern crate log;
