@@ -58,20 +58,20 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
 
     interval.tick().await;
 
-    trace!("{} - timer starting", &timer_id);
+    trace!(target: "Timer", "{} - timer starting", &timer_id);
 
     loop {
         if stop_rx.try_recv().is_ok() {
             break;
         }
 
-        trace!("{} - timer tick", &timer_id);
+        trace!(target: "Timer", "{} - timer tick", &timer_id);
 
         let now = Instant::now();
         actor.send(T::new()).await;
-        trace!("{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());
+        trace!(target: "Timer", "{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());
         interval.tick().await;
     }
 
-    trace!("{} - timer finished", timer_id);
+    trace!(target: "Timer", "{} - timer finished", timer_id);
 }
