@@ -2,7 +2,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRef};
 use log::trace;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 pub trait TimerTick: Message {
@@ -54,7 +54,6 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
     T::Result: 'static + Sync + Send,
 {
     let mut interval = tokio::time::interval_at(tokio::time::Instant::now(), tick);
-
     let timer_id = Uuid::new_v4();
 
     interval.tick().await;
@@ -68,7 +67,9 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
 
         trace!("{} - timer tick", &timer_id);
 
+        let now = Instant::now();
         actor.send(T::new()).await;
+        trace!("{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());
         interval.tick().await;
     }
 
