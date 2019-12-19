@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 
 pub mod json;
 
-pub trait MessageCodec: Sized {
-    fn encode_message<M: Serialize>(message: RemoteHandlerMessage<M>) -> Option<Vec<u8>>
+pub trait MessageCodec {
+    fn encode_msg<M: Serialize>(message: M) -> Option<Vec<u8>>
     where
         M: Send + Sync;
 
-    fn decode_message<M: DeserializeOwned>(message: Vec<u8>) -> Option<M>
+    fn decode_msg<M: DeserializeOwned>(message: Vec<u8>) -> Option<M>
     where
         M: Send + Sync;
 

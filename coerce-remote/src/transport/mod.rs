@@ -5,7 +5,7 @@ pub mod tcp;
 
 pub trait RemoteTransport<S, C>
 where
-    S: RemoteServe,
+    S: RemoteServer,
     C: RemoteClient,
 {
     fn create_server<A>(&self, ip: A, port: u16) -> S

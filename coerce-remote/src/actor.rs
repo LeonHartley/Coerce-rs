@@ -4,6 +4,7 @@ use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRef};
 use std::any::TypeId;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
 
@@ -12,6 +13,11 @@ pub struct RemoteRegistry {}
 pub struct RemoteHandler {
     handler_types: HashMap<TypeId, String>,
     handlers: HashMap<String, BoxedHandler>,
+    requests: HashMap<Uuid, RemoteRequest>,
+}
+
+pub struct RemoteRequest {
+    res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
 }
 
 impl Actor for RemoteRegistry {}
@@ -33,6 +39,7 @@ impl RemoteHandler {
         ctx.new_actor(RemoteHandler {
             handler_types,
             handlers,
+            requests: HashMap::new(),
         })
         .await
         .unwrap()

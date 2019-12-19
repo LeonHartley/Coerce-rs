@@ -14,31 +14,39 @@ pub struct TcpClient<C: MessageCodec> {
     codec: C,
 }
 
-impl<C: MessageCodec> TcpClient<C> {
+impl<C: MessageCodec> TcpClient<C>  where C: 'static + Send + Sync{
     pub fn new(codec: C) -> TcpClient<C> {
         TcpClient { codec }
     }
 }
 
-impl<C: MessageCodec> TcpServer<C> {
+impl<C: MessageCodec> TcpServer<C> where C: 'static + Send + Sync{
     pub fn new(codec: C) -> TcpServer<C> {
         TcpServer { codec }
     }
 }
 
-impl<C: MessageCodec> RemoteClient for TcpClient<C> {
+#[async_trait]
+impl<C: MessageCodec> RemoteClient for TcpClient<C> where C: 'static + Send + Sync,{
     async fn on_message(data: Vec<u8>) {
         unimplemented!()
     }
 }
 
-impl<C: MessageCodec> RemoteServer for TcpServer<C> {
+#[async_trait]
+impl<C: MessageCodec> RemoteServer for TcpServer<C>
+where
+    C: 'static + Send + Sync,
+{
     async fn on_connection() {
         unimplemented!()
     }
 }
 
-impl<C: MessageCodec> TcpTransport<C> {
+impl<C: MessageCodec> TcpTransport<C>
+where
+    C: 'static + Send + Sync,
+{
     pub fn new(codec: C) -> TcpTransport<C> {
         TcpTransport { codec }
     }
@@ -46,7 +54,7 @@ impl<C: MessageCodec> TcpTransport<C> {
 
 impl<C> RemoteTransport<TcpServer<C>, TcpClient<C>> for TcpTransport<C>
 where
-    C: MessageCodec,
+    C: MessageCodec + 'static + Send + Sync,
 {
     fn create_server<A>(&self, ip: A, port: u16) -> TcpServer<C>
     where

@@ -1,4 +1,4 @@
-use crate::codec::{MessageCodec, MessageDecoder, MessageEncoder, RemoteHandlerMessage};
+use crate::codec::{MessageCodec, RemoteHandlerMessage};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -11,14 +11,14 @@ impl JsonCodec {
 }
 
 impl MessageCodec for JsonCodec {
-    fn encode_message<M: Serialize>(message: RemoteHandlerMessage<M>) -> Option<Vec<u8>>
+    fn encode_msg<M: Serialize>(message: M) -> Option<Vec<u8>>
     where
         M: Send + Sync,
     {
         message.encode()
     }
 
-    fn decode_message<M: DeserializeOwned>(data: Vec<u8>) -> Option<M>
+    fn decode_msg<M: DeserializeOwned>(data: Vec<u8>) -> Option<M>
     where
         M: Send + Sync,
     {

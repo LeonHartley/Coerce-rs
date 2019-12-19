@@ -7,6 +7,7 @@ use coerce_rt::actor::Actor;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
+use crate::codec::json::JsonCodec;
 
 pub struct RemoteActorContextBuilder {
     inner: Option<ActorContext>,
@@ -32,7 +33,7 @@ impl RemoteActorContextBuilder {
             None => ActorContext::current_context(),
         };
 
-        let handler = RemoteActorMessageHandler::<A, M>::new(ctx);
+        let handler = RemoteActorMessageHandler::<A, M, _>::new(ctx, JsonCodec::new());
 
         self.handlers.insert(String::from(identifier), handler);
 

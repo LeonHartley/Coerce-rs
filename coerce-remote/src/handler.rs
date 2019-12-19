@@ -1,5 +1,5 @@
 use crate::actor::BoxedHandler;
-use crate::codec::{MessageDecoder, MessageEncoder, MessageCodec};
+use crate::codec::MessageCodec;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId};
@@ -52,6 +52,7 @@ where
 }
 pub struct RemoteActorMessageHandler<A: Actor, M: Message, C: MessageCodec>
 where
+    C: Sized,
     A: Send + Sync,
     M: DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
@@ -63,19 +64,26 @@ where
 
 impl<A: Actor, M: Message, C: MessageCodec> RemoteActorMessageHandler<A, M, C>
 where
+    C: Sized,
     A: 'static + Send + Sync,
     M: DeserializeOwned + 'static + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
     pub fn new(context: ActorContext, codec: C) -> Box<RemoteActorMessageHandler<A, M, C>> {
         let marker = RemoteActorMessageMarker::new();
-        Box::new(RemoteActorMessageHandler { context, codec, marker })
+        Box::new(RemoteActorMessageHandler {
+            context,
+            codec,
+            marker,
+        })
     }
 }
 
 #[async_trait]
-impl<A: Actor, M: Message, C: MessageCodec> RemoteMessageHandler for RemoteActorMessageHandler<A, M, C>
+impl<A: Actor, M: Message, C: MessageCodec> RemoteMessageHandler
+    for RemoteActorMessageHandler<A, M, C>
 where
+    C: 'static + Send + Sync,
     A: 'static + Handler<M> + Send + Sync,
     M: 'static + DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
@@ -89,12 +97,12 @@ where
         let mut context = self.context.clone();
         let actor = context.get_actor::<A>(actor_id).await;
         if let Some(mut actor) = actor {
-            let message = M::decode(buffer.to_vec());
+            let message = C::decode_msg::<M>(buffer.to_vec());
             match message {
                 Some(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        match result.encode() {
+                        match C::encode_msg(result) {
                             Some(buffer) => {
                                 if let Err(_) = res.send(buffer) {
                                     error!(target: "RemoteHandler", "failed to send message")
@@ -114,6 +122,7 @@ where
     fn new_boxed(&self) -> BoxedHandler {
         Box::new(Self {
             context: self.context.clone(),
+            codec: self.codec.clone(),
             marker: RemoteActorMessageMarker::new(),
         })
     }
