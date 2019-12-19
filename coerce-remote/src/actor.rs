@@ -20,7 +20,7 @@ impl Actor for RemoteHandler {}
 
 impl RemoteRegistry {
     pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
-        ctx.new_actor(RemoteRegistry {}).await.unwrap()
+        ctx.new_tracked_actor(RemoteRegistry {}).await.unwrap()
     }
 }
 

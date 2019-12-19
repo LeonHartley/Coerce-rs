@@ -18,6 +18,7 @@ pub mod actor;
 pub mod codec;
 pub mod context;
 pub mod handler;
+pub mod node;
 
 pub struct RemoteActorRef<A: Actor>
 where

@@ -7,6 +7,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
+
 #[async_trait]
 pub trait RemoteMessageHandler: Any {
     async fn handle(

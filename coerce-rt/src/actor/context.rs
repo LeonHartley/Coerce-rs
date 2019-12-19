@@ -21,7 +21,10 @@ impl ActorContext {
         CURRENT_CONTEXT.clone()
     }
 
-    pub async fn new_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
+    pub async fn new_tracked_actor<A: Actor>(
+        &mut self,
+        actor: A,
+    ) -> Result<ActorRef<A>, ActorRefError>
     where
         A: 'static + Sync + Send,
     {
@@ -32,6 +35,14 @@ impl ActorContext {
             Ok(true) => actor_ref,
             _ => Err(ActorRefError::ActorUnavailable),
         }
+    }
+
+    #[deprecated = "replaced by new_tracked_actor, to create untracked - use coerce_rt::actor::new_actor()"]
+    pub async fn new_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
+    where
+        A: 'static + Sync + Send,
+    {
+        self.new_tracked_actor(actor).await
     }
 
     pub async fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
