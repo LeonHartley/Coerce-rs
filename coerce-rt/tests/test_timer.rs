@@ -40,23 +40,24 @@ pub async fn test_timer() {
         .await
         .unwrap();
 
-    let timer = Timer::start::<TestActor, TestTimer>(actor_ref.clone(), Duration::from_millis(101));
+    let timer = Timer::start::<TestActor, TestTimer>(actor_ref.clone(), Duration::from_millis(11));
 
-    tokio::time::delay_for(Duration::from_millis(400)).await;
-    let counter_400ms_later = actor_ref.exec(|a| a.counter).await;
+    tokio::time::delay_for(Duration::from_millis(40)).await;
+    let counter_40ms_later = actor_ref.exec(|a| a.counter).await;
 
-    tokio::time::delay_for(Duration::from_millis(400)).await;
-    let counter_800ms_later = actor_ref.exec(|a| a.counter).await;
+    tokio::time::delay_for(Duration::from_millis(40)).await;
+    let counter_80ms_later = actor_ref.exec(|a| a.counter).await;
 
     let stop = timer.stop();
 
     let counter_now = actor_ref.exec(|a| a.counter).await.unwrap();
-    tokio::time::delay_for(Duration::from_millis(200)).await;
+    tokio::time::delay_for(Duration::from_millis(20)).await;
+
 
     let counter_changed_after_stop = counter_now != actor_ref.exec(|a| a.counter).await.unwrap();
 
-    assert_eq!(counter_400ms_later, Ok(4));
-    assert_eq!(counter_800ms_later, Ok(8));
+    assert_eq!(counter_40ms_later, Ok(4));
+    assert_eq!(counter_80ms_later, Ok(8));
     assert_eq!(stop, true);
     assert_eq!(counter_changed_after_stop, false);
 }
