@@ -27,7 +27,6 @@ where
             .into_iter()
             .map(|n| {
                 table.add(n.clone());
-                log::info!("creating {:?}", &n);
                 (n.id.clone(), n)
             })
             .collect();

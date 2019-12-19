@@ -19,8 +19,6 @@ pub mod util;
 
 #[tokio::test]
 pub async fn test_remote_node_store() {
-    util::create_trace_logger();
-
     let node_1 = Uuid::parse_str("a211898f-0cd6-40c4-8faa-2baba8065708").unwrap();
     let node_2 = Uuid::parse_str("6b08a8b6-f57b-4d18-a1e7-effa5b12f487").unwrap();
     let node_3 = Uuid::parse_str("d3fe8ffc-5c03-4965-8ab4-62e7f2115b73").unwrap();
