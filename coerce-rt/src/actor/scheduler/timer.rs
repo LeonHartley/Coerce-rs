@@ -1,7 +1,6 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRef};
 use log::trace;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
