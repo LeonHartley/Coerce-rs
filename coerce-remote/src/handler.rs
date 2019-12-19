@@ -1,5 +1,5 @@
 use crate::actor::BoxedHandler;
-use crate::codec::{MessageDecoder, MessageEncoder};
+use crate::codec::{MessageDecoder, MessageEncoder, MessageCodec};
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId};
@@ -50,30 +50,31 @@ where
         self.type_id()
     }
 }
-pub struct RemoteActorMessageHandler<A: Actor, M: Message>
+pub struct RemoteActorMessageHandler<A: Actor, M: Message, C: MessageCodec>
 where
     A: Send + Sync,
     M: DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
     context: ActorContext,
+    codec: C,
     marker: RemoteActorMessageMarker<A, M>,
 }
 
-impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M>
+impl<A: Actor, M: Message, C: MessageCodec> RemoteActorMessageHandler<A, M, C>
 where
     A: 'static + Send + Sync,
     M: DeserializeOwned + 'static + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    pub fn new(context: ActorContext) -> Box<RemoteActorMessageHandler<A, M>> {
+    pub fn new(context: ActorContext, codec: C) -> Box<RemoteActorMessageHandler<A, M, C>> {
         let marker = RemoteActorMessageMarker::new();
-        Box::new(RemoteActorMessageHandler { context, marker })
+        Box::new(RemoteActorMessageHandler { context, codec, marker })
     }
 }
 
 #[async_trait]
-impl<A: Actor, M: Message> RemoteMessageHandler for RemoteActorMessageHandler<A, M>
+impl<A: Actor, M: Message, C: MessageCodec> RemoteMessageHandler for RemoteActorMessageHandler<A, M, C>
 where
     A: 'static + Handler<M> + Send + Sync,
     M: 'static + DeserializeOwned + Send + Sync,

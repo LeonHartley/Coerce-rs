@@ -1,13 +1,13 @@
-on: [push]
-
-name: coerce-rs tests
-
-jobs:
-  build_and_test:
-    name: Coerce Runtime Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
+#on: [push]
+#
+#name: coerce-rs tests
+#
+#jobs:
+#  build_and_test:
+#    name: Coerce Runtime Test
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@master
+#      - uses: actions-rs/cargo@v1
+#        with:
+#          command: test

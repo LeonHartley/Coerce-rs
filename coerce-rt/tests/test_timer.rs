@@ -51,7 +51,6 @@ pub async fn test_timer() {
     let counter_now = actor_ref.exec(|a| a.counter).await.unwrap();
     tokio::time::delay_for(Duration::from_millis(20)).await;
 
-
     let counter_changed_after_stop = counter_now != actor_ref.exec(|a| a.counter).await.unwrap();
 
     assert_eq!(counter_40ms_later, Ok(4));

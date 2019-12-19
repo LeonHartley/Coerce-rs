@@ -62,7 +62,7 @@ impl RemoteActorContext {
         &mut self,
         actor_ref: &ActorRef<A>,
         message: M,
-    ) -> Option<RemoteHandlerMessage>
+    ) -> Option<RemoteHandlerMessage<M>>
     where
         A: 'static + Send + Sync,
         M: 'static + Serialize + Send + Sync,
@@ -72,13 +72,7 @@ impl RemoteActorContext {
             Some(handler_type) => Some(RemoteHandlerMessage {
                 actor_id: actor_ref.id.clone(),
                 handler_type,
-                message: match message.encode() {
-                    Some(s) => match String::from_utf8(s) {
-                        Ok(msg) => msg,
-                        Err(_e) => return None,
-                    },
-                    None => return None,
-                },
+                message,
             }),
             None => None,
         }

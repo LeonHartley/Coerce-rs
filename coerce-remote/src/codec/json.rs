@@ -1,6 +1,42 @@
-use crate::codec::{MessageDecoder, MessageEncoder};
+use crate::codec::{MessageCodec, MessageDecoder, MessageEncoder, RemoteHandlerMessage};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+
+pub struct JsonCodec {}
+
+impl JsonCodec {
+    pub fn new() -> JsonCodec {
+        JsonCodec {}
+    }
+}
+
+impl MessageCodec for JsonCodec {
+    fn encode_message<M: Serialize>(message: RemoteHandlerMessage<M>) -> Option<Vec<u8>>
+    where
+        M: Send + Sync,
+    {
+        message.encode()
+    }
+
+    fn decode_message<M: DeserializeOwned>(data: Vec<u8>) -> Option<M>
+    where
+        M: Send + Sync,
+    {
+        M::decode(data)
+    }
+
+    fn clone(&self) -> Self {
+        JsonCodec {}
+    }
+}
+
+trait MessageDecoder: Sized + Send + Sync {
+    fn decode(buffer: Vec<u8>) -> Option<Self>;
+}
+
+trait MessageEncoder: Sized + Send + Sync {
+    fn encode(&self) -> Option<Vec<u8>>;
+}
 
 impl<T: Serialize> MessageEncoder for T
 where
