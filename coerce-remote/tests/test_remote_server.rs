@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::BytesMut;
 use coerce_remote::codec::json::JsonCodec;
+use coerce_remote::context::builder::RemoteActorHandlerBuilder;
 use coerce_remote::context::RemoteActorContext;
 use coerce_remote::net::client::RemoteClient;
 use coerce_remote::net::server::RemoteServer;
@@ -28,23 +29,13 @@ pub async fn test_remote_server_client_connection() {
 
     let mut remote = RemoteActorContext::builder()
         .with_actor_context(ActorContext::new())
-        .with_handlers(|handlers| {
-            handlers
-                .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-                .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
-                .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
-        })
+        .with_handlers(build_handlers)
         .build()
         .await;
 
     let mut remote_2 = RemoteActorContext::builder()
         .with_actor_context(ActorContext::new())
-        .with_handlers(|handlers| {
-            handlers
-                .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-                .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
-                .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
-        })
+        .with_handlers(build_handlers)
         .build()
         .await;
 
@@ -62,6 +53,11 @@ pub async fn test_remote_server_client_connection() {
         Ok(_) => log::trace!("connected!"),
         Err(e) => panic!("failed to failed to connect to server"),
     }
+}
 
-    tokio::time::delay_for(Duration::from_millis(100)).await;
+fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
+    handlers
+        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
+        .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
 }
