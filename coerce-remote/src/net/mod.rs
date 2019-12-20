@@ -1,12 +1,26 @@
+use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::BytesMut;
+use serde::de::DeserializeOwned;
 use tokio::io::AsyncReadExt;
 
 pub mod client;
 pub mod server;
 
-pub async fn receive_loop(mut stream: tokio::net::TcpStream, context: RemoteActorContext) {
+#[async_trait]
+pub trait StreamReceiver<Msg: DeserializeOwned> {
+    async fn on_recv(&mut self, msg: Msg);
+}
+
+pub async fn receive_loop<C: MessageCodec, M: DeserializeOwned, R: StreamReceiver<M>>(
+    mut stream: tokio::net::TcpStream,
+    context: RemoteActorContext,
+    mut receiver: R,
+    codec: C,
+) where
+    M: 'static + Sync + Send,
+{
     let mut len_buf = [0 as u8; 4];
 
     loop {
@@ -35,5 +49,10 @@ pub async fn receive_loop(mut stream: tokio::net::TcpStream, context: RemoteActo
         };
 
         trace!(target: "RemoteReceive", "received buffer with len {}", buff_read);
+
+        match codec.decode_msg::<M>(buffer.to_vec()) {
+            Some(msg) => receiver.on_recv(msg).await,
+            None => trace!(target: "RemoteReceive", "error decoding msg"),
+        }
     }
 }

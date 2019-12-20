@@ -51,7 +51,7 @@ pub async fn test_remote_server_client_connection() {
         .await
     {
         Ok(_) => log::trace!("connected!"),
-        Err(e) => panic!("failed to failed to connect to server"),
+        Err(e) => panic!("failed to connect to server"),
     }
 }
 
