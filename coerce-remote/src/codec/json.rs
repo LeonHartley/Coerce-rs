@@ -11,14 +11,14 @@ impl JsonCodec {
 }
 
 impl MessageCodec for JsonCodec {
-    fn encode_msg<M: Serialize>(message: M) -> Option<Vec<u8>>
+    fn encode_msg<M: Serialize>(&self, message: M) -> Option<Vec<u8>>
     where
         M: Send + Sync,
     {
         message.encode()
     }
 
-    fn decode_msg<M: DeserializeOwned>(data: Vec<u8>) -> Option<M>
+    fn decode_msg<M: DeserializeOwned>(&self, data: Vec<u8>) -> Option<M>
     where
         M: Send + Sync,
     {

@@ -97,12 +97,12 @@ where
         let mut context = self.context.clone();
         let actor = context.get_actor::<A>(actor_id).await;
         if let Some(mut actor) = actor {
-            let message = C::decode_msg::<M>(buffer.to_vec());
+            let message = self.codec.decode_msg::<M>(buffer.to_vec());
             match message {
                 Some(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        match C::encode_msg(result) {
+                        match self.codec.encode_msg(result) {
                             Some(buffer) => {
                                 if let Err(_) = res.send(buffer) {
                                     error!(target: "RemoteHandler", "failed to send message")

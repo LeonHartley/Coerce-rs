@@ -36,7 +36,7 @@ impl RemoteHandler {
         handlers: HashMap<String, BoxedHandler>,
         handler_types: HashMap<TypeId, String>,
     ) -> ActorRef<RemoteHandler> {
-        ctx.new_actor(RemoteHandler {
+        ctx.new_tracked_actor(RemoteHandler {
             handler_types,
             handlers,
             requests: HashMap::new(),

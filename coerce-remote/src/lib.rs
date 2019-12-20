@@ -11,6 +11,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate log;
 
+extern crate bytes;
 extern crate tokio;
 extern crate uuid;
 
@@ -18,6 +19,7 @@ pub mod actor;
 pub mod codec;
 pub mod context;
 pub mod handler;
+pub mod net;
 pub mod node;
 
 pub struct RemoteActorRef<A: Actor>
