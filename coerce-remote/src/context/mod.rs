@@ -1,5 +1,5 @@
 use crate::actor::{GetHandler, HandlerName, RemoteHandler};
-use crate::codec::{RemoteHandlerMessage};
+use crate::codec::RemoteHandlerMessage;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorId, ActorRef};

@@ -7,6 +7,7 @@ use coerce_remote::context::RemoteActorContext;
 
 use std::mem::forget;
 
+use std::net::TcpListener;
 use util::*;
 
 pub mod util;
@@ -28,9 +29,12 @@ pub async fn test_remote_handler_types() {
 
     let mut remote = RemoteActorContext::builder()
         .with_actor_context(ActorContext::new())
-        .with_handler::<TestActor, SetStatusRequest>(test_set_status.clone().as_ref())
-        .with_handler::<TestActor, GetStatusRequest>(test_get_status.clone().as_ref())
-        .with_handler::<EchoActor, GetCounterRequest>(echo_get_counter.clone().as_ref())
+        .with_handlers(|handlers| {
+            handlers
+                .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+                .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
+                .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
+        })
         .build()
         .await;
 
@@ -59,9 +63,12 @@ pub async fn test_remote_handle_from_json() {
 
     let mut remote = RemoteActorContext::builder()
         .with_actor_context(ctx)
-        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
-        .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
+        .with_handlers(|handlers| {
+            handlers
+                .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+                .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
+                .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
+        })
         .build()
         .await;
 
