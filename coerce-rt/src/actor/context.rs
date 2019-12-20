@@ -54,12 +54,17 @@ pub enum ActorStatus {
 }
 
 pub struct ActorHandlerContext {
+    actor_id: ActorId,
     status: ActorStatus,
 }
 
 impl ActorHandlerContext {
-    pub fn new(status: ActorStatus) -> ActorHandlerContext {
-        ActorHandlerContext { status }
+    pub fn new(actor_id: ActorId, status: ActorStatus) -> ActorHandlerContext {
+        ActorHandlerContext { actor_id, status }
+    }
+
+    pub fn actor_id(&self) -> &ActorId {
+        &self.actor_id
     }
 
     pub fn set_status(&mut self, state: ActorStatus) {
