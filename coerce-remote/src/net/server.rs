@@ -1,7 +1,8 @@
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
-use tokio_util::codec::FramedRead;
+use futures::SinkExt;
+use tokio_util::codec::{Framed, FramedRead, FramedWrite};
 
 use crate::net::codec::NetworkCodec;
 use uuid::Uuid;
@@ -13,6 +14,7 @@ pub struct RemoteServer<C: MessageCodec> {
 
 #[derive(Serialize, Deserialize)]
 pub enum SessionEvent {
+    Test,
     Message {
         identifier: String,
         actor: Uuid,
@@ -101,6 +103,7 @@ impl StreamReceiver<SessionEvent> for SessionMessageReceiver {
             } => {
                 let _result = ctx.handle(identifier, actor, message.as_bytes()).await;
             }
+            SessionEvent::Test => {}
         }
     }
 }

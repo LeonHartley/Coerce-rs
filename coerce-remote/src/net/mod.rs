@@ -70,17 +70,16 @@ pub async fn receive_loop<
     mut receiver: R,
     codec: C,
 ) where
-    M:  Sync + Send,
+    M: Sync + Send,
 {
     let mut fut = StreamReceiverFuture::new(read, stop_rx);
-
     while let Some(res) = fut.next().await {
         match res {
             Some(res) => match codec.decode_msg::<M>(res) {
                 Some(msg) => receiver.on_recv(msg, &mut context).await,
-                None => trace!(target: "RemoteReceive", "error decoding msg"),
+                None => warn!(target: "RemoteReceive", "error decoding msg"),
             },
-            None => trace!(target: "RemoteReceive", "error receiving msg"),
+            None => error!(target: "RemoteReceive", "error receiving msg"),
         }
     }
 

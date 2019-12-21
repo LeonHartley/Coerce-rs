@@ -2,10 +2,15 @@ use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::codec::NetworkCodec;
 use crate::net::{receive_loop, StreamReceiver};
-use tokio_util::codec::FramedRead;
+use futures::future::Remote;
+use futures::SinkExt;
+use serde::Serialize;
+use tokio::io::AsyncReadExt;
+use tokio_util::codec::{FramedRead, FramedWrite};
 
-pub struct RemoteClient {
-    write: tokio::io::WriteHalf<tokio::net::TcpStream>,
+pub struct RemoteClient<C: MessageCodec> {
+    codec: C,
+    write: FramedWrite<tokio::io::WriteHalf<tokio::net::TcpStream>, NetworkCodec>,
     stop: Option<tokio::sync::oneshot::Sender<bool>>,
 }
 
@@ -21,33 +26,55 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
     }
 }
 
-impl RemoteClient {
-    pub async fn connect<C: MessageCodec>(
+#[derive(Debug)]
+pub enum RemoteClientErr {
+    Encoding,
+    StreamErr(tokio::io::Error),
+}
+
+impl<C: MessageCodec> RemoteClient<C> {
+    pub async fn connect(
         addr: String,
         context: RemoteActorContext,
         codec: C,
-    ) -> Result<RemoteClient, tokio::io::Error>
+    ) -> Result<RemoteClient<C>, tokio::io::Error>
     where
-        Self: 'static,
         C: 'static + Sync + Send,
     {
         let stream = tokio::net::TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
-        let framed = FramedRead::new(read, NetworkCodec);
+
+        let read = FramedRead::new(read, NetworkCodec);
+        let write = FramedWrite::new(write, NetworkCodec);
+
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(receive_loop(
             context,
-            framed,
+            read,
             stop_rx,
             ClientMessageReceiver,
-            codec,
+            codec.clone(),
         ));
 
         Ok(RemoteClient {
             write,
+            codec,
             stop: Some(stop_tx),
         })
+    }
+
+    pub async fn write<M: Serialize>(&mut self, message: M) -> Result<(), RemoteClientErr>
+    where
+        M: Sync + Send,
+    {
+        match self.codec.encode_msg(message) {
+            Some(message) => match self.write.send(message).await {
+                Ok(()) => Ok(()),
+                Err(e) => Err(RemoteClientErr::StreamErr(e)),
+            },
+            None => Err(RemoteClientErr::Encoding),
+        }
     }
 
     pub fn close(&mut self) -> bool {

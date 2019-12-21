@@ -2,7 +2,7 @@ use coerce_remote::codec::json::JsonCodec;
 use coerce_remote::context::builder::RemoteActorHandlerBuilder;
 use coerce_remote::context::RemoteActorContext;
 use coerce_remote::net::client::RemoteClient;
-use coerce_remote::net::server::RemoteServer;
+use coerce_remote::net::server::{RemoteServer, SessionEvent};
 use coerce_rt::actor::context::ActorContext;
 
 use std::time::Duration;
@@ -41,17 +41,15 @@ pub async fn test_remote_server_client_connection() {
         Err(_e) => panic!("failed to start server"),
     }
 
-    match RemoteClient::connect("localhost:30101".to_string(), remote_2, JsonCodec::new()).await {
-        Ok(mut client) => {
-            log::trace!("connected!");
+    let mut client =
+        RemoteClient::connect("localhost:30101".to_string(), remote_2, JsonCodec::new())
+            .await
+            .unwrap();
 
-            tokio::time::delay_for(Duration::from_millis(100)).await;
-            client.close();
+    let write_test = client.write(SessionEvent::Test).await;
+    tokio::time::delay_for(Duration::from_millis(1)).await;
 
-            tokio::time::delay_for(Duration::from_millis(100)).await;
-        }
-        Err(_e) => panic!("failed to connect to server"),
-    }
+    assert_eq!(write_test.is_ok(), true);
 }
 
 fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
