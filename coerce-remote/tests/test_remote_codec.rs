@@ -1,6 +1,7 @@
 use coerce_remote::context::RemoteActorContext;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::scheduler::ActorType::Anonymous;
+use std::mem::forget;
 use util::*;
 
 pub mod util;
@@ -43,4 +44,6 @@ pub async fn test_remote_create_message() {
         "TestActor.SetStatusRequest".to_string()
     );
     assert_eq!(message.message, msg);
+
+    forget(remote);
 }
