@@ -11,7 +11,7 @@ use std::task::{Context, Poll};
 
 use crate::net::codec::NetworkCodec;
 use futures::StreamExt;
-use tokio_util::codec::{Decoder, FramedRead};
+use tokio_util::codec::{FramedRead};
 
 pub mod client;
 pub mod codec;

@@ -77,7 +77,7 @@ pub async fn server_loop<C: MessageCodec>(
                 let (read, write) = tokio::io::split(socket);
 
                 let framed = FramedRead::new(read, NetworkCodec);
-                let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+                let (_stop_tx, stop_rx) = tokio::sync::oneshot::channel();
 
                 tokio::spawn(receive_loop(
                     context.clone(),
