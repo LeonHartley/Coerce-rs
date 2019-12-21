@@ -1,6 +1,9 @@
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
+use std::net::Shutdown;
+use std::time::Duration;
+use tokio::io::AsyncWriteExt;
 
 pub struct RemoteClient {
     write: tokio::io::WriteHalf<tokio::net::TcpStream>,
@@ -28,7 +31,9 @@ impl RemoteClient {
         Self: 'static,
         C: 'static + Sync + Send,
     {
-        let (read, write) = tokio::io::split(tokio::net::TcpStream::connect(addr).await?);
+        let stream = tokio::net::TcpStream::connect(addr).await?;
+        let (read, mut write) = tokio::io::split(stream);
+
         tokio::spawn(receive_loop(read, context, ClientMessageReceiver, codec));
 
         Ok(RemoteClient { write })
