@@ -10,7 +10,7 @@ pub mod server;
 
 #[async_trait]
 pub trait StreamReceiver<Msg: DeserializeOwned> {
-    async fn on_recv(&mut self, msg: Msg);
+    async fn on_recv(&mut self, msg: Msg, ctx: &mut RemoteActorContext);
 }
 
 pub async fn receive_loop<
@@ -20,7 +20,7 @@ pub async fn receive_loop<
     R: StreamReceiver<M>,
 >(
     mut stream: S,
-    context: RemoteActorContext,
+    mut context: RemoteActorContext,
     mut receiver: R,
     codec: C,
 ) where
@@ -59,7 +59,7 @@ pub async fn receive_loop<
         trace!(target: "RemoteReceive", "received buffer with len {}", buff_read);
 
         match codec.decode_msg::<M>(buffer.to_vec()) {
-            Some(msg) => receiver.on_recv(msg).await,
+            Some(msg) => receiver.on_recv(msg, &mut context).await,
             None => trace!(target: "RemoteReceive", "error decoding msg"),
         }
     }

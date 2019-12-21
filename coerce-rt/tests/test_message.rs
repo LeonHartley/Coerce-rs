@@ -15,7 +15,7 @@ extern crate async_trait;
 #[tokio::test]
 pub async fn test_actor_req_res() {
     let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
+        .new_anon_actor(TestActor::new())
         .await
         .unwrap();
 
@@ -28,8 +28,8 @@ pub async fn test_actor_req_res() {
 pub async fn test_actor_req_res_multiple_actors() {
     let mut ctx = ActorContext::new();
 
-    let mut test_ref = ctx.new_actor(TestActor::new()).await.unwrap();
-    let mut echo_ref = ctx.new_actor(EchoActor::new()).await.unwrap();
+    let mut test_ref = ctx.new_anon_actor(TestActor::new()).await.unwrap();
+    let mut echo_ref = ctx.new_anon_actor(EchoActor::new()).await.unwrap();
 
     let test_res = test_ref.send(GetCounterRequest()).await;
     let echo_res = echo_ref.send(GetCounterRequest()).await;
@@ -41,7 +41,7 @@ pub async fn test_actor_req_res_multiple_actors() {
 #[tokio::test]
 pub async fn test_actor_req_res_mutation() {
     let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
+        .new_anon_actor(TestActor::new())
         .await
         .unwrap();
 
@@ -78,7 +78,7 @@ pub async fn test_actor_req_res_mutation() {
 #[tokio::test]
 pub async fn test_actor_exec_mutation() {
     let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
+        .new_anon_actor(TestActor::new())
         .await
         .unwrap();
     let initial_status = actor_ref.send(GetStatusRequest()).await;
@@ -100,7 +100,7 @@ pub async fn test_actor_exec_mutation() {
 #[tokio::test]
 pub async fn test_actor_exec_chain_mutation() {
     let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
+        .new_anon_actor(TestActor::new())
         .await
         .unwrap();
 
@@ -119,7 +119,7 @@ pub async fn test_actor_exec_chain_mutation() {
 #[tokio::test]
 pub async fn test_actor_notify() {
     let mut actor_ref = ActorContext::new()
-        .new_actor(TestActor::new())
+        .new_anon_actor(TestActor::new())
         .await
         .unwrap();
 

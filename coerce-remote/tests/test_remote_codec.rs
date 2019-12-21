@@ -1,5 +1,6 @@
 use coerce_remote::context::RemoteActorContext;
 use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::scheduler::ActorType::Anonymous;
 use std::mem::forget;
 use util::*;
 
@@ -30,7 +31,11 @@ pub async fn test_remote_create_message() {
         status: TestActorStatus::Active,
     };
 
-    let actor = remote.inner().new_actor(TestActor::new()).await.unwrap();
+    let actor = remote
+        .inner()
+        .new_actor(TestActor::new(), Anonymous)
+        .await
+        .unwrap();
     let message = remote.create_message(&actor, msg.clone()).await.unwrap();
 
     assert_eq!(message.actor_id, actor.id);

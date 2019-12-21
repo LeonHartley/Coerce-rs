@@ -7,6 +7,7 @@ use coerce_remote::context::RemoteActorContext;
 
 use std::mem::forget;
 
+use coerce_rt::actor::scheduler::ActorType::Tracked;
 use std::net::TcpListener;
 use util::*;
 
@@ -59,7 +60,7 @@ pub async fn test_remote_handle_from_json() {
     create_trace_logger();
 
     let mut ctx = ActorContext::new();
-    let mut actor = ctx.new_actor(TestActor::new()).await.unwrap();
+    let mut actor = ctx.new_actor(TestActor::new(), Tracked).await.unwrap();
 
     let mut remote = RemoteActorContext::builder()
         .with_actor_context(ctx)

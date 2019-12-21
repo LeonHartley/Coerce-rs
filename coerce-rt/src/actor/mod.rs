@@ -23,14 +23,16 @@ pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefError>
 where
     A: 'static + Sync + Send,
 {
-    ActorContext::current_context().new_actor(actor).await
+    ActorContext::current_context()
+        .new_tracked_actor(actor)
+        .await
 }
 
 pub async fn get_actor<A: Actor>(id: ActorId) -> Option<ActorRef<A>>
 where
     A: 'static + Sync + Send,
 {
-    ActorContext::current_context().get_actor(id).await
+    ActorContext::current_context().get_tracked_actor(id).await
 }
 
 #[derive(Clone)]

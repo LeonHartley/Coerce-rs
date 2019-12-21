@@ -3,15 +3,30 @@ use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use uuid::Uuid;
 
 pub struct RemoteServer<C: MessageCodec> {
     codec: C,
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum SessionEvent {}
+pub enum SessionEvent {
+    Message {
+        identifier: String,
+        actor: Uuid,
+        message: String,
+    },
+}
 
-pub struct SessionMessageReceiver;
+pub struct SessionMessageReceiver {
+    write: tokio::io::WriteHalf<tokio::net::TcpStream>,
+}
+
+impl SessionMessageReceiver {
+    pub fn new(write: tokio::io::WriteHalf<tokio::net::TcpStream>) -> SessionMessageReceiver {
+        SessionMessageReceiver { write }
+    }
+}
 
 impl<C: MessageCodec> RemoteServer<C>
 where
@@ -44,11 +59,12 @@ pub async fn server_loop<C: MessageCodec>(
         match listener.accept().await {
             Ok((socket, addr)) => {
                 trace!(target: "RemoteServer", "client accepted {}", addr);
+                let (read, write) = tokio::io::split(socket);
 
                 tokio::spawn(receive_loop(
-                    socket,
+                    read,
                     context.clone(),
-                    SessionMessageReceiver,
+                    SessionMessageReceiver::new(write),
                     codec.clone(),
                 ));
             }
@@ -59,7 +75,15 @@ pub async fn server_loop<C: MessageCodec>(
 
 #[async_trait]
 impl StreamReceiver<SessionEvent> for SessionMessageReceiver {
-    async fn on_recv(&mut self, msg: SessionEvent) {
-        unimplemented!()
+    async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
+        match msg {
+            SessionEvent::Message {
+                identifier,
+                actor,
+                message,
+            } => {
+                let result = ctx.handle(identifier, actor, message.as_bytes()).await;
+            }
+        }
     }
 }

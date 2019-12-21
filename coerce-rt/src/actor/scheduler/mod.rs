@@ -26,11 +26,31 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {}
 
-pub struct RegisterActor<A: Actor>(pub A, pub tokio::sync::oneshot::Sender<bool>)
+pub enum ActorType {
+    Tracked,
+    Anonymous,
+}
+
+pub struct RegisterActor<A: Actor>(pub A, pub ActorType, pub tokio::sync::oneshot::Sender<bool>)
 where
     A: 'static + Sync + Send;
 
 impl<A: Actor> Message for RegisterActor<A>
+where
+    A: 'static + Sync + Send,
+{
+    type Result = ActorRef<A>;
+}
+
+pub struct DeregisterActor<A: Actor>
+where
+    A: 'static + Sync + Send,
+{
+    id: ActorId,
+    _a: PhantomData<A>,
+}
+
+impl<A: Actor> Message for DeregisterActor<A>
 where
     A: 'static + Sync + Send,
 {
@@ -74,7 +94,7 @@ where
         message: RegisterActor<A>,
         _ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
-        let actor = start_actor(message.0, Some(message.1));
+        let actor = start_actor(message.0, Some(message.2));
 
         let _ = self
             .actors

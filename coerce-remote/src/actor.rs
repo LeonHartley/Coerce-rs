@@ -26,7 +26,7 @@ impl Actor for RemoteHandler {}
 
 impl RemoteRegistry {
     pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
-        ctx.new_tracked_actor(RemoteRegistry {}).await.unwrap()
+        ctx.new_anon_actor(RemoteRegistry {}).await.unwrap()
     }
 }
 
@@ -36,7 +36,7 @@ impl RemoteHandler {
         handlers: HashMap<String, BoxedHandler>,
         handler_types: HashMap<TypeId, String>,
     ) -> ActorRef<RemoteHandler> {
-        ctx.new_tracked_actor(RemoteHandler {
+        ctx.new_anon_actor(RemoteHandler {
             handler_types,
             handlers,
             requests: HashMap::new(),

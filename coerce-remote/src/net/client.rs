@@ -3,7 +3,7 @@ use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
 
 pub struct RemoteClient {
-    write: tokio::io::WriteHalf<tokio::net::TcpStream>
+    write: tokio::io::WriteHalf<tokio::net::TcpStream>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -13,7 +13,7 @@ pub struct ClientMessageReceiver;
 
 #[async_trait]
 impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
-    async fn on_recv(&mut self, msg: ClientEvent) {
+    async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorContext) {
         unimplemented!()
     }
 }
@@ -31,8 +31,6 @@ impl RemoteClient {
         let (read, write) = tokio::io::split(tokio::net::TcpStream::connect(addr).await?);
         tokio::spawn(receive_loop(read, context, ClientMessageReceiver, codec));
 
-        Ok(RemoteClient {
-            write
-        })
+        Ok(RemoteClient { write })
     }
 }

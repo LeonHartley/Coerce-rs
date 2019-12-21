@@ -95,7 +95,7 @@ where
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let mut context = self.context.clone();
-        let actor = context.get_actor::<A>(actor_id).await;
+        let actor = context.get_tracked_actor::<A>(actor_id).await;
         if let Some(mut actor) = actor {
             let message = self.codec.decode_msg::<M>(buffer.to_vec());
             match message {
