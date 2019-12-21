@@ -48,7 +48,7 @@ where
         let listener = tokio::net::TcpListener::bind(addr).await?;
         let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
 
-        let fut = tokio::spawn(server_loop(listener, context, self.codec.clone()));
+        tokio::spawn(server_loop(listener, context, self.codec.clone()));
         self.stop = Some(stop_tx);
         Ok(())
     }

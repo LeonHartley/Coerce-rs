@@ -27,7 +27,7 @@ where
             .into_iter()
             .map(|n| {
                 table.add(n.clone());
-                (n.id.clone(), n)
+                (n.id, n)
             })
             .collect();
 

@@ -70,7 +70,7 @@ impl RemoteActorContext {
     {
         match self.handler_name::<A, M>().await {
             Some(handler_type) => Some(RemoteHandlerMessage {
-                actor_id: actor_ref.id.clone(),
+                actor_id: actor_ref.id,
                 handler_type,
                 message,
             }),

@@ -104,7 +104,7 @@ where
                     if let Ok(result) = result {
                         match self.codec.encode_msg(result) {
                             Some(buffer) => {
-                                if let Err(_) = res.send(buffer) {
+                                if res.send(buffer).is_err() {
                                     error!(target: "RemoteHandler", "failed to send message")
                                 }
                             }
