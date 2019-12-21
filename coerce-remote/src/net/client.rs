@@ -1,9 +1,12 @@
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
+use crate::net::codec::NetworkCodec;
 use crate::net::{receive_loop, StreamReceiver};
+use tokio_util::codec::FramedRead;
 
 pub struct RemoteClient {
     write: tokio::io::WriteHalf<tokio::net::TcpStream>,
+    stop: Option<tokio::sync::oneshot::Sender<bool>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -30,9 +33,28 @@ impl RemoteClient {
     {
         let stream = tokio::net::TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
+        let framed = FramedRead::new(read, NetworkCodec);
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
 
-        tokio::spawn(receive_loop(read, context, ClientMessageReceiver, codec));
+        tokio::spawn(receive_loop(
+            context,
+            framed,
+            stop_rx,
+            ClientMessageReceiver,
+            codec,
+        ));
 
-        Ok(RemoteClient { write })
+        Ok(RemoteClient {
+            write,
+            stop: Some(stop_tx),
+        })
+    }
+
+    pub fn close(&mut self) -> bool {
+        if let Some(stop) = self.stop.take() {
+            stop.send(true).is_ok()
+        } else {
+            false
+        }
     }
 }

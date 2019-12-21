@@ -5,6 +5,7 @@ use coerce_remote::net::client::RemoteClient;
 use coerce_remote::net::server::RemoteServer;
 use coerce_rt::actor::context::ActorContext;
 
+use std::time::Duration;
 use util::*;
 
 pub mod util;
@@ -41,7 +42,14 @@ pub async fn test_remote_server_client_connection() {
     }
 
     match RemoteClient::connect("localhost:30101".to_string(), remote_2, JsonCodec::new()).await {
-        Ok(_client) => log::trace!("connected!"),
+        Ok(mut client) => {
+            log::trace!("connected!");
+
+            tokio::time::delay_for(Duration::from_millis(100)).await;
+            client.close();
+
+            tokio::time::delay_for(Duration::from_millis(100)).await;
+        }
         Err(_e) => panic!("failed to connect to server"),
     }
 }
