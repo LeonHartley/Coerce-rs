@@ -117,7 +117,7 @@ where
 
 #[async_trait]
 impl Handler<DeregisterActor> for ActorScheduler {
-    async fn handle(&mut self, message: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {}
+    async fn handle(&mut self, _message: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {}
 }
 
 #[async_trait]

@@ -1,4 +1,4 @@
-use crate::codec::{MessageCodec, RemoteHandlerMessage};
+use crate::codec::MessageCodec;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 

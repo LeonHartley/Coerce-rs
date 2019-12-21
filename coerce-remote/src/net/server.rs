@@ -1,8 +1,7 @@
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
-use std::net::SocketAddr;
-use std::str::FromStr;
+
 use uuid::Uuid;
 
 pub struct RemoteServer<C: MessageCodec> {
@@ -42,8 +41,8 @@ where
         addr: String,
         context: RemoteActorContext,
     ) -> Result<(), tokio::io::Error> {
-        let mut listener = tokio::net::TcpListener::bind(addr).await?;
-        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(server_loop(listener, context, self.codec.clone()));
         self.stop = Some(stop_tx);
@@ -94,7 +93,7 @@ impl StreamReceiver<SessionEvent> for SessionMessageReceiver {
                 actor,
                 message,
             } => {
-                let result = ctx.handle(identifier, actor, message.as_bytes()).await;
+                let _result = ctx.handle(identifier, actor, message.as_bytes()).await;
             }
         }
     }

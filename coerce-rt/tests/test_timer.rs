@@ -2,7 +2,7 @@ use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::scheduler::timer::{Timer, TimerTick};
 
 use crate::util::*;
-use coerce_rt::actor::message::{Handler, Message};
+use coerce_rt::actor::message::Handler;
 use std::time::Duration;
 
 pub mod util;
@@ -26,7 +26,7 @@ impl TimerTick for TestTimer {
 
 #[async_trait]
 impl Handler<TestTimer> for TestActor {
-    async fn handle(&mut self, message: TestTimer, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, _message: TestTimer, _ctx: &mut ActorHandlerContext) {
         self.counter += 1;
     }
 }

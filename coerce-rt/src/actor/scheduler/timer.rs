@@ -1,7 +1,7 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRef};
 use log::trace;
-use std::sync::Arc;
+
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
@@ -29,7 +29,7 @@ impl Timer {
         T: 'static + Sync + Send,
         T::Result: 'static + Sync + Send,
     {
-        let (stop, mut stop_rx) = tokio::sync::oneshot::channel();
+        let (stop, stop_rx) = tokio::sync::oneshot::channel();
         tokio::spawn(timer_loop(tick, actor, stop_rx));
 
         Timer { stop }

@@ -1,5 +1,5 @@
 use hashring::HashRing;
-use std::cmp::Ordering;
+
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
@@ -20,7 +20,7 @@ impl<K> RemoteNodeStore<K>
 where
     K: ToString,
 {
-    pub fn new(mut nodes: Vec<RemoteNode>) -> RemoteNodeStore<K> {
+    pub fn new(nodes: Vec<RemoteNode>) -> RemoteNodeStore<K> {
         let mut table = HashRing::new();
 
         let nodes = nodes

@@ -1,18 +1,15 @@
 use crate::codec::MessageCodec;
+
 use crate::context::RemoteActorContext;
-use byteorder::{ByteOrder, LittleEndian};
-use bytes::BytesMut;
-use coerce_rt::actor::message::Message;
-use futures::Stream;
-use futures::{AsyncReadExt, SinkExt};
+
 use serde::de::DeserializeOwned;
 use std::future::Future;
 use std::io::Error;
-use std::marker::PhantomData;
+
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::stream::StreamExt;
-use tokio_util::codec::{Decoder, Encoder, FramedRead};
+
+use tokio_util::codec::{Decoder, FramedRead};
 
 pub mod client;
 pub mod codec;
@@ -59,10 +56,10 @@ pub async fn receive_loop<
     S: tokio::io::AsyncRead + Unpin,
     R: StreamReceiver<M>,
 >(
-    mut stream: S,
-    mut context: RemoteActorContext,
-    mut receiver: R,
-    codec: C,
+    _stream: S,
+    _context: RemoteActorContext,
+    _receiver: R,
+    _codec: C,
 ) where
     C: 'static + Sync + Send,
     S: 'static + Sync + Send,

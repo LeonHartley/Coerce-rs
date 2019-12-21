@@ -8,11 +8,8 @@ extern crate chrono;
 extern crate async_trait;
 extern crate hashring;
 
-use std::net::{IpAddr, SocketAddr};
-use std::str::FromStr;
-
 use coerce_remote::node::{RemoteNode, RemoteNodeStore};
-use hashring::HashRing;
+
 use uuid::Uuid;
 
 pub mod util;
@@ -24,7 +21,7 @@ pub async fn test_remote_node_store() {
     let node_3 = Uuid::parse_str("d3fe8ffc-5c03-4965-8ab4-62e7f2115b73").unwrap();
     let node_4 = Uuid::parse_str("c322e826-77ca-435c-9591-3bc25c886277").unwrap();
 
-    let mut actors = vec![
+    let actors = vec![
         "f6445c80-c448-42e0-9aed-097c3e66d0cc",
         "94e54b7c-99ed-4db2-b233-ec39c5ed8fd4",
         "70d2ad99-2af4-4840-8e1e-10d7091e270b",

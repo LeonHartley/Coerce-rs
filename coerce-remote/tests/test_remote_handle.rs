@@ -8,7 +8,7 @@ use coerce_remote::context::RemoteActorContext;
 use std::mem::forget;
 
 use coerce_rt::actor::scheduler::ActorType::Tracked;
-use std::net::TcpListener;
+
 use util::*;
 
 pub mod util;

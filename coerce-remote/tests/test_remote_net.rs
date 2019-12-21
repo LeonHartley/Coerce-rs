@@ -1,15 +1,10 @@
-use byteorder::{ByteOrder, LittleEndian};
-use bytes::BytesMut;
 use coerce_remote::codec::json::JsonCodec;
 use coerce_remote::context::builder::RemoteActorHandlerBuilder;
 use coerce_remote::context::RemoteActorContext;
 use coerce_remote::net::client::RemoteClient;
 use coerce_remote::net::server::RemoteServer;
 use coerce_rt::actor::context::ActorContext;
-use std::fmt::Write;
-use std::io::Error;
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
+
 use util::*;
 
 pub mod util;
@@ -27,13 +22,13 @@ extern crate async_trait;
 pub async fn test_remote_server_client_connection() {
     util::create_trace_logger();
 
-    let mut remote = RemoteActorContext::builder()
+    let remote = RemoteActorContext::builder()
         .with_actor_context(ActorContext::new())
         .with_handlers(build_handlers)
         .build()
         .await;
 
-    let mut remote_2 = RemoteActorContext::builder()
+    let remote_2 = RemoteActorContext::builder()
         .with_actor_context(ActorContext::new())
         .with_handlers(build_handlers)
         .build()
@@ -42,12 +37,12 @@ pub async fn test_remote_server_client_connection() {
     let mut server = RemoteServer::new(JsonCodec::new());
     match server.start("localhost:30101".to_string(), remote).await {
         Ok(_) => log::trace!("started!"),
-        Err(e) => panic!("failed to start server"),
+        Err(_e) => panic!("failed to start server"),
     }
 
     match RemoteClient::connect("localhost:30101".to_string(), remote_2, JsonCodec::new()).await {
-        Ok(client) => log::trace!("connected!"),
-        Err(e) => panic!("failed to connect to server"),
+        Ok(_client) => log::trace!("connected!"),
+        Err(_e) => panic!("failed to connect to server"),
     }
 }
 

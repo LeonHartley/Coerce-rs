@@ -37,7 +37,7 @@ impl RemoteActorContextBuilder {
         self
     }
 
-    pub async fn build(mut self) -> RemoteActorContext {
+    pub async fn build(self) -> RemoteActorContext {
         let mut inner = match self.inner {
             Some(ctx) => ctx,
             None => ActorContext::current_context(),
@@ -45,7 +45,7 @@ impl RemoteActorContextBuilder {
 
         let mut handlers = RemoteActorHandlerBuilder::new(inner.clone());
 
-        self.handlers.into_iter().for_each(|mut h| {
+        self.handlers.into_iter().for_each(|h| {
             h(&mut handlers);
         });
 
