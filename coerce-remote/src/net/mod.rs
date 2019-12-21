@@ -13,12 +13,20 @@ pub trait StreamReceiver<Msg: DeserializeOwned> {
     async fn on_recv(&mut self, msg: Msg);
 }
 
-pub async fn receive_loop<C: MessageCodec, M: DeserializeOwned, R: StreamReceiver<M>>(
-    mut stream: tokio::net::TcpStream,
+pub async fn receive_loop<
+    C: MessageCodec,
+    M: DeserializeOwned,
+    S: tokio::io::AsyncRead + Unpin,
+    R: StreamReceiver<M>,
+>(
+    mut stream: S,
     context: RemoteActorContext,
     mut receiver: R,
     codec: C,
 ) where
+    C: 'static + Sync + Send,
+    S: 'static + Sync + Send,
+    R: 'static + Sync + Send,
     M: 'static + Sync + Send,
 {
     let mut len_buf = [0 as u8; 4];

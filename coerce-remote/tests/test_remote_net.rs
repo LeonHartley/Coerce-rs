@@ -45,12 +45,8 @@ pub async fn test_remote_server_client_connection() {
         Err(e) => panic!("failed to start server"),
     }
 
-    let mut client = RemoteClient::new(JsonCodec::new());
-    match client
-        .connect("localhost:30101".to_string(), remote_2)
-        .await
-    {
-        Ok(_) => log::trace!("connected!"),
+    match RemoteClient::connect("localhost:30101".to_string(), remote_2, JsonCodec::new()).await {
+        Ok(client) => log::trace!("connected!"),
         Err(e) => panic!("failed to connect to server"),
     }
 }

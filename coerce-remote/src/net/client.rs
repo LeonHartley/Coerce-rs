@@ -2,8 +2,8 @@ use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
 
-pub struct RemoteClient<C: MessageCodec> {
-    codec: C,
+pub struct RemoteClient {
+    write: tokio::io::WriteHalf<tokio::net::TcpStream>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -18,24 +18,21 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
     }
 }
 
-impl<C: MessageCodec> RemoteClient<C>
-where
-    C: 'static + Sync + Send,
-{
-    pub async fn connect(
+impl RemoteClient {
+    pub async fn connect<C: MessageCodec>(
         addr: String,
         context: RemoteActorContext,
         codec: C,
-    ) -> Result<RemoteClient, tokio::io::Error> {
-        let mut stream = tokio::net::TcpStream::connect(addr).await?;
+    ) -> Result<RemoteClient, tokio::io::Error>
+    where
+        Self: 'static,
+        C: 'static + Sync + Send,
+    {
+        let (read, write) = tokio::io::split(tokio::net::TcpStream::connect(addr).await?);
+        tokio::spawn(receive_loop(read, context, ClientMessageReceiver, codec));
 
-        tokio::spawn(receive_loop(
-            stream,
-            context,
-            ClientMessageReceiver,
-            codec,
-        ));
-
-        Ok(())
+        Ok(RemoteClient {
+            write
+        })
     }
 }
