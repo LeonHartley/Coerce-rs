@@ -70,10 +70,7 @@ pub async fn receive_loop<
     mut receiver: R,
     codec: C,
 ) where
-    S: 'static + Sync + Send,
-    C: 'static + Sync + Send,
-    R: 'static + Sync + Send,
-    M: 'static + Sync + Send,
+    M:  Sync + Send,
 {
     let mut fut = StreamReceiverFuture::new(read, stop_rx);
 
