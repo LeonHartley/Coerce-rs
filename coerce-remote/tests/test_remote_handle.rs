@@ -5,8 +5,6 @@ use coerce_rt::actor::message::Handler;
 
 use coerce_remote::context::RemoteActorContext;
 
-use std::mem::forget;
-
 use coerce_rt::actor::scheduler::ActorType::Tracked;
 use std::net::TcpListener;
 use util::*;
@@ -51,8 +49,6 @@ pub async fn test_remote_handler_types() {
         remote.handler_name::<TestActor, GetStatusRequest>().await,
         Some(test_get_status)
     );
-
-    forget(remote);
 }
 
 #[tokio::test]
@@ -92,6 +88,4 @@ pub async fn test_remote_handle_from_json() {
         current_status,
         Ok(GetStatusResponse::Ok(TestActorStatus::Active))
     );
-
-    forget(remote);
 }
