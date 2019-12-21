@@ -4,6 +4,9 @@ use coerce_rt::actor::{Actor, ActorId, ActorRefError};
 use std::marker::PhantomData;
 
 #[macro_use]
+extern crate futures;
+
+#[macro_use]
 extern crate async_trait;
 
 #[macro_use]

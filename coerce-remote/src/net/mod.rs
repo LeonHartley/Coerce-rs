@@ -3,12 +3,16 @@ use crate::context::RemoteActorContext;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::BytesMut;
 use coerce_rt::actor::message::Message;
+use futures::Stream;
+use futures::{AsyncReadExt, SinkExt};
 use serde::de::DeserializeOwned;
+use std::future::Future;
 use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::io::AsyncReadExt;
+use tokio::stream::StreamExt;
+use tokio_util::codec::{Decoder, Encoder, FramedRead};
 
 pub mod client;
 pub mod codec;
@@ -19,26 +23,33 @@ pub trait StreamReceiver<Msg: DeserializeOwned> {
     async fn on_recv(&mut self, msg: Msg, ctx: &mut RemoteActorContext);
 }
 
-pub struct StreamReceiverFuture<C: MessageCodec, M: DeserializeOwned>
+pub struct StreamReceiverFuture<C>
 where
-    C: 'static + Sync + Send,
-    M: 'static + Sync + Send,
+    C: Decoder,
 {
-    codec: C,
+    stream: FramedRead<tokio::net::TcpStream, C>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
-    _m: PhantomData<M>,
 }
 
-impl<M: DeserializeOwned, C: MessageCodec> tokio::stream::Stream for StreamReceiverFuture<C, M>
+impl<C: Decoder> tokio::stream::Stream for StreamReceiverFuture<C>
 where
-    C: 'static + Sync + Send,
-    M: 'static + Sync + Send,
+    C: Decoder<Item = Vec<u8>, Error = Error>,
 {
-    type Item = Option<M>;
+    type Item = Option<Vec<u8>>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Option<M>>> {
-        // stream closed
-        Poll::Ready(None)
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Option<Vec<u8>>>> {
+        if let Poll::Ready(Ok(true)) = Pin::new(&mut self.stop_rx).poll(cx) {
+            return Poll::Ready(None);
+        }
+
+        let result: Option<Result<Vec<u8>, Error>> =
+            futures::ready!(Pin::new(&mut self.stream).poll_next(cx));
+
+        Poll::Ready(match result {
+            Some(Ok(message)) => Some(Some(message)),
+            Some(Err(_)) => Some(None),
+            None => None,
+        })
     }
 }
 
@@ -58,42 +69,13 @@ pub async fn receive_loop<
     R: 'static + Sync + Send,
     M: 'static + Sync + Send,
 {
-    let mut len_buf = [0 as u8; 4];
-
-    loop {
-        let bytes_read = match stream.read(&mut len_buf).await {
-            Ok(n) => n,
-            Err(e) => {
-                error!(target: "RemoteReceive", "failed to read length from stream, {:?}", e);
-                return;
-            }
-        };
-
-        let len = LittleEndian::read_i32(&mut len_buf) as usize;
-        if bytes_read == 0 {
-            error!(target: "RemoteReceive", "bytes_read = 0");
-            break;
-        } else if len == 0 {
-            error!(target: "RemoteReceive", "len = 0");
-            continue;
-        }
-
-        let mut buffer = BytesMut::with_capacity(len);
-        let buff_read = match stream.read(&mut buffer).await {
-            Ok(n) => n,
-            Err(e) => {
-                error!(target: "RemoteReceive", "failed to read message from stream, {:?}", e);
-                return;
-            }
-        };
-
-        trace!(target: "RemoteReceive", "received buffer with len {}", buff_read);
-
-        match codec.decode_msg::<M>(buffer.to_vec()) {
-            Some(msg) => receiver.on_recv(msg, &mut context).await,
-            None => trace!(target: "RemoteReceive", "error decoding msg"),
-        }
-    }
+    //    loop {
+    //
+    //        match codec.decode_msg::<M>(buffer.to_vec()) {
+    //            Some(msg) => receiver.on_recv(msg, &mut context).await,
+    //            None => trace!(target: "RemoteReceive", "error decoding msg"),
+    //        }
+    //    }
 
     trace!(target: "RemoteReceive", "closed");
 }
