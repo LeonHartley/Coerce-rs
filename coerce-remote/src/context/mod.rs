@@ -1,12 +1,15 @@
-use crate::actor::{RemoteHandler, RemoteRegistry};
+use crate::actor::{RemoteHandler, RemoteRegistry, RemoteRequest};
 use crate::codec::RemoteHandlerMessage;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorId, ActorRef};
 use serde::Serialize;
 
-use crate::actor::message::{GetHandler, HandlerName};
+use crate::actor::message::{ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest};
 use crate::context::builder::RemoteActorContextBuilder;
+use crate::net::message::SessionEvent;
+use crate::RemoteActorRef;
+use uuid::Uuid;
 
 pub mod builder;
 
@@ -62,7 +65,7 @@ impl RemoteActorContext {
 
     pub async fn create_message<A: Actor, M: Message>(
         &mut self,
-        actor_ref: &ActorRef<A>,
+        id:ActorId,
         message: M,
     ) -> Option<RemoteHandlerMessage<M>>
     where
@@ -72,11 +75,29 @@ impl RemoteActorContext {
     {
         match self.handler_name::<A, M>().await {
             Some(handler_type) => Some(RemoteHandlerMessage {
-                actor_id: actor_ref.id,
+                actor_id: id,
                 handler_type,
                 message,
             }),
             None => None,
+        }
+    }
+
+    pub async fn send_message(&mut self, node_id: Uuid, message: SessionEvent) {
+        self.registry_ref
+            .send(ClientWrite(node_id, message))
+            .await
+            .unwrap()
+    }
+
+    pub async fn push_request(&mut self, id: Uuid, res_tx: tokio::sync::oneshot::Sender<Vec<u8>>) {
+        self.handler_ref.send(PushRequest(id, RemoteRequest { res_tx })).await;
+    }
+
+    pub async fn pop_request(&mut self, id: Uuid) -> Option<tokio::sync::oneshot::Sender<Vec<u8>>> {
+        match self.handler_ref.send(PopRequest(id)).await {
+            Ok(s) => s.map(|s| s.res_tx),
+            Err(_) => None,
         }
     }
 

@@ -22,7 +22,7 @@ pub struct RemoteHandler {
 }
 
 pub struct RemoteRequest {
-    res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
+    pub res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
 }
 
 impl Actor for RemoteRegistry {}

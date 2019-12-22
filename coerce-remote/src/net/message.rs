@@ -20,7 +20,7 @@ pub enum SessionEvent {
     Pong(Uuid),
     Message {
         id: Uuid,
-        identifier: String,
+        handler_type: String,
         actor: ActorId,
         message: String,
     },

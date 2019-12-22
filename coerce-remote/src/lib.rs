@@ -1,6 +1,10 @@
 use crate::context::RemoteActorContext;
+use crate::net::message::SessionEvent;
 use coerce_rt::actor::message::{Handler, Message};
+use coerce_rt::actor::ActorRefError::ActorUnavailable;
 use coerce_rt::actor::{Actor, ActorId, ActorRefError};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::marker::PhantomData;
 use uuid::Uuid;
 
@@ -51,12 +55,58 @@ where
         }
     }
 
-    pub async fn send<Msg: Message>(&mut self, _msg: Msg) -> Result<Msg::Result, ActorRefError>
+    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefError>
     where
-        Msg: 'static + Send + Sync,
+        Msg: 'static + Serialize + Send + Sync,
         A: Handler<Msg>,
-        Msg::Result: Send + Sync,
+        Msg::Result: DeserializeOwned + Send + Sync,
     {
-        Err(ActorRefError::ActorUnavailable)
+        let id = Uuid::new_v4();
+        let (res_tx, res_rx) = tokio::sync::oneshot::channel();
+
+        let message = match serde_json::to_string(&msg) {
+            Ok(e) => e,
+            Err(_) => {
+                error!(target: "RemoteActorRef", "error encoding message");
+                return Err(ActorRefError::ActorUnavailable);
+            }
+        };
+
+        let event = self
+            .context
+            .create_message::<A, Msg>(self.id, msg)
+            .await
+            .map(|m| SessionEvent::Message {
+                id,
+                handler_type: m.handler_type,
+                actor: m.actor_id,
+                message,
+            });
+
+        self.context.push_request(id, res_tx).await;
+
+        match event {
+            Some(event) => {
+                self.context.send_message(self.node_id, event).await;
+                match res_rx.await {
+                    Ok(res) => match serde_json::from_slice::<Msg::Result>(res.as_slice()) {
+                        Ok(res) => Ok(res),
+                        Err(_) => {
+                            error!(target: "RemoteActorRef", "failed to decode result");
+                            Err(ActorRefError::ActorUnavailable)
+                        }
+                    },
+                    Err(_) => {
+                        error!(target: "RemoteActorRef", "failed to receive result");
+                        Err(ActorRefError::ActorUnavailable)
+                    }
+                }
+            }
+            None => {
+                error!(target: "RemoteActorRef", "no handler returned");
+                // TODO: add more errors
+                Err(ActorRefError::ActorUnavailable)
+            }
+        }
     }
 }

@@ -118,11 +118,11 @@ where
         match msg {
             SessionEvent::Message {
                 id: _,
-                identifier,
+                handler_type,
                 actor,
                 message,
             } => {
-                let _result = ctx.handle(identifier, actor, message.as_bytes()).await;
+                let _result = ctx.handle(handler_type, actor, message.as_bytes()).await;
             }
             SessionEvent::Ping(id) => {
                 trace!(target: "RemoteServer", "ping received, sending pong");

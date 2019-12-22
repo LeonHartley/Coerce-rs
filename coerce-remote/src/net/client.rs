@@ -19,9 +19,20 @@ pub struct ClientMessageReceiver;
 
 #[async_trait]
 impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
-    async fn on_recv(&mut self, _msg: ClientEvent, _ctx: &mut RemoteActorContext) {
-        info!("wtf");
-        unimplemented!()
+    async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorContext) {
+        match msg {
+            ClientEvent::Result(id, res) => match ctx.pop_request(id).await {
+                Some(res_tx) => {
+                    res_tx.send(res.as_bytes().to_vec());
+                }
+                None => {
+                    error!(target: "RemoteClient", "received unknown request result");
+                }
+            },
+            ClientEvent::Err(id, err) => {}
+            ClientEvent::Ping(id) => {}
+            ClientEvent::Pong(id) => {}
+        }
     }
 }
 
