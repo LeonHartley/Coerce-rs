@@ -10,7 +10,7 @@ where
     M: 'static + Send + Sync,
     M::Result: 'static + Sync + Send,
 {
-    marker: RemoteActorMessageMarker<A, M>,
+    pub marker: RemoteActorMessageMarker<A, M>,
 }
 
 impl<A: Actor, M: Message> HandlerName<A, M>

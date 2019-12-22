@@ -1,4 +1,4 @@
-use crate::actor::{GetHandler, HandlerName, RemoteHandler};
+use crate::actor::RemoteHandler;
 use crate::codec::RemoteHandlerMessage;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;

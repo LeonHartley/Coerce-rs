@@ -12,13 +12,13 @@ pub mod message;
 pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
 
 pub struct RemoteRegistry {
-    clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
+    pub clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
 }
 
 pub struct RemoteHandler {
-    handler_types: HashMap<TypeId, String>,
-    handlers: HashMap<String, BoxedHandler>,
-    requests: HashMap<Uuid, RemoteRequest>,
+    pub handler_types: HashMap<TypeId, String>,
+    pub handlers: HashMap<String, BoxedHandler>,
+    pub requests: HashMap<Uuid, RemoteRequest>,
 }
 
 pub struct RemoteRequest {
