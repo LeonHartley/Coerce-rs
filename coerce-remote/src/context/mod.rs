@@ -21,7 +21,7 @@ impl RemoteActorContext {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum RemoteActorError {
     ActorUnavailable,
 }

@@ -17,7 +17,7 @@ pub struct RemoteHandler {
 }
 
 pub struct RemoteRequest {
-    res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
+    pub res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
 }
 
 impl Actor for RemoteRegistry {}
@@ -45,8 +45,6 @@ impl RemoteHandler {
         .unwrap()
     }
 }
-
-pub struct GetHandler(pub String);
 
 pub struct HandlerName<A: Actor, M: Message>
 where
@@ -79,8 +77,22 @@ where
     type Result = Option<String>;
 }
 
+pub struct GetHandler(pub String);
+
 impl Message for GetHandler {
     type Result = Option<BoxedHandler>;
+}
+
+pub struct PushRequest(pub Uuid, pub RemoteRequest);
+
+impl Message for PushRequest {
+    type Result = ();
+}
+
+pub struct PopRequest(pub Uuid);
+
+impl Message for PopRequest {
+    type Result = Option<RemoteRequest>;
 }
 
 #[async_trait]
@@ -94,6 +106,24 @@ impl Handler<GetHandler> for RemoteHandler {
             Some(handler) => Some(handler.new_boxed()),
             None => None,
         }
+    }
+}
+
+#[async_trait]
+impl Handler<PushRequest> for RemoteHandler {
+    async fn handle(&mut self, message: PushRequest, ctx: &mut ActorHandlerContext) {
+        self.requests.insert(message.0, message.1);
+    }
+}
+
+#[async_trait]
+impl Handler<PopRequest> for RemoteHandler {
+    async fn handle(
+        &mut self,
+        message: PopRequest,
+        ctx: &mut ActorHandlerContext,
+    ) -> Option<RemoteRequest> {
+        self.requests.remove(&message.0)
     }
 }
 

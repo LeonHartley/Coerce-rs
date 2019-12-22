@@ -50,6 +50,7 @@ where
         self.type_id()
     }
 }
+
 pub struct RemoteActorMessageHandler<A: Actor, M: Message, C: MessageCodec>
 where
     C: Sized,

@@ -11,10 +11,11 @@ use std::task::{Context, Poll};
 
 use crate::net::codec::NetworkCodec;
 use futures::StreamExt;
-use tokio_util::codec::{FramedRead};
+use tokio_util::codec::FramedRead;
 
 pub mod client;
 pub mod codec;
+pub mod message;
 pub mod server;
 
 #[async_trait]

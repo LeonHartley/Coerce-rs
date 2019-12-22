@@ -2,11 +2,13 @@ use coerce_remote::codec::json::JsonCodec;
 use coerce_remote::context::builder::RemoteActorHandlerBuilder;
 use coerce_remote::context::RemoteActorContext;
 use coerce_remote::net::client::RemoteClient;
-use coerce_remote::net::server::{RemoteServer, SessionEvent};
+use coerce_remote::net::server::RemoteServer;
 use coerce_rt::actor::context::ActorContext;
 
+use coerce_remote::net::message::SessionEvent;
 use std::time::Duration;
 use util::*;
+use uuid::Uuid;
 
 pub mod util;
 
@@ -46,8 +48,8 @@ pub async fn test_remote_server_client_connection() {
             .await
             .unwrap();
 
-    let write_test = client.write(SessionEvent::Test).await;
-    tokio::time::delay_for(Duration::from_millis(1)).await;
+    let write_test = client.write(SessionEvent::Ping(Uuid::new_v4())).await;
+    tokio::time::delay_for(Duration::from_millis(5)).await;
 
     assert_eq!(write_test.is_ok(), true);
 }

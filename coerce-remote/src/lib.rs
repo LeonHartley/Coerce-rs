@@ -2,6 +2,7 @@ use crate::context::RemoteActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId, ActorRefError};
 use std::marker::PhantomData;
+use crate::net::client::RemoteClient;
 
 #[macro_use]
 extern crate futures;

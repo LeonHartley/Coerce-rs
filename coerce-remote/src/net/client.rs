@@ -3,6 +3,7 @@ use crate::context::RemoteActorContext;
 use crate::net::codec::NetworkCodec;
 use crate::net::{receive_loop, StreamReceiver};
 
+use crate::net::message::ClientEvent;
 use futures::SinkExt;
 use serde::Serialize;
 use tokio::io::AsyncReadExt;
@@ -14,14 +15,12 @@ pub struct RemoteClient<C: MessageCodec> {
     stop: Option<tokio::sync::oneshot::Sender<bool>>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum ClientEvent {}
-
 pub struct ClientMessageReceiver;
 
 #[async_trait]
 impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
     async fn on_recv(&mut self, _msg: ClientEvent, _ctx: &mut RemoteActorContext) {
+        info!("wtf");
         unimplemented!()
     }
 }
