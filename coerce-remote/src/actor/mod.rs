@@ -12,17 +12,17 @@ pub mod message;
 pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
 
 pub struct RemoteRegistry {
-    pub clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
+    clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
 }
 
 pub struct RemoteHandler {
-    pub handler_types: HashMap<TypeId, String>,
-    pub handlers: HashMap<String, BoxedHandler>,
-    pub requests: HashMap<Uuid, RemoteRequest>,
+    handler_types: HashMap<TypeId, String>,
+    handlers: HashMap<String, BoxedHandler>,
+    requests: HashMap<Uuid, RemoteRequest>,
 }
 
 pub struct RemoteRequest {
-    pub res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
+    res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
 }
 
 impl Actor for RemoteRegistry {}
