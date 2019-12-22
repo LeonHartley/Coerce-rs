@@ -16,6 +16,7 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
+#[derive(Clone)]
 pub struct TestTimer {}
 
 impl TimerTick for TestTimer {
@@ -38,7 +39,7 @@ pub async fn test_timer() {
         .await
         .unwrap();
 
-    let timer = Timer::start::<TestActor, TestTimer>(actor_ref.clone(), Duration::from_millis(11));
+    let timer = Timer::start(actor_ref.clone(), Duration::from_millis(11), TestTimer {});
 
     tokio::time::delay_for(Duration::from_millis(40)).await;
     let counter_40ms_later = actor_ref.exec(|a| a.counter).await;

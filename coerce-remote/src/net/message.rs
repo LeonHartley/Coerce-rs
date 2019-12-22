@@ -1,4 +1,3 @@
-use crate::context::RemoteActorError;
 use coerce_rt::actor::ActorId;
 use uuid::Uuid;
 

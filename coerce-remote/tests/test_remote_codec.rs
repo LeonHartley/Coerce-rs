@@ -1,9 +1,7 @@
 use coerce_remote::context::RemoteActorContext;
-use coerce_remote::net::message::{ClientError, ClientEvent, SessionEvent};
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::scheduler::ActorType::Anonymous;
 use util::*;
-use uuid::Uuid;
 
 pub mod util;
 

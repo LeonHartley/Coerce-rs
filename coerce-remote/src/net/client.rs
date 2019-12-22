@@ -3,7 +3,7 @@ use crate::context::RemoteActorContext;
 use crate::net::codec::NetworkCodec;
 use crate::net::{receive_loop, StreamReceiver};
 
-use crate::net::message::ClientEvent;
+use crate::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
 use serde::Serialize;
 use tokio::io::AsyncReadExt;
@@ -82,5 +82,20 @@ impl<C: MessageCodec> RemoteClient<C> {
         } else {
             false
         }
+    }
+}
+
+#[async_trait]
+pub trait RemoteClientStream {
+    async fn send(&mut self, message: SessionEvent) -> Result<(), RemoteClientErr>;
+}
+
+#[async_trait]
+impl<C: MessageCodec> RemoteClientStream for RemoteClient<C>
+where
+    C: 'static + Sync + Send,
+{
+    async fn send(&mut self, message: SessionEvent) -> Result<(), RemoteClientErr> {
+        self.write(message).await
     }
 }

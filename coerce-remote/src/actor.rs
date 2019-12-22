@@ -1,4 +1,5 @@
 use crate::handler::{RemoteActorMessageMarker, RemoteMessageHandler};
+use crate::net::client::{RemoteClient, RemoteClientStream};
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRef};
@@ -8,7 +9,9 @@ use uuid::Uuid;
 
 pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
 
-pub struct RemoteRegistry {}
+pub struct RemoteRegistry {
+    clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
+}
 
 pub struct RemoteHandler {
     handler_types: HashMap<TypeId, String>,
@@ -26,7 +29,11 @@ impl Actor for RemoteHandler {}
 
 impl RemoteRegistry {
     pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
-        ctx.new_anon_actor(RemoteRegistry {}).await.unwrap()
+        ctx.new_anon_actor(RemoteRegistry {
+            clients: HashMap::new(),
+        })
+        .await
+        .expect("RemoteRegistry")
     }
 }
 
@@ -42,7 +49,7 @@ impl RemoteHandler {
             requests: HashMap::new(),
         })
         .await
-        .unwrap()
+        .expect("RemoteHandler")
     }
 }
 
@@ -111,7 +118,7 @@ impl Handler<GetHandler> for RemoteHandler {
 
 #[async_trait]
 impl Handler<PushRequest> for RemoteHandler {
-    async fn handle(&mut self, message: PushRequest, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: PushRequest, _ctx: &mut ActorHandlerContext) {
         self.requests.insert(message.0, message.1);
     }
 }
@@ -121,7 +128,7 @@ impl Handler<PopRequest> for RemoteHandler {
     async fn handle(
         &mut self,
         message: PopRequest,
-        ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorHandlerContext,
     ) -> Option<RemoteRequest> {
         self.requests.remove(&message.0)
     }

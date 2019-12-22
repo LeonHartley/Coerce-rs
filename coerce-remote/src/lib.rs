@@ -2,7 +2,7 @@ use crate::context::RemoteActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorId, ActorRefError};
 use std::marker::PhantomData;
-use crate::net::client::RemoteClient;
+use uuid::Uuid;
 
 #[macro_use]
 extern crate futures;
@@ -34,6 +34,7 @@ where
 {
     id: ActorId,
     context: RemoteActorContext,
+    node_id: Uuid,
     _a: PhantomData<A>,
 }
 
@@ -41,10 +42,11 @@ impl<A: Actor> RemoteActorRef<A>
 where
     A: 'static + Sync + Send,
 {
-    pub fn new(id: ActorId, context: RemoteActorContext) -> RemoteActorRef<A> {
+    pub fn new(id: ActorId, node_id: Uuid, context: RemoteActorContext) -> RemoteActorRef<A> {
         RemoteActorRef {
             id,
             context,
+            node_id,
             _a: PhantomData,
         }
     }

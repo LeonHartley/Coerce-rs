@@ -2,13 +2,11 @@ use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::{receive_loop, StreamReceiver};
 use futures::SinkExt;
-use tokio_util::codec::{Framed, FramedRead, FramedWrite};
+use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::net::client::RemoteClientErr;
 use crate::net::codec::NetworkCodec;
 use crate::net::message::{ClientEvent, SessionEvent};
 use serde::Serialize;
-use uuid::Uuid;
 
 pub struct RemoteServer<C: MessageCodec> {
     codec: C,
@@ -119,18 +117,18 @@ where
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
         match msg {
             SessionEvent::Message {
-                id,
+                id: _,
                 identifier,
                 actor,
                 message,
             } => {
-                let result = ctx.handle(identifier, actor, message.as_bytes()).await;
+                let _result = ctx.handle(identifier, actor, message.as_bytes()).await;
             }
             SessionEvent::Ping(id) => {
                 trace!(target: "RemoteServer", "ping received, sending pong");
                 self.send(ClientEvent::Pong(id)).await;
             }
-            SessionEvent::Pong(id) => {}
+            SessionEvent::Pong(_id) => {}
         }
     }
 }
