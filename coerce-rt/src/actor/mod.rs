@@ -88,6 +88,16 @@ pub enum ActorRefError {
     ActorUnavailable,
 }
 
+impl std::fmt::Display for ActorRefError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ActorRefError::ActorUnavailable => write!(f, "actor unavailable"),
+        }
+    }
+}
+
+impl std::error::Error for ActorRefError {}
+
 impl<A: Actor> ActorRef<A>
 where
     A: Sync + Send + 'static,
