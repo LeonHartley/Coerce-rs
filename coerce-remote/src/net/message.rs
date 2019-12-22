@@ -1,9 +1,10 @@
 use coerce_rt::actor::ActorId;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientError {
     ActorUnavailable,
+    HandleError,
 }
 
 #[derive(Serialize, Deserialize)]

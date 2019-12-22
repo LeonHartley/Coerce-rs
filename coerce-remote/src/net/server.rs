@@ -5,7 +5,7 @@ use futures::SinkExt;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::net::codec::NetworkCodec;
-use crate::net::message::{ClientEvent, SessionEvent};
+use crate::net::message::{ClientError, ClientEvent, SessionEvent};
 use serde::Serialize;
 
 pub struct RemoteServer<C: MessageCodec> {
@@ -117,12 +117,25 @@ where
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
         match msg {
             SessionEvent::Message {
-                id: _,
+                id,
                 handler_type,
                 actor,
                 message,
             } => {
-                let _result = ctx.handle(handler_type, actor, message.as_bytes()).await;
+                let result = ctx.handle(handler_type, actor, message.as_bytes()).await;
+                match result {
+                    Ok(res) => {
+                        self.send(ClientEvent::Result(
+                            id,
+                            String::from_utf8(res).expect("string"),
+                        ))
+                        .await;
+                    }
+                    Err(_) => {
+                        self.send(ClientEvent::Err(id, ClientError::HandleError))
+                            .await;
+                    }
+                }
             }
             SessionEvent::Ping(id) => {
                 trace!(target: "RemoteServer", "ping received, sending pong");
