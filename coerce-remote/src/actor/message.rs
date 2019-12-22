@@ -1,5 +1,7 @@
 use crate::actor::{BoxedHandler, RemoteRequest};
 use crate::handler::RemoteActorMessageMarker;
+use crate::net::client::RemoteClientStream;
+use crate::net::message::SessionEvent;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::Actor;
 use uuid::Uuid;
@@ -51,4 +53,19 @@ pub struct PopRequest(pub Uuid);
 
 impl Message for PopRequest {
     type Result = Option<RemoteRequest>;
+}
+
+pub struct RegisterClient<T: RemoteClientStream>(pub Uuid, pub T);
+
+impl<T: RemoteClientStream> Message for RegisterClient<T>
+where
+    T: 'static + Sync + Send,
+{
+    type Result = ();
+}
+
+pub struct ClientWrite(pub Uuid, pub SessionEvent);
+
+impl Message for ClientWrite {
+    type Result = ();
 }

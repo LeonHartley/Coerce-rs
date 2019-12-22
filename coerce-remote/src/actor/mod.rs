@@ -9,11 +9,11 @@ use uuid::Uuid;
 pub mod handler;
 pub mod message;
 
-pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
-
 pub struct RemoteRegistry {
     clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
 }
+
+pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
 
 pub struct RemoteHandler {
     handler_types: HashMap<TypeId, String>,

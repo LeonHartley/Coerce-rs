@@ -1,4 +1,4 @@
-use crate::actor::{BoxedHandler, RemoteHandler};
+use crate::actor::{BoxedHandler, RemoteHandler, RemoteRegistry};
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
@@ -57,7 +57,12 @@ impl RemoteActorContextBuilder {
         }
 
         let handler_ref = RemoteHandler::new(&mut inner, handlers, handler_types).await;
-        RemoteActorContext { inner, handler_ref }
+        let registry_ref = RemoteRegistry::new(&mut inner).await;
+        RemoteActorContext {
+            inner,
+            handler_ref,
+            registry_ref,
+        }
     }
 }
 

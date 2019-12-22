@@ -1,4 +1,4 @@
-use crate::actor::RemoteHandler;
+use crate::actor::{RemoteHandler, RemoteRegistry};
 use crate::codec::RemoteHandlerMessage;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
@@ -14,6 +14,7 @@ pub mod builder;
 pub struct RemoteActorContext {
     inner: ActorContext,
     handler_ref: ActorRef<RemoteHandler>,
+    registry_ref: ActorRef<RemoteRegistry>,
 }
 
 impl RemoteActorContext {
