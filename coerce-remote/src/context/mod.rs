@@ -5,6 +5,7 @@ use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorId, ActorRef};
 use serde::Serialize;
 
+use crate::actor::message::{GetHandler, HandlerName};
 use crate::context::builder::RemoteActorContextBuilder;
 
 pub mod builder;
