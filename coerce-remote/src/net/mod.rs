@@ -53,7 +53,10 @@ where
 
         Poll::Ready(match result {
             Some(Ok(message)) => Some(Some(message)),
-            Some(Err(_)) => Some(None),
+            Some(Err(e)) => {
+                error!(target: "RemoteStream", "{:?}", e);
+                Some(None)
+            }
             None => None,
         })
     }
@@ -80,7 +83,10 @@ pub async fn receive_loop<
                 Some(msg) => receiver.on_recv(msg, &mut context).await,
                 None => warn!(target: "RemoteReceive", "error decoding msg"),
             },
-            None => error!(target: "RemoteReceive", "error receiving msg"),
+            None => {
+                error!(target: "RemoteReceive", "error receiving msg");
+                break;
+            }
         }
     }
 

@@ -47,16 +47,19 @@ pub async fn test_remote_server_client_connection() {
         Err(_e) => panic!("failed to start server"),
     }
 
-    let mut client = RemoteClient::connect(
-        "localhost:30101".to_string(),
-        remote_2.clone(),
-        JsonCodec::new(),
-    )
-    .await
-    .unwrap();
-
     let node_id = Uuid::new_v4();
-    remote_2.register_client(node_id, client).await;
+    remote_2
+        .register_client(
+            node_id,
+            RemoteClient::connect(
+                "localhost:30101".to_string(),
+                remote_2.clone(),
+                JsonCodec::new(),
+            )
+            .await
+            .unwrap(),
+        )
+        .await;
 
     let mut remote_actor = RemoteActorRef::<TestActor>::new(actor.id, node_id, remote_2);
 
