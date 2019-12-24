@@ -6,9 +6,7 @@ use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 pub trait TimerTick: Message {
-    fn new() -> Self
-    where
-        Self: 'static + Sync + Send;
+
 }
 
 impl<T> Message for T

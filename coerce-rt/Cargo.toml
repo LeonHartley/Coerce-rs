@@ -2,9 +2,10 @@
 name = "coerce-rt"
 description = "Async actor runtime"
 license = "Apache-2.0"
-version = "0.2.0-pre"
+version = "0.2.0"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2018"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
