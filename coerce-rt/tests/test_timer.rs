@@ -35,7 +35,7 @@ pub async fn test_timer() {
         .await
         .unwrap();
 
-    let timer = Timer::start(actor_ref.clone(), Duration::from_secs(11), TestTimer {});
+    let timer = Timer::start(actor_ref.clone(), Duration::from_millis(11), TestTimer {});
 
     tokio::time::delay_for(Duration::from_millis(40)).await;
     let counter_40ms_later = actor_ref.exec(|a| a.counter).await;
