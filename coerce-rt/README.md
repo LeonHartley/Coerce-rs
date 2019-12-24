@@ -76,7 +76,7 @@ pub async fn run() {
     let hello_world = "hello world!".to_string();
 
     // print "hello world!" every 5 seconds
-    let timer = Timer::start(actor_ref.clone(), Duration::from_secs(5), TimerTick(hello_world));
+    let timer = Timer::start(actor.clone(), Duration::from_secs(5), TimerTick(hello_world));
     
     // timer is stopped when handle is out of scope or can be stopped manually by calling `.stop()`
     delay_for(Duration::from_secs(20)).await;
