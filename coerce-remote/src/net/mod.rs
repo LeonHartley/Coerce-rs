@@ -21,6 +21,8 @@ pub mod server;
 #[async_trait]
 pub trait StreamReceiver<Msg: DeserializeOwned> {
     async fn on_recv(&mut self, msg: Msg, ctx: &mut RemoteActorContext);
+
+    async fn on_close(&mut self, ctx: &mut RemoteActorContext);
 }
 
 pub struct StreamReceiverFuture<S: tokio::io::AsyncRead> {
@@ -75,6 +77,7 @@ pub async fn receive_loop<
     codec: C,
 ) where
     M: Sync + Send,
+    R: Send,
 {
     let mut fut = StreamReceiverFuture::new(read, stop_rx);
     while let Some(res) = fut.next().await {
@@ -91,4 +94,5 @@ pub async fn receive_loop<
     }
 
     trace!(target: "RemoteReceive", "closed");
+    receiver.on_close(&mut context).await;
 }

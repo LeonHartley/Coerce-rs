@@ -34,6 +34,8 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
             ClientEvent::Pong(id) => {}
         }
     }
+
+    async fn on_close(&mut self, ctx: &mut RemoteActorContext) {}
 }
 
 #[derive(Debug)]

@@ -4,7 +4,6 @@ use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorId, ActorRef};
 use serde::Serialize;
-
 use crate::actor::message::{
     ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest, RegisterClient,
 };

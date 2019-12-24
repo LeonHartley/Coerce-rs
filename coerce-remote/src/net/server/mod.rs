@@ -7,7 +7,9 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use crate::net::client::{RemoteClient, RemoteClientErr};
 use crate::net::codec::NetworkCodec;
 use crate::net::message::{ClientError, ClientEvent, SessionEvent};
-use crate::net::server::session::{NewSession, RemoteSession, RemoteSessionStore, SessionWrite};
+use crate::net::server::session::{
+    NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
+};
 use coerce_rt::actor::ActorRef;
 use serde::Serialize;
 use uuid::Uuid;
@@ -156,6 +158,10 @@ where
             SessionEvent::Pong(_id) => {}
         }
     }
+
+    async fn on_close(&mut self, ctx: &mut RemoteActorContext) {
+        self.sessions.send(SessionClosed(self.session_id)).await;
+    }
 }
 
 async fn session_handle_message<C: MessageCodec>(
@@ -180,7 +186,7 @@ async fn session_handle_message<C: MessageCodec>(
                 } else {
                     error!(target: "RemoteSession", "failed to send result");
                 }
-            },
+            }
             Err(_) => {
                 error!(target: "RemoteSession", "failed to handle message, todo: send err");
             }
