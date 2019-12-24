@@ -5,9 +5,7 @@ use log::trace;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-pub trait TimerTick: Message {
-
-}
+pub trait TimerTick: Message {}
 
 impl<T> Message for T
 where

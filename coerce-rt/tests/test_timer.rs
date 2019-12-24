@@ -19,11 +19,7 @@ extern crate async_trait;
 #[derive(Clone)]
 pub struct TestTimer {}
 
-impl TimerTick for TestTimer {
-    fn new() -> Self {
-        TestTimer {}
-    }
-}
+impl TimerTick for TestTimer {}
 
 #[async_trait]
 impl Handler<TestTimer> for TestActor {
