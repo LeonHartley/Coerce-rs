@@ -2,7 +2,7 @@
 name = "coerce-rt"
 description = "Async actor runtime"
 license = "Apache-2.0"
-version = "0.2.0"
+version = "0.2.0-pre"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2018"
 readme = "README.md"
