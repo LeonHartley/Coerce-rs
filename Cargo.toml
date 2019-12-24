@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "coerce-rt"
+    "coerce-rt",
+    "coerce-remote"
 ]

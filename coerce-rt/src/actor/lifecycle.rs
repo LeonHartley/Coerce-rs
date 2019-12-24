@@ -45,8 +45,8 @@ pub async fn actor_loop<A: Actor>(
 ) where
     A: 'static + Send + Sync,
 {
-    trace!(target: "ActorLoop", "[{}] starting", &id);
-    let mut ctx = ActorHandlerContext::new(Starting);
+    let mut ctx = ActorHandlerContext::new(id, Starting);
+    trace!(target: "ActorLoop", "[{}] starting", ctx.id());
 
     actor.started(&mut ctx).await;
 
@@ -57,14 +57,14 @@ pub async fn actor_loop<A: Actor>(
 
     ctx.set_status(Started);
 
+    trace!(target: "ActorLoop", "[{}] ready", ctx.id());
+
     if let Some(on_start) = on_start {
         let _ = on_start.send(true);
     }
 
-    trace!(target: "ActorLoop", "[{}] ready", &id);
-
     while let Some(mut msg) = rx.recv().await {
-        trace!(target: "ActorLoop", "[{}] recv", &id);
+        trace!(target: "ActorLoop", "[{}] recv", ctx.id());
 
         msg.handle(&mut actor, &mut ctx).await;
 
@@ -74,7 +74,7 @@ pub async fn actor_loop<A: Actor>(
         }
     }
 
-    trace!(target: "ActorLoop", "[{}] stopping", &id);
+    trace!(target: "ActorLoop", "[{}] stopping", ctx.id());
 
     ctx.set_status(Stopping);
 

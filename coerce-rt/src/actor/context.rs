@@ -1,4 +1,4 @@
-use crate::actor::scheduler::{ActorScheduler, GetActor, RegisterActor};
+use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
 
 lazy_static! {
@@ -21,12 +21,36 @@ impl ActorContext {
         CURRENT_CONTEXT.clone()
     }
 
-    pub async fn new_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
+    pub async fn new_tracked_actor<A: Actor>(
+        &mut self,
+        actor: A,
+    ) -> Result<ActorRef<A>, ActorRefError>
+    where
+        A: 'static + Sync + Send,
+    {
+        self.new_actor(actor, ActorType::Tracked).await
+    }
+
+    pub async fn new_anon_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
+    where
+        A: 'static + Sync + Send,
+    {
+        self.new_actor(actor, ActorType::Anonymous).await
+    }
+
+    pub async fn new_actor<A: Actor>(
+        &mut self,
+        actor: A,
+        actor_type: ActorType,
+    ) -> Result<ActorRef<A>, ActorRefError>
     where
         A: 'static + Sync + Send,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let actor_ref = self.scheduler.send(RegisterActor(actor, tx)).await;
+        let actor_ref = self
+            .scheduler
+            .send(RegisterActor(actor, actor_type, tx))
+            .await;
 
         match rx.await {
             Ok(true) => actor_ref,
@@ -34,7 +58,7 @@ impl ActorContext {
         }
     }
 
-    pub async fn get_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
+    pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
     where
         A: 'static + Sync + Send,
     {
@@ -54,12 +78,17 @@ pub enum ActorStatus {
 }
 
 pub struct ActorHandlerContext {
+    id: ActorId,
     status: ActorStatus,
 }
 
 impl ActorHandlerContext {
-    pub fn new(status: ActorStatus) -> ActorHandlerContext {
-        ActorHandlerContext { status }
+    pub fn new(id: ActorId, status: ActorStatus) -> ActorHandlerContext {
+        ActorHandlerContext { id, status }
+    }
+
+    pub fn id(&self) -> &ActorId {
+        &self.id
     }
 
     pub fn set_status(&mut self, state: ActorStatus) {

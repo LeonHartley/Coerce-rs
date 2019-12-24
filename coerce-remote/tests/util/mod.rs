@@ -1,12 +1,13 @@
 use chrono::Local;
 use coerce_rt::actor::context::ActorHandlerContext;
 use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::{new_actor, Actor, ActorRef};
+use coerce_rt::actor::Actor;
+
 use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum TestActorStatus {
     Inactive,
     Active,
@@ -25,7 +26,7 @@ impl Message for GetStatusRequest {
     type Result = GetStatusResponse;
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SetStatusRequest {
     pub status: TestActorStatus,
 }

@@ -26,7 +26,28 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {}
 
-pub struct RegisterActor<A: Actor>(pub A, pub tokio::sync::oneshot::Sender<bool>)
+pub enum ActorType {
+    Tracked,
+    Anonymous,
+}
+
+impl ActorType {
+    pub fn is_tracked(&self) -> bool {
+        match &self {
+            &ActorType::Tracked => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_anon(&self) -> bool {
+        match &self {
+            &ActorType::Anonymous => true,
+            _ => false,
+        }
+    }
+}
+
+pub struct RegisterActor<A: Actor>(pub A, pub ActorType, pub tokio::sync::oneshot::Sender<bool>)
 where
     A: 'static + Sync + Send;
 
@@ -35,6 +56,14 @@ where
     A: 'static + Sync + Send,
 {
     type Result = ActorRef<A>;
+}
+
+pub struct DeregisterActor {
+    id: ActorId,
+}
+
+impl Message for DeregisterActor {
+    type Result = ();
 }
 
 pub struct GetActor<A: Actor>
@@ -74,14 +103,21 @@ where
         message: RegisterActor<A>,
         _ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
-        let actor = start_actor(message.0, Some(message.1));
+        let actor = start_actor(message.0, Some(message.2));
 
-        let _ = self
-            .actors
-            .insert(actor.id, BoxedActorRef::from(actor.clone()));
+        if message.1.is_tracked() {
+            let _ = self
+                .actors
+                .insert(actor.id, BoxedActorRef::from(actor.clone()));
+        }
 
         actor
     }
+}
+
+#[async_trait]
+impl Handler<DeregisterActor> for ActorScheduler {
+    async fn handle(&mut self, _message: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {}
 }
 
 #[async_trait]

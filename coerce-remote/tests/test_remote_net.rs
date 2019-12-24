@@ -1,0 +1,105 @@
+use coerce_remote::codec::json::JsonCodec;
+use coerce_remote::context::builder::RemoteActorHandlerBuilder;
+use coerce_remote::context::RemoteActorContext;
+use coerce_remote::net::client::RemoteClient;
+use coerce_remote::net::server::RemoteServer;
+use coerce_rt::actor::context::ActorContext;
+
+use coerce_remote::net::message::SessionEvent;
+use coerce_remote::RemoteActorRef;
+use std::time::Duration;
+use util::*;
+use uuid::Uuid;
+
+pub mod util;
+
+#[macro_use]
+extern crate serde;
+extern crate serde_json;
+
+extern crate chrono;
+
+#[macro_use]
+extern crate async_trait;
+
+#[tokio::test]
+pub async fn test_remote_server_client_connection() {
+    util::create_trace_logger();
+
+    let mut context = ActorContext::new();
+    let actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
+
+    let remote = RemoteActorContext::builder()
+        .with_actor_context(context)
+        .with_handlers(build_handlers)
+        .build()
+        .await;
+
+    let mut remote_2 = RemoteActorContext::builder()
+        .with_actor_context(ActorContext::new())
+        .with_handlers(build_handlers)
+        .build()
+        .await;
+
+    let mut server = RemoteServer::new(JsonCodec::new());
+    match server.start("localhost:30101".to_string(), remote).await {
+        Ok(_) => log::trace!("started!"),
+        Err(_e) => panic!("failed to start server"),
+    }
+
+    let node_id = Uuid::new_v4();
+    remote_2
+        .register_client(
+            node_id,
+            RemoteClient::connect(
+                "localhost:30101".to_string(),
+                remote_2.clone(),
+                JsonCodec::new(),
+            )
+            .await
+            .unwrap(),
+        )
+        .await;
+
+    let mut remote_actor = RemoteActorRef::<TestActor>::new(actor.id, node_id, remote_2);
+
+    for i in 1..=10 as i32 {
+        let initial_status = remote_actor.send(GetStatusRequest()).await;
+    }
+
+    let initial_status = remote_actor.send(GetStatusRequest()).await;
+    let _ = remote_actor
+        .send(SetStatusRequest {
+            status: TestActorStatus::Active,
+        })
+        .await;
+
+    let current_status = remote_actor.send(GetStatusRequest()).await;
+
+    let _ = remote_actor
+        .send(SetStatusRequest {
+            status: TestActorStatus::Inactive,
+        })
+        .await;
+
+    let inactive_status = remote_actor.send(GetStatusRequest()).await;
+
+    assert_eq!(initial_status, Ok(GetStatusResponse::None));
+
+    assert_eq!(
+        inactive_status,
+        Ok(GetStatusResponse::Ok(TestActorStatus::Inactive))
+    );
+
+    assert_eq!(
+        current_status,
+        Ok(GetStatusResponse::Ok(TestActorStatus::Active))
+    );
+}
+
+fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
+    handlers
+        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
+        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
+        .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
+}
