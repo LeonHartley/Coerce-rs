@@ -47,6 +47,9 @@ pub async fn run() {
 }
 ```
 
-*Distributed Actors currently in development*
+### Remote Actors
+Remote actors are currently in development, though you can create a `RemoteActorRef` right now manually by (*WIP*) creating a client and a server with a seperate `RemoteActorContext`. See the `coerce-remote` tests for server/client examples. This is heavily WIP and will be subject to change.
+
+*Distributed actors / automated clustering of workers coming soon, with a more streamline and app-focused API*
 
 [channel]: https://docs.rs/tokio/0.2.4/tokio/sync/mpsc/fn.channel.html
