@@ -113,3 +113,13 @@ where
         }
     }
 }
+
+impl<A: Actor> Clone for RemoteActorRef<A>
+    where
+        A: 'static + Sync + Send,
+{
+    fn clone(&self) -> Self {
+        RemoteActorRef::new(self.id, self.node_id, self.context.clone())
+    }
+}
+
