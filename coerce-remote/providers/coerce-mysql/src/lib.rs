@@ -14,6 +14,8 @@ pub struct MySqlWorkerStore {
 impl MySqlWorkerStore {
     pub async fn new(mysql_url: String, create_tables: bool) -> Result<MySqlWorkerStore, MySqlWorkerStoreErr> {
         let pool = create_pool(mysql_url, create_tables).await?;
+
+        Ok(MySqlWorkerStore { pool })
     }
 }
 
@@ -35,6 +37,8 @@ impl WorkerStore for MySqlWorkerStore {
 async fn create_pool(mysql_url: String, create_tables: bool) -> Result<Pool, MySqlWorkerStoreErr> {
     let pool = Pool::new(mysql_url);
     let conn = pool.get_conn().await?;
+
+    Ok(pool)
 }
 
 pub enum MySqlWorkerStoreErr {
