@@ -27,11 +27,12 @@ extern crate chrono;
 extern crate tokio;
 extern crate uuid;
 
+pub mod codec;
 pub mod actor;
 pub mod cluster;
-pub mod codec;
 pub mod context;
 pub mod handler;
+pub mod storage;
 pub mod net;
 
 pub struct RemoteActorRef<A: Actor>

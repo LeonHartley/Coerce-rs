@@ -8,7 +8,9 @@ use std::time::Instant;
 use uuid::Uuid;
 
 #[derive(Debug)]
-pub enum WorkerStoreErr {}
+pub enum WorkerStoreErr {
+    Database(String),
+}
 
 #[async_trait]
 pub trait WorkerStore {
