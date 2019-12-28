@@ -65,7 +65,7 @@ impl Handler<UpdateWorker> for ClusterWorkers {
         message: UpdateWorker,
         ctx: &mut ActorHandlerContext,
     ) -> Result<(), WorkerStoreErr> {
-        self.store.update(&message.0).await
+        self.store.put(&message.0).await
     }
 }
 

@@ -14,4 +14,3 @@ extern crate tokio;
 extern crate uuid;
 
 pub mod actor;
-pub mod worker;

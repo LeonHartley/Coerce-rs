@@ -28,8 +28,12 @@ impl WorkerStore for TestWorkerStore {
         ])
     }
 
-    async fn update(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
-        Ok(())
+    async fn put(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
+        unimplemented!()
+    }
+
+    async fn remove(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
+        unimplemented!()
     }
 }
 
