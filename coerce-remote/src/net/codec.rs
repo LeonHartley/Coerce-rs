@@ -26,15 +26,18 @@ impl Decoder for NetworkCodec {
     type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Vec<u8>>, Error> {
-        if src.is_empty() || src.remaining() < 4 {
+        if src.is_empty() || src.remaining() <= 4 {
             return Ok(None);
         }
 
         trace!(target: "NetworkCodec", "decoding message");
 
         let len = LittleEndian::read_i32(src.as_ref()) as usize;
-        src.advance(4);
+        if src.remaining() < len {
+            return Ok(None);
+        }
 
+        src.advance(4);
         let buf = src.split_to(len);
         Ok(Some(buf.to_vec()))
     }

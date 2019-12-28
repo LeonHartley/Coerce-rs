@@ -3,6 +3,7 @@ use crate::context::RemoteActorContext;
 use crate::net::codec::NetworkCodec;
 use crate::net::{receive_loop, StreamReceiver};
 
+use crate::actor::RemoteResponse;
 use crate::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
 use serde::Serialize;
@@ -23,15 +24,23 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
         match msg {
             ClientEvent::Result(id, res) => match ctx.pop_request(id).await {
                 Some(res_tx) => {
-                    res_tx.send(res.as_bytes().to_vec());
+                    res_tx.send(RemoteResponse::Ok(res.as_bytes().to_vec()));
                 }
                 None => {
-                    error!(target: "RemoteClient", "received unknown request result");
+                    warn!(target: "RemoteClient", "received unknown request result");
                 }
             },
             ClientEvent::Err(id, err) => {}
             ClientEvent::Ping(id) => {}
-            ClientEvent::Pong(id) => {}
+            ClientEvent::Pong(id) => match ctx.pop_request(id).await {
+                Some(res_tx) => {
+                    res_tx.send(RemoteResponse::PingOk);
+                }
+                None => {
+                    //                                          :P
+                    warn!(target: "RemoteClient", "received unsolicited pong");
+                }
+            },
         }
     }
 

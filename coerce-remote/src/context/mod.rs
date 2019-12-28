@@ -1,7 +1,7 @@
 use crate::actor::message::{
     ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest, RegisterClient,
 };
-use crate::actor::{RemoteHandler, RemoteRegistry, RemoteRequest};
+use crate::actor::{RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse};
 use crate::codec::RemoteHandlerMessage;
 use crate::context::builder::RemoteActorContextBuilder;
 use crate::net::client::RemoteClientStream;
@@ -102,13 +102,20 @@ impl RemoteActorContext {
             .unwrap()
     }
 
-    pub async fn push_request(&mut self, id: Uuid, res_tx: tokio::sync::oneshot::Sender<Vec<u8>>) {
+    pub async fn push_request(
+        &mut self,
+        id: Uuid,
+        res_tx: tokio::sync::oneshot::Sender<RemoteResponse>,
+    ) {
         self.handler_ref
             .send(PushRequest(id, RemoteRequest { res_tx }))
             .await;
     }
 
-    pub async fn pop_request(&mut self, id: Uuid) -> Option<tokio::sync::oneshot::Sender<Vec<u8>>> {
+    pub async fn pop_request(
+        &mut self,
+        id: Uuid,
+    ) -> Option<tokio::sync::oneshot::Sender<RemoteResponse>> {
         match self.handler_ref.send(PopRequest(id)).await {
             Ok(s) => s.map(|s| s.res_tx),
             Err(_) => None,

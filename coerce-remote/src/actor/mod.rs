@@ -22,7 +22,37 @@ pub struct RemoteHandler {
 }
 
 pub struct RemoteRequest {
-    pub res_tx: tokio::sync::oneshot::Sender<Vec<u8>>,
+    pub res_tx: tokio::sync::oneshot::Sender<RemoteResponse>,
+}
+
+pub enum RemoteResponse {
+    Ok(Vec<u8>),
+    Err(Vec<u8>),
+    PingOk,
+}
+
+impl RemoteResponse {
+    pub fn is_ok(&self) -> bool {
+        match self {
+            &RemoteResponse::Ok(..) | &RemoteResponse::PingOk => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_err(&self) -> bool {
+        match self {
+            &RemoteResponse::Err(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn into_result(self) -> Result<Vec<u8>, Vec<u8>> {
+        match self {
+            RemoteResponse::Ok(buff) => Ok(buff),
+            RemoteResponse::Err(buff) => Err(buff),
+            _ => panic!("response is not a buffer"),
+        }
+    }
 }
 
 impl Actor for RemoteRegistry {}

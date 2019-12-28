@@ -1,3 +1,4 @@
+use crate::actor::RemoteResponse;
 use crate::context::RemoteActorContext;
 use crate::net::message::SessionEvent;
 use coerce_rt::actor::message::{Handler, Message};
@@ -68,7 +69,7 @@ where
             Ok(e) => e,
             Err(_) => {
                 error!(target: "RemoteActorRef", "error encoding message");
-                return Err(ActorRefError::ActorUnavailable);
+                return Err(ActorUnavailable);
             }
         };
 
@@ -89,23 +90,25 @@ where
             Some(event) => {
                 self.context.send_message(self.node_id, event).await;
                 match res_rx.await {
-                    Ok(res) => match serde_json::from_slice::<Msg::Result>(res.as_slice()) {
-                        Ok(res) => Ok(res),
-                        Err(_) => {
-                            error!(target: "RemoteActorRef", "failed to decode result");
-                            Err(ActorRefError::ActorUnavailable)
+                    Ok(RemoteResponse::Ok(res)) => {
+                        match serde_json::from_slice::<Msg::Result>(res.as_slice()) {
+                            Ok(res) => Ok(res),
+                            Err(_) => {
+                                error!(target: "RemoteActorRef", "failed to decode result");
+                                Err(ActorUnavailable)
+                            }
                         }
-                    },
-                    Err(_) => {
+                    }
+                    _ => {
                         error!(target: "RemoteActorRef", "failed to receive result");
-                        Err(ActorRefError::ActorUnavailable)
+                        Err(ActorUnavailable)
                     }
                 }
             }
             None => {
                 error!(target: "RemoteActorRef", "no handler returned");
                 // TODO: add more errors
-                Err(ActorRefError::ActorUnavailable)
+                Err(ActorUnavailable)
             }
         }
     }
