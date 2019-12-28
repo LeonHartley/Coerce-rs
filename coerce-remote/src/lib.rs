@@ -23,15 +23,16 @@ extern crate serde_json;
 extern crate log;
 
 extern crate bytes;
+extern crate chrono;
 extern crate tokio;
 extern crate uuid;
 
 pub mod actor;
+pub mod cluster;
 pub mod codec;
 pub mod context;
 pub mod handler;
 pub mod net;
-pub mod node;
 
 pub struct RemoteActorRef<A: Actor>
 where
@@ -115,11 +116,10 @@ where
 }
 
 impl<A: Actor> Clone for RemoteActorRef<A>
-    where
-        A: 'static + Sync + Send,
+where
+    A: 'static + Sync + Send,
 {
     fn clone(&self) -> Self {
         RemoteActorRef::new(self.id, self.node_id, self.context.clone())
     }
 }
-

@@ -8,7 +8,7 @@ extern crate chrono;
 extern crate async_trait;
 extern crate hashring;
 
-use coerce_remote::node::{RemoteNode, RemoteNodeStore};
+use coerce_remote::cluster::node::{RemoteNode, RemoteNodeStore};
 
 use uuid::Uuid;
 
