@@ -76,6 +76,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce-cluster-mysql"
+version = "0.1.0"
+dependencies = [
+ "async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-remote 0.2.0-pre",
+]
+
+[[package]]
 name = "coerce-remote"
 version = "0.2.0-pre"
 dependencies = [
@@ -83,6 +91,7 @@ dependencies = [
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-cluster-mysql 0.1.0",
  "coerce-rt 0.2.1",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",

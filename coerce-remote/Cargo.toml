@@ -21,3 +21,4 @@ chrono = "0.4"
 
 [dev-dependencies]
 env_logger = "0.7.1"
+coerce-cluster-mysql = { path = "providers/coerce-cluster-mysql" }

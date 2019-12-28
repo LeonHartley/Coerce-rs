@@ -1,0 +1,10 @@
+[package]
+name = "coerce-cluster-mysql"
+version = "0.1.0"
+authors = ["Leon Hartley <ljph@outlook.com>"]
+edition = "2018"
+
+
+[dependencies]
+coerce-remote = { path = "../../" }
+async-trait = { version = "0.1" }

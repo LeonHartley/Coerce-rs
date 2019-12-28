@@ -14,7 +14,9 @@ pub enum WorkerStoreErr {}
 pub trait WorkerStore {
     async fn get_active(&mut self) -> Result<Vec<ClusterWorker>, WorkerStoreErr>;
 
-    async fn update(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr>;
+    async fn put(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr>;
+
+    async fn remove(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr>;
 }
 
 pub struct ClusterWorkers {
