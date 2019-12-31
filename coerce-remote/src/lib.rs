@@ -2,8 +2,8 @@ use crate::actor::RemoteResponse;
 use crate::context::RemoteActorContext;
 use crate::net::message::SessionEvent;
 use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::ActorRefError::ActorUnavailable;
-use coerce_rt::actor::{Actor, ActorId, ActorRefError};
+use coerce_rt::actor::ActorRefErr::ActorUnavailable;
+use coerce_rt::actor::{Actor, ActorId, ActorRefErr};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::marker::PhantomData;
@@ -27,13 +27,13 @@ extern crate chrono;
 extern crate tokio;
 extern crate uuid;
 
-pub mod codec;
 pub mod actor;
 pub mod cluster;
+pub mod codec;
 pub mod context;
 pub mod handler;
-pub mod storage;
 pub mod net;
+pub mod storage;
 
 pub struct RemoteActorRef<A: Actor>
 where
@@ -58,7 +58,7 @@ where
         }
     }
 
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefError>
+    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         Msg: 'static + Serialize + Send + Sync,
         A: Handler<Msg>,

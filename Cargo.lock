@@ -81,6 +81,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "coerce-remote 0.2.0-pre",
+ "coerce-rt 0.2.1",
  "redis-async 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

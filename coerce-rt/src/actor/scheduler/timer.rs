@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 pub trait TimerTick: Message {}
 
-impl<T> Message for T
+impl<T: TimerTick> Message for T
 where
-    T: TimerTick,
+    T: 'static + Sync + Send,
 {
     type Result = ();
 }
@@ -32,7 +32,7 @@ impl Timer {
     }
 
     pub fn stop(self) -> bool {
-        if let Ok(()) = self.stop.send(true) {
+        if self.stop.send(true).is_ok() {
             true
         } else {
             false

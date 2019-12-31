@@ -1,5 +1,5 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{Actor, ActorId, ActorRef, ActorRefError};
+use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr};
 
 lazy_static! {
     static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
@@ -24,14 +24,14 @@ impl ActorContext {
     pub async fn new_tracked_actor<A: Actor>(
         &mut self,
         actor: A,
-    ) -> Result<ActorRef<A>, ActorRefError>
+    ) -> Result<ActorRef<A>, ActorRefErr>
     where
         A: 'static + Sync + Send,
     {
         self.new_actor(actor, ActorType::Tracked).await
     }
 
-    pub async fn new_anon_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefError>
+    pub async fn new_anon_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefErr>
     where
         A: 'static + Sync + Send,
     {
@@ -42,7 +42,7 @@ impl ActorContext {
         &mut self,
         actor: A,
         actor_type: ActorType,
-    ) -> Result<ActorRef<A>, ActorRefError>
+    ) -> Result<ActorRef<A>, ActorRefErr>
     where
         A: 'static + Sync + Send,
     {
@@ -54,7 +54,7 @@ impl ActorContext {
 
         match rx.await {
             Ok(true) => actor_ref,
-            _ => Err(ActorRefError::ActorUnavailable),
+            _ => Err(ActorRefErr::ActorUnavailable),
         }
     }
 

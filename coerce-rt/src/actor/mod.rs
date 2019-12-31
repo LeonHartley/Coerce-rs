@@ -19,7 +19,7 @@ pub trait Actor {
     async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {}
 }
 
-pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefError>
+pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefErr>
 where
     A: 'static + Sync + Send,
 {
@@ -86,7 +86,7 @@ where
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum ActorRefError {
+pub enum ActorRefErr {
     ActorUnavailable,
 }
 
@@ -94,7 +94,7 @@ impl<A: Actor> ActorRef<A>
 where
     A: Sync + Send + 'static,
 {
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefError>
+    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         Msg: 'static + Send + Sync,
         A: Handler<Msg>,
@@ -110,17 +110,17 @@ where
                 Ok(res) => Ok(res),
                 Err(_e) => {
                     error!(target: "ActorRef", "error receiving result");
-                    Err(ActorRefError::ActorUnavailable)
+                    Err(ActorRefErr::ActorUnavailable)
                 }
             },
             Err(_e) => {
                 error!(target: "ActorRef", "error sending message");
-                Err(ActorRefError::ActorUnavailable)
+                Err(ActorRefErr::ActorUnavailable)
             }
         }
     }
 
-    pub async fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefError>
+    pub async fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefErr>
     where
         Msg: 'static + Send + Sync,
         A: Handler<Msg>,
@@ -132,11 +132,11 @@ where
             .await
         {
             Ok(_) => Ok(()),
-            Err(_e) => Err(ActorRefError::ActorUnavailable),
+            Err(_e) => Err(ActorRefErr::ActorUnavailable),
         }
     }
 
-    pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefError>
+    pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefErr>
     where
         F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
         R: 'static + Send + Sync,
@@ -144,18 +144,18 @@ where
         self.send(Exec::new(f)).await
     }
 
-    pub async fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefError>
+    pub async fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefErr>
     where
         F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
     {
         self.notify(Exec::new(f)).await
     }
 
-    pub async fn status(&mut self) -> Result<ActorStatus, ActorRefError> {
+    pub async fn status(&mut self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Status {}).await
     }
 
-    pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefError> {
+    pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Stop {}).await
     }
 }

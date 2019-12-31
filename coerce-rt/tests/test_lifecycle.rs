@@ -1,5 +1,5 @@
 use coerce_rt::actor::context::{ActorContext, ActorStatus};
-use coerce_rt::actor::ActorRefError;
+use coerce_rt::actor::ActorRefErr;
 use util::*;
 
 pub mod util;
@@ -39,5 +39,5 @@ pub async fn test_actor_lifecycle_stopping() {
 
     assert_eq!(status, Ok(ActorStatus::Started));
     assert_eq!(stopping, Ok(ActorStatus::Stopping));
-    assert_eq!(msg_send, Err(ActorRefError::ActorUnavailable));
+    assert_eq!(msg_send, Err(ActorRefErr::ActorUnavailable));
 }
