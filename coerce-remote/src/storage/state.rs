@@ -5,11 +5,18 @@ pub struct ActorState {
     state: Vec<u8>,
 }
 
+#[derive(Debug)]
+pub enum ActorStoreErr {
+    StoreUnavailable,
+    InvalidConfig,
+    Other(String),
+}
+
 #[async_trait]
 pub trait ActorStore {
-    async fn get(&mut self, actor_id: ActorId);
+    async fn get(&mut self, actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr>;
 
-    async fn put(&mut self, state: &ActorState);
+    async fn put(&mut self, state: &ActorState) -> Result<(), ActorStoreErr>;
 
-    async fn remote(&mut self, actor_id: ActorId);
+    async fn remove(&mut self, actor_id: ActorId) -> Result<(), ActorStoreErr>;
 }

@@ -3,5 +3,6 @@ members = [
     "coerce-rt",
     "coerce-remote",
 #    "coerce-remote/providers/coerce-mysql",
-    "coerce-remote/providers/coerce-redis"
+    "coerce-remote/providers/coerce-redis",
+    "coerce-remote/examples/coerce-chat-worker"
 ]

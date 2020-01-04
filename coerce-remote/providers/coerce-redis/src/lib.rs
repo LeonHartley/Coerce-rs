@@ -1,11 +1,18 @@
 #[macro_use]
 extern crate async_trait;
 
-use coerce_rt::actor::context::ActorContext;
+#[macro_use]
+extern crate redis_async;
+extern crate uuid;
+
+use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRefErr};
-use coerce_rt::worker::{Worker, WorkerRef};
+use coerce_rt::worker::{Worker, WorkerRef, WorkerRefExt};
 use redis_async::client::PairedConnection;
+use redis_async::resp::{FromResp, RespValue};
 use redis_async::{client, error::Error};
+use std::marker::PhantomData;
 use std::net::AddrParseError;
 
 pub mod actors;
@@ -33,9 +40,61 @@ impl RedisWorker {
     }
 }
 
+#[async_trait]
+pub trait RedisWorkerRefExt {
+    async fn command<T: FromResp>(&mut self, cmd: RespValue) -> Result<T, RedisWorkerErr>
+    where
+        T: 'static + Sync + Send;
+}
+
+#[async_trait]
+impl RedisWorkerRefExt for WorkerRef<RedisWorker> {
+    async fn command<T: FromResp>(&mut self, cmd: RespValue) -> Result<T, RedisWorkerErr>
+    where
+        T: 'static + Sync + Send,
+    {
+        self.dispatch(RedisCommand::new(cmd)).await?
+    }
+}
+
+pub struct RedisCommand<T: FromResp> {
+    cmd: RespValue,
+    _t: PhantomData<T>,
+}
+
+impl<T> Message for RedisCommand<T>
+where
+    T: FromResp,
+{
+    type Result = Result<T, RedisWorkerErr>;
+}
+
+impl<T: FromResp> RedisCommand<T> {
+    pub fn new(cmd: RespValue) -> RedisCommand<T> {
+        let _t = PhantomData;
+
+        RedisCommand { cmd, _t }
+    }
+}
+
+#[async_trait]
+impl<T: FromResp> Handler<RedisCommand<T>> for RedisWorker
+where
+    T: 'static + Sync + Send,
+{
+    async fn handle(
+        &mut self,
+        message: RedisCommand<T>,
+        ctx: &mut ActorHandlerContext,
+    ) -> Result<T, RedisWorkerErr> {
+        Ok(self.client.send(message.cmd).await?)
+    }
+}
+
+#[derive(Debug)]
 pub enum RedisWorkerErr {
     Actor(ActorRefErr),
-    Connection(Error),
+    Redis(Error),
     InvalidAddr,
 }
 
@@ -47,7 +106,7 @@ impl From<AddrParseError> for RedisWorkerErr {
 
 impl From<Error> for RedisWorkerErr {
     fn from(e: Error) -> Self {
-        RedisWorkerErr::Connection(e)
+        RedisWorkerErr::Redis(e)
     }
 }
 

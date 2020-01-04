@@ -15,10 +15,9 @@ impl Handler<GetHandler> for RemoteHandler {
         message: GetHandler,
         _ctx: &mut ActorHandlerContext,
     ) -> Option<BoxedHandler> {
-        match self.handlers.get(&message.0) {
-            Some(handler) => Some(handler.new_boxed()),
-            None => None,
-        }
+        self.handlers
+            .get(&message.0)
+            .map(|handler| handler.new_boxed())
     }
 }
 
@@ -52,10 +51,9 @@ where
         message: HandlerName<A, M>,
         _ctx: &mut ActorHandlerContext,
     ) -> Option<String> {
-        match self.handler_types.get(&message.marker.id()) {
-            Some(name) => Some(name.clone()),
-            None => None,
-        }
+        self.handler_types
+            .get(&message.marker.id())
+            .map(|name| name.clone())
     }
 }
 

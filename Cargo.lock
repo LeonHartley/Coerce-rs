@@ -76,6 +76,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce-chat-worker"
+version = "0.1.0"
+
+[[package]]
 name = "coerce-redis"
 version = "0.1.0"
 dependencies = [
@@ -83,6 +87,8 @@ dependencies = [
  "coerce-remote 0.2.0-pre",
  "coerce-rt 0.2.1",
  "redis-async 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

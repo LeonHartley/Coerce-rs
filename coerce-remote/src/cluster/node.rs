@@ -35,10 +35,9 @@ where
     }
 
     pub fn remove(&mut self, node_id: &Uuid) -> Option<RemoteNode> {
-        match self.nodes.remove(&node_id) {
-            Some(node) => self.table.remove(node),
-            None => None,
-        }
+        self.nodes
+            .remove(&node_id)
+            .and_then(|node| self.table.remove(node))
     }
 
     pub fn get_by_key(&mut self, key: K) -> Option<&RemoteNode> {
