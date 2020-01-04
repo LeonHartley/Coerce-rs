@@ -19,10 +19,7 @@ impl ActorStore for RedisActorStore {
         let key = actor_key(actor_id);
         let value: Option<Vec<u8>> = self.redis.command(resp_array!["GET", key]).await?;
 
-        Ok(value.map(|state| ActorState {
-            actor_id,
-            state: state.to_vec(),
-        }))
+        Ok(value.map(|state| ActorState { actor_id, state }))
     }
 
     async fn put(&mut self, actor: &ActorState) -> Result<(), ActorStoreErr> {
@@ -41,7 +38,7 @@ impl ActorStore for RedisActorStore {
         let deleted: Option<i32> = self.redis.command(resp_array!["DEL", key]).await?;
         Ok(match deleted {
             Some(n) if n > 0 => true,
-            _ => false
+            _ => false,
         })
     }
 }
