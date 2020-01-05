@@ -81,6 +81,7 @@ pub async fn test_actor_exec_mutation() {
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
+
     let initial_status = actor_ref.send(GetStatusRequest()).await;
 
     actor_ref

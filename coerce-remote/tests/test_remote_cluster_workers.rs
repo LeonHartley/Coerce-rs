@@ -42,8 +42,7 @@ impl WorkerStore for TestWorkerStore {
 #[tokio::test]
 pub async fn test_remote_worker_store() {
     let mut context = ActorContext::new();
-    let mut workers = context
-        .new_anon_actor(ClusterWorkers::new(TestWorkerStore))
+    let mut workers = ClusterWorkers::new(TestWorkerStore, &mut context)
         .await
         .unwrap();
 

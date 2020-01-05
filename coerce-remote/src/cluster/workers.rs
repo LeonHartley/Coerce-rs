@@ -1,14 +1,15 @@
 use crate::cluster::node::RemoteNode;
 use chrono::{DateTime, Utc};
-use coerce_rt::actor::context::ActorHandlerContext;
+use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::Actor;
+use coerce_rt::actor::{Actor, ActorRef, ActorRefErr};
 use std::error::Error;
 use std::time::Instant;
 use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum WorkerStoreErr {
+    Actor(ActorRefErr),
     Database(String),
 }
 
@@ -26,12 +27,15 @@ pub struct ClusterWorkers {
 }
 
 impl ClusterWorkers {
-    pub fn new<T: WorkerStore>(store: T) -> ClusterWorkers
+    pub async fn new<T: WorkerStore>(
+        store: T,
+        context: &mut ActorContext,
+    ) -> Result<ActorRef<ClusterWorkers>, WorkerStoreErr>
     where
         T: 'static + Sync + Send,
     {
         let store = Box::new(store);
-        ClusterWorkers { store }
+        Ok(context.new_anon_actor(ClusterWorkers { store }).await?)
     }
 }
 
@@ -84,5 +88,11 @@ impl ClusterWorker {
             node,
             last_ping,
         }
+    }
+}
+
+impl From<ActorRefErr> for WorkerStoreErr {
+    fn from(e: ActorRefErr) -> Self {
+        WorkerStoreErr::Actor(e)
     }
 }
