@@ -14,11 +14,7 @@ impl RedisWorkerStore {
 
 impl WorkerStore for RedisWorkerStore {
     async fn get_active(&mut self) -> Result<Vec<ClusterWorker>, WorkerStoreErr> {
-        self.redis
-            .command(resp_array!["SET", key, actor.state.as_slice()])
-            .await?;
-
-        Ok(vec![])
+        unimplemented!()
     }
 
     async fn put(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
