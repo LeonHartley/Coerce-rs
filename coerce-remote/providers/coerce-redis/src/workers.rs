@@ -12,6 +12,7 @@ impl RedisWorkerStore {
     }
 }
 
+#[async_trait]
 impl WorkerStore for RedisWorkerStore {
     async fn get_active(&mut self) -> Result<Vec<ClusterWorker>, WorkerStoreErr> {
         unimplemented!()
