@@ -4,7 +4,7 @@ use coerce_remote::storage::state::{ActorState, ActorStore};
 use coerce_rt::actor::context::ActorContext;
 use uuid::Uuid;
 
-//#[ignore] // ignored due to dependency on redis server
+#[ignore] // ignored due to dependency on redis server
 #[tokio::test]
 pub async fn test_redis_actor_store() {
     let mut context = ActorContext::new();
