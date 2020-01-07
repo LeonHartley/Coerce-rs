@@ -36,7 +36,7 @@ jobs:
         id: coverage
         uses: actions-rs/grcov@v0.1
         with:
-          config: configs/grcov.yml
+          config: config/grcov.yml
           coveralls-token: ${{ secrets.COVERALLS_TOKEN }}
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
