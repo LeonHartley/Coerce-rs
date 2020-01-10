@@ -73,9 +73,7 @@ pub async fn test_context_stop_tracked_actor_get_not_found() {
 
     let stop = actor_ref.stop().await;
 
-    let mut actor = ctx
-        .get_tracked_actor::<TestActor>(actor_ref.id)
-        .await;
+    let mut actor = ctx.get_tracked_actor::<TestActor>(actor_ref.id).await;
 
-    assert_eq!(actor.is_none(), true);;
+    assert_eq!(actor.is_none(), true);
 }

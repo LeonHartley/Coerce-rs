@@ -86,10 +86,12 @@ pub async fn actor_loop<A: Actor>(
 
     ctx.set_status(Stopped);
 
-    if let Some(mut scheduler) = scheduler {
-        scheduler
-            .send(DeregisterActor(id))
-            .await
-            .expect("de-register actor");
+    if actor_type.is_tracked() {
+        if let Some(mut scheduler) = scheduler {
+            scheduler
+                .send(DeregisterActor(id))
+                .await
+                .expect("de-register actor");
+        }
     }
 }
