@@ -65,7 +65,11 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
         trace!(target: "Timer", "{} - timer tick", &timer_id);
 
         let now = Instant::now();
-        actor.send(msg.clone()).await;
+
+        if actor.send(msg.clone()).await.is_err() {
+            break;
+        }
+
         trace!(target: "Timer", "{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());
         interval.tick().await;
     }
