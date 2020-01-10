@@ -1,5 +1,5 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr};
+use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef};
 
 lazy_static! {
     static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
@@ -80,11 +80,16 @@ pub enum ActorStatus {
 pub struct ActorHandlerContext {
     id: ActorId,
     status: ActorStatus,
+    boxed_ref: BoxedActorRef,
 }
 
 impl ActorHandlerContext {
-    pub fn new(id: ActorId, status: ActorStatus) -> ActorHandlerContext {
-        ActorHandlerContext { id, status }
+    pub fn new(id: ActorId, status: ActorStatus, boxed_ref: BoxedActorRef) -> ActorHandlerContext {
+        ActorHandlerContext {
+            id,
+            status,
+            boxed_ref,
+        }
     }
 
     pub fn id(&self) -> &ActorId {
@@ -97,5 +102,12 @@ impl ActorHandlerContext {
 
     pub fn get_status(&self) -> &ActorStatus {
         &self.status
+    }
+
+    pub fn actor_ref<A: Actor>(&self) -> ActorRef<A>
+    where
+        A: 'static + Sync + Send,
+    {
+        ActorRef::from(self.boxed_ref.clone())
     }
 }

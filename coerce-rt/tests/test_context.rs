@@ -58,3 +58,24 @@ pub async fn test_context_get_actor_not_found() {
 
     assert_eq!(actor.is_none(), true);
 }
+
+#[tokio::test]
+pub async fn test_context_stop_tracked_actor_get_not_found() {
+    let mut ctx = ActorContext::new();
+
+    let mut actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
+
+    let _ = actor_ref
+        .exec(|mut actor| {
+            actor.counter = 1337;
+        })
+        .await;
+
+    let stop = actor_ref.stop().await;
+
+    let mut actor = ctx
+        .get_tracked_actor::<TestActor>(actor_ref.id)
+        .await;
+
+    assert_eq!(actor.is_none(), true);;
+}

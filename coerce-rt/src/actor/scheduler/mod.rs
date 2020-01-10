@@ -18,6 +18,8 @@ impl ActorScheduler {
             ActorScheduler {
                 actors: HashMap::new(),
             },
+            ActorType::Anonymous,
+            None,
             None,
         )
     }
@@ -26,6 +28,7 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {}
 
+#[derive(Clone, Copy)]
 pub enum ActorType {
     Tracked,
     Anonymous,
@@ -58,9 +61,7 @@ where
     type Result = ActorRef<A>;
 }
 
-pub struct DeregisterActor {
-    id: ActorId,
-}
+pub struct DeregisterActor(pub ActorId);
 
 impl Message for DeregisterActor {
     type Result = ();
@@ -101,14 +102,22 @@ where
     async fn handle(
         &mut self,
         message: RegisterActor<A>,
-        _ctx: &mut ActorHandlerContext,
+        ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
-        let actor = start_actor(message.0, Some(message.2));
+        let actor_tyoe = message.1;
+        let actor = start_actor(
+            message.0,
+            actor_tyoe,
+            Some(message.2),
+            Some(ctx.actor_ref()),
+        );
 
-        if message.1.is_tracked() {
+        if actor_tyoe.is_tracked() {
             let _ = self
                 .actors
                 .insert(actor.id, BoxedActorRef::from(actor.clone()));
+
+            warn!(target: "ActorScheduler", "actor {} registered", actor.id);
         }
 
         actor
@@ -117,7 +126,13 @@ where
 
 #[async_trait]
 impl Handler<DeregisterActor> for ActorScheduler {
-    async fn handle(&mut self, _message: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {}
+    async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {
+        if let Some(a) = self.actors.remove(&msg.0) {
+            trace!(target: "ActorScheduler", "de-registered actor {}", msg.0);
+        } else {
+            warn!(target: "ActorScheduler", "actor {} not found to de-register", msg.0);
+        }
+    }
 }
 
 #[async_trait]
@@ -139,7 +154,9 @@ where
 
 fn start_actor<A: Actor>(
     actor: A,
+    actor_type: ActorType,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
+    scheduler: Option<ActorRef<ActorScheduler>>,
 ) -> ActorRef<A>
 where
     A: 'static + Send + Sync,
@@ -147,10 +164,20 @@ where
     let id = ActorId::new_v4();
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 
-    tokio::spawn(actor_loop(id.clone(), actor, rx, on_start));
-
-    ActorRef {
+    let actor_ref = ActorRef {
         id: id.clone(),
         sender: tx,
-    }
+    };
+
+    tokio::spawn(actor_loop(
+        id.clone(),
+        actor,
+        actor_type,
+        rx,
+        on_start,
+        actor_ref.clone(),
+        scheduler,
+    ));
+
+    actor_ref
 }
