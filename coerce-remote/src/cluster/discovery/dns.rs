@@ -1,33 +1,53 @@
 use crate::cluster::discovery::{ClusterSeed, ClusterSeedErr, DiscoveredWorker};
-use dnsclient::r#async::DNSClient;
-use dnsclient::UpstreamServer;
+use futures::Future;
+use std::error::Error;
 use std::io;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::pin::Pin;
+use std::str::FromStr;
+use trust_dns_client::client::{AsyncClient, ClientHandle};
+use trust_dns_client::op::DnsResponse;
+use trust_dns_client::rr::{DNSClass, Name, RecordType};
+use trust_dns_client::udp::UdpClientStream;
+use trust_dns_proto::udp::UdpResponse;
 
 pub struct DnsClusterSeed {
-    dns_client: DNSClient,
+    client: AsyncClient<UdpResponse>,
     seed_host: String,
 }
 
 impl DnsClusterSeed {
-    pub fn new(servers: Vec<SocketAddr>, seed_host: String) -> DnsClusterSeed {
-        let dns_client = DNSClient::new(servers.into_iter().map(UpstreamServer::new).collect());
+    pub async fn new(upstream: SocketAddr, seed_host: String) -> DnsClusterSeed {
+        let stream = UdpClientStream::<tokio::net::UdpSocket>::new(upstream);
+        let (mut client, bg) = AsyncClient::connect(stream).await.unwrap();
 
-        DnsClusterSeed {
-            dns_client,
-            seed_host,
-        }
+        tokio::spawn(bg);
+
+        DnsClusterSeed { client, seed_host }
     }
 
-    pub async fn all_a_records(&self, host: &str) -> Result<Vec<Ipv4Addr>, io::Error> {
-        self.dns_client.query_a(host).await
+    pub async fn all_a_records(&mut self, host: &str) -> Result<Vec<IpAddr>, ClusterSeedErr> {
+        match self
+            .client
+            .query(Name::from_str(host).unwrap(), DNSClass::IN, RecordType::A)
+            .await
+        {
+            Ok(res) => Ok(res
+                .answers()
+                .into_iter()
+                .filter_map(|a| a.rdata().to_ip_addr())
+                .collect()),
+
+            Err(e) => Err(ClusterSeedErr::Err(format!("{:?}", e))),
+        }
     }
 }
 
 #[async_trait]
 impl ClusterSeed for DnsClusterSeed {
-    async fn initial_workers(&self) -> Result<Vec<DiscoveredWorker>, ClusterSeedErr> {
-        let records = self.all_a_records(self.seed_host.as_str()).await?;
+    async fn initial_workers(&mut self) -> Result<Vec<DiscoveredWorker>, ClusterSeedErr> {
+        let seed_host = self.seed_host.clone();
+        let records = self.all_a_records(&seed_host).await?;
 
         Ok(records
             .into_iter()
