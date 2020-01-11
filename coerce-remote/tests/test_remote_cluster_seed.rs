@@ -1,6 +1,6 @@
 use coerce_remote::cluster::discovery::dns::DnsClusterSeed;
 use coerce_remote::cluster::discovery::{ClusterSeed, DiscoveredWorker};
-use std::net::{Ipv4Addr, SocketAddr, IpAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 
 #[tokio::test]
