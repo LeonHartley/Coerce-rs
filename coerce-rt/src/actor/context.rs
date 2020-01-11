@@ -104,7 +104,7 @@ impl ActorHandlerContext {
         &self.status
     }
 
-    pub fn actor_ref<A: Actor>(&self) -> ActorRef<A>
+    pub(super) fn actor_ref<A: Actor>(&self) -> ActorRef<A>
     where
         A: 'static + Sync + Send,
     {

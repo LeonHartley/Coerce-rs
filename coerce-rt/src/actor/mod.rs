@@ -17,6 +17,10 @@ pub trait Actor {
     async fn started(&mut self, _ctx: &mut ActorHandlerContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {}
+
+    fn get_ref(&self, ctx: &ActorHandlerContext) -> ActorRef<Self> {
+        ctx.actor_ref()
+    }
 }
 
 pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefErr>

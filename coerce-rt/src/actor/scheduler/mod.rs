@@ -109,7 +109,7 @@ where
             message.0,
             actor_tyoe,
             Some(message.2),
-            Some(ctx.actor_ref()),
+            Some(self.get_ref(ctx)),
         );
 
         if actor_tyoe.is_tracked() {
