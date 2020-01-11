@@ -17,8 +17,19 @@ pub trait Actor {
     async fn started(&mut self, _ctx: &mut ActorHandlerContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {}
+}
 
-    fn get_ref(&self, ctx: &ActorHandlerContext) -> ActorRef<Self> {
+pub trait GetActorRef {
+    fn get_ref(&self, ctx: &ActorHandlerContext) -> ActorRef<Self>
+    where
+        Self: Actor + Sized + Send + Sync;
+}
+
+impl<A: Actor> GetActorRef for A {
+    fn get_ref(&self, ctx: &ActorHandlerContext) -> ActorRef<Self>
+    where
+        Self: Sized + Send + Sync,
+    {
         ctx.actor_ref()
     }
 }
