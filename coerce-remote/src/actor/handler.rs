@@ -1,6 +1,6 @@
 use crate::actor::message::{
-    ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNodes,
-    SetContext,
+    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
+    RegisterNodes, SetContext,
 };
 use crate::actor::{BoxedHandler, RemoteHandler, RemoteRegistry, RemoteRequest};
 use crate::cluster::node::RemoteNode;
@@ -20,6 +20,17 @@ use uuid::Uuid;
 impl Handler<SetContext> for RemoteRegistry {
     async fn handle(&mut self, message: SetContext, ctx: &mut ActorHandlerContext) {
         self.context = Some(message.0);
+    }
+}
+
+#[async_trait]
+impl Handler<GetNodes> for RemoteRegistry {
+    async fn handle(
+        &mut self,
+        _message: GetNodes,
+        ctx: &mut ActorHandlerContext,
+    ) -> Vec<RemoteNode> {
+        self.nodes.get_all()
     }
 }
 
@@ -78,7 +89,7 @@ where
     T: 'static + Sync + Send,
 {
     async fn handle(&mut self, message: RegisterClient<T>, ctx: &mut ActorHandlerContext) {
-        self.clients.insert(message.0, Box::new(message.1));
+        self.add_client(message.0, message.1);
 
         trace!(target: "RemoteRegistry", "client {} registered", message.0);
     }
@@ -94,7 +105,12 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             .filter(|node| !self.nodes.is_registered(node.id))
             .collect();
 
-        connect_all(unregistered_nodes, self.context.as_ref().unwrap()).await;
+        let clients = connect_all(unregistered_nodes, self.context.as_ref().unwrap()).await;
+        for (node_id, client) in clients {
+            if let Some(client) = client {
+                self.add_client(node_id, client);
+            }
+        }
     }
 }
 

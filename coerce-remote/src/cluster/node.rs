@@ -53,6 +53,10 @@ impl RemoteNodeStore {
         self.table.add(node.clone());
         self.nodes.insert(node.id.clone(), node);
     }
+
+    pub fn get_all(&self) -> Vec<RemoteNode> {
+        self.nodes.values().map(|m| m.clone()).collect()
+    }
 }
 
 impl RemoteNode {

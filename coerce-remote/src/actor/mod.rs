@@ -1,7 +1,8 @@
 use crate::cluster::node::RemoteNodeStore;
+use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::RemoteMessageHandler;
-use crate::net::client::RemoteClientStream;
+use crate::net::client::{RemoteClient, RemoteClientStream};
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::{Actor, ActorRef};
 use std::any::TypeId;
@@ -72,6 +73,13 @@ impl RemoteRegistry {
         })
         .await
         .expect("RemoteRegistry")
+    }
+
+    pub fn add_client<C: RemoteClientStream>(&mut self, node_id: Uuid, client: C)
+    where
+        C: 'static + Sync + Send,
+    {
+        self.clients.insert(node_id, Box::new(client));
     }
 }
 

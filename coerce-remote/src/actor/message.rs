@@ -14,6 +14,12 @@ impl Message for SetContext {
     type Result = ();
 }
 
+pub struct GetNodes;
+
+impl Message for GetNodes {
+    type Result = Vec<RemoteNode>;
+}
+
 pub struct HandlerName<A: Actor, M: Message>
 where
     A: 'static + Send + Sync,
