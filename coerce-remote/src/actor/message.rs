@@ -1,10 +1,18 @@
 use crate::actor::{BoxedHandler, RemoteRequest};
+use crate::cluster::node::RemoteNode;
+use crate::context::RemoteActorContext;
 use crate::handler::RemoteActorMessageMarker;
 use crate::net::client::RemoteClientStream;
 use crate::net::message::SessionEvent;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::Actor;
 use uuid::Uuid;
+
+pub struct SetContext(pub RemoteActorContext);
+
+impl Message for SetContext {
+    type Result = ();
+}
 
 pub struct HandlerName<A: Actor, M: Message>
 where
@@ -61,6 +69,12 @@ impl<T: RemoteClientStream> Message for RegisterClient<T>
 where
     T: 'static + Sync + Send,
 {
+    type Result = ();
+}
+
+pub struct RegisterNodes(pub Vec<RemoteNode>);
+
+impl Message for RegisterNodes {
     type Result = ();
 }
 

@@ -1,3 +1,4 @@
+use crate::actor::message::SetContext;
 use crate::actor::{BoxedHandler, RemoteHandler, RemoteRegistry};
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
@@ -8,8 +9,10 @@ use coerce_rt::actor::Actor;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 pub struct RemoteActorContextBuilder {
+    node_id: Option<Uuid>,
     inner: Option<ActorContext>,
     handlers: Vec<HandlerFn>,
 }
@@ -17,9 +20,16 @@ pub struct RemoteActorContextBuilder {
 impl RemoteActorContextBuilder {
     pub fn new() -> RemoteActorContextBuilder {
         RemoteActorContextBuilder {
+            node_id: None,
             inner: None,
             handlers: vec![],
         }
+    }
+
+    pub fn with_node_id(mut self, node_id: Uuid) -> Self {
+        self.node_id = Some(node_id);
+
+        self
     }
 
     pub fn with_handlers<F>(mut self, f: F) -> Self
@@ -57,12 +67,20 @@ impl RemoteActorContextBuilder {
         }
 
         let handler_ref = RemoteHandler::new(&mut inner, handlers, handler_types).await;
-        let registry_ref = RemoteRegistry::new(&mut inner).await;
-        RemoteActorContext {
+
+        let mut registry_ref = RemoteRegistry::new(&mut inner).await;
+        let mut registry_ref_clone = registry_ref.clone();
+
+        let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
+        let context = RemoteActorContext {
+            node_id,
             inner,
             handler_ref,
             registry_ref,
-        }
+        };
+
+        registry_ref_clone.send(SetContext(context.clone()));
+        context
     }
 }
 

@@ -1,7 +1,8 @@
 use crate::actor::message::{
-    ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest, RegisterClient,
+    ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNodes,
 };
 use crate::actor::{RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse};
+use crate::cluster::node::RemoteNode;
 use crate::codec::RemoteHandlerMessage;
 use crate::context::builder::RemoteActorContextBuilder;
 use crate::net::client::RemoteClientStream;
@@ -18,6 +19,7 @@ pub mod builder;
 #[derive(Clone)]
 pub struct RemoteActorContext {
     inner: ActorContext,
+    node_id: Uuid,
     handler_ref: ActorRef<RemoteHandler>,
     registry_ref: ActorRef<RemoteRegistry>,
 }
@@ -93,6 +95,10 @@ impl RemoteActorContext {
             .send(RegisterClient(node_id, client))
             .await
             .unwrap()
+    }
+
+    pub async fn register_nodes(&mut self, nodes: Vec<RemoteNode>) {
+        self.registry_ref.send(RegisterNodes(nodes)).await.unwrap()
     }
 
     pub async fn send_message(&mut self, node_id: Uuid, message: SessionEvent) {

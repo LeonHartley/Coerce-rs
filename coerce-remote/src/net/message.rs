@@ -1,4 +1,6 @@
+use crate::cluster::node::RemoteNode;
 use coerce_rt::actor::ActorId;
+use std::net::SocketAddr;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -7,8 +9,14 @@ pub enum ClientError {
     HandleError,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ClientHandshake {
+    pub nodes: Vec<RemoteNode>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum ClientEvent {
+    Handshake(ClientHandshake),
     Result(Uuid, String),
     Err(Uuid, ClientError),
     Ping(Uuid),
@@ -16,13 +24,25 @@ pub enum ClientEvent {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct MessageRequest {
+    pub id: Uuid,
+    pub handler_type: String,
+    pub actor: ActorId,
+    pub message: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SessionHandshake {
+    pub id: Uuid,
+    pub address: SocketAddr,
+    pub nodes: Vec<RemoteNode>,
+    pub token: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum SessionEvent {
     Ping(Uuid),
     Pong(Uuid),
-    Message {
-        id: Uuid,
-        handler_type: String,
-        actor: ActorId,
-        message: String,
-    },
+    Handshake(SessionHandshake),
+    Message(MessageRequest),
 }

@@ -2,7 +2,7 @@ use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::client::{RemoteClient, RemoteClientErr};
 use crate::net::codec::NetworkCodec;
-use crate::net::message::{ClientError, ClientEvent, SessionEvent};
+use crate::net::message::{ClientError, ClientEvent, MessageRequest, SessionEvent};
 use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
 };
@@ -140,7 +140,11 @@ where
 {
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
         match msg {
-            SessionEvent::Message { .. } => {
+            SessionEvent::Handshake(msg) => {
+                ctx.register_nodes(msg.nodes).await;
+            }
+
+            SessionEvent::Message(msg) => {
                 tokio::spawn(session_handle_message(
                     msg,
                     self.session_id,
@@ -148,6 +152,7 @@ where
                     self.sessions.clone(),
                 ));
             }
+
             SessionEvent::Ping(id) => {
                 trace!(target: "RemoteServer", "ping received, sending pong");
                 self.sessions
@@ -164,32 +169,27 @@ where
 }
 
 async fn session_handle_message<C: MessageCodec>(
-    event: SessionEvent,
+    msg: MessageRequest,
     session_id: Uuid,
     mut ctx: RemoteActorContext,
     mut sessions: ActorRef<RemoteSessionStore<C>>,
 ) where
     C: 'static + Sync + Send,
 {
-    match event {
-        SessionEvent::Message {
-            id,
-            handler_type,
-            actor,
-            message,
-        } => match ctx.handle(handler_type, actor, message.as_bytes()).await {
-            Ok(buf) => {
-                let event = ClientEvent::Result(id, String::from_utf8(buf).expect("string"));
-                if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
-                    trace!(target: "RemoteSession", "sent result successfully");
-                } else {
-                    error!(target: "RemoteSession", "failed to send result");
-                }
+    match ctx
+        .handle(msg.handler_type, msg.actor, msg.message.as_bytes())
+        .await
+    {
+        Ok(buf) => {
+            let event = ClientEvent::Result(msg.id, String::from_utf8(buf).expect("string"));
+            if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
+                trace!(target: "RemoteSession", "sent result successfully");
+            } else {
+                error!(target: "RemoteSession", "failed to send result");
             }
-            Err(_) => {
-                error!(target: "RemoteSession", "failed to handle message, todo: send err");
-            }
-        },
-        _ => unreachable!(),
+        }
+        Err(_) => {
+            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+        }
     }
 }

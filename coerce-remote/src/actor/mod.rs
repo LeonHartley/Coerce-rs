@@ -1,3 +1,5 @@
+use crate::cluster::node::RemoteNodeStore;
+use crate::context::RemoteActorContext;
 use crate::handler::RemoteMessageHandler;
 use crate::net::client::RemoteClientStream;
 use coerce_rt::actor::context::ActorContext;
@@ -10,7 +12,9 @@ pub mod handler;
 pub mod message;
 
 pub struct RemoteRegistry {
+    nodes: RemoteNodeStore,
     clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
+    context: Option<RemoteActorContext>,
 }
 
 pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
@@ -63,6 +67,8 @@ impl RemoteRegistry {
     pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
         ctx.new_anon_actor(RemoteRegistry {
             clients: HashMap::new(),
+            nodes: RemoteNodeStore::new(vec![]),
+            context: None,
         })
         .await
         .expect("RemoteRegistry")

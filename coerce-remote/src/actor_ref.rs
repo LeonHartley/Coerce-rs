@@ -1,6 +1,6 @@
 use crate::actor::RemoteResponse;
 use crate::context::RemoteActorContext;
-use crate::net::message::SessionEvent;
+use crate::net::message::{MessageRequest, SessionEvent};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::ActorRefErr::ActorUnavailable;
 use coerce_rt::actor::{Actor, ActorId, ActorRefErr};
@@ -53,11 +53,13 @@ where
             .context
             .create_message::<A, Msg>(self.id, msg)
             .await
-            .map(|m| SessionEvent::Message {
-                id,
-                handler_type: m.handler_type,
-                actor: m.actor_id,
-                message,
+            .map(|m| {
+                SessionEvent::Message(MessageRequest {
+                    id,
+                    handler_type: m.handler_type,
+                    actor: m.actor_id,
+                    message,
+                })
             });
 
         self.context.push_request(id, res_tx).await;

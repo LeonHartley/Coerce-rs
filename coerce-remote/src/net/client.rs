@@ -22,6 +22,9 @@ pub struct ClientMessageReceiver;
 impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
     async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorContext) {
         match msg {
+            ClientEvent::Handshake(msg) => {
+                ctx.register_nodes(msg.nodes).await;
+            }
             ClientEvent::Result(id, res) => match ctx.pop_request(id).await {
                 Some(res_tx) => {
                     res_tx.send(RemoteResponse::Ok(res.as_bytes().to_vec()));
