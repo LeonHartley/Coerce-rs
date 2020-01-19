@@ -1,4 +1,7 @@
-use crate::actor::message::{ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes, SetContext};
+use crate::actor::message::{
+    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
+    RegisterNode, RegisterNodes, SetContext,
+};
 use crate::actor::{
     BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
 };
@@ -12,9 +15,7 @@ use coerce_rt::actor::Actor;
 
 use std::collections::HashMap;
 
-
 use uuid::Uuid;
-
 
 #[async_trait]
 impl Handler<SetContext> for RemoteRegistry {
@@ -137,7 +138,7 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
         let message = message.1;
 
         if let Some(client) = self.clients.get_mut(&client_id) {
-            client.send(message).await;
+            client.send(message).await.expect("send client msg");
             trace!(target: "RemoteRegistry", "writing data to client")
         } else {
             trace!(target: "RemoteRegistry", "client {} not found", &client_id);

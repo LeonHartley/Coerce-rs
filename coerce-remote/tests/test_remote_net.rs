@@ -5,7 +5,6 @@ use coerce_remote::net::client::RemoteClient;
 use coerce_remote::net::server::RemoteServer;
 use coerce_rt::actor::context::ActorContext;
 
-
 use coerce_remote::RemoteActorRef;
 
 use util::*;

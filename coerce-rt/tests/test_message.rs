@@ -88,7 +88,8 @@ pub async fn test_actor_exec_mutation() {
         .exec(|mut actor| {
             actor.status = Some(TestActorStatus::Active);
         })
-        .await;
+        .await
+        .expect("exec");
 
     let current_status = actor_ref.send(GetStatusRequest()).await;
     assert_eq!(initial_status, Ok(GetStatusResponse::None));

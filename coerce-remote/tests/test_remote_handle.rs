@@ -1,7 +1,6 @@
 use crate::util::create_trace_logger;
 
 use coerce_rt::actor::context::ActorContext;
-use coerce_rt::actor::message::Handler;
 
 use coerce_remote::context::RemoteActorContext;
 

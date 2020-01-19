@@ -1,7 +1,5 @@
 use crate::cluster::discovery::{ClusterSeed, ClusterSeedErr, DiscoveredWorker};
 
-
-
 use std::net::{IpAddr, SocketAddr};
 
 use std::str::FromStr;

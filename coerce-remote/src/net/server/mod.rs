@@ -1,15 +1,15 @@
-
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 
 use crate::net::codec::NetworkCodec;
-use crate::net::message::{ClientEvent, ClientHandshake, MessageRequest, SessionEvent, SessionHandshake};
+use crate::net::message::{
+    ClientEvent, ClientHandshake, MessageRequest, SessionEvent, SessionHandshake,
+};
 use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
 };
 use crate::net::{receive_loop, StreamReceiver};
 use coerce_rt::actor::ActorRef;
-use futures::SinkExt;
 
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
@@ -119,7 +119,8 @@ pub async fn server_loop<C: MessageCodec>(
 
                 session_store
                     .send(NewSession(RemoteSession::new(session_id, write)))
-                    .await;
+                    .await
+                    .expect("new session registered");
 
                 let _session = tokio::spawn(receive_loop(
                     context.clone(),
@@ -164,14 +165,18 @@ where
                 trace!(target: "RemoteServer", "ping received, sending pong");
                 self.sessions
                     .send(SessionWrite(self.session_id, ClientEvent::Pong(id)))
-                    .await;
+                    .await
+                    .expect("send session write");
             }
             SessionEvent::Pong(_id) => {}
         }
     }
 
     async fn on_close(&mut self, _ctx: &mut RemoteActorContext) {
-        self.sessions.send(SessionClosed(self.session_id)).await;
+        self.sessions
+            .send(SessionClosed(self.session_id))
+            .await
+            .expect("send session closed")
     }
 }
 
@@ -189,10 +194,11 @@ async fn session_handshake<C: MessageCodec>(
             session_id,
             ClientEvent::Handshake(ClientHandshake {
                 node_id: ctx.node_id(),
-                nodes
+                nodes,
             }),
         ))
-        .await;
+        .await
+        .expect("send session write (handshakd");
 
     ctx.register_nodes(handshake.nodes).await;
 }

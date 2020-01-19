@@ -1,14 +1,11 @@
-use crate::{RedisWorkerErr, RedisWorkerRef, RedisWorkerRefExt};
+use crate::{RedisWorkerRef};
 use coerce_remote::cluster::workers::{ClusterWorker, WorkerStore, WorkerStoreErr};
 
-pub struct RedisWorkerStore {
-    redis: RedisWorkerRef,
-}
+pub struct RedisWorkerStore {}
 
 impl RedisWorkerStore {
-    pub fn new(redis: &RedisWorkerRef) -> RedisWorkerStore {
-        let redis = redis.clone();
-        RedisWorkerStore { redis }
+    pub fn new(_redis: &RedisWorkerRef) -> RedisWorkerStore {
+        RedisWorkerStore {}
     }
 }
 

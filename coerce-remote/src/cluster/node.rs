@@ -2,7 +2,6 @@ use hashring::HashRing;
 
 use std::collections::HashMap;
 
-
 use uuid::Uuid;
 
 pub struct RemoteNodeStore {

@@ -4,7 +4,6 @@ use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRef, ActorRefErr};
 
-
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -75,19 +74,11 @@ impl Handler<UpdateWorker> for ClusterWorkers {
     }
 }
 
-pub struct ClusterWorker {
-    id: Uuid,
-    node: RemoteNode,
-    last_ping: Option<DateTime<Utc>>,
-}
+pub struct ClusterWorker {}
 
 impl ClusterWorker {
-    pub fn new(id: Uuid, node: RemoteNode, last_ping: Option<DateTime<Utc>>) -> ClusterWorker {
-        ClusterWorker {
-            id,
-            node,
-            last_ping,
-        }
+    pub fn new(_id: Uuid, _node: RemoteNode, _last_ping: Option<DateTime<Utc>>) -> ClusterWorker {
+        ClusterWorker {}
     }
 }
 

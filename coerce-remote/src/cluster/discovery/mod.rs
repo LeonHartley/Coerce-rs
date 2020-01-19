@@ -1,6 +1,6 @@
 use futures::io::Error;
 use std::io;
-use std::net::{IpAddr};
+use std::net::IpAddr;
 
 pub mod dns;
 

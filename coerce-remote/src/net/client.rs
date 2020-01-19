@@ -9,7 +9,6 @@ use crate::net::message::{ClientEvent, SessionEvent, SessionHandshake};
 use futures::SinkExt;
 use serde::Serialize;
 
-use tokio::io::AsyncReadExt;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
@@ -44,7 +43,7 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
             }
             ClientEvent::Result(id, res) => match ctx.pop_request(id).await {
                 Some(res_tx) => {
-                    res_tx.send(RemoteResponse::Ok(res.as_bytes().to_vec()));
+                    let _ = res_tx.send(RemoteResponse::Ok(res.as_bytes().to_vec()));
                 }
                 None => {
                     warn!(target: "RemoteClient", "received unknown request result");
@@ -54,7 +53,7 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
             ClientEvent::Ping(_id) => {}
             ClientEvent::Pong(id) => match ctx.pop_request(id).await {
                 Some(res_tx) => {
-                    res_tx.send(RemoteResponse::PingOk);
+                    res_tx.send(RemoteResponse::PingOk).expect("send ping ok");
                 }
                 None => {
                     //                                          :P

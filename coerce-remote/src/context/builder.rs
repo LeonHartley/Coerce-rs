@@ -81,7 +81,10 @@ impl RemoteActorContextBuilder {
             clients_ref,
         };
 
-        registry_ref_clone.send(SetContext(context.clone())).await;
+        registry_ref_clone
+            .send(SetContext(context.clone()))
+            .await
+            .expect("context set");
         context
     }
 }

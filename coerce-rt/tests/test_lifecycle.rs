@@ -22,7 +22,7 @@ pub async fn test_actor_lifecycle_started() {
 
     let status = actor_ref.status().await;
 
-    actor_ref.stop().await;
+    actor_ref.stop().await.expect("actor stop");
     assert_eq!(status, Ok(ActorStatus::Started))
 }
 

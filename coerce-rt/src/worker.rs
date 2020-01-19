@@ -9,7 +9,6 @@ pub struct Worker<W: Actor>
 where
     W: 'static + Sync + Send,
 {
-    state: W,
     workers: VecDeque<ActorRef<W>>,
 }
 
@@ -28,7 +27,7 @@ where
             workers.push_back(context.new_anon_actor(state.clone()).await?);
         }
 
-        Ok(context.new_anon_actor(Worker { state, workers }).await?)
+        Ok(context.new_anon_actor(Worker { workers }).await?)
     }
 }
 

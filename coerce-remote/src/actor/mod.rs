@@ -2,7 +2,7 @@ use crate::cluster::node::RemoteNodeStore;
 
 use crate::context::RemoteActorContext;
 use crate::handler::RemoteMessageHandler;
-use crate::net::client::{RemoteClientStream};
+use crate::net::client::RemoteClientStream;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::{Actor, ActorRef};
 use std::any::TypeId;
@@ -33,6 +33,7 @@ pub struct RemoteRequest {
     pub res_tx: tokio::sync::oneshot::Sender<RemoteResponse>,
 }
 
+#[derive(Debug)]
 pub enum RemoteResponse {
     Ok(Vec<u8>),
     Err(Vec<u8>),

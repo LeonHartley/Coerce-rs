@@ -1,4 +1,7 @@
-use crate::actor::message::{ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes};
+use crate::actor::message::{
+    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
+    RegisterNode, RegisterNodes,
+};
 use crate::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
@@ -7,7 +10,7 @@ use crate::cluster::node::RemoteNode;
 use crate::codec::RemoteHandlerMessage;
 use crate::context::builder::RemoteActorContextBuilder;
 use crate::net::client::RemoteClientStream;
-use crate::net::message::{SessionEvent};
+use crate::net::message::SessionEvent;
 
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
@@ -140,7 +143,8 @@ impl RemoteActorContext {
     ) {
         self.handler_ref
             .send(PushRequest(id, RemoteRequest { res_tx }))
-            .await;
+            .await
+            .expect("push request send");
     }
 
     pub async fn pop_request(
