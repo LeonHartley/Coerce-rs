@@ -18,11 +18,11 @@ impl WorkerStore for RedisWorkerStore {
         unimplemented!()
     }
 
-    async fn put(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
+    async fn put(&mut self, _worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
         unimplemented!()
     }
 
-    async fn remove(&mut self, worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
+    async fn remove(&mut self, _worker: &ClusterWorker) -> Result<(), WorkerStoreErr> {
         unimplemented!()
     }
 }

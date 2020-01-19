@@ -19,7 +19,7 @@ impl Message for HeavyTask {
 
 #[async_trait]
 impl Handler<HeavyTask> for MyWorker {
-    async fn handle(&mut self, message: HeavyTask, ctx: &mut ActorHandlerContext) -> &'static str {
+    async fn handle(&mut self, _message: HeavyTask, _ctx: &mut ActorHandlerContext) -> &'static str {
         // do some IO with a connection pool attached to `MyWorker`?
 
         "my_result"

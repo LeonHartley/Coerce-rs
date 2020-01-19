@@ -1,8 +1,8 @@
 use hashring::HashRing;
 
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
-use std::str::FromStr;
+
+
 use uuid::Uuid;
 
 pub struct RemoteNodeStore {

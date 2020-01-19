@@ -1,16 +1,16 @@
-use crate::cluster::node::RemoteNode;
+
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
-use crate::net::client::{RemoteClient, RemoteClientErr};
+
 use crate::net::codec::NetworkCodec;
-use crate::net::message::{ClientError, ClientEvent, ClientHandshake, MessageRequest, SessionEvent, SessionHandshake};
+use crate::net::message::{ClientEvent, ClientHandshake, MessageRequest, SessionEvent, SessionHandshake};
 use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
 };
 use crate::net::{receive_loop, StreamReceiver};
 use coerce_rt::actor::ActorRef;
 use futures::SinkExt;
-use serde::Serialize;
+
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
@@ -121,7 +121,7 @@ pub async fn server_loop<C: MessageCodec>(
                     .send(NewSession(RemoteSession::new(session_id, write)))
                     .await;
 
-                let session = tokio::spawn(receive_loop(
+                let _session = tokio::spawn(receive_loop(
                     context.clone(),
                     read,
                     stop_rx,
@@ -170,7 +170,7 @@ where
         }
     }
 
-    async fn on_close(&mut self, ctx: &mut RemoteActorContext) {
+    async fn on_close(&mut self, _ctx: &mut RemoteActorContext) {
         self.sessions.send(SessionClosed(self.session_id)).await;
     }
 }

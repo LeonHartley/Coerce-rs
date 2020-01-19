@@ -24,7 +24,7 @@ where
     ) -> Result<WorkerRef<W>, ActorRefErr> {
         let mut workers = VecDeque::with_capacity(count);
 
-        for i in 0..count {
+        for _i in 0..count {
             workers.push_back(context.new_anon_actor(state.clone()).await?);
         }
 
@@ -105,7 +105,7 @@ where
     W: Handler<M>,
     M::Result: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: WorkerMessage<M>, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: WorkerMessage<M>, _ctx: &mut ActorHandlerContext) {
         if let Some(worker) = self.workers.pop_front() {
             let mut worker_ref = worker.clone();
 
@@ -121,7 +121,7 @@ where
                             error!(target: "Worker", "failed to send result, receiver dropped?");
                         }
                     }
-                    Err(e) => error!(target: "Worker", "error sending msg"),
+                    Err(_e) => error!(target: "Worker", "error sending msg"),
                 }
             });
         }

@@ -15,7 +15,7 @@ extern crate coerce_macros;
 use coerce_remote::context::builder::RemoteActorHandlerBuilder;
 use coerce_remote::context::RemoteActorContext;
 use coerce_rt::actor::context::ActorContext;
-use std::time::Duration;
+
 use util::*;
 
 #[coerce_test]
@@ -23,7 +23,7 @@ pub async fn test_remote_cluster_worker_builder() {
     util::create_trace_logger();
 
     let mut context = ActorContext::new();
-    let actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
+    let _actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
     let remote = RemoteActorContext::builder()
         .with_actor_context(context)
         .with_handlers(build_handlers)

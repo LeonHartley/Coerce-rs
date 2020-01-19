@@ -127,7 +127,7 @@ where
 #[async_trait]
 impl Handler<DeregisterActor> for ActorScheduler {
     async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {
-        if let Some(a) = self.actors.remove(&msg.0) {
+        if let Some(_a) = self.actors.remove(&msg.0) {
             trace!(target: "ActorScheduler", "de-registered actor {}", msg.0);
         } else {
             warn!(target: "ActorScheduler", "actor {} not found to de-register", msg.0);

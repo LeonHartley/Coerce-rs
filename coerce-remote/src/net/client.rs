@@ -5,10 +5,10 @@ use crate::net::{receive_loop, StreamReceiver};
 
 use crate::actor::RemoteResponse;
 use crate::cluster::node::RemoteNode;
-use crate::net::message::{ClientEvent, ClientHandshake, SessionEvent, SessionHandshake};
+use crate::net::message::{ClientEvent, SessionEvent, SessionHandshake};
 use futures::SinkExt;
 use serde::Serialize;
-use std::net::SocketAddr;
+
 use tokio::io::AsyncReadExt;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
@@ -50,8 +50,8 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
                     warn!(target: "RemoteClient", "received unknown request result");
                 }
             },
-            ClientEvent::Err(id, err) => {}
-            ClientEvent::Ping(id) => {}
+            ClientEvent::Err(_id, _err) => {}
+            ClientEvent::Ping(_id) => {}
             ClientEvent::Pong(id) => match ctx.pop_request(id).await {
                 Some(res_tx) => {
                     res_tx.send(RemoteResponse::PingOk);
@@ -64,7 +64,7 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
         }
     }
 
-    async fn on_close(&mut self, ctx: &mut RemoteActorContext) {}
+    async fn on_close(&mut self, _ctx: &mut RemoteActorContext) {}
 }
 
 #[derive(Debug)]

@@ -65,7 +65,7 @@ impl<C: MessageCodec> Handler<NewSession> for RemoteSessionStore<C>
 where
     C: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: NewSession, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: NewSession, _ctx: &mut ActorHandlerContext) {
         self.sessions.insert(message.0.id, message.0);
     }
 }
@@ -75,7 +75,7 @@ impl<C: MessageCodec> Handler<SessionClosed> for RemoteSessionStore<C>
 where
     C: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: SessionClosed, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorHandlerContext) {
         self.sessions.remove(&message.0);
     }
 }
@@ -85,7 +85,7 @@ impl<C: MessageCodec> Handler<SessionWrite> for RemoteSessionStore<C>
 where
     C: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: SessionWrite, ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorHandlerContext) {
         match self.sessions.get_mut(&message.0) {
             Some(session) => {
                 trace!(target: "RemoteSession", "writing to session {}", &message.0);

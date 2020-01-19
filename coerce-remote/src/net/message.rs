@@ -1,6 +1,6 @@
 use crate::cluster::node::RemoteNode;
 use coerce_rt::actor::ActorId;
-use std::net::SocketAddr;
+
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]

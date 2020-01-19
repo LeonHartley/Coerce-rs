@@ -1,12 +1,12 @@
 use crate::cluster::discovery::{ClusterSeed, ClusterSeedErr, DiscoveredWorker};
-use futures::Future;
-use std::error::Error;
-use std::io;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::pin::Pin;
+
+
+
+use std::net::{IpAddr, SocketAddr};
+
 use std::str::FromStr;
 use trust_dns_client::client::{AsyncClient, ClientHandle};
-use trust_dns_client::op::DnsResponse;
+
 use trust_dns_client::rr::{DNSClass, Name, RecordType};
 use trust_dns_client::udp::UdpClientStream;
 use trust_dns_proto::udp::UdpResponse;
@@ -19,7 +19,7 @@ pub struct DnsClusterSeed {
 impl DnsClusterSeed {
     pub async fn new(upstream: SocketAddr, seed_host: String) -> DnsClusterSeed {
         let stream = UdpClientStream::<tokio::net::UdpSocket>::new(upstream);
-        let (mut client, bg) = AsyncClient::connect(stream).await.unwrap();
+        let (client, bg) = AsyncClient::connect(stream).await.unwrap();
 
         tokio::spawn(bg);
 

@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc};
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRef, ActorRefErr};
-use std::error::Error;
-use std::time::Instant;
+
+
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -57,8 +57,8 @@ impl Message for UpdateWorker {
 impl Handler<GetActiveWorkers> for ClusterWorkers {
     async fn handle(
         &mut self,
-        message: GetActiveWorkers,
-        ctx: &mut ActorHandlerContext,
+        _message: GetActiveWorkers,
+        _ctx: &mut ActorHandlerContext,
     ) -> Result<Vec<ClusterWorker>, WorkerStoreErr> {
         self.store.get_active().await
     }
@@ -69,7 +69,7 @@ impl Handler<UpdateWorker> for ClusterWorkers {
     async fn handle(
         &mut self,
         message: UpdateWorker,
-        ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorHandlerContext,
     ) -> Result<(), WorkerStoreErr> {
         self.store.put(&message.0).await
     }

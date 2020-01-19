@@ -85,7 +85,7 @@ where
     async fn handle(
         &mut self,
         message: RedisCommand<T>,
-        ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorHandlerContext,
     ) -> Result<T, RedisWorkerErr> {
         Ok(self.client.send(message.cmd).await?)
     }

@@ -61,7 +61,7 @@ impl ClusterWorkerBuilder {
             self.discover_peers(&mut nodes).await;
         }
 
-        let mut server_ctx = self.context.clone();
+        let server_ctx = self.context.clone();
         let mut server = RemoteServer::new(JsonCodec::new());
 
         server
@@ -70,7 +70,7 @@ impl ClusterWorkerBuilder {
             .expect("failed to start server");
     }
 
-    async fn discover_peers(&mut self, nodes: &mut Vec<RemoteNode>) {
+    async fn discover_peers(&mut self, _nodes: &mut Vec<RemoteNode>) {
         if let Some(seed_addr) = self.seed_addr.take() {
             let client_ctx = self.context.clone();
             let client =

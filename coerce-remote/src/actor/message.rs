@@ -3,7 +3,7 @@ use crate::cluster::node::RemoteNode;
 use crate::context::RemoteActorContext;
 use crate::handler::RemoteActorMessageMarker;
 use crate::net::client::RemoteClientStream;
-use crate::net::message::{SessionEvent, SessionHandshake};
+use crate::net::message::{SessionEvent};
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::Actor;
 use uuid::Uuid;

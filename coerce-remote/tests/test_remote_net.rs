@@ -5,9 +5,9 @@ use coerce_remote::net::client::RemoteClient;
 use coerce_remote::net::server::RemoteServer;
 use coerce_rt::actor::context::ActorContext;
 
-use coerce_remote::net::message::SessionEvent;
+
 use coerce_remote::RemoteActorRef;
-use std::time::Duration;
+
 use util::*;
 use uuid::Uuid;
 
@@ -64,8 +64,8 @@ pub async fn test_remote_server_client_connection() {
 
     let mut remote_actor = RemoteActorRef::<TestActor>::new(actor.id, node_id, remote_2);
 
-    for i in 1..=10 as i32 {
-        let initial_status = remote_actor.send(GetStatusRequest()).await;
+    for _i in 1..=10 as i32 {
+        let _initial_status = remote_actor.send(GetStatusRequest()).await;
     }
 
     let initial_status = remote_actor.send(GetStatusRequest()).await;
