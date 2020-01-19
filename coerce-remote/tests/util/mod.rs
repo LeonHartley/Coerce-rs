@@ -7,6 +7,8 @@ use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
 
+pub mod test;
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum TestActorStatus {
     Inactive,

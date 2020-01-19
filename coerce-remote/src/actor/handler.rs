@@ -1,8 +1,10 @@
 use crate::actor::message::{
     ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
-    RegisterNodes, SetContext,
+    RegisterNode, RegisterNodes, SetContext,
 };
-use crate::actor::{BoxedHandler, RemoteHandler, RemoteRegistry, RemoteRequest};
+use crate::actor::{
+    BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
+};
 use crate::cluster::node::RemoteNode;
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
@@ -84,7 +86,7 @@ where
 }
 
 #[async_trait]
-impl<T: RemoteClientStream> Handler<RegisterClient<T>> for RemoteRegistry
+impl<T: RemoteClientStream> Handler<RegisterClient<T>> for RemoteClientRegistry
 where
     T: 'static + Sync + Send,
 {
@@ -98,24 +100,40 @@ where
 #[async_trait]
 impl Handler<RegisterNodes> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterNodes, ctx: &mut ActorHandlerContext) {
+        let remote_ctx = self.context.as_ref().unwrap().clone();
         let nodes = message.0;
 
         let unregistered_nodes = nodes
-            .into_iter()
-            .filter(|node| !self.nodes.is_registered(node.id))
+            .iter()
+            .filter(|node| node.id != remote_ctx.node_id() && !self.nodes.is_registered(node.id))
+            .map(|node| node.clone())
             .collect();
 
-        let clients = connect_all(unregistered_nodes, self.context.as_ref().unwrap()).await;
+        let mut remote_ctx = remote_ctx;
+
+        trace!("unregistered nodes {:?}", &unregistered_nodes);
+        let clients = connect_all(unregistered_nodes, self.nodes.get_all(), &remote_ctx).await;
         for (node_id, client) in clients {
             if let Some(client) = client {
-                self.add_client(node_id, client);
+                remote_ctx.register_client(client.node_id, client).await;
             }
+        }
+
+        for node in nodes {
+            self.nodes.add(node)
         }
     }
 }
 
 #[async_trait]
-impl Handler<ClientWrite> for RemoteRegistry {
+impl Handler<RegisterNode> for RemoteRegistry {
+    async fn handle(&mut self, message: RegisterNode, ctx: &mut ActorHandlerContext) {
+        self.nodes.add(message.0);
+    }
+}
+
+#[async_trait]
+impl Handler<ClientWrite> for RemoteClientRegistry {
     async fn handle(&mut self, message: ClientWrite, _ctx: &mut ActorHandlerContext) {
         let client_id = message.0;
         let message = message.1;
@@ -131,13 +149,22 @@ impl Handler<ClientWrite> for RemoteRegistry {
 
 async fn connect_all(
     nodes: Vec<RemoteNode>,
+    current_nodes: Vec<RemoteNode>,
     ctx: &RemoteActorContext,
 ) -> HashMap<Uuid, Option<RemoteClient<JsonCodec>>> {
     let mut clients = HashMap::new();
     for node in nodes {
         let addr = node.addr.to_string();
-        match RemoteClient::connect(addr, ctx.clone(), JsonCodec::new()).await {
+        match RemoteClient::connect(
+            addr,
+            ctx.clone(),
+            JsonCodec::new(),
+            Some(current_nodes.clone()),
+        )
+        .await
+        {
             Ok(client) => {
+                trace!(target: "RemoteRegistry", "connected to node");
                 clients.insert(node.id, Some(client));
             }
             Err(_) => {

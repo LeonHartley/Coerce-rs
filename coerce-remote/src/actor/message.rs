@@ -84,6 +84,12 @@ impl Message for RegisterNodes {
     type Result = ();
 }
 
+pub struct RegisterNode(pub RemoteNode);
+
+impl Message for RegisterNode {
+    type Result = ();
+}
+
 pub struct ClientWrite(pub Uuid, pub SessionEvent);
 
 impl Message for ClientWrite {

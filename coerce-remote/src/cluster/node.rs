@@ -60,12 +60,8 @@ impl RemoteNodeStore {
 }
 
 impl RemoteNode {
-    pub fn new(id: Uuid, ip: &str, port: u16) -> RemoteNode {
-        let addr = SocketAddr::new(IpAddr::from_str(&ip).unwrap(), port);
-        RemoteNode {
-            id,
-            addr: addr.to_string(),
-        }
+    pub fn new(id: Uuid, addr: String) -> RemoteNode {
+        RemoteNode { id, addr }
     }
 }
 

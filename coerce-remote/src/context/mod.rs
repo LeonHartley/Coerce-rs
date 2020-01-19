@@ -1,7 +1,11 @@
 use crate::actor::message::{
-    ClientWrite, GetHandler, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNodes,
+    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
+    RegisterNode, RegisterNodes,
 };
-use crate::actor::{RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse};
+use crate::actor::{
+    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
+};
+use crate::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::cluster::node::RemoteNode;
 use crate::codec::RemoteHandlerMessage;
 use crate::context::builder::RemoteActorContextBuilder;
@@ -22,11 +26,16 @@ pub struct RemoteActorContext {
     node_id: Uuid,
     handler_ref: ActorRef<RemoteHandler>,
     registry_ref: ActorRef<RemoteRegistry>,
+    clients_ref: ActorRef<RemoteClientRegistry>,
 }
 
 impl RemoteActorContext {
     pub fn builder() -> RemoteActorContextBuilder {
         RemoteActorContextBuilder::new()
+    }
+
+    pub fn cluster_worker(self) -> ClusterWorkerBuilder {
+        ClusterWorkerBuilder::new(self)
     }
 }
 
@@ -53,6 +62,10 @@ impl RemoteActorContext {
             Ok(res) => Ok(res),
             Err(_e) => Err(RemoteActorError::ActorUnavailable),
         }
+    }
+
+    pub fn node_id(&self) -> Uuid {
+        self.node_id
     }
 
     pub async fn handler_name<A: Actor, M: Message>(&mut self) -> Option<String>
@@ -91,18 +104,36 @@ impl RemoteActorContext {
     where
         T: 'static + Sync + Send,
     {
-        self.registry_ref
+        self.clients_ref
             .send(RegisterClient(node_id, client))
             .await
             .unwrap()
     }
 
     pub async fn register_nodes(&mut self, nodes: Vec<RemoteNode>) {
-        self.registry_ref.send(RegisterNodes(nodes)).await.unwrap()
+        self.registry_ref
+            .send(RegisterNodes(nodes))
+            .await
+            .unwrap()
+    }
+
+    pub async fn notify_register_nodes(&mut self, nodes: Vec<RemoteNode>) {
+        self.registry_ref
+            .notify(RegisterNodes(nodes))
+            .await
+            .unwrap()
+    }
+
+    pub async fn register_node(&mut self, node: RemoteNode) {
+        self.registry_ref.send(RegisterNode(node)).await.unwrap()
+    }
+
+    pub async fn get_nodes(&mut self) -> Vec<RemoteNode> {
+        self.registry_ref.send(GetNodes).await.unwrap()
     }
 
     pub async fn send_message(&mut self, node_id: Uuid, message: SessionEvent) {
-        self.registry_ref
+        self.clients_ref
             .send(ClientWrite(node_id, message))
             .await
             .unwrap()

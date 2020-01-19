@@ -1,0 +1,13 @@
+[package]
+name = "coerce-macros"
+version = "0.1.0"
+authors = ["Leon Hartley <leon.hartley@degree53.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+quote = "1"
+syn = "1"

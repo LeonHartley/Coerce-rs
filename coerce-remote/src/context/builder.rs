@@ -1,5 +1,5 @@
 use crate::actor::message::SetContext;
-use crate::actor::{BoxedHandler, RemoteHandler, RemoteRegistry};
+use crate::actor::{BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry};
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
@@ -69,6 +69,7 @@ impl RemoteActorContextBuilder {
         let handler_ref = RemoteHandler::new(&mut inner, handlers, handler_types).await;
 
         let mut registry_ref = RemoteRegistry::new(&mut inner).await;
+        let mut clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let mut registry_ref_clone = registry_ref.clone();
 
         let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
@@ -77,9 +78,10 @@ impl RemoteActorContextBuilder {
             inner,
             handler_ref,
             registry_ref,
+            clients_ref,
         };
 
-        registry_ref_clone.send(SetContext(context.clone()));
+        registry_ref_clone.send(SetContext(context.clone())).await;
         context
     }
 }

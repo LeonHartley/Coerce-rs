@@ -2,7 +2,9 @@ use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::client::{RemoteClient, RemoteClientErr};
 use crate::net::codec::NetworkCodec;
-use crate::net::message::{ClientError, ClientEvent, MessageRequest, SessionEvent};
+use crate::net::message::{
+    ClientError, ClientEvent, ClientHandshake, MessageRequest, SessionEvent,
+};
 use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
 };
@@ -141,7 +143,18 @@ where
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
         match msg {
             SessionEvent::Handshake(msg) => {
+                trace!("server recv {}, {:?}", &msg.node_id, &msg.nodes);
+
                 ctx.register_nodes(msg.nodes).await;
+                self.sessions
+                    .send(SessionWrite(
+                        self.session_id,
+                        ClientEvent::Handshake(ClientHandshake {
+                            node_id: ctx.node_id(),
+                            nodes: ctx.get_nodes().await,
+                        }),
+                    ))
+                    .await;
             }
 
             SessionEvent::Message(msg) => {

@@ -12,9 +12,12 @@ use uuid::Uuid;
 pub mod handler;
 pub mod message;
 
+pub struct RemoteClientRegistry {
+    clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
+}
+
 pub struct RemoteRegistry {
     nodes: RemoteNodeStore,
-    clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
     context: Option<RemoteActorContext>,
 }
 
@@ -64,15 +67,15 @@ impl Actor for RemoteRegistry {}
 
 impl Actor for RemoteHandler {}
 
-impl RemoteRegistry {
-    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
-        ctx.new_anon_actor(RemoteRegistry {
+impl Actor for RemoteClientRegistry {}
+
+impl RemoteClientRegistry {
+    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteClientRegistry> {
+        ctx.new_anon_actor(RemoteClientRegistry {
             clients: HashMap::new(),
-            nodes: RemoteNodeStore::new(vec![]),
-            context: None,
         })
         .await
-        .expect("RemoteRegistry")
+        .expect("RemoteClientRegistry")
     }
 
     pub fn add_client<C: RemoteClientStream>(&mut self, node_id: Uuid, client: C)
@@ -80,6 +83,17 @@ impl RemoteRegistry {
         C: 'static + Sync + Send,
     {
         self.clients.insert(node_id, Box::new(client));
+    }
+}
+
+impl RemoteRegistry {
+    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
+        ctx.new_anon_actor(RemoteRegistry {
+            nodes: RemoteNodeStore::new(vec![]),
+            context: None,
+        })
+        .await
+        .expect("RemoteRegistry")
     }
 }
 

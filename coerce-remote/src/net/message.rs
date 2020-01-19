@@ -11,6 +11,7 @@ pub enum ClientError {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ClientHandshake {
+    pub node_id: Uuid,
     pub nodes: Vec<RemoteNode>,
 }
 
@@ -33,8 +34,7 @@ pub struct MessageRequest {
 
 #[derive(Serialize, Deserialize)]
 pub struct SessionHandshake {
-    pub id: Uuid,
-    pub address: SocketAddr,
+    pub node_id: Uuid,
     pub nodes: Vec<RemoteNode>,
     pub token: Vec<u8>,
 }

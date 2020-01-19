@@ -23,3 +23,4 @@ trust-dns-client = "0.18"
 
 [dev-dependencies]
 env_logger = "0.7.1"
+coerce-macros = { path = "./macros" }
