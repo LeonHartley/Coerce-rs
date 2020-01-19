@@ -1,10 +1,9 @@
+use crate::cluster::node::RemoteNode;
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
 use crate::net::client::{RemoteClient, RemoteClientErr};
 use crate::net::codec::NetworkCodec;
-use crate::net::message::{
-    ClientError, ClientEvent, ClientHandshake, MessageRequest, SessionEvent,
-};
+use crate::net::message::{ClientError, ClientEvent, ClientHandshake, MessageRequest, SessionEvent, SessionHandshake};
 use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
 };
@@ -144,17 +143,12 @@ where
         match msg {
             SessionEvent::Handshake(msg) => {
                 trace!("server recv {}, {:?}", &msg.node_id, &msg.nodes);
-
-                ctx.register_nodes(msg.nodes).await;
-                self.sessions
-                    .send(SessionWrite(
-                        self.session_id,
-                        ClientEvent::Handshake(ClientHandshake {
-                            node_id: ctx.node_id(),
-                            nodes: ctx.get_nodes().await,
-                        }),
-                    ))
-                    .await;
+                tokio::spawn(session_handshake(
+                    ctx.clone(),
+                    msg,
+                    self.session_id,
+                    self.sessions.clone(),
+                ));
             }
 
             SessionEvent::Message(msg) => {
@@ -179,6 +173,28 @@ where
     async fn on_close(&mut self, ctx: &mut RemoteActorContext) {
         self.sessions.send(SessionClosed(self.session_id)).await;
     }
+}
+
+async fn session_handshake<C: MessageCodec>(
+    mut ctx: RemoteActorContext,
+    handshake: SessionHandshake,
+    session_id: Uuid,
+    mut sessions: ActorRef<RemoteSessionStore<C>>,
+) where
+    C: 'static + Sync + Send,
+{
+    let nodes = ctx.get_nodes().await;
+    sessions
+        .send(SessionWrite(
+            session_id,
+            ClientEvent::Handshake(ClientHandshake {
+                node_id: ctx.node_id(),
+                nodes
+            }),
+        ))
+        .await;
+
+    ctx.register_nodes(handshake.nodes).await;
 }
 
 async fn session_handle_message<C: MessageCodec>(

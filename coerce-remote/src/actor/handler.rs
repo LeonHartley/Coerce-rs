@@ -1,7 +1,4 @@
-use crate::actor::message::{
-    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
-    RegisterNode, RegisterNodes, SetContext,
-};
+use crate::actor::message::{ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes, SetContext, RegisterSession};
 use crate::actor::{
     BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
 };
@@ -17,6 +14,7 @@ use std::collections::HashMap;
 use std::hash::Hasher;
 use std::net::SocketAddr;
 use uuid::Uuid;
+use crate::net::message::SessionHandshake;
 
 #[async_trait]
 impl Handler<SetContext> for RemoteRegistry {
@@ -100,7 +98,7 @@ where
 #[async_trait]
 impl Handler<RegisterNodes> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterNodes, ctx: &mut ActorHandlerContext) {
-        let remote_ctx = self.context.as_ref().unwrap().clone();
+        let mut remote_ctx = self.context.as_ref().unwrap().clone();
         let nodes = message.0;
 
         let unregistered_nodes = nodes
@@ -109,10 +107,10 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             .map(|node| node.clone())
             .collect();
 
-        let mut remote_ctx = remote_ctx;
-
         trace!("unregistered nodes {:?}", &unregistered_nodes);
-        let clients = connect_all(unregistered_nodes, self.nodes.get_all(), &remote_ctx).await;
+        let current_nodes = self.nodes.get_all();
+
+        let clients = connect_all(unregistered_nodes, current_nodes, &remote_ctx).await;
         for (node_id, client) in clients {
             if let Some(client) = client {
                 remote_ctx.register_client(client.node_id, client).await;

@@ -64,7 +64,7 @@ pub async fn test_remote_cluster_worker_builder() {
     remote_3
         .cluster_worker()
         .listen_addr("localhost:30103")
-        .with_seed_addr("localhost:30102")
+        .with_seed_addr("localhost:30101")
         .start()
         .await;
 

@@ -1,7 +1,4 @@
-use crate::actor::message::{
-    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
-    RegisterNode, RegisterNodes,
-};
+use crate::actor::message::{ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes, RegisterSession};
 use crate::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
@@ -10,7 +7,7 @@ use crate::cluster::node::RemoteNode;
 use crate::codec::RemoteHandlerMessage;
 use crate::context::builder::RemoteActorContextBuilder;
 use crate::net::client::RemoteClientStream;
-use crate::net::message::SessionEvent;
+use crate::net::message::{SessionEvent, SessionHandshake};
 use crate::RemoteActorRef;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;

@@ -39,7 +39,7 @@ pub async fn test_remote_node_store() {
     assert_eq!(&nodes.get_by_key(actors[1].clone()).unwrap().id, &node_2);
     assert_eq!(&nodes.get_by_key(actors[2].clone()).unwrap().id, &node_3);
     assert_eq!(&nodes.get_by_key(actors[3].clone()).unwrap().id, &node_4);
-
+`
     //node 2 died!
     nodes.remove(&node_2);
 
