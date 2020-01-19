@@ -50,10 +50,12 @@ impl ClusterWorkerBuilder {
     pub async fn start(mut self) {
         let mut nodes = vec![];
 
-        self.context.register_node(RemoteNode::new(
-            self.context.node_id(),
-            self.server_listen_addr.clone(),
-        )).await;
+        self.context
+            .register_node(RemoteNode::new(
+                self.context.node_id(),
+                self.server_listen_addr.clone(),
+            ))
+            .await;
 
         if self.seed_addr.is_some() {
             self.discover_peers(&mut nodes).await;

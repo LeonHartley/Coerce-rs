@@ -111,10 +111,7 @@ impl RemoteActorContext {
     }
 
     pub async fn register_nodes(&mut self, nodes: Vec<RemoteNode>) {
-        self.registry_ref
-            .send(RegisterNodes(nodes))
-            .await
-            .unwrap()
+        self.registry_ref.send(RegisterNodes(nodes)).await.unwrap()
     }
 
     pub async fn notify_register_nodes(&mut self, nodes: Vec<RemoteNode>) {

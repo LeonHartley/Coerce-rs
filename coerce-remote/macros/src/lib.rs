@@ -1,4 +1,3 @@
-
 use syn::export::TokenStream;
 
 #[macro_use]
