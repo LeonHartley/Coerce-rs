@@ -54,7 +54,7 @@ pub async fn test_remote_server_client_connection() {
             RemoteClient::connect(
                 "localhost:30101".to_string(),
                 remote_2.clone(),
-                JsonCodec::new(),
+                JsonCodec::new(),None
             )
             .await
             .unwrap(),

@@ -26,7 +26,7 @@ impl WorkerStore for TestWorkerStore {
 
         Ok(vec![
             ClusterWorker::new(node_1, RemoteNode::new(node_1, "127.0.0.1:30101".to_owned()), None),
-            ClusterWorker::new(node_2, RemoteNode::new(node_2, "127.0.0.1:30102".to_owoned()), None),
+            ClusterWorker::new(node_2, RemoteNode::new(node_2, "127.0.0.1:30102".to_owned()), None),
         ])
     }
 
