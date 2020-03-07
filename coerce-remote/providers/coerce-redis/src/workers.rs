@@ -1,4 +1,4 @@
-use crate::{RedisWorkerRef};
+use crate::RedisWorkerRef;
 use coerce_remote::cluster::workers::{ClusterWorker, WorkerStore, WorkerStoreErr};
 
 pub struct RedisWorkerStore {}

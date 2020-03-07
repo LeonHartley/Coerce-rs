@@ -20,4 +20,6 @@ pub trait ActorStore {
     async fn put(&mut self, actor: &ActorState) -> Result<(), ActorStoreErr>;
 
     async fn remove(&mut self, actor_id: ActorId) -> Result<bool, ActorStoreErr>;
+
+    fn clone(&self) -> Box<dyn ActorStore + Sync + Send>;
 }

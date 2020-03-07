@@ -41,6 +41,10 @@ impl ActorStore for RedisActorStore {
             _ => false,
         })
     }
+
+    fn clone(&self) -> Box<dyn ActorStore + Send + Sync> {
+        Box::new(RedisActorStore::new(&self.redis))
+    }
 }
 
 fn actor_key(id: Uuid) -> String {

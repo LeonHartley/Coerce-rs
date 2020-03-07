@@ -3,6 +3,8 @@ use crate::actor::{BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegi
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
+use crate::storage::activator::ActorActivator;
+use crate::storage::state::ActorStore;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::Actor;
@@ -15,6 +17,7 @@ pub struct RemoteActorContextBuilder {
     node_id: Option<Uuid>,
     inner: Option<ActorContext>,
     handlers: Vec<HandlerFn>,
+    store: Option<Box<dyn ActorStore + Sync + Send>>,
 }
 
 impl RemoteActorContextBuilder {
@@ -23,6 +26,7 @@ impl RemoteActorContextBuilder {
             node_id: None,
             inner: None,
             handlers: vec![],
+            store: None,
         }
     }
 
@@ -43,6 +47,15 @@ impl RemoteActorContextBuilder {
 
     pub fn with_actor_context(mut self, ctx: ActorContext) -> Self {
         self.inner = Some(ctx.clone());
+
+        self
+    }
+
+    pub fn with_actor_store<S: ActorStore>(mut self, store: S) -> Self
+    where
+        S: 'static + Sync + Send,
+    {
+        self.store = Some(Box::new(store));
 
         self
     }
@@ -71,6 +84,7 @@ impl RemoteActorContextBuilder {
         let registry_ref = RemoteRegistry::new(&mut inner).await;
         let clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let mut registry_ref_clone = registry_ref.clone();
+        let activator = ActorActivator::new(self.store.expect("no actor store set"));
 
         let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
         let context = RemoteActorContext {
@@ -79,12 +93,13 @@ impl RemoteActorContextBuilder {
             handler_ref,
             registry_ref,
             clients_ref,
+            activator,
         };
 
         registry_ref_clone
             .send(SetContext(context.clone()))
             .await
-            .expect("context set");
+            .expect("no context set");
         context
     }
 }

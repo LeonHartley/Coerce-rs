@@ -35,16 +35,32 @@ pub async fn test_remote_node_store() {
         RemoteNode::new(node_4.clone(), "127.0.0.4:1024".to_owned()),
     ]);
 
+    let mut nodes_2 = RemoteNodeStore::new(vec![
+        RemoteNode::new(node_2.clone(), "127.0.0.2:1024".to_owned()),
+        RemoteNode::new(node_4.clone(), "127.0.0.4:1024".to_owned()),
+        RemoteNode::new(node_1.clone(), "127.0.0.1:1024".to_owned()),
+        RemoteNode::new(node_3.clone(), "127.0.0.3:1024".to_owned()),
+    ]);
+
     assert_eq!(&nodes.get_by_key(actors[0].clone()).unwrap().id, &node_1);
+    assert_eq!(&nodes_2.get_by_key(actors[0].clone()).unwrap().id, &node_1);
     assert_eq!(&nodes.get_by_key(actors[1].clone()).unwrap().id, &node_2);
+    assert_eq!(&nodes_2.get_by_key(actors[1].clone()).unwrap().id, &node_2);
     assert_eq!(&nodes.get_by_key(actors[2].clone()).unwrap().id, &node_3);
+    assert_eq!(&nodes_2.get_by_key(actors[2].clone()).unwrap().id, &node_3);
     assert_eq!(&nodes.get_by_key(actors[3].clone()).unwrap().id, &node_4);
+    assert_eq!(&nodes_2.get_by_key(actors[3].clone()).unwrap().id, &node_4);
 
     //node 2 died!
     nodes.remove(&node_2);
+    nodes_2.remove(&node_2);
 
     assert_eq!(&nodes.get_by_key(actors[0].clone()).unwrap().id, &node_1);
+    assert_eq!(&nodes_2.get_by_key(actors[0].clone()).unwrap().id, &node_1);
     assert_ne!(&nodes.get_by_key(actors[1].clone()).unwrap().id, &node_2);
+    assert_ne!(&nodes_2.get_by_key(actors[1].clone()).unwrap().id, &node_2);
     assert_eq!(&nodes.get_by_key(actors[2].clone()).unwrap().id, &node_3);
+    assert_eq!(&nodes_2.get_by_key(actors[2].clone()).unwrap().id, &node_3);
     assert_eq!(&nodes.get_by_key(actors[3].clone()).unwrap().id, &node_4);
+    assert_eq!(&nodes_2.get_by_key(actors[3].clone()).unwrap().id, &node_4);
 }

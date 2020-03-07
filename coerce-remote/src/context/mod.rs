@@ -12,6 +12,7 @@ use crate::context::builder::RemoteActorContextBuilder;
 use crate::net::client::RemoteClientStream;
 use crate::net::message::SessionEvent;
 
+use crate::storage::activator::ActorActivator;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorId, ActorRef};
@@ -22,8 +23,9 @@ pub mod builder;
 
 #[derive(Clone)]
 pub struct RemoteActorContext {
-    inner: ActorContext,
     node_id: Uuid,
+    inner: ActorContext,
+    activator: ActorActivator,
     handler_ref: ActorRef<RemoteHandler>,
     registry_ref: ActorRef<RemoteRegistry>,
     clients_ref: ActorRef<RemoteClientRegistry>,
