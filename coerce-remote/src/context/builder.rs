@@ -3,7 +3,7 @@ use crate::actor::{BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegi
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
-use crate::storage::activator::ActorActivator;
+use crate::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::storage::state::ActorStore;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
@@ -84,7 +84,7 @@ impl RemoteActorContextBuilder {
         let registry_ref = RemoteRegistry::new(&mut inner).await;
         let clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let mut registry_ref_clone = registry_ref.clone();
-        let activator = ActorActivator::new(self.store.expect("no actor store set"));
+        let activator = ActorActivator::new(self.store.unwrap_or_else(|| Box::new(DefaultActorStore)));
 
         let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
         let context = RemoteActorContext {

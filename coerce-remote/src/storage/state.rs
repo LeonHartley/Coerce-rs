@@ -13,6 +13,12 @@ pub enum ActorStoreErr {
     Other(String),
 }
 
+impl ActorStoreErr {
+    pub fn from_str(s: impl ToString) -> ActorStoreErr {
+        ActorStoreErr::Other(s.to_string())
+    }
+}
+
 #[async_trait]
 pub trait ActorStore {
     async fn get(&mut self, actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr>;
