@@ -25,15 +25,15 @@ impl ActorContext {
         &mut self,
         actor: A,
     ) -> Result<ActorRef<A>, ActorRefErr>
-    where
-        A: 'static + Sync + Send,
+        where
+            A: 'static + Sync + Send,
     {
         self.new_actor(actor, ActorType::Tracked).await
     }
 
     pub async fn new_anon_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefErr>
-    where
-        A: 'static + Sync + Send,
+        where
+            A: 'static + Sync + Send,
     {
         self.new_actor(actor, ActorType::Anonymous).await
     }
@@ -43,13 +43,13 @@ impl ActorContext {
         actor: A,
         actor_type: ActorType,
     ) -> Result<ActorRef<A>, ActorRefErr>
-    where
-        A: 'static + Sync + Send,
+        where
+            A: 'static + Sync + Send,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let actor_ref = self
             .scheduler
-            .send(RegisterActor(actor, actor_type, tx))
+            .send(RegisterActor(actor, self.clone(), actor_type, tx))
             .await;
 
         match rx.await {
@@ -59,8 +59,8 @@ impl ActorContext {
     }
 
     pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
-    where
-        A: 'static + Sync + Send,
+        where
+            A: 'static + Sync + Send,
     {
         match self.scheduler.send(GetActor::new(id)).await {
             Ok(a) => a,
@@ -81,20 +81,44 @@ pub struct ActorHandlerContext {
     id: ActorId,
     status: ActorStatus,
     boxed_ref: BoxedActorRef,
+    core: Option<ActorContext>,
 }
 
 impl ActorHandlerContext {
-    pub fn new(id: ActorId, status: ActorStatus, boxed_ref: BoxedActorRef) -> ActorHandlerContext {
+    pub fn new(
+        id: ActorId,
+        core: Option<ActorContext>,
+        status: ActorStatus,
+        boxed_ref: BoxedActorRef,
+    ) -> ActorHandlerContext {
         ActorHandlerContext {
             id,
             status,
             boxed_ref,
+            core,
         }
     }
 
     pub fn id(&self) -> &ActorId {
         &self.id
     }
+
+    pub fn core(&self) -> &ActorContext {
+        if let Some(ctx) = &self.core {
+            ctx
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn core_mut(&mut self) -> &mut ActorContext {
+        if let Some(ctx) = &mut self.core {
+            ctx
+        } else {
+            unreachable!()
+        }
+    }
+
 
     pub fn set_status(&mut self, state: ActorStatus) {
         self.status = state
@@ -105,8 +129,8 @@ impl ActorHandlerContext {
     }
 
     pub(super) fn actor_ref<A: Actor>(&self) -> ActorRef<A>
-    where
-        A: 'static + Sync + Send,
+        where
+            A: 'static + Sync + Send,
     {
         ActorRef::from(self.boxed_ref.clone())
     }

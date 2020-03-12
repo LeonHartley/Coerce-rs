@@ -1,5 +1,5 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
-use crate::actor::context::{ActorHandlerContext, ActorStatus};
+use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
 use crate::actor::{Actor, ActorId, ActorRef};
@@ -45,11 +45,12 @@ pub async fn actor_loop<A: Actor>(
     mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
     actor_ref: ActorRef<A>,
+    context: Option<ActorContext>,
     scheduler: Option<ActorRef<ActorScheduler>>,
 ) where
     A: 'static + Send + Sync,
 {
-    let mut ctx = ActorHandlerContext::new(id, Starting, actor_ref.into());
+    let mut ctx = ActorHandlerContext::new(id, context, Starting, actor_ref.into());
     trace!(target: "ActorLoop", "[{}] starting", ctx.id());
 
     actor.started(&mut ctx).await;

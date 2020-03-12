@@ -1,4 +1,4 @@
-use crate::actor::context::ActorHandlerContext;
+use crate::actor::context::{ActorContext, ActorHandlerContext};
 use crate::actor::lifecycle::actor_loop;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef, BoxedActorRef, GetActorRef};
@@ -19,6 +19,7 @@ impl ActorScheduler {
                 actors: HashMap::new(),
             },
             ActorType::Anonymous,
+            None,
             None,
             None,
         )
@@ -50,7 +51,18 @@ impl ActorType {
     }
 }
 
-pub struct RegisterActor<A: Actor>(pub A, pub ActorType, pub tokio::sync::oneshot::Sender<bool>)
+pub struct SetContext(pub ActorContext);
+
+impl Message for SetContext {
+    type Result = ();
+}
+
+pub struct RegisterActor<A: Actor>(
+    pub A,
+    pub ActorContext,
+    pub ActorType,
+    pub tokio::sync::oneshot::Sender<bool>,
+)
 where
     A: 'static + Sync + Send;
 
@@ -104,15 +116,16 @@ where
         message: RegisterActor<A>,
         ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
-        let actor_tyoe = message.1;
+        let actor_type = message.2;
         let actor = start_actor(
             message.0,
-            actor_tyoe,
-            Some(message.2),
+            actor_type,
+            Some(message.3),
             Some(self.get_ref(ctx)),
+            Some(message.1),
         );
 
-        if actor_tyoe.is_tracked() {
+        if actor_type.is_tracked() {
             let _ = self
                 .actors
                 .insert(actor.id, BoxedActorRef::from(actor.clone()));
@@ -157,6 +170,7 @@ fn start_actor<A: Actor>(
     actor_type: ActorType,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
     scheduler: Option<ActorRef<ActorScheduler>>,
+    context: Option<ActorContext>,
 ) -> ActorRef<A>
 where
     A: 'static + Send + Sync,
@@ -176,6 +190,7 @@ where
         rx,
         on_start,
         actor_ref.clone(),
+        context,
         scheduler,
     ));
 

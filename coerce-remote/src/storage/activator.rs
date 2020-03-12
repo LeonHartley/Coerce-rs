@@ -35,8 +35,8 @@ impl ActorStore for DefaultActorStore {
 
 impl ActorActivator {
     pub async fn activate<A: Actor>(&mut self, id: ActorId) -> Option<A>
-        where
-            A: TryFrom<ActorState>,
+    where
+        A: TryFrom<ActorState>,
     {
         let state = self.store.get(id).await;
         if let Ok(Some(state)) = state {
