@@ -9,14 +9,14 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
-use coerce_remote::storage::state::{ActorStore, ActorStoreErr, ActorState};
-use uuid::Uuid;
 use coerce_remote::storage::activator::ActorActivator;
+use coerce_remote::storage::state::{ActorState, ActorStore, ActorStoreErr};
 use coerce_rt::actor::Actor;
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 pub struct TestActorStore {
-    state: Option<ActorState>
+    state: Option<ActorState>,
 }
 
 #[async_trait]
@@ -59,7 +59,7 @@ pub async fn test_remote_actor_activator() {
         state: Some(ActorState {
             actor_id,
             state: vec![1, 2, 3],
-        })
+        }),
     };
 
     let mut activator = ActorActivator::new(Box::new(store));

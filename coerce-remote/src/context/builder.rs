@@ -84,7 +84,8 @@ impl RemoteActorContextBuilder {
         let registry_ref = RemoteRegistry::new(&mut inner).await;
         let clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let mut registry_ref_clone = registry_ref.clone();
-        let activator = ActorActivator::new(self.store.unwrap_or_else(|| Box::new(DefaultActorStore)));
+        let activator =
+            ActorActivator::new(self.store.unwrap_or_else(|| Box::new(DefaultActorStore)));
 
         let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
         let context = RemoteActorContext {

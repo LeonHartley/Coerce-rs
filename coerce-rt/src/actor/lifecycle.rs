@@ -3,6 +3,7 @@ use crate::actor::context::{ActorHandlerContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
 use crate::actor::{Actor, ActorId, ActorRef};
+use std::collections::HashMap;
 
 pub struct Status();
 
@@ -49,7 +50,7 @@ pub async fn actor_loop<A: Actor>(
 ) where
     A: 'static + Send + Sync,
 {
-    let mut ctx = ActorHandlerContext::new(id, Starting, actor_ref.into());
+    let mut ctx = ActorHandlerContext::new(id, Starting, actor_ref.into(), HashMap::new());
     trace!(target: "ActorLoop", "[{}] starting", ctx.id());
 
     actor.started(&mut ctx).await;

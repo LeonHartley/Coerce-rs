@@ -9,6 +9,7 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+pub mod ext;
 pub mod handler;
 pub mod message;
 
