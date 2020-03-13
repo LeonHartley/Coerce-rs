@@ -12,7 +12,7 @@ extern crate async_trait;
 use coerce_remote::storage::activator::ActorActivator;
 use coerce_remote::storage::state::{ActorState, ActorStore, ActorStoreErr};
 use coerce_rt::actor::Actor;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use uuid::Uuid;
 
 pub struct TestActorStore {
