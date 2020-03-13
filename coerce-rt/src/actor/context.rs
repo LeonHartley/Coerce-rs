@@ -1,5 +1,7 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef};
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
 lazy_static! {
     static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
@@ -77,11 +79,14 @@ pub enum ActorStatus {
     Stopped,
 }
 
+type BoxedAttachment = Box<dyn Any + 'static + Sync + Send>;
+
 pub struct ActorHandlerContext {
     id: ActorId,
     status: ActorStatus,
     boxed_ref: BoxedActorRef,
     core: Option<ActorContext>,
+    attachments: HashMap<&'static str, BoxedAttachment>,
 }
 
 impl ActorHandlerContext {
@@ -90,12 +95,14 @@ impl ActorHandlerContext {
         core: Option<ActorContext>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
+        attachments: HashMap<&'static str, BoxedAttachment>,
     ) -> ActorHandlerContext {
         ActorHandlerContext {
             id,
             status,
             boxed_ref,
             core,
+            attachments,
         }
     }
 
@@ -133,5 +140,21 @@ impl ActorHandlerContext {
             A: 'static + Sync + Send,
     {
         ActorRef::from(self.boxed_ref.clone())
+    }
+
+    pub fn attachment<T: Any>(&self, key: &str) -> Option<&T> {
+        if let Some(attachment) = self.attachments.get(key) {
+            attachment.downcast_ref()
+        } else {
+            None
+        }
+    }
+
+    pub fn attachment_mut<T: Any>(&mut self, key: &str) -> Option<&mut T> {
+        if let Some(attachment) = self.attachments.get_mut(key) {
+            attachment.downcast_mut()
+        } else {
+            None
+        }
     }
 }

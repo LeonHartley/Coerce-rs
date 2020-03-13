@@ -44,7 +44,7 @@ impl RemoteNodeStore {
             .and_then(|node| self.table.remove(node))
     }
 
-    pub fn get_by_key<K: ToString>(&mut self, key: K) -> Option<&RemoteNode> {
+    pub fn get_by_key(&mut self, key: impl ToString) -> Option<&RemoteNode> {
         self.table.get(key.to_string())
     }
 
