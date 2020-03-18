@@ -3,6 +3,7 @@ use crate::actor::lifecycle::actor_loop;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef, BoxedActorRef, GetActorRef};
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -18,6 +19,7 @@ impl ActorScheduler {
             ActorScheduler {
                 actors: HashMap::new(),
             },
+            "ActorScheduler-0".to_string(),
             ActorType::Anonymous,
             None,
             None,
@@ -57,14 +59,16 @@ impl Message for SetContext {
     type Result = ();
 }
 
-pub struct RegisterActor<A: Actor>(
-    pub A,
-    pub ActorContext,
-    pub ActorType,
-    pub tokio::sync::oneshot::Sender<bool>,
-)
+pub struct RegisterActor<A: Actor>
 where
-    A: 'static + Sync + Send;
+    A: 'static + Sync + Send,
+{
+    pub id: ActorId,
+    pub actor: A,
+    pub actor_type: ActorType,
+    pub context: ActorContext,
+    pub start_rx: tokio::sync::oneshot::Sender<bool>,
+}
 
 impl<A: Actor> Message for RegisterActor<A>
 where
@@ -116,19 +120,20 @@ where
         message: RegisterActor<A>,
         ctx: &mut ActorHandlerContext,
     ) -> ActorRef<A> {
-        let actor_type = message.2;
+        let actor_type = message.actor_type;
         let actor = start_actor(
-            message.0,
+            message.actor,
+            message.id,
             actor_type,
-            Some(message.3),
+            Some(message.start_rx),
             Some(self.get_ref(ctx)),
-            Some(message.1),
+            Some(message.context),
         );
 
         if actor_type.is_tracked() {
             let _ = self
                 .actors
-                .insert(actor.id, BoxedActorRef::from(actor.clone()));
+                .insert(actor.id.clone(), BoxedActorRef::from(actor.clone()));
 
             warn!(target: "ActorScheduler", "actor {} registered", actor.id);
         }
@@ -167,6 +172,7 @@ where
 
 fn start_actor<A: Actor>(
     actor: A,
+    id: ActorId,
     actor_type: ActorType,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
     scheduler: Option<ActorRef<ActorScheduler>>,
@@ -175,7 +181,6 @@ fn start_actor<A: Actor>(
 where
     A: 'static + Send + Sync,
 {
-    let id = ActorId::new_v4();
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 
     let actor_ref = ActorRef {
@@ -184,7 +189,7 @@ where
     };
 
     tokio::spawn(actor_loop(
-        id.clone(),
+        id,
         actor,
         actor_type,
         rx,

@@ -51,7 +51,13 @@ pub async fn actor_loop<A: Actor>(
 ) where
     A: 'static + Send + Sync,
 {
-    let mut ctx = ActorHandlerContext::new(id, context, Starting, actor_ref.into(), HashMap::new());
+    let mut ctx = ActorHandlerContext::new(
+        id.clone(),
+        context,
+        Starting,
+        actor_ref.into(),
+        HashMap::new(),
+    );
     trace!(target: "ActorLoop", "[{}] starting", ctx.id());
 
     actor.started(&mut ctx).await;

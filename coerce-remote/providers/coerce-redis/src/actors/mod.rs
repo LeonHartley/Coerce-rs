@@ -1,6 +1,7 @@
 use crate::{RedisWorkerErr, RedisWorkerRef, RedisWorkerRefExt};
 use coerce_remote::storage::state::{ActorState, ActorStore, ActorStoreErr};
 use uuid::Uuid;
+use coerce_rt::actor::ActorId;
 
 pub struct RedisActorStore {
     redis: RedisWorkerRef,
@@ -15,15 +16,15 @@ impl RedisActorStore {
 
 #[async_trait]
 impl ActorStore for RedisActorStore {
-    async fn get(&mut self, actor_id: Uuid) -> Result<Option<ActorState>, ActorStoreErr> {
+    async fn get(&mut self, actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
         let key = actor_key(actor_id);
-        let value: Option<Vec<u8>> = self.redis.command(resp_array!["GET", key]).await?;
+        let value: Option<Vec<u8>> = self.redis.command(resp_array!["GET", key.clone()]).await?;
 
-        Ok(value.map(|state| ActorState { actor_id, state }))
+        Ok(value.map(|state| ActorState { actor_id: key, state }))
     }
 
     async fn put(&mut self, actor: &ActorState) -> Result<(), ActorStoreErr> {
-        let key = actor_key(actor.actor_id);
+        let key = actor_key(actor.actor_id.clone());
 
         self.redis
             .command(resp_array!["SET", key, actor.state.as_slice()])
@@ -32,7 +33,7 @@ impl ActorStore for RedisActorStore {
         Ok(())
     }
 
-    async fn remove(&mut self, actor_id: Uuid) -> Result<bool, ActorStoreErr> {
+    async fn remove(&mut self, actor_id: ActorId) -> Result<bool, ActorStoreErr> {
         let key = actor_key(actor_id);
 
         let deleted: Option<i32> = self.redis.command(resp_array!["DEL", key]).await?;
@@ -47,7 +48,7 @@ impl ActorStore for RedisActorStore {
     }
 }
 
-fn actor_key(id: Uuid) -> String {
+fn actor_key(id: ActorId) -> String {
     format!("coerce-actor-{}", id)
 }
 

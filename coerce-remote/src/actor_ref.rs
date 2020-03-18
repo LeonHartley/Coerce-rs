@@ -51,7 +51,7 @@ where
 
         let event = self
             .context
-            .create_message::<A, Msg>(self.id, msg)
+            .create_message::<A, Msg>(&self.id, msg)
             .await
             .map(|m| {
                 SessionEvent::Message(MessageRequest {
@@ -97,6 +97,6 @@ where
     A: 'static + Sync + Send,
 {
     fn clone(&self) -> Self {
-        RemoteActorRef::new(self.id, self.node_id, self.context.clone())
+        RemoteActorRef::new(self.id.clone(), self.node_id, self.context.clone())
     }
 }

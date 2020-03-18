@@ -11,7 +11,7 @@ extern crate async_trait;
 
 use coerce_remote::storage::activator::ActorActivator;
 use coerce_remote::storage::state::{ActorState, ActorStore, ActorStoreErr};
-use coerce_rt::actor::Actor;
+use coerce_rt::actor::{Actor, ActorId};
 use std::convert::{TryFrom, TryInto};
 use uuid::Uuid;
 
@@ -21,7 +21,7 @@ pub struct TestActorStore {
 
 #[async_trait]
 impl ActorStore for TestActorStore {
-    async fn get(&mut self, actor_id: Uuid) -> Result<Option<ActorState>, ActorStoreErr> {
+    async fn get(&mut self, actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
         Ok(self.state.clone())
     }
 
@@ -29,7 +29,7 @@ impl ActorStore for TestActorStore {
         unimplemented!()
     }
 
-    async fn remove(&mut self, actor_id: Uuid) -> Result<bool, ActorStoreErr> {
+    async fn remove(&mut self, actor_id: ActorId) -> Result<bool, ActorStoreErr> {
         unimplemented!()
     }
 
@@ -65,10 +65,10 @@ impl TryInto<ActorState> for TestActor {
 pub async fn test_remote_actor_activator() {
     util::create_trace_logger();
 
-    let actor_id = Uuid::new_v4();
+    let actor_id = format!("{}", Uuid::new_v4());
     let store = TestActorStore {
         state: Some(ActorState {
-            actor_id,
+            actor_id: actor_id.clone(),
             state: vec![1, 2, 3],
         }),
     };
@@ -76,7 +76,6 @@ pub async fn test_remote_actor_activator() {
     let mut activator = ActorActivator::new(Box::new(store));
     let actor = activator.activate::<TestActor>(actor_id).await;
     if let Some(actor) = actor {
-
     } else {
         panic!("no actor created")
     }

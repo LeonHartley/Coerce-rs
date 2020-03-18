@@ -1,8 +1,6 @@
-use coerce_rt::actor::{Actor, ActorId};
-use std::convert::{TryFrom, TryInto};
 use crate::context::RemoteActorContext;
+use coerce_rt::actor::{Actor, ActorId};
 use serde::de::DeserializeOwned;
-use serde::Serialize;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ActorState {

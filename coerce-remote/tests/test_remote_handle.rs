@@ -55,7 +55,7 @@ pub async fn test_remote_handle_from_json() {
     create_trace_logger();
 
     let mut ctx = ActorContext::new();
-    let mut actor = ctx.new_actor(TestActor::new(), Tracked).await.unwrap();
+    let mut actor = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 
     let mut remote = RemoteActorContext::builder()
         .with_actor_context(ctx)
@@ -73,7 +73,7 @@ pub async fn test_remote_handle_from_json() {
     let res = remote
         .handle(
             "TestActor.SetStatusRequest".to_string(),
-            actor.id,
+            actor.id.clone(),
             b"{\"status\": \"Active\"}",
         )
         .await;

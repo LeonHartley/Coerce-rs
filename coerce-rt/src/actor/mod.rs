@@ -10,7 +10,7 @@ pub mod lifecycle;
 pub mod message;
 pub mod scheduler;
 
-pub type ActorId = Uuid;
+pub type ActorId = String;
 
 #[async_trait]
 pub trait Actor {
@@ -52,7 +52,7 @@ where
 
 #[derive(Clone)]
 pub struct BoxedActorRef {
-    id: Uuid,
+    id: ActorId,
     sender: tokio::sync::mpsc::Sender<Box<dyn Any + Sync + Send>>,
 }
 

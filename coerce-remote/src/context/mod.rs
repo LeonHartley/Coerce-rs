@@ -84,7 +84,7 @@ impl RemoteActorContext {
 
     pub async fn create_message<A: Actor, M: Message>(
         &mut self,
-        id: ActorId,
+        id: &ActorId,
         message: M,
     ) -> Option<RemoteHandlerMessage<M>>
     where
@@ -94,7 +94,7 @@ impl RemoteActorContext {
     {
         match self.handler_name::<A, M>().await {
             Some(handler_type) => Some(RemoteHandlerMessage {
-                actor_id: id,
+                actor_id: id.clone(),
                 handler_type,
                 message,
             }),

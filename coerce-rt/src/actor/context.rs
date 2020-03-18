@@ -2,6 +2,7 @@ use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 lazy_static! {
     static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
@@ -27,31 +28,40 @@ impl ActorContext {
         &mut self,
         actor: A,
     ) -> Result<ActorRef<A>, ActorRefErr>
-        where
-            A: 'static + Sync + Send,
+    where
+        A: 'static + Sync + Send,
     {
-        self.new_actor(actor, ActorType::Tracked).await
+        let id = format!("{}", Uuid::new_v4());
+        self.new_actor(id, actor, ActorType::Tracked).await
     }
 
     pub async fn new_anon_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefErr>
-        where
-            A: 'static + Sync + Send,
+    where
+        A: 'static + Sync + Send,
     {
-        self.new_actor(actor, ActorType::Anonymous).await
+        let id = format!("{}", Uuid::new_v4());
+        self.new_actor(id, actor, ActorType::Anonymous).await
     }
 
     pub async fn new_actor<A: Actor>(
         &mut self,
+        id: ActorId,
         actor: A,
         actor_type: ActorType,
     ) -> Result<ActorRef<A>, ActorRefErr>
-        where
-            A: 'static + Sync + Send,
+    where
+        A: 'static + Sync + Send,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let actor_ref = self
             .scheduler
-            .send(RegisterActor(actor, self.clone(), actor_type, tx))
+            .send(RegisterActor {
+                id,
+                actor,
+                context: self.clone(),
+                actor_type,
+                start_rx: tx,
+            })
             .await;
 
         match rx.await {
@@ -61,8 +71,8 @@ impl ActorContext {
     }
 
     pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
-        where
-            A: 'static + Sync + Send,
+    where
+        A: 'static + Sync + Send,
     {
         match self.scheduler.send(GetActor::new(id)).await {
             Ok(a) => a,
@@ -126,7 +136,6 @@ impl ActorHandlerContext {
         }
     }
 
-
     pub fn set_status(&mut self, state: ActorStatus) {
         self.status = state
     }
@@ -136,8 +145,8 @@ impl ActorHandlerContext {
     }
 
     pub(super) fn actor_ref<A: Actor>(&self) -> ActorRef<A>
-        where
-            A: 'static + Sync + Send,
+    where
+        A: 'static + Sync + Send,
     {
         ActorRef::from(self.boxed_ref.clone())
     }

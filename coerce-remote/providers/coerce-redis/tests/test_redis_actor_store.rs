@@ -13,14 +13,14 @@ pub async fn test_redis_actor_store() {
         .unwrap();
 
     let mut store = RedisActorStore::new(&worker);
-    let actor_id = Uuid::new_v4();
+    let actor_id = format!("{}", Uuid::new_v4());
     let state = ActorState {
-        actor_id,
+        actor_id: actor_id.clone(),
         state: vec![1, 3, 3, 7],
     };
 
     assert_eq!(Ok(()), store.put(&state).await);
-    assert_eq!(Ok(Some(state)), store.get(actor_id).await);
-    assert_eq!(Ok(true), store.remove(actor_id).await);
+    assert_eq!(Ok(Some(state)), store.get(actor_id.clone()).await);
+    assert_eq!(Ok(true), store.remove(actor_id.clone()).await);
     assert_eq!(Ok(None), store.get(actor_id).await);
 }

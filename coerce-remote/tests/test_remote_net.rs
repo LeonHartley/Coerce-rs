@@ -61,7 +61,7 @@ pub async fn test_remote_server_client_connection() {
         )
         .await;
 
-    let mut remote_actor = RemoteActorRef::<TestActor>::new(actor.id, node_id, remote_2);
+    let mut remote_actor = RemoteActorRef::<TestActor>::new(actor.id.clone(), node_id, remote_2);
 
     for _i in 1..=10 as i32 {
         let _initial_status = remote_actor.send(GetStatusRequest()).await;

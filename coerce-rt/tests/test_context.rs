@@ -1,6 +1,7 @@
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::{get_actor, new_actor, ActorId};
 use util::*;
+use uuid::Uuid;
 
 pub mod util;
 
@@ -54,7 +55,7 @@ pub async fn test_context_get_tracked_actor() {
 #[tokio::test]
 pub async fn test_context_get_actor_not_found() {
     let mut ctx = ActorContext::new();
-    let actor = ctx.get_tracked_actor::<TestActor>(ActorId::new_v4()).await;
+    let actor = ctx.get_tracked_actor::<TestActor>(format!("{}", Uuid::new_v4())).await;
 
     assert_eq!(actor.is_none(), true);
 }

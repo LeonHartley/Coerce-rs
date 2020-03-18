@@ -32,12 +32,12 @@ pub async fn test_remote_create_message() {
 
     let actor = remote
         .inner()
-        .new_actor(TestActor::new(), Anonymous)
+        .new_anon_actor(TestActor::new())
         .await
         .unwrap();
 
     let message = remote
-        .create_message::<TestActor, SetStatusRequest>(actor.id, msg.clone())
+        .create_message::<TestActor, SetStatusRequest>(&actor.id, msg.clone())
         .await
         .unwrap();
 
