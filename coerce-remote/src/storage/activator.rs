@@ -1,6 +1,5 @@
-use crate::storage::state::{ActorState, ActorStore, ActorStoreErr};
-use coerce_rt::actor::{Actor, ActorId};
-use std::convert::TryFrom;
+use crate::storage::state::{ActorStore, ActorStoreErr};
+use coerce_rt::actor::{Actor, ActorId, ActorState, FromActorState};
 
 pub struct ActorActivator {
     store: Box<dyn ActorStore + Sync + Send>,
@@ -34,16 +33,14 @@ impl ActorStore for DefaultActorStore {
 }
 
 impl ActorActivator {
-    pub async fn activate<A: Actor>(&mut self, id: ActorId) -> Option<A>
+    pub async fn activate<A: Actor>(&mut self, id: &ActorId) -> Option<A>
     where
-        A: TryFrom<ActorState>,
+        A: FromActorState<A>,
     {
+        let id = id.clone();
         let state = self.store.get(id).await;
         if let Ok(Some(state)) = state {
-            match A::try_from(state) {
-                Ok(actor) => Some(actor),
-                Err(_) => None,
-            }
+            A::try_from(state)
         } else {
             None
         }

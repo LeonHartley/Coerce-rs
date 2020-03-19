@@ -2,7 +2,9 @@ use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
 use log::error;
+use serde::de::DeserializeOwned;
 use std::any::Any;
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 pub mod context;
@@ -17,6 +19,12 @@ pub trait Actor {
     async fn started(&mut self, _ctx: &mut ActorHandlerContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {}
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct ActorState {
+    pub actor_id: ActorId,
+    pub state: Vec<u8>,
 }
 
 pub trait GetActorRef {
@@ -182,5 +190,25 @@ where
 
     pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Stop {}).await
+    }
+}
+
+pub trait FromActorState<A: Actor> {
+    fn try_from(value: ActorState) -> Option<A>;
+}
+
+impl<A: Actor> FromActorState<A> for A
+where
+    A: DeserializeOwned + Sync + Send,
+{
+    fn try_from(value: ActorState) -> Option<A> {
+        match serde_json::from_slice(value.state.as_slice()) {
+            Ok(actor) => Some(actor),
+            Err(e) => {
+                error!(target: "ActorStore", "failed to deserialize actor: {}", value.actor_id);
+
+                None
+            }
+        }
     }
 }

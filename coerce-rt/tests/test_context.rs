@@ -55,7 +55,9 @@ pub async fn test_context_get_tracked_actor() {
 #[tokio::test]
 pub async fn test_context_get_actor_not_found() {
     let mut ctx = ActorContext::new();
-    let actor = ctx.get_tracked_actor::<TestActor>(format!("{}", Uuid::new_v4())).await;
+    let actor = ctx
+        .get_tracked_actor::<TestActor>(format!("{}", Uuid::new_v4()))
+        .await;
 
     assert_eq!(actor.is_none(), true);
 }

@@ -1,7 +1,9 @@
 use crate::actor::BoxedHandler;
 use crate::codec::MessageCodec;
+use crate::context::RemoteActorContext;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
+use coerce_rt::actor::scheduler::ActorType::Tracked;
 use coerce_rt::actor::{Actor, ActorId};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -13,6 +15,7 @@ pub trait RemoteMessageHandler: Any {
     async fn handle(
         &self,
         actor: ActorId,
+        mut remote_ctx: RemoteActorContext,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
@@ -86,17 +89,31 @@ impl<A: Actor, M: Message, C: MessageCodec> RemoteMessageHandler
 where
     C: 'static + Send + Sync,
     A: 'static + Handler<M> + Send + Sync,
+    A: 'static + DeserializeOwned,
     M: 'static + DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
     async fn handle(
         &self,
         actor_id: ActorId,
+        mut remote_ctx: RemoteActorContext,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let mut context = self.context.clone();
-        let actor = context.get_tracked_actor::<A>(actor_id).await;
+        let mut actor = context.get_tracked_actor::<A>(actor_id.clone()).await;
+        if actor.is_none() {
+            // TODO: move this to the remote_ctx, `wake_actor` or something
+            let raw_actor = remote_ctx.activator_mut().activate::<A>(&actor_id).await;
+
+            if let Some(raw_actor) = raw_actor {
+                match context.new_actor(actor_id, raw_actor, Tracked).await {
+                    Ok(new_actor) => actor = Some(new_actor),
+                    Err(e) => error!("failed to wake actor, error: {}", e),
+                };
+            }
+        }
+
         if let Some(mut actor) = actor {
             let message = self.codec.decode_msg::<M>(buffer.to_vec());
             match message {

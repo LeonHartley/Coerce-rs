@@ -50,6 +50,7 @@ impl Message for GetCounterRequest {
     type Result = i32;
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct TestActor {
     pub status: Option<TestActorStatus>,
     pub counter: i32,
@@ -102,6 +103,7 @@ impl Handler<GetCounterRequest> for TestActor {
 #[async_trait]
 impl Actor for TestActor {}
 
+#[derive(Serialize, Deserialize)]
 pub struct EchoActor {}
 
 impl EchoActor {

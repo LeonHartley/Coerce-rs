@@ -57,7 +57,7 @@ impl RemoteActorContext {
         let handler = self.handler_ref.send(GetHandler(identifier)).await;
 
         if let Ok(Some(handler)) = handler {
-            handler.handle(actor_id, buffer, tx).await;
+            handler.handle(actor_id, self.clone(), buffer, tx).await;
         };
 
         match rx.await {
@@ -157,6 +157,14 @@ impl RemoteActorContext {
             Ok(s) => s.map(|s| s.res_tx),
             Err(_) => None,
         }
+    }
+
+    pub fn activator_mut(&mut self) -> &mut ActorActivator {
+        &mut self.activator
+    }
+
+    pub fn activator(&self) -> &ActorActivator {
+        &self.activator
     }
 
     pub fn inner(&mut self) -> &mut ActorContext {

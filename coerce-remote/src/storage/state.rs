@@ -1,12 +1,6 @@
 use crate::context::RemoteActorContext;
-use coerce_rt::actor::{Actor, ActorId};
+use coerce_rt::actor::{Actor, ActorId, ActorState};
 use serde::de::DeserializeOwned;
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub struct ActorState {
-    pub actor_id: ActorId,
-    pub state: Vec<u8>,
-}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ActorStoreErr {

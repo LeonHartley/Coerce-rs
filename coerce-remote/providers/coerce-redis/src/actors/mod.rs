@@ -1,7 +1,7 @@
 use crate::{RedisWorkerErr, RedisWorkerRef, RedisWorkerRefExt};
-use coerce_remote::storage::state::{ActorState, ActorStore, ActorStoreErr};
+use coerce_remote::storage::state::{ActorStore, ActorStoreErr};
+use coerce_rt::actor::{ActorId, ActorState};
 use uuid::Uuid;
-use coerce_rt::actor::ActorId;
 
 pub struct RedisActorStore {
     redis: RedisWorkerRef,
@@ -20,7 +20,10 @@ impl ActorStore for RedisActorStore {
         let key = actor_key(actor_id);
         let value: Option<Vec<u8>> = self.redis.command(resp_array!["GET", key.clone()]).await?;
 
-        Ok(value.map(|state| ActorState { actor_id: key, state }))
+        Ok(value.map(|state| ActorState {
+            actor_id: key,
+            state,
+        }))
     }
 
     async fn put(&mut self, actor: &ActorState) -> Result<(), ActorStoreErr> {
