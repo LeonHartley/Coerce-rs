@@ -1,7 +1,7 @@
 use crate::cluster::node::RemoteNodeStore;
 
 use crate::context::RemoteActorContext;
-use crate::handler::RemoteMessageHandler;
+use crate::handler::{ActorHandler, ActorMessageHandler};
 use crate::net::client::RemoteClientStream;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::{Actor, ActorRef};
@@ -22,11 +22,13 @@ pub struct RemoteRegistry {
     context: Option<RemoteActorContext>,
 }
 
-pub(crate) type BoxedHandler = Box<dyn RemoteMessageHandler + Send + Sync>;
+pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
+
+pub(crate) type BoxedMessageHandler = Box<dyn ActorMessageHandler + Send + Sync>;
 
 pub struct RemoteHandler {
     handler_types: HashMap<TypeId, String>,
-    handlers: HashMap<String, BoxedHandler>,
+    handlers: HashMap<String, BoxedMessageHandler>,
     requests: HashMap<Uuid, RemoteRequest>,
 }
 
@@ -102,7 +104,7 @@ impl RemoteRegistry {
 impl RemoteHandler {
     pub async fn new(
         ctx: &mut ActorContext,
-        handlers: HashMap<String, BoxedHandler>,
+        handlers: HashMap<String, BoxedMessageHandler>,
         handler_types: HashMap<TypeId, String>,
     ) -> ActorRef<RemoteHandler> {
         ctx.new_anon_actor(RemoteHandler {

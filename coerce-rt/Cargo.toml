@@ -11,7 +11,7 @@ repository = "https://github.com/leonhartley/coerce-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "0.2.6", features = ["full"] }
+tokio = { version = "0.2.13", features = ["full"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 async-trait = { version = "0.1" }
 lazy_static = "1.4.0"

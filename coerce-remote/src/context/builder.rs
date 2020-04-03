@@ -1,8 +1,10 @@
 use crate::actor::message::SetContext;
-use crate::actor::{BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry};
+use crate::actor::{BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry};
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
-use crate::handler::{RemoteActorMessageHandler, RemoteMessageHandler};
+use crate::handler::{
+    ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageHandler,
+};
 use crate::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::storage::state::ActorStore;
 use coerce_rt::actor::context::ActorContext;
@@ -16,6 +18,7 @@ use uuid::Uuid;
 pub struct RemoteActorContextBuilder {
     node_id: Option<Uuid>,
     inner: Option<ActorContext>,
+    actors: Vec<ActorFn>,
     handlers: Vec<HandlerFn>,
     store: Option<Box<dyn ActorStore + Sync + Send>>,
 }
@@ -25,6 +28,7 @@ impl RemoteActorContextBuilder {
         RemoteActorContextBuilder {
             node_id: None,
             inner: None,
+            actors: vec![],
             handlers: vec![],
             store: None,
         }
@@ -32,6 +36,15 @@ impl RemoteActorContextBuilder {
 
     pub fn with_node_id(mut self, node_id: Uuid) -> Self {
         self.node_id = Some(node_id);
+
+        self
+    }
+
+    pub fn with_actors<F>(mut self, f: F) -> Self
+    where
+        F: 'static + (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder),
+    {
+        self.actors.push(Box::new(f));
 
         self
     }
@@ -105,17 +118,22 @@ impl RemoteActorContextBuilder {
     }
 }
 
+pub(crate) type ActorFn =
+    Box<dyn (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder)>;
+
 pub(crate) type HandlerFn =
     Box<dyn (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder)>;
 
 pub struct RemoteActorHandlerBuilder {
     context: ActorContext,
-    handlers: HashMap<String, Box<dyn RemoteMessageHandler + Send + Sync>>,
+    handlers: HashMap<String, Box<dyn ActorHandler + Send + Sync>>,
+    actors: HashMap<String, Box<dyn ActorMessageHandler + Send + Sync>>,
 }
 
 impl RemoteActorHandlerBuilder {
     pub fn new(context: ActorContext) -> RemoteActorHandlerBuilder {
         RemoteActorHandlerBuilder {
+            actors: HashMap::new(),
             handlers: HashMap::new(),
             context,
         }
@@ -135,7 +153,17 @@ impl RemoteActorHandlerBuilder {
         self
     }
 
-    pub fn build(self) -> HashMap<String, BoxedHandler> {
+    pub fn with_actor<A: Actor>(&mut self, identifier: &'static str) -> &mut Self
+    where
+        A: 'static + Send + Sync,
+    {
+        let handler = Box::new(RemoteActorMarker::new());
+        self.actors.insert(String::from(identifier), handler);
+
+        self
+    }
+
+    pub fn build(self) -> HashMap<String, BoxedMessageHandler> {
         self.handlers
     }
 }

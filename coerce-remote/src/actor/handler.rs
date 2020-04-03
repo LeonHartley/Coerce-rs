@@ -3,7 +3,7 @@ use crate::actor::message::{
     RegisterNode, RegisterNodes, SetContext,
 };
 use crate::actor::{
-    BoxedHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
+    BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
 };
 use crate::cluster::node::RemoteNode;
 use crate::codec::json::JsonCodec;
@@ -41,7 +41,7 @@ impl Handler<GetHandler> for RemoteHandler {
         &mut self,
         message: GetHandler,
         _ctx: &mut ActorHandlerContext,
-    ) -> Option<BoxedHandler> {
+    ) -> Option<BoxedMessageHandler> {
         self.handlers
             .get(&message.0)
             .map(|handler| handler.new_boxed())

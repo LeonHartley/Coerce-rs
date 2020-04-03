@@ -1,4 +1,4 @@
-use crate::actor::{BoxedHandler, RemoteRequest};
+use crate::actor::{BoxedMessageHandler, RemoteRequest};
 use crate::cluster::node::RemoteNode;
 use crate::context::RemoteActorContext;
 use crate::handler::RemoteActorMessageMarker;
@@ -54,7 +54,7 @@ where
 pub struct GetHandler(pub String);
 
 impl Message for GetHandler {
-    type Result = Option<BoxedHandler>;
+    type Result = Option<BoxedMessageHandler>;
 }
 
 pub struct PushRequest(pub Uuid, pub RemoteRequest);

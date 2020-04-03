@@ -151,6 +151,13 @@ impl ActorHandlerContext {
         ActorRef::from(self.boxed_ref.clone())
     }
 
+    pub fn add_attachment<T: Any>(&mut self, key: &'static str, attachment: T)
+    where
+        T: 'static + Send + Sync,
+    {
+        self.attachments.insert(key, Box::new(attachment));
+    }
+
     pub fn attachment<T: Any>(&self, key: &str) -> Option<&T> {
         if let Some(attachment) = self.attachments.get(key) {
             attachment.downcast_ref()

@@ -5,6 +5,7 @@ members = [
     "coerce-remote/macros",
 #    "coerce-remote/providers/coerce-mysql",
     "coerce-remote/providers/coerce-redis",
+    "coerce-remote/examples/coerce-chat-common",
     "coerce-remote/examples/coerce-chat-worker",
     "coerce-remote/examples/coerce-chat-gateway"
 ]

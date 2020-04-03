@@ -1,6 +1,7 @@
-use crate::actor::BoxedHandler;
+use crate::actor::BoxedMessageHandler;
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
+use crate::net::message::CreateActor;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::scheduler::ActorType::Tracked;
@@ -11,7 +12,19 @@ use std::any::{Any, TypeId};
 use std::marker::PhantomData;
 
 #[async_trait]
-pub trait RemoteMessageHandler: Any {
+pub trait ActorHandler: Any {
+    async fn create(
+        &self,
+        args: CreateActor,
+        mut remote_ctx: RemoteActorContext,
+        res: tokio::sync::oneshot::Sender<Vec<u8>>,
+    );
+
+    fn id(&self) -> TypeId;
+}
+
+#[async_trait]
+pub trait ActorMessageHandler: Any {
     async fn handle(
         &self,
         actor: ActorId,
@@ -20,9 +33,25 @@ pub trait RemoteMessageHandler: Any {
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
 
-    fn new_boxed(&self) -> BoxedHandler;
+    fn new_boxed(&self) -> BoxedMessageHandler;
 
     fn id(&self) -> TypeId;
+}
+
+pub struct RemoteActorMarker<A: Actor>
+where
+    A: Send + Sync,
+{
+    _a: PhantomData<A>,
+}
+
+impl<A: Actor> RemoteActorMarker<A>
+where
+    A: Send + Sync,
+{
+    pub fn new() -> RemoteActorMarker<A> {
+        RemoteActorMarker { _a: PhantomData }
+    }
 }
 
 pub struct RemoteActorMessageMarker<A: Actor, M: Message>
@@ -83,8 +112,38 @@ where
     }
 }
 
+pub struct RemoteActorHandler<A: Actor>
+where
+    A: Send + Sync,
+{
+    context: ActorContext,
+    marker: RemoteActorMarker<A>,
+}
+
 #[async_trait]
-impl<A: Actor, M: Message, C: MessageCodec> RemoteMessageHandler
+impl<A: Actor> ActorHandler for RemoteActorHandler<A>
+where
+    A: 'static + Sync + Send,
+    A: DeserializeOwned,
+{
+    async fn create(
+        &self,
+        args: CreateActor,
+        mut remote_ctx: RemoteActorContext,
+        res: tokio::sync::oneshot::Sender<Vec<u8>>,
+    ) {
+        let state = match serde_json::from_str::<A>(&args.actor) {
+
+        };
+    }
+
+    fn id(&self) -> TypeId {
+        unimplemented!()
+    }
+}
+
+#[async_trait]
+impl<A: Actor, M: Message, C: MessageCodec> ActorMessageHandler
     for RemoteActorMessageHandler<A, M, C>
 where
     C: 'static + Send + Sync,
@@ -137,7 +196,7 @@ where
         }
     }
 
-    fn new_boxed(&self) -> BoxedHandler {
+    fn new_boxed(&self) -> BoxedMessageHandler {
         Box::new(Self {
             context: self.context.clone(),
             codec: self.codec.clone(),

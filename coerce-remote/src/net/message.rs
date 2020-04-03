@@ -25,6 +25,13 @@ pub enum ClientEvent {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct CreateActor {
+    pub id: Option<ActorId>,
+    pub actor_type: String,
+    pub actor: String,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct MessageRequest {
     pub id: Uuid,
     pub handler_type: String,
@@ -45,4 +52,5 @@ pub enum SessionEvent {
     Pong(Uuid),
     Handshake(SessionHandshake),
     Message(MessageRequest),
+    CreateActor(CreateActor),
 }

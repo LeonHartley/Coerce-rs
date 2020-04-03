@@ -93,6 +93,8 @@ pub async fn test_remote_cluster_worker_builder() {
 
 fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
     handlers
+        .with_actor::<TestActor>("TestActor")
+        .with_actor::<EchoActor>("EchoActor")
         .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
         .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
         .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")

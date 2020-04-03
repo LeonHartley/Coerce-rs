@@ -3,7 +3,6 @@ extern crate async_trait;
 
 #[macro_use]
 extern crate redis_async;
-extern crate uuid;
 
 use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
 use coerce_rt::actor::message::{Handler, Message};
