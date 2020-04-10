@@ -1,4 +1,4 @@
-use crate::actor::{RemoteRequest};
+use crate::actor::RemoteRequest;
 use crate::cluster::node::RemoteNode;
 use crate::context::RemoteActorContext;
 

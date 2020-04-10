@@ -11,6 +11,7 @@ use coerce_rt::actor::{Actor, ActorRef};
 use std::any::TypeId;
 use std::collections::HashMap;
 
+use crate::net::message::ActorCreated;
 use uuid::Uuid;
 
 pub mod ext;
@@ -73,17 +74,16 @@ impl RemoteHandlerTypes {
         self.actor_types.get(&marker.id()).map(|name| name.clone())
     }
 
-    pub fn message_handler(&self, key: String) -> Option<BoxedMessageHandler> {
+    pub fn message_handler(&self, key: &String) -> Option<BoxedMessageHandler> {
         self.message_handlers
-            .get(&key)
+            .get(key)
             .map(|handler| handler.new_boxed())
     }
 
-    pub fn actor_handler(&self, _key: String) -> Option<BoxedActorHandler> {
-        // self.actor_handlers
-        //     .get(&key)
-        //     .map(|handler| handler.new_boxed())
-        None
+    pub fn actor_handler(&self, key: &String) -> Option<BoxedActorHandler> {
+        self.actor_handlers
+            .get(key)
+            .map(|handler| handler.new_boxed())
     }
 }
 

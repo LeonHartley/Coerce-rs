@@ -5,14 +5,14 @@ use crate::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteHandlerTypes, RemoteRegistry, RemoteRequest,
     RemoteResponse,
 };
+use crate::cluster::builder::client::ClusterClientBuilder;
 use crate::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::cluster::node::RemoteNode;
 use crate::codec::RemoteHandlerMessage;
 use crate::context::builder::RemoteActorContextBuilder;
-use crate::net::client::RemoteClientStream;
-use crate::net::message::SessionEvent;
-
 use crate::handler::RemoteActorMessageMarker;
+use crate::net::client::RemoteClientStream;
+use crate::net::message::{CreateActor, SessionEvent};
 use crate::storage::activator::ActorActivator;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
@@ -42,6 +42,10 @@ impl RemoteActorContext {
     pub fn cluster_worker(self) -> ClusterWorkerBuilder {
         ClusterWorkerBuilder::new(self)
     }
+
+    pub fn cluster_client(self) -> ClusterClientBuilder {
+        ClusterClientBuilder::new(self)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -50,18 +54,32 @@ pub enum RemoteActorError {
 }
 
 impl RemoteActorContext {
-    pub async fn handle(
+    pub async fn handle_message(
         &mut self,
         identifier: String,
         actor_id: ActorId,
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let handler = self.types.message_handler(identifier);
+        let handler = self.types.message_handler(&identifier);
 
         if let Some(handler) = handler {
             handler.handle(actor_id, self.clone(), buffer, tx).await;
         };
+
+        match rx.await {
+            Ok(res) => Ok(res),
+            Err(_e) => Err(RemoteActorError::ActorUnavailable),
+        }
+    }
+
+    pub async fn create_actor(&mut self, args: CreateActor) -> Result<Vec<u8>, RemoteActorError> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let handler = self.types.actor_handler(&args.actor_type);
+
+        if let Some(handler) = handler {
+            handler.create(args, self.clone(), tx).await;
+        }
 
         match rx.await {
             Ok(res) => Ok(res),
@@ -79,8 +97,8 @@ impl RemoteActorContext {
         M: 'static + Send + Sync,
         M::Result: Send + Sync,
     {
-        self.types
-            .handler_name(RemoteActorMessageMarker::<A, M>::new())
+        let marker = RemoteActorMessageMarker::<A, M>::new();
+        self.types.handler_name(marker)
     }
 
     pub fn create_message<A: Actor, M: Message>(
@@ -172,3 +190,5 @@ impl RemoteActorContext {
         &mut self.inner
     }
 }
+
+pub(crate) trait RemoteActorContextInternal {}

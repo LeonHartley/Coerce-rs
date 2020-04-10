@@ -2,16 +2,13 @@ use crate::actor::message::{
     ClientWrite, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes,
     SetContext,
 };
-use crate::actor::{
-    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
-};
+use crate::actor::{RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest};
 use crate::cluster::node::RemoteNode;
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::net::client::{RemoteClient, RemoteClientStream};
 use coerce_rt::actor::context::ActorHandlerContext;
-use coerce_rt::actor::message::{Handler};
-
+use coerce_rt::actor::message::Handler;
 
 use std::collections::HashMap;
 

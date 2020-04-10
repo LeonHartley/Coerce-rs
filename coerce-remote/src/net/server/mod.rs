@@ -3,7 +3,7 @@ use crate::context::RemoteActorContext;
 
 use crate::net::codec::NetworkCodec;
 use crate::net::message::{
-    ClientEvent, ClientHandshake, MessageRequest, SessionEvent, SessionHandshake,
+    ClientEvent, ClientHandshake, CreateActor, MessageRequest, SessionEvent, SessionHandshake,
 };
 use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
@@ -217,19 +217,45 @@ async fn session_handle_message<C: MessageCodec>(
     C: 'static + Sync + Send,
 {
     match ctx
-        .handle(msg.handler_type, msg.actor, msg.message.as_bytes())
+        .handle_message(msg.handler_type, msg.actor, msg.message.as_bytes())
         .await
     {
-        Ok(buf) => {
-            let event = ClientEvent::Result(msg.id, String::from_utf8(buf).expect("string"));
-            if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
-                trace!(target: "RemoteSession", "sent result successfully");
-            } else {
-                error!(target: "RemoteSession", "failed to send result");
-            }
-        }
+        Ok(buf) => send_result(msg.id, buf, session_id, &mut sessions).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }
+    }
+}
+
+async fn session_create_actor<C: MessageCodec>(
+    msg: CreateActor,
+    session_id: Uuid,
+    mut ctx: RemoteActorContext,
+    mut sessions: ActorRef<RemoteSessionStore<C>>,
+) where
+    C: 'static + Sync + Send,
+{
+    let msg_id = msg.id;
+    match ctx.create_actor(msg).await {
+        Ok(buf) => send_result(msg_id, buf, session_id, &mut sessions).await,
+        Err(_) => {
+            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+        }
+    }
+}
+
+async fn send_result<C: MessageCodec>(
+    msg_id: Uuid,
+    res: Vec<u8>,
+    session_id: Uuid,
+    sessions: &mut ActorRef<RemoteSessionStore<C>>,
+) where
+    C: 'static + Sync + Send,
+{
+    let event = ClientEvent::Result(msg_id, res);
+    if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
+        trace!(target: "RemoteSession", "sent result successfully");
+    } else {
+        error!(target: "RemoteSession", "failed to send result");
     }
 }

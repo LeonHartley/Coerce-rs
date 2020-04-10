@@ -1,15 +1,16 @@
-use crate::actor::BoxedMessageHandler;
+use crate::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::codec::MessageCodec;
 use crate::context::RemoteActorContext;
-use crate::net::message::CreateActor;
+use crate::net::message::{ActorCreated, CreateActor};
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::scheduler::ActorType::Tracked;
-use coerce_rt::actor::{Actor, ActorId};
+use coerce_rt::actor::{Actor, ActorId, ActorState, FromActorState};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait ActorHandler: Any {
@@ -19,6 +20,8 @@ pub trait ActorHandler: Any {
         mut remote_ctx: RemoteActorContext,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
+
+    fn new_boxed(&self) -> BoxedActorHandler;
 
     fn id(&self) -> TypeId;
 }
@@ -117,37 +120,71 @@ where
     }
 }
 
-pub struct RemoteActorHandler<A: Actor>
+pub struct RemoteActorHandler<A: Actor, C: MessageCodec>
 where
+    C: Send + Sync,
     A: Send + Sync,
 {
     context: ActorContext,
+    codec: C,
     marker: RemoteActorMarker<A>,
 }
 
-impl<A: Actor> RemoteActorHandler<A>
+impl<A: Actor, C: MessageCodec> RemoteActorHandler<A, C>
 where
     A: 'static + Send + Sync,
+    C: 'static + Send + Sync,
 {
-    pub fn new(context: ActorContext) -> RemoteActorHandler<A> {
+    pub fn new(context: ActorContext, codec: C) -> RemoteActorHandler<A, C> {
         let marker = RemoteActorMarker::new();
-        RemoteActorHandler { context, marker }
+        RemoteActorHandler {
+            context,
+            codec,
+            marker,
+        }
     }
 }
 
 #[async_trait]
-impl<A: Actor> ActorHandler for RemoteActorHandler<A>
+impl<A: Actor, C: MessageCodec> ActorHandler for RemoteActorHandler<A, C>
 where
     A: 'static + Sync + Send,
     A: DeserializeOwned,
+    C: 'static + Send + Sync,
 {
     async fn create(
         &self,
-        _args: CreateActor,
-        _remote_ctx: RemoteActorContext,
-        _res: tokio::sync::oneshot::Sender<Vec<u8>>,
+        args: CreateActor,
+        remote_ctx: RemoteActorContext,
+        res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        info!("attempting to create new actor")
+        let mut context = self.context.clone();
+        let actor_id = args
+            .actor_id
+            .unwrap_or_else(|| format!("{}", Uuid::new_v4()));
+
+        if let Some(state) = A::try_from(ActorState {
+            actor_id: actor_id.clone(),
+            state: args.actor,
+        }) {
+            let actor_ref = context.new_actor(actor_id, state, Tracked).await;
+            if let Ok(actor_ref) = actor_ref {
+                let result = ActorCreated {
+                    id: actor_ref.id,
+                    node_id: remote_ctx.node_id(),
+                };
+
+                send_result(result, res, &self.codec)
+            }
+        }
+    }
+
+    fn new_boxed(&self) -> BoxedActorHandler {
+        Box::new(Self {
+            context: self.context.clone(),
+            marker: RemoteActorMarker::new(),
+            codec: self.codec.clone(),
+        })
     }
 
     fn id(&self) -> TypeId {
@@ -192,16 +229,7 @@ where
                 Some(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        match self.codec.encode_msg(result) {
-                            Some(buffer) => {
-                                if res.send(buffer).is_err() {
-                                    error!(target: "RemoteHandler", "failed to send message")
-                                }
-                            }
-                            None => {
-                                error!(target: "RemoteHandler", "failed to encode message result")
-                            }
-                        }
+                        send_result(result, res, &self.codec)
                     }
                 }
                 None => error!(target: "RemoteHandler", "failed to decode message"),
@@ -219,5 +247,23 @@ where
 
     fn id(&self) -> TypeId {
         self.marker.id()
+    }
+}
+
+fn send_result<M: Serialize, C: MessageCodec>(
+    msg: M,
+    res: tokio::sync::oneshot::Sender<Vec<u8>>,
+    codec: &C,
+) where
+    M: 'static + Sync + Send,
+    C: 'static + Sync + Send,
+{
+    match codec.encode_msg(msg) {
+        Some(buffer) => {
+            if res.send(buffer).is_err() {
+                error!(target: "RemoteHandler", "failed to send message")
+            }
+        }
+        None => error!(target: "RemoteHandler", "failed to encode message result"),
     }
 }

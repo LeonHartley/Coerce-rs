@@ -6,8 +6,7 @@ use crate::actor::{
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::{
-    ActorHandler, ActorMessageHandler, RemoteActorHandler,
-    RemoteActorMessageHandler,
+    ActorHandler, ActorMessageHandler, RemoteActorHandler, RemoteActorMessageHandler,
 };
 use crate::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::storage::state::ActorStore;
@@ -157,7 +156,10 @@ impl RemoteActorHandlerBuilder {
         A: 'static + Send + Sync,
         A: DeserializeOwned,
     {
-        let handler = Box::new(RemoteActorHandler::<A>::new(self.context.clone()));
+        let handler = Box::new(RemoteActorHandler::<A, _>::new(
+            self.context.clone(),
+            JsonCodec::new(),
+        ));
         self.actors.insert(String::from(identifier), handler);
 
         self

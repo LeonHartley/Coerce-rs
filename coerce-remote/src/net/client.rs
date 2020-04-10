@@ -43,7 +43,7 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
             }
             ClientEvent::Result(id, res) => match ctx.pop_request(id).await {
                 Some(res_tx) => {
-                    let _ = res_tx.send(RemoteResponse::Ok(res.as_bytes().to_vec()));
+                    let _ = res_tx.send(RemoteResponse::Ok(res));
                 }
                 None => {
                     warn!(target: "RemoteClient", "received unknown request result");

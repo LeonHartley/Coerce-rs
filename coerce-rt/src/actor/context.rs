@@ -1,6 +1,6 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef};
-use std::any::{Any};
+use std::any::Any;
 use std::collections::HashMap;
 use uuid::Uuid;
 

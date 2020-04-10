@@ -1,6 +1,6 @@
 use crate::util::create_trace_logger;
-use coerce_rt::actor::context::ActorContext;
 use coerce_remote::context::RemoteActorContext;
+use coerce_rt::actor::context::ActorContext;
 use util::*;
 
 pub mod util;
@@ -66,7 +66,7 @@ pub async fn test_remote_handle_from_json() {
     let initial_status = actor.send(GetStatusRequest()).await;
 
     let res = remote
-        .handle(
+        .handle_message(
             "TestActor.SetStatusRequest".to_string(),
             actor.id.clone(),
             b"{\"status\": \"Active\"}",

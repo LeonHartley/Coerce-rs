@@ -3,7 +3,6 @@ use crate::actor::lifecycle::actor_loop;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRef, BoxedActorRef, GetActorRef};
 
-
 use std::collections::HashMap;
 use std::marker::PhantomData;
 

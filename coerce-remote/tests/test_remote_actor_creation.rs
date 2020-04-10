@@ -19,25 +19,6 @@ pub struct TestActorStore {
     state: Option<ActorState>,
 }
 
-#[async_trait]
-impl ActorStore for TestActorStore {
-    async fn get(&mut self, _actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
-        Ok(self.state.clone())
-    }
-
-    async fn put(&mut self, _actor: &ActorState) -> Result<(), ActorStoreErr> {
-        unimplemented!()
-    }
-
-    async fn remove(&mut self, _actor_id: ActorId) -> Result<bool, ActorStoreErr> {
-        unimplemented!()
-    }
-
-    fn clone(&self) -> Box<dyn ActorStore + Sync + Send> {
-        unimplemented!()
-    }
-}
-
 #[derive(Deserialize)]
 pub struct TestActor {
     name: String,
@@ -46,8 +27,34 @@ pub struct TestActor {
 impl Actor for TestActor {}
 
 #[tokio::test]
-pub async fn test_remote_actor_activator() {
+pub async fn test_remote_actor_create_new() {
     util::create_trace_logger();
+
+    let actor_id = format!("{}", Uuid::new_v4());
+    let expected_actor_name = "test-actor".to_string();
+    let actor_state = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
+}
+
+#[tokio::test]
+pub async fn test_remote_actor_create_from_store() {
+    #[async_trait]
+    impl ActorStore for TestActorStore {
+        async fn get(&mut self, _actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
+            Ok(self.state.clone())
+        }
+
+        async fn put(&mut self, _actor: &ActorState) -> Result<(), ActorStoreErr> {
+            unimplemented!()
+        }
+
+        async fn remove(&mut self, _actor_id: ActorId) -> Result<bool, ActorStoreErr> {
+            unimplemented!()
+        }
+
+        fn clone(&self) -> Box<dyn ActorStore + Sync + Send> {
+            unimplemented!()
+        }
+    }
 
     let expected_actor_name = "test-actor".to_string();
     let actor_id = format!("{}", Uuid::new_v4());

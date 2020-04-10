@@ -18,7 +18,7 @@ pub struct ClientHandshake {
 #[derive(Serialize, Deserialize)]
 pub enum ClientEvent {
     Handshake(ClientHandshake),
-    Result(Uuid, String),
+    Result(Uuid, Vec<u8>),
     Err(Uuid, ClientError),
     Ping(Uuid),
     Pong(Uuid),
@@ -26,9 +26,16 @@ pub enum ClientEvent {
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateActor {
-    pub id: Option<ActorId>,
+    pub id: Uuid,
+    pub actor_id: Option<ActorId>,
     pub actor_type: String,
-    pub actor: String,
+    pub actor: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ActorCreated {
+    pub id: ActorId,
+    pub node_id: Uuid,
 }
 
 #[derive(Serialize, Deserialize)]

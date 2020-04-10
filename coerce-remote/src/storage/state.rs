@@ -1,7 +1,6 @@
 use crate::context::RemoteActorContext;
 use coerce_rt::actor::{ActorId, ActorState};
 
-
 #[derive(Debug, Eq, PartialEq)]
 pub enum ActorStoreErr {
     StoreUnavailable,
