@@ -52,7 +52,6 @@ where
         let event = self
             .context
             .create_message::<A, Msg>(&self.id, msg)
-            .await
             .map(|m| {
                 SessionEvent::Message(MessageRequest {
                     id,

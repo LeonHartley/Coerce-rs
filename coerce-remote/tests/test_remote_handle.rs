@@ -37,15 +37,15 @@ pub async fn test_remote_handler_types() {
         .await;
 
     assert_eq!(
-        remote.handler_name::<EchoActor, GetCounterRequest>().await,
+        remote.handler_name::<EchoActor, GetCounterRequest>(),
         Some(echo_get_counter)
     );
     assert_eq!(
-        remote.handler_name::<TestActor, SetStatusRequest>().await,
+        remote.handler_name::<TestActor, SetStatusRequest>(),
         Some(test_set_status)
     );
     assert_eq!(
-        remote.handler_name::<TestActor, GetStatusRequest>().await,
+        remote.handler_name::<TestActor, GetStatusRequest>(),
         Some(test_get_status)
     );
 }

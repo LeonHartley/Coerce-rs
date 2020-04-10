@@ -1,9 +1,9 @@
 use crate::actor::message::{
-    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
-    RegisterNode, RegisterNodes,
+    ClientWrite, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes,
 };
 use crate::actor::{
-    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
+    RemoteClientRegistry, RemoteHandler, RemoteHandlerTypes, RemoteRegistry, RemoteRequest,
+    RemoteResponse,
 };
 use crate::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::cluster::node::RemoteNode;
@@ -12,11 +12,13 @@ use crate::context::builder::RemoteActorContextBuilder;
 use crate::net::client::RemoteClientStream;
 use crate::net::message::SessionEvent;
 
+use crate::handler::RemoteActorMessageMarker;
 use crate::storage::activator::ActorActivator;
 use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorId, ActorRef};
 use serde::Serialize;
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub mod builder;
@@ -29,6 +31,7 @@ pub struct RemoteActorContext {
     handler_ref: ActorRef<RemoteHandler>,
     registry_ref: ActorRef<RemoteRegistry>,
     clients_ref: ActorRef<RemoteClientRegistry>,
+    types: Arc<RemoteHandlerTypes>,
 }
 
 impl RemoteActorContext {
@@ -54,9 +57,9 @@ impl RemoteActorContext {
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let handler = self.handler_ref.send(GetHandler(identifier)).await;
+        let handler = self.types.message_handler(identifier);
 
-        if let Ok(Some(handler)) = handler {
+        if let Some(handler) = handler {
             handler.handle(actor_id, self.clone(), buffer, tx).await;
         };
 
@@ -70,19 +73,17 @@ impl RemoteActorContext {
         self.node_id
     }
 
-    pub async fn handler_name<A: Actor, M: Message>(&mut self) -> Option<String>
+    pub fn handler_name<A: Actor, M: Message>(&mut self) -> Option<String>
     where
         A: 'static + Send + Sync,
         M: 'static + Send + Sync,
         M::Result: Send + Sync,
     {
-        self.handler_ref
-            .send(HandlerName::<A, M>::new())
-            .await
-            .unwrap()
+        self.types
+            .handler_name(RemoteActorMessageMarker::<A, M>::new())
     }
 
-    pub async fn create_message<A: Actor, M: Message>(
+    pub fn create_message<A: Actor, M: Message>(
         &mut self,
         id: &ActorId,
         message: M,
@@ -92,7 +93,7 @@ impl RemoteActorContext {
         M: 'static + Serialize + Send + Sync,
         M::Result: Send + Sync,
     {
-        match self.handler_name::<A, M>().await {
+        match self.handler_name::<A, M>() {
             Some(handler_type) => Some(RemoteHandlerMessage {
                 actor_id: id.clone(),
                 handler_type,

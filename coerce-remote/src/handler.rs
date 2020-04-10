@@ -47,10 +47,15 @@ where
 
 impl<A: Actor> RemoteActorMarker<A>
 where
+    Self: Any,
     A: Send + Sync,
 {
     pub fn new() -> RemoteActorMarker<A> {
         RemoteActorMarker { _a: PhantomData }
+    }
+
+    pub fn id(&self) -> TypeId {
+        self.type_id()
     }
 }
 
@@ -120,16 +125,15 @@ where
     marker: RemoteActorMarker<A>,
 }
 
-impl<A: Actor> RemoteActorHandler<A> where A: Send + Sync {
+impl<A: Actor> RemoteActorHandler<A>
+where
+    A: 'static + Send + Sync,
+{
     pub fn new(context: ActorContext) -> RemoteActorHandler<A> {
         let marker = RemoteActorMarker::new();
-        RemoteActorHandler {
-            context,
-            marker
-        }
+        RemoteActorHandler { context, marker }
     }
 }
-
 
 #[async_trait]
 impl<A: Actor> ActorHandler for RemoteActorHandler<A>

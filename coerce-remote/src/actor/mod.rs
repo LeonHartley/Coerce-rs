@@ -1,12 +1,16 @@
 use crate::cluster::node::RemoteNodeStore;
 
 use crate::context::RemoteActorContext;
-use crate::handler::{ActorHandler, ActorMessageHandler};
+use crate::handler::{
+    ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
+};
 use crate::net::client::RemoteClientStream;
 use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorRef};
 use std::any::TypeId;
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub mod ext;
@@ -26,9 +30,64 @@ pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
 
 pub(crate) type BoxedMessageHandler = Box<dyn ActorMessageHandler + Send + Sync>;
 
-pub struct RemoteHandler {
+pub struct RemoteHandlerTypes {
+    actor_types: HashMap<TypeId, String>,
     handler_types: HashMap<TypeId, String>,
-    handlers: HashMap<String, BoxedMessageHandler>,
+    message_handlers: HashMap<String, BoxedMessageHandler>,
+    actor_handlers: HashMap<String, BoxedActorHandler>,
+}
+
+impl RemoteHandlerTypes {
+    pub fn new(
+        actor_types: HashMap<TypeId, String>,
+        handler_types: HashMap<TypeId, String>,
+        message_handlers: HashMap<String, BoxedMessageHandler>,
+        actor_handlers: HashMap<String, BoxedActorHandler>,
+    ) -> RemoteHandlerTypes {
+        RemoteHandlerTypes {
+            actor_types,
+            handler_types,
+            message_handlers,
+            actor_handlers,
+        }
+    }
+
+    pub fn handler_name<A: Actor, M: Message>(
+        &self,
+        marker: RemoteActorMessageMarker<A, M>,
+    ) -> Option<String>
+    where
+        A: 'static + Send + Sync,
+        M: 'static + Send + Sync,
+        M::Result: 'static + Sync + Send,
+    {
+        self.handler_types
+            .get(&marker.id())
+            .map(|name| name.clone())
+    }
+
+    pub fn actor_name<A: Actor>(&self, marker: RemoteActorMarker<A>) -> Option<String>
+    where
+        A: 'static + Send + Sync,
+    {
+        self.actor_types.get(&marker.id()).map(|name| name.clone())
+    }
+
+    pub fn message_handler(&self, key: String) -> Option<BoxedMessageHandler> {
+        self.message_handlers
+            .get(&key)
+            .map(|handler| handler.new_boxed())
+    }
+
+    pub fn actor_handler(&self, key: String) -> Option<BoxedActorHandler> {
+        // self.actor_handlers
+        //     .get(&key)
+        //     .map(|handler| handler.new_boxed())
+        None
+    }
+}
+
+pub struct RemoteHandler {
     requests: HashMap<Uuid, RemoteRequest>,
 }
 
@@ -102,14 +161,8 @@ impl RemoteRegistry {
 }
 
 impl RemoteHandler {
-    pub async fn new(
-        ctx: &mut ActorContext,
-        handlers: HashMap<String, BoxedMessageHandler>,
-        handler_types: HashMap<TypeId, String>,
-    ) -> ActorRef<RemoteHandler> {
+    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteHandler> {
         ctx.new_anon_actor(RemoteHandler {
-            handler_types,
-            handlers,
             requests: HashMap::new(),
         })
         .await

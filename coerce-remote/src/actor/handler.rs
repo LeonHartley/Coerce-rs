@@ -1,6 +1,6 @@
 use crate::actor::message::{
-    ClientWrite, GetHandler, GetNodes, HandlerName, PopRequest, PushRequest, RegisterClient,
-    RegisterNode, RegisterNodes, SetContext,
+    ClientWrite, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes,
+    SetContext,
 };
 use crate::actor::{
     BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
@@ -36,19 +36,6 @@ impl Handler<GetNodes> for RemoteRegistry {
 }
 
 #[async_trait]
-impl Handler<GetHandler> for RemoteHandler {
-    async fn handle(
-        &mut self,
-        message: GetHandler,
-        _ctx: &mut ActorHandlerContext,
-    ) -> Option<BoxedMessageHandler> {
-        self.handlers
-            .get(&message.0)
-            .map(|handler| handler.new_boxed())
-    }
-}
-
-#[async_trait]
 impl Handler<PushRequest> for RemoteHandler {
     async fn handle(&mut self, message: PushRequest, _ctx: &mut ActorHandlerContext) {
         self.requests.insert(message.0, message.1);
@@ -63,24 +50,6 @@ impl Handler<PopRequest> for RemoteHandler {
         _ctx: &mut ActorHandlerContext,
     ) -> Option<RemoteRequest> {
         self.requests.remove(&message.0)
-    }
-}
-
-#[async_trait]
-impl<A: Actor, M: Message> Handler<HandlerName<A, M>> for RemoteHandler
-where
-    A: 'static + Send + Sync,
-    M: 'static + Send + Sync,
-    M::Result: 'static + Sync + Send,
-{
-    async fn handle(
-        &mut self,
-        message: HandlerName<A, M>,
-        _ctx: &mut ActorHandlerContext,
-    ) -> Option<String> {
-        self.handler_types
-            .get(&message.marker.id())
-            .map(|name| name.clone())
     }
 }
 

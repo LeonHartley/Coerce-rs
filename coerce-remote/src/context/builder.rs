@@ -1,8 +1,14 @@
 use crate::actor::message::SetContext;
-use crate::actor::{BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry};
+use crate::actor::{
+    BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
+    RemoteHandlerTypes, RemoteRegistry,
+};
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
-use crate::handler::{ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageHandler, RemoteActorHandler};
+use crate::handler::{
+    ActorHandler, ActorMessageHandler, RemoteActorHandler, RemoteActorMarker,
+    RemoteActorMessageHandler,
+};
 use crate::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::storage::state::ActorStore;
 use coerce_rt::actor::context::ActorContext;
@@ -11,12 +17,12 @@ use coerce_rt::actor::Actor;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct RemoteActorContextBuilder {
     node_id: Option<Uuid>,
     inner: Option<ActorContext>,
-    actors: Vec<ActorFn>,
     handlers: Vec<HandlerFn>,
     store: Option<Box<dyn ActorStore + Sync + Send>>,
 }
@@ -26,7 +32,6 @@ impl RemoteActorContextBuilder {
         RemoteActorContextBuilder {
             node_id: None,
             inner: None,
-            actors: vec![],
             handlers: vec![],
             store: None,
         }
@@ -42,7 +47,7 @@ impl RemoteActorContextBuilder {
     where
         F: 'static + (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder),
     {
-        self.actors.push(Box::new(f));
+        self.handlers.push(Box::new(f));
 
         self
     }
@@ -83,22 +88,16 @@ impl RemoteActorContextBuilder {
             h(&mut handlers);
         });
 
-        let handlers = handlers.build();
-
-        let mut handler_types = HashMap::new();
-        for (k, v) in &handlers {
-            let _ = handler_types.insert(v.id(), k.clone());
-        }
-
-        let handler_ref = RemoteHandler::new(&mut inner, handlers, handler_types).await;
-
+        let types = handlers.build();
+        let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
+        let handler_ref = RemoteHandler::new(&mut inner).await;
         let registry_ref = RemoteRegistry::new(&mut inner).await;
+
         let clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let mut registry_ref_clone = registry_ref.clone();
-        let activator =
-            ActorActivator::new(self.store.unwrap_or_else(|| Box::new(DefaultActorStore)));
 
-        let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
+        let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
+        let activator = ActorActivator::new(store);
         let context = RemoteActorContext {
             node_id,
             inner,
@@ -106,12 +105,14 @@ impl RemoteActorContextBuilder {
             registry_ref,
             clients_ref,
             activator,
+            types,
         };
 
         registry_ref_clone
             .send(SetContext(context.clone()))
             .await
             .expect("no context set");
+
         context
     }
 }
@@ -124,8 +125,8 @@ pub(crate) type HandlerFn =
 
 pub struct RemoteActorHandlerBuilder {
     context: ActorContext,
-    actors: HashMap<String, Box<dyn ActorHandler + Send + Sync>>,
-    handlers: HashMap<String, Box<dyn ActorMessageHandler + Send + Sync>>,
+    actors: HashMap<String, BoxedActorHandler>,
+    handlers: HashMap<String, BoxedMessageHandler>,
 }
 
 impl RemoteActorHandlerBuilder {
@@ -162,7 +163,23 @@ impl RemoteActorHandlerBuilder {
         self
     }
 
-    pub fn build(self) -> HashMap<String, BoxedMessageHandler> {
-        self.handlers
+    pub fn build(self) -> Arc<RemoteHandlerTypes> {
+        let mut handler_types = HashMap::new();
+        let mut actor_types = HashMap::new();
+
+        for (k, v) in &self.handlers {
+            let _ = handler_types.insert(v.id(), k.clone());
+        }
+
+        for (k, v) in &self.actors {
+            let _ = actor_types.insert(v.id(), k.clone());
+        }
+
+        Arc::new(RemoteHandlerTypes::new(
+            actor_types,
+            handler_types,
+            self.handlers,
+            self.actors,
+        ))
     }
 }

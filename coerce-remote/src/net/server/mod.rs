@@ -203,7 +203,7 @@ async fn session_handshake<C: MessageCodec>(
             }),
         ))
         .await
-        .expect("send session write (handshakd");
+        .expect("send session write (handshake)");
 
     ctx.register_nodes(handshake.nodes).await;
 }

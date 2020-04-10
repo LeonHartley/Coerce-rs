@@ -66,6 +66,7 @@ where
     C: 'static + Sync + Send,
 {
     async fn handle(&mut self, message: NewSession, _ctx: &mut ActorHandlerContext) {
+        trace!(target: "SessionStore", "new session {}", &message.0.id);
         self.sessions.insert(message.0.id, message.0);
     }
 }
@@ -77,6 +78,7 @@ where
 {
     async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorHandlerContext) {
         self.sessions.remove(&message.0);
+        trace!(target: "SessionStore", "disposed session {}", &message.0);
     }
 }
 
