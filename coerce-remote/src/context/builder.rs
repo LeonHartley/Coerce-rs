@@ -2,9 +2,7 @@ use crate::actor::message::SetContext;
 use crate::actor::{BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry};
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
-use crate::handler::{
-    ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageHandler,
-};
+use crate::handler::{ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageHandler, RemoteActorHandler};
 use crate::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::storage::state::ActorStore;
 use coerce_rt::actor::context::ActorContext;
@@ -126,8 +124,8 @@ pub(crate) type HandlerFn =
 
 pub struct RemoteActorHandlerBuilder {
     context: ActorContext,
-    handlers: HashMap<String, Box<dyn ActorHandler + Send + Sync>>,
-    actors: HashMap<String, Box<dyn ActorMessageHandler + Send + Sync>>,
+    actors: HashMap<String, Box<dyn ActorHandler + Send + Sync>>,
+    handlers: HashMap<String, Box<dyn ActorMessageHandler + Send + Sync>>,
 }
 
 impl RemoteActorHandlerBuilder {
@@ -156,8 +154,9 @@ impl RemoteActorHandlerBuilder {
     pub fn with_actor<A: Actor>(&mut self, identifier: &'static str) -> &mut Self
     where
         A: 'static + Send + Sync,
+        A: DeserializeOwned,
     {
-        let handler = Box::new(RemoteActorMarker::new());
+        let handler = Box::new(RemoteActorHandler::<A>::new(self.context.clone()));
         self.actors.insert(String::from(identifier), handler);
 
         self

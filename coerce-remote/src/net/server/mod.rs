@@ -168,7 +168,12 @@ where
                     .await
                     .expect("send session write");
             }
+
             SessionEvent::Pong(_id) => {}
+
+            SessionEvent::CreateActor(msg) => {
+                trace!(target: "RemoteServer", "{} would like to create an actor", self.session_id)
+            }
         }
     }
 

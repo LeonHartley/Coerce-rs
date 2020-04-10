@@ -120,6 +120,17 @@ where
     marker: RemoteActorMarker<A>,
 }
 
+impl<A: Actor> RemoteActorHandler<A> where A: Send + Sync {
+    pub fn new(context: ActorContext) -> RemoteActorHandler<A> {
+        let marker = RemoteActorMarker::new();
+        RemoteActorHandler {
+            context,
+            marker
+        }
+    }
+}
+
+
 #[async_trait]
 impl<A: Actor> ActorHandler for RemoteActorHandler<A>
 where
@@ -132,13 +143,11 @@ where
         mut remote_ctx: RemoteActorContext,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let state = match serde_json::from_str::<A>(&args.actor) {
-
-        };
+        info!("attempting to create new actor")
     }
 
     fn id(&self) -> TypeId {
-        unimplemented!()
+        self.type_id()
     }
 }
 
