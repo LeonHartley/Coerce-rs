@@ -6,7 +6,7 @@ use crate::actor::{
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::handler::{
-    ActorHandler, ActorMessageHandler, RemoteActorHandler, RemoteActorMarker,
+    ActorHandler, ActorMessageHandler, RemoteActorHandler,
     RemoteActorMessageHandler,
 };
 use crate::storage::activator::{ActorActivator, DefaultActorStore};

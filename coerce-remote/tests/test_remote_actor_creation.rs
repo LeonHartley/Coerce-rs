@@ -12,7 +12,7 @@ extern crate async_trait;
 use coerce_remote::storage::activator::ActorActivator;
 use coerce_remote::storage::state::{ActorStore, ActorStoreErr};
 use coerce_rt::actor::{Actor, ActorId, ActorState};
-use std::convert::{TryFrom, TryInto};
+
 use uuid::Uuid;
 
 pub struct TestActorStore {
@@ -21,15 +21,15 @@ pub struct TestActorStore {
 
 #[async_trait]
 impl ActorStore for TestActorStore {
-    async fn get(&mut self, actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
+    async fn get(&mut self, _actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
         Ok(self.state.clone())
     }
 
-    async fn put(&mut self, actor: &ActorState) -> Result<(), ActorStoreErr> {
+    async fn put(&mut self, _actor: &ActorState) -> Result<(), ActorStoreErr> {
         unimplemented!()
     }
 
-    async fn remove(&mut self, actor_id: ActorId) -> Result<bool, ActorStoreErr> {
+    async fn remove(&mut self, _actor_id: ActorId) -> Result<bool, ActorStoreErr> {
         unimplemented!()
     }
 

@@ -143,9 +143,9 @@ where
 {
     async fn create(
         &self,
-        args: CreateActor,
-        mut remote_ctx: RemoteActorContext,
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
+        _args: CreateActor,
+        _remote_ctx: RemoteActorContext,
+        _res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         info!("attempting to create new actor")
     }

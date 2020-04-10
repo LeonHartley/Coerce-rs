@@ -171,7 +171,7 @@ where
 
             SessionEvent::Pong(_id) => {}
 
-            SessionEvent::CreateActor(msg) => {
+            SessionEvent::CreateActor(_msg) => {
                 trace!(target: "RemoteServer", "{} would like to create an actor", self.session_id)
             }
         }

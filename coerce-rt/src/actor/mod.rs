@@ -4,8 +4,8 @@ use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler
 use log::error;
 use serde::de::DeserializeOwned;
 use std::any::Any;
-use std::convert::TryFrom;
-use uuid::Uuid;
+
+
 
 pub mod context;
 pub mod lifecycle;
@@ -204,7 +204,7 @@ where
     fn try_from(value: ActorState) -> Option<A> {
         match serde_json::from_slice(value.state.as_slice()) {
             Ok(actor) => Some(actor),
-            Err(e) => {
+            Err(_e) => {
                 error!(target: "ActorStore", "failed to deserialize actor: {}", value.actor_id);
 
                 None

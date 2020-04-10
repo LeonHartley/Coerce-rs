@@ -1,11 +1,6 @@
 use crate::util::create_trace_logger;
-
 use coerce_rt::actor::context::ActorContext;
-
 use coerce_remote::context::RemoteActorContext;
-
-use coerce_rt::actor::scheduler::ActorType::Tracked;
-
 use util::*;
 
 pub mod util;

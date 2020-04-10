@@ -1,5 +1,5 @@
 use coerce_rt::actor::context::ActorContext;
-use coerce_rt::actor::{get_actor, new_actor, ActorId};
+use coerce_rt::actor::{get_actor, new_actor};
 use util::*;
 use uuid::Uuid;
 

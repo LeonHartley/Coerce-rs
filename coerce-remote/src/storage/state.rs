@@ -1,6 +1,6 @@
 use crate::context::RemoteActorContext;
-use coerce_rt::actor::{Actor, ActorId, ActorState};
-use serde::de::DeserializeOwned;
+use coerce_rt::actor::{ActorId, ActorState};
+
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ActorStoreErr {

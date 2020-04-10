@@ -15,15 +15,15 @@ pub struct DefaultActorStore;
 
 #[async_trait]
 impl ActorStore for DefaultActorStore {
-    async fn get(&mut self, actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
+    async fn get(&mut self, _actor_id: ActorId) -> Result<Option<ActorState>, ActorStoreErr> {
         Ok(None)
     }
 
-    async fn put(&mut self, actor: &ActorState) -> Result<(), ActorStoreErr> {
+    async fn put(&mut self, _actor: &ActorState) -> Result<(), ActorStoreErr> {
         Ok(())
     }
 
-    async fn remove(&mut self, actor_id: ActorId) -> Result<bool, ActorStoreErr> {
+    async fn remove(&mut self, _actor_id: ActorId) -> Result<bool, ActorStoreErr> {
         Ok(false)
     }
 

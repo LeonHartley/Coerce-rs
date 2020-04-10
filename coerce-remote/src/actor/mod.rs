@@ -10,7 +10,7 @@ use coerce_rt::actor::message::Message;
 use coerce_rt::actor::{Actor, ActorRef};
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::sync::Arc;
+
 use uuid::Uuid;
 
 pub mod ext;
@@ -79,7 +79,7 @@ impl RemoteHandlerTypes {
             .map(|handler| handler.new_boxed())
     }
 
-    pub fn actor_handler(&self, key: String) -> Option<BoxedActorHandler> {
+    pub fn actor_handler(&self, _key: String) -> Option<BoxedActorHandler> {
         // self.actor_handlers
         //     .get(&key)
         //     .map(|handler| handler.new_boxed())

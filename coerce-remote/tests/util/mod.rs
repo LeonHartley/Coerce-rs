@@ -134,6 +134,16 @@ pub fn create_trace_logger() {
                 record.args(),
             )
         })
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] {} - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.target(),
+                record.args(),
+            )
+        })
         .filter(None, LevelFilter::Trace)
         .init();
 }

@@ -3,15 +3,15 @@ use crate::actor::message::{
     SetContext,
 };
 use crate::actor::{
-    BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
+    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest,
 };
 use crate::cluster::node::RemoteNode;
 use crate::codec::json::JsonCodec;
 use crate::context::RemoteActorContext;
 use crate::net::client::{RemoteClient, RemoteClientStream};
 use coerce_rt::actor::context::ActorHandlerContext;
-use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::Actor;
+use coerce_rt::actor::message::{Handler};
+
 
 use std::collections::HashMap;
 
