@@ -35,9 +35,8 @@ impl Actor for TestActor {}
 pub async fn test_remote_actor_create_new() {
     util::create_trace_logger();
 
-    let actor_type = "TestActor";
     let actor_id = format!("{}", Uuid::new_v4());
-    let expected_actor_name = "test-actor".to_string();
+    let expected_actor_name = "test-actor-123".to_string();
     let actor_state = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
     let codec = JsonCodec::new();
@@ -51,15 +50,19 @@ pub async fn test_remote_actor_create_new() {
     let message = CreateActor {
         id: Uuid::new_v4(),
         actor_id: Some(actor_id.clone()),
-        actor_type: actor_type.to_string(),
+        actor_type: String::from("TestActor"),
         actor: actor_state
     };
 
     let result = remote.create_actor(message).await;
     let create_actor_res = codec.decode_msg::<ActorCreated>(result.unwrap()).unwrap();
 
-    assert_eq!(create_actor_res.id, actor_id);
+    let mut actor = remote.inner().get_tracked_actor::<TestActor>(actor_id.clone()).await.unwrap();
+    let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
+
+    assert_eq!(&create_actor_res.id, &actor_id);
     assert_eq!(create_actor_res.node_id, remote.node_id());
+    assert_eq!(actor_name, expected_actor_name);
 }
 
 #[tokio::test]
