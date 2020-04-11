@@ -143,7 +143,7 @@ where
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
         match msg {
             SessionEvent::Handshake(msg) => {
-                trace!("server recv {}, {:?}", &msg.node_id, &msg.nodes);
+                trace!(target: "RemoteServer", "server recv {}, {:?}", &msg.node_id, &msg.nodes);
                 tokio::spawn(session_handshake(
                     ctx.clone(),
                     msg,
@@ -171,8 +171,14 @@ where
 
             SessionEvent::Pong(_id) => {}
 
-            SessionEvent::CreateActor(_msg) => {
-                trace!(target: "RemoteServer", "{} would like to create an actor", self.session_id)
+            SessionEvent::CreateActor(msg) => {
+                trace!(target: "RemoteServer", "create actor {}, {:?}", self.session_id, &msg.actor_id);
+                tokio::spawn(session_create_actor(
+                    msg,
+                    self.session_id,
+                    ctx.clone(),
+                    self.sessions.clone(),
+                ));
             }
         }
     }
@@ -236,7 +242,7 @@ async fn session_create_actor<C: MessageCodec>(
     C: 'static + Sync + Send,
 {
     let msg_id = msg.id;
-    match ctx.create_actor(msg).await {
+    match ctx.handle_create_actor(msg).await {
         Ok(buf) => send_result(msg_id, buf, session_id, &mut sessions).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");

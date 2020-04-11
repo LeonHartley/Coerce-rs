@@ -54,7 +54,7 @@ pub async fn test_remote_actor_create_new() {
         actor: actor_state
     };
 
-    let result = remote.create_actor(message).await;
+    let result = remote.handle_create_actor(message).await;
     let create_actor_res = codec.decode_msg::<ActorCreated>(result.unwrap()).unwrap();
 
     let mut actor = remote.inner().get_tracked_actor::<TestActor>(actor_id.clone()).await.unwrap();
