@@ -9,16 +9,15 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
+use coerce_rt::actor::{Actor, ActorId, ActorState};
+use coerce_rt::actor::context::ActorContext;
 use coerce_remote::storage::activator::ActorActivator;
 use coerce_remote::storage::state::{ActorStore, ActorStoreErr};
-use coerce_rt::actor::{Actor, ActorId, ActorState};
-
-use coerce_remote::context::RemoteActorContext;
-use coerce_rt::actor::context::ActorContext;
-use uuid::Uuid;
-use coerce_remote::net::message::{CreateActor, ActorCreated};
 use coerce_remote::codec::json::JsonCodec;
 use coerce_remote::codec::MessageCodec;
+use coerce_remote::context::RemoteActorContext;
+use coerce_remote::net::message::{ActorCreated, CreateActor};
+use uuid::Uuid;
 
 pub struct TestActorStore {
     state: Option<ActorState>,
@@ -51,13 +50,17 @@ pub async fn test_remote_actor_create_new() {
         id: Uuid::new_v4(),
         actor_id: Some(actor_id.clone()),
         actor_type: String::from("TestActor"),
-        actor: actor_state
+        actor: actor_state,
     };
 
     let result = remote.handle_create_actor(message).await;
     let create_actor_res = codec.decode_msg::<ActorCreated>(result.unwrap()).unwrap();
 
-    let mut actor = remote.inner().get_tracked_actor::<TestActor>(actor_id.clone()).await.unwrap();
+    let mut actor = remote
+        .inner()
+        .get_tracked_actor::<TestActor>(actor_id.clone())
+        .await
+        .unwrap();
     let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
 
     assert_eq!(&create_actor_res.id, &actor_id);

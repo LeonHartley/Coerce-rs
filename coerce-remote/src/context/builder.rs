@@ -140,7 +140,6 @@ impl RemoteActorHandlerBuilder {
     pub fn with_handler<A: Actor, M: Message>(&mut self, identifier: &'static str) -> &mut Self
     where
         A: 'static + Handler<M> + Send + Sync,
-        A: 'static + DeserializeOwned + Send + Sync,
         M: 'static + DeserializeOwned + Send + Sync,
         M::Result: Serialize + Send + Sync,
     {

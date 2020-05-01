@@ -73,7 +73,10 @@ impl RemoteActorContext {
         }
     }
 
-    pub async fn handle_create_actor(&mut self, args: CreateActor) -> Result<Vec<u8>, RemoteActorError> {
+    pub async fn handle_create_actor(
+        &mut self,
+        args: CreateActor,
+    ) -> Result<Vec<u8>, RemoteActorError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let handler = self.types.actor_handler(&args.actor_type);
 

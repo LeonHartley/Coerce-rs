@@ -12,10 +12,12 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 use crate::net::message::ActorCreated;
+use coerce_rt::actor::scheduler::ActorType::Tracked;
 use uuid::Uuid;
 
 pub mod ext;
 pub mod handler;
+pub mod heartbeat;
 pub mod message;
 
 pub struct RemoteClientRegistry {
@@ -151,10 +153,14 @@ impl RemoteClientRegistry {
 
 impl RemoteRegistry {
     pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
-        ctx.new_anon_actor(RemoteRegistry {
-            nodes: RemoteNodeStore::new(vec![]),
-            context: None,
-        })
+        ctx.new_actor(
+            format!("RemoteRegistry-0"),
+            RemoteRegistry {
+                nodes: RemoteNodeStore::new(vec![]),
+                context: None,
+            },
+            Tracked,
+        )
         .await
         .expect("RemoteRegistry")
     }
