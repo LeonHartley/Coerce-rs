@@ -1,5 +1,5 @@
-use coerce_remote::context::RemoteActorContext;
-use coerce_rt::actor::context::ActorContext;
+use coerce_remote::context::RemoteActorSystem;
+use coerce_rt::actor::context::ActorSystem;
 
 use util::*;
 
@@ -18,8 +18,8 @@ extern crate async_trait;
 pub async fn test_remote_create_message() {
     util::create_trace_logger();
 
-    let mut remote = RemoteActorContext::builder()
-        .with_actor_context(ActorContext::new())
+    let mut remote = RemoteActorSystem::builder()
+        .with_actor_context(ActorSystem::new())
         .with_handlers(move |handlers| {
             handlers.with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
         })

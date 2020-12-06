@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use util::*;
 
 pub mod util;
@@ -14,7 +14,7 @@ extern crate async_trait;
 
 #[tokio::test]
 pub async fn test_actor_req_res() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -26,7 +26,7 @@ pub async fn test_actor_req_res() {
 
 #[tokio::test]
 pub async fn test_actor_req_res_multiple_actors() {
-    let mut ctx = ActorContext::new();
+    let mut ctx = ActorSystem::new();
 
     let mut test_ref = ctx.new_anon_actor(TestActor::new()).await.unwrap();
     let mut echo_ref = ctx.new_anon_actor(EchoActor::new()).await.unwrap();
@@ -40,7 +40,7 @@ pub async fn test_actor_req_res_multiple_actors() {
 
 #[tokio::test]
 pub async fn test_actor_req_res_mutation() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -77,7 +77,7 @@ pub async fn test_actor_req_res_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_mutation() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -101,7 +101,7 @@ pub async fn test_actor_exec_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_chain_mutation() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -120,7 +120,7 @@ pub async fn test_actor_exec_chain_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_notify() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();

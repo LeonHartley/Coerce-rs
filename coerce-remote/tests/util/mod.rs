@@ -1,5 +1,5 @@
 use chrono::Local;
-use coerce_rt::actor::context::ActorHandlerContext;
+use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::Actor;
 
@@ -70,7 +70,7 @@ impl Handler<GetStatusRequest> for TestActor {
     async fn handle(
         &mut self,
         _message: GetStatusRequest,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> GetStatusResponse {
         match self.status {
             Some(TestActorStatus::Active) => GetStatusResponse::Ok(TestActorStatus::Active),
@@ -85,7 +85,7 @@ impl Handler<SetStatusRequest> for TestActor {
     async fn handle(
         &mut self,
         message: SetStatusRequest,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> SetStatusResponse {
         self.status = Some(message.status);
 
@@ -95,7 +95,7 @@ impl Handler<SetStatusRequest> for TestActor {
 
 #[async_trait]
 impl Handler<GetCounterRequest> for TestActor {
-    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorHandlerContext) -> i32 {
+    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorContext) -> i32 {
         42
     }
 }
@@ -117,7 +117,7 @@ impl Actor for EchoActor {}
 
 #[async_trait]
 impl Handler<GetCounterRequest> for EchoActor {
-    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorHandlerContext) -> i32 {
+    async fn handle(&mut self, _message: GetCounterRequest, _ctx: &mut ActorContext) -> i32 {
         42
     }
 }

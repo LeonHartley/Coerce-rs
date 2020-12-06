@@ -1,7 +1,7 @@
-use crate::actor::context::{ActorContext, ActorHandlerContext};
+use crate::actor::context::{ActorSystem, ActorContext};
 use crate::actor::lifecycle::actor_loop;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, ActorRef, BoxedActorRef, GetActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, GetActorRef, LocalActorRef};
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -13,7 +13,7 @@ pub struct ActorScheduler {
 }
 
 impl ActorScheduler {
-    pub fn new() -> ActorRef<ActorScheduler> {
+    pub fn new() -> LocalActorRef<ActorScheduler> {
         start_actor(
             ActorScheduler {
                 actors: HashMap::new(),
@@ -52,7 +52,7 @@ impl ActorType {
     }
 }
 
-pub struct SetContext(pub ActorContext);
+pub struct SetContext(pub ActorSystem);
 
 impl Message for SetContext {
     type Result = ();
@@ -65,7 +65,7 @@ where
     pub id: ActorId,
     pub actor: A,
     pub actor_type: ActorType,
-    pub context: ActorContext,
+    pub system: ActorSystem,
     pub start_rx: tokio::sync::oneshot::Sender<bool>,
 }
 
@@ -73,7 +73,7 @@ impl<A: Actor> Message for RegisterActor<A>
 where
     A: 'static + Sync + Send,
 {
-    type Result = ActorRef<A>;
+    type Result = LocalActorRef<A>;
 }
 
 pub struct DeregisterActor(pub ActorId);
@@ -94,7 +94,7 @@ impl<A: Actor> Message for GetActor<A>
 where
     A: 'static + Sync + Send,
 {
-    type Result = Option<ActorRef<A>>;
+    type Result = Option<LocalActorRef<A>>;
 }
 
 impl<A: Actor> GetActor<A>
@@ -117,8 +117,8 @@ where
     async fn handle(
         &mut self,
         message: RegisterActor<A>,
-        ctx: &mut ActorHandlerContext,
-    ) -> ActorRef<A> {
+        ctx: &mut ActorContext,
+    ) -> LocalActorRef<A> {
         let actor_type = message.actor_type;
         let actor = start_actor(
             message.actor,
@@ -126,7 +126,7 @@ where
             actor_type,
             Some(message.start_rx),
             Some(self.get_ref(ctx)),
-            Some(message.context),
+            Some(message.system),
         );
 
         if actor_type.is_tracked() {
@@ -143,7 +143,7 @@ where
 
 #[async_trait]
 impl Handler<DeregisterActor> for ActorScheduler {
-    async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorHandlerContext) -> () {
+    async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorContext) -> () {
         if let Some(_a) = self.actors.remove(&msg.0) {
             trace!(target: "ActorScheduler", "de-registered actor {}", msg.0);
         } else {
@@ -160,10 +160,10 @@ where
     async fn handle(
         &mut self,
         message: GetActor<A>,
-        _ctx: &mut ActorHandlerContext,
-    ) -> Option<ActorRef<A>> {
+        _ctx: &mut ActorContext,
+    ) -> Option<LocalActorRef<A>> {
         match self.actors.get(&message.id) {
-            Some(actor) => Some(ActorRef::<A>::from(actor.clone())),
+            Some(actor) => Some(LocalActorRef::<A>::from(actor.clone())),
             None => None,
         }
     }
@@ -174,15 +174,15 @@ fn start_actor<A: Actor>(
     id: ActorId,
     actor_type: ActorType,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-    scheduler: Option<ActorRef<ActorScheduler>>,
-    context: Option<ActorContext>,
-) -> ActorRef<A>
+    scheduler: Option<LocalActorRef<ActorScheduler>>,
+    system: Option<ActorSystem>,
+) -> LocalActorRef<A>
 where
     A: 'static + Send + Sync,
 {
     let (tx, rx) = tokio::sync::mpsc::channel(128);
 
-    let actor_ref = ActorRef {
+    let actor_ref = LocalActorRef {
         id: id.clone(),
         sender: tx,
     };
@@ -194,7 +194,7 @@ where
         rx,
         on_start,
         actor_ref.clone(),
-        context,
+        system,
         scheduler,
     ));
 

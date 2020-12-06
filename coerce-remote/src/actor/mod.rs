@@ -1,13 +1,13 @@
 use crate::cluster::node::RemoteNodeStore;
 
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
 use crate::net::client::RemoteClientStream;
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::actor::message::Message;
-use coerce_rt::actor::{Actor, ActorRef};
+use coerce_rt::actor::{Actor, LocalActorRef};
 use std::any::TypeId;
 use std::collections::HashMap;
 
@@ -26,7 +26,7 @@ pub struct RemoteClientRegistry {
 
 pub struct RemoteRegistry {
     nodes: RemoteNodeStore,
-    context: Option<RemoteActorContext>,
+    system: Option<RemoteActorSystem>,
 }
 
 pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
@@ -135,7 +135,7 @@ impl Actor for RemoteHandler {}
 impl Actor for RemoteClientRegistry {}
 
 impl RemoteClientRegistry {
-    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteClientRegistry> {
+    pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteClientRegistry> {
         ctx.new_anon_actor(RemoteClientRegistry {
             clients: HashMap::new(),
         })
@@ -152,12 +152,12 @@ impl RemoteClientRegistry {
 }
 
 impl RemoteRegistry {
-    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteRegistry> {
+    pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteRegistry> {
         ctx.new_actor(
             format!("RemoteRegistry-0"),
             RemoteRegistry {
                 nodes: RemoteNodeStore::new(vec![]),
-                context: None,
+                system: None,
             },
             Tracked,
         )
@@ -167,7 +167,7 @@ impl RemoteRegistry {
 }
 
 impl RemoteHandler {
-    pub async fn new(ctx: &mut ActorContext) -> ActorRef<RemoteHandler> {
+    pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteHandler> {
         ctx.new_anon_actor(RemoteHandler {
             requests: HashMap::new(),
         })

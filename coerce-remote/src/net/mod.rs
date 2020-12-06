@@ -1,6 +1,6 @@
 use crate::codec::MessageCodec;
 
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 
 use serde::de::DeserializeOwned;
 use std::future::Future;
@@ -20,9 +20,9 @@ pub mod server;
 
 #[async_trait]
 pub trait StreamReceiver<Msg: DeserializeOwned> {
-    async fn on_recv(&mut self, msg: Msg, ctx: &mut RemoteActorContext);
+    async fn on_recv(&mut self, msg: Msg, ctx: &mut RemoteActorSystem);
 
-    async fn on_close(&mut self, ctx: &mut RemoteActorContext);
+    async fn on_close(&mut self, ctx: &mut RemoteActorSystem);
 }
 
 pub struct StreamReceiverFuture<S: tokio::io::AsyncRead> {
@@ -70,7 +70,7 @@ pub async fn receive_loop<
     R: StreamReceiver<M>,
     S: tokio::io::AsyncRead + Unpin,
 >(
-    mut context: RemoteActorContext,
+    mut context: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
     mut receiver: R,

@@ -1,13 +1,13 @@
 use crate::actor::message::{
     ClientWrite, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes,
-    SetContext,
+    SetSystem,
 };
 use crate::actor::{RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest};
 use crate::cluster::node::RemoteNode;
 use crate::codec::json::JsonCodec;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::net::client::{RemoteClient, RemoteClientStream};
-use coerce_rt::actor::context::ActorHandlerContext;
+use coerce_rt::actor::context::ActorContext;
 use coerce_rt::actor::message::Handler;
 
 use std::collections::HashMap;
@@ -15,9 +15,9 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 #[async_trait]
-impl Handler<SetContext> for RemoteRegistry {
-    async fn handle(&mut self, message: SetContext, _ctx: &mut ActorHandlerContext) {
-        self.context = Some(message.0);
+impl Handler<SetSystem> for RemoteRegistry {
+    async fn handle(&mut self, message: SetSystem, _ctx: &mut ActorContext) {
+        self.system = Some(message.0);
     }
 }
 
@@ -26,7 +26,7 @@ impl Handler<GetNodes> for RemoteRegistry {
     async fn handle(
         &mut self,
         _message: GetNodes,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> Vec<RemoteNode> {
         self.nodes.get_all()
     }
@@ -34,7 +34,7 @@ impl Handler<GetNodes> for RemoteRegistry {
 
 #[async_trait]
 impl Handler<PushRequest> for RemoteHandler {
-    async fn handle(&mut self, message: PushRequest, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: PushRequest, _ctx: &mut ActorContext) {
         self.requests.insert(message.0, message.1);
     }
 }
@@ -44,7 +44,7 @@ impl Handler<PopRequest> for RemoteHandler {
     async fn handle(
         &mut self,
         message: PopRequest,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> Option<RemoteRequest> {
         self.requests.remove(&message.0)
     }
@@ -55,7 +55,7 @@ impl<T: RemoteClientStream> Handler<RegisterClient<T>> for RemoteClientRegistry
 where
     T: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: RegisterClient<T>, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: RegisterClient<T>, _ctx: &mut ActorContext) {
         self.add_client(message.0, message.1);
 
         trace!(target: "RemoteRegistry", "client {} registered", message.0);
@@ -64,8 +64,8 @@ where
 
 #[async_trait]
 impl Handler<RegisterNodes> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterNodes, _ctx: &mut ActorHandlerContext) {
-        let mut remote_ctx = self.context.as_ref().unwrap().clone();
+    async fn handle(&mut self, message: RegisterNodes, _ctx: &mut ActorContext) {
+        let mut remote_ctx = self.system.as_ref().unwrap().clone();
         let nodes = message.0;
 
         let unregistered_nodes = nodes
@@ -92,14 +92,14 @@ impl Handler<RegisterNodes> for RemoteRegistry {
 
 #[async_trait]
 impl Handler<RegisterNode> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterNode, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: RegisterNode, _ctx: &mut ActorContext) {
         self.nodes.add(message.0);
     }
 }
 
 #[async_trait]
 impl Handler<ClientWrite> for RemoteClientRegistry {
-    async fn handle(&mut self, message: ClientWrite, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: ClientWrite, _ctx: &mut ActorContext) {
         let client_id = message.0;
         let message = message.1;
 
@@ -115,7 +115,7 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
 async fn connect_all(
     nodes: Vec<RemoteNode>,
     current_nodes: Vec<RemoteNode>,
-    ctx: &RemoteActorContext,
+    ctx: &RemoteActorSystem,
 ) -> HashMap<Uuid, Option<RemoteClient<JsonCodec>>> {
     let mut clients = HashMap::new();
     for node in nodes {

@@ -1,6 +1,6 @@
 use crate::actor::RemoteRequest;
 use crate::cluster::node::RemoteNode;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 
 use crate::net::client::RemoteClientStream;
 use crate::net::message::SessionEvent;
@@ -8,9 +8,9 @@ use coerce_rt::actor::message::Message;
 
 use uuid::Uuid;
 
-pub struct SetContext(pub RemoteActorContext);
+pub struct SetSystem(pub RemoteActorSystem);
 
-impl Message for SetContext {
+impl Message for SetSystem {
     type Result = ();
 }
 

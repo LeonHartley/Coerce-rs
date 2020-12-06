@@ -1,5 +1,5 @@
 use crate::codec::MessageCodec;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::net::codec::NetworkCodec;
 use crate::net::{receive_loop, StreamReceiver};
 
@@ -25,7 +25,7 @@ pub struct ClientMessageReceiver {
 
 #[async_trait]
 impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
-    async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorContext) {
+    async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
                 info!("{}, {:?}", ctx.node_id(), &msg.nodes);
@@ -63,7 +63,7 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
         }
     }
 
-    async fn on_close(&mut self, _ctx: &mut RemoteActorContext) {}
+    async fn on_close(&mut self, _ctx: &mut RemoteActorSystem) {}
 }
 
 #[derive(Debug)]
@@ -75,7 +75,7 @@ pub enum RemoteClientErr {
 impl<C: MessageCodec> RemoteClient<C> {
     pub async fn connect(
         addr: String,
-        mut context: RemoteActorContext,
+        mut context: RemoteActorSystem,
         mut codec: C,
         nodes: Option<Vec<RemoteNode>>,
     ) -> Result<RemoteClient<C>, tokio::io::Error>

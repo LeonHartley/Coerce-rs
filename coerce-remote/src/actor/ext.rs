@@ -1,20 +1,20 @@
-use crate::context::RemoteActorContext;
-use coerce_rt::actor::context::ActorHandlerContext;
+use crate::context::RemoteActorSystem;
+use coerce_rt::actor::context::ActorContext;
 
 const ATTACHMENT_REMOTE_CTX: &str = "remote-ctx";
 
-pub trait ActorHandlerContextExt {
-    fn remote_ctx(&self) -> Option<&RemoteActorContext>;
+pub trait ActorContextExt {
+    fn remote_ctx(&self) -> Option<&RemoteActorSystem>;
 
-    fn remote_ctx_mut(&mut self) -> Option<&mut RemoteActorContext>;
+    fn remote_ctx_mut(&mut self) -> Option<&mut RemoteActorSystem>;
 }
 
-impl ActorHandlerContextExt for ActorHandlerContext {
-    fn remote_ctx(&self) -> Option<&RemoteActorContext> {
+impl ActorContextExt for ActorContext {
+    fn remote_ctx(&self) -> Option<&RemoteActorSystem> {
         self.attachment(ATTACHMENT_REMOTE_CTX)
     }
 
-    fn remote_ctx_mut(&mut self) -> Option<&mut RemoteActorContext> {
+    fn remote_ctx_mut(&mut self) -> Option<&mut RemoteActorSystem> {
         self.attachment_mut(ATTACHMENT_REMOTE_CTX)
     }
 }

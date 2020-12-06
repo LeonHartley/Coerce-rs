@@ -13,17 +13,17 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce_remote::cluster::client::RemoteClusterClient;
-use coerce_remote::context::RemoteActorContext;
-use coerce_rt::actor::context::ActorContext;
+use coerce_remote::context::RemoteActorSystem;
+use coerce_rt::actor::context::ActorSystem;
 use util::*;
 
 #[coerce_test]
 pub async fn test_remote_cluster_client_builder() {
     util::create_trace_logger();
 
-    let mut context = ActorContext::new();
+    let mut system = ActorSystem::new();
     let _actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
-    let remote = RemoteActorContext::builder()
+    let remote = RemoteActorSystem::builder()
         .with_actor_context(context)
         .with_handlers(|builder| builder.with_actor::<TestActor>("TestActor"))
         .build()

@@ -1,6 +1,6 @@
 use crate::util::create_trace_logger;
-use coerce_remote::context::RemoteActorContext;
-use coerce_rt::actor::context::ActorContext;
+use coerce_remote::context::RemoteActorSystem;
+use coerce_rt::actor::context::ActorSystem;
 use util::*;
 
 pub mod util;
@@ -20,8 +20,8 @@ pub async fn test_remote_handler_types() {
     let test_get_status = "TestActor.GetStatusRequest".to_string();
     let test_set_status = "TestActor.SetStatusRequest".to_string();
 
-    let mut remote = RemoteActorContext::builder()
-        .with_actor_context(ActorContext::new())
+    let mut remote = RemoteActorSystem::builder()
+        .with_actor_context(ActorSystem::new())
         .with_handlers(|handlers| {
             handlers
                 .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
@@ -49,10 +49,10 @@ pub async fn test_remote_handler_types() {
 pub async fn test_remote_handle_from_json() {
     create_trace_logger();
 
-    let mut ctx = ActorContext::new();
+    let mut ctx = ActorSystem::new();
     let mut actor = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 
-    let mut remote = RemoteActorContext::builder()
+    let mut remote = RemoteActorSystem::builder()
         .with_actor_context(ctx)
         .with_handlers(|handlers| {
             handlers

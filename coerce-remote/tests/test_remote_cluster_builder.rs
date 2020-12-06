@@ -13,8 +13,8 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce_remote::context::builder::RemoteActorHandlerBuilder;
-use coerce_remote::context::RemoteActorContext;
-use coerce_rt::actor::context::ActorContext;
+use coerce_remote::context::RemoteActorSystem;
+use coerce_rt::actor::context::ActorSystem;
 
 use util::*;
 
@@ -22,9 +22,9 @@ use util::*;
 pub async fn test_remote_cluster_worker_builder() {
     util::create_trace_logger();
 
-    let mut context = ActorContext::new();
+    let mut system = ActorSystem::new();
     let _actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
-    let remote = RemoteActorContext::builder()
+    let remote = RemoteActorSystem::builder()
         .with_actor_context(context)
         .with_handlers(build_handlers)
         .build()
@@ -32,16 +32,16 @@ pub async fn test_remote_cluster_worker_builder() {
 
     let mut remote_c = remote.clone();
 
-    let remote_2 = RemoteActorContext::builder()
-        .with_actor_context(ActorContext::new())
+    let remote_2 = RemoteActorSystem::builder()
+        .with_actor_context(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
         .await;
 
     let mut remote_2_c = remote_2.clone();
 
-    let remote_3 = RemoteActorContext::builder()
-        .with_actor_context(ActorContext::new())
+    let remote_3 = RemoteActorSystem::builder()
+        .with_actor_context(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
         .await;

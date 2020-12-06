@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::actor::{get_actor, new_actor};
 use util::*;
 use uuid::Uuid;
@@ -33,7 +33,7 @@ pub async fn test_context_global_get_actor() {
 
 #[tokio::test]
 pub async fn test_context_get_tracked_actor() {
-    let mut ctx = ActorContext::new();
+    let mut ctx = ActorSystem::new();
 
     let mut actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 
@@ -54,7 +54,7 @@ pub async fn test_context_get_tracked_actor() {
 
 #[tokio::test]
 pub async fn test_context_get_actor_not_found() {
-    let mut ctx = ActorContext::new();
+    let mut ctx = ActorSystem::new();
     let actor = ctx
         .get_tracked_actor::<TestActor>(format!("{}", Uuid::new_v4()))
         .await;
@@ -64,7 +64,7 @@ pub async fn test_context_get_actor_not_found() {
 
 #[tokio::test]
 pub async fn test_context_stop_tracked_actor_get_not_found() {
-    let mut ctx = ActorContext::new();
+    let mut ctx = ActorSystem::new();
 
     let mut actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 

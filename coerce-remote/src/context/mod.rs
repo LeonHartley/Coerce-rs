@@ -9,14 +9,14 @@ use crate::cluster::builder::client::ClusterClientBuilder;
 use crate::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::cluster::node::RemoteNode;
 use crate::codec::RemoteHandlerMessage;
-use crate::context::builder::RemoteActorContextBuilder;
+use crate::context::builder::RemoteActorSystemBuilder;
 use crate::handler::RemoteActorMessageMarker;
 use crate::net::client::RemoteClientStream;
 use crate::net::message::{CreateActor, SessionEvent};
 use crate::storage::activator::ActorActivator;
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::actor::message::Message;
-use coerce_rt::actor::{Actor, ActorId, ActorRef};
+use coerce_rt::actor::{Actor, ActorId, LocalActorRef};
 use serde::Serialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -24,19 +24,19 @@ use uuid::Uuid;
 pub mod builder;
 
 #[derive(Clone)]
-pub struct RemoteActorContext {
+pub struct RemoteActorSystem {
     node_id: Uuid,
-    inner: ActorContext,
+    inner: ActorSystem,
     activator: ActorActivator,
-    handler_ref: ActorRef<RemoteHandler>,
-    registry_ref: ActorRef<RemoteRegistry>,
-    clients_ref: ActorRef<RemoteClientRegistry>,
+    handler_ref: LocalActorRef<RemoteHandler>,
+    registry_ref: LocalActorRef<RemoteRegistry>,
+    clients_ref: LocalActorRef<RemoteClientRegistry>,
     types: Arc<RemoteHandlerTypes>,
 }
 
-impl RemoteActorContext {
-    pub fn builder() -> RemoteActorContextBuilder {
-        RemoteActorContextBuilder::new()
+impl RemoteActorSystem {
+    pub fn builder() -> RemoteActorSystemBuilder {
+        RemoteActorSystemBuilder::new()
     }
 
     pub fn cluster_worker(self) -> ClusterWorkerBuilder {
@@ -53,7 +53,7 @@ pub enum RemoteActorError {
     ActorUnavailable,
 }
 
-impl RemoteActorContext {
+impl RemoteActorSystem {
     pub async fn handle_message(
         &mut self,
         identifier: String,
@@ -189,9 +189,9 @@ impl RemoteActorContext {
         &self.activator
     }
 
-    pub fn inner(&mut self) -> &mut ActorContext {
+    pub fn inner(&mut self) -> &mut ActorSystem {
         &mut self.inner
     }
 }
 
-pub(crate) trait RemoteActorContextInternal {}
+pub(crate) trait RemoteActorSystemInternal {}

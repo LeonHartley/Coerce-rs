@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::{ActorContext, ActorStatus};
+use coerce_rt::actor::context::{ActorSystem, ActorStatus};
 use coerce_rt::actor::ActorRefErr;
 use util::*;
 
@@ -15,7 +15,7 @@ extern crate async_trait;
 
 #[tokio::test]
 pub async fn test_actor_lifecycle_started() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -28,7 +28,7 @@ pub async fn test_actor_lifecycle_started() {
 
 #[tokio::test]
 pub async fn test_actor_lifecycle_stopping() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();

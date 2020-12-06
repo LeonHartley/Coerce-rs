@@ -1,7 +1,7 @@
 use crate::cluster::discovery::ClusterSeed;
 use crate::cluster::node::RemoteNode;
 use crate::codec::json::JsonCodec;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::net::client::RemoteClient;
 use crate::net::server::RemoteServer;
 
@@ -9,11 +9,11 @@ pub struct ClusterWorkerBuilder {
     server_listen_addr: String,
     seed: Option<Box<dyn ClusterSeed + Send + Sync>>,
     seed_addr: Option<String>,
-    context: RemoteActorContext,
+    context: RemoteActorSystem,
 }
 
 impl ClusterWorkerBuilder {
-    pub fn new(context: RemoteActorContext) -> ClusterWorkerBuilder {
+    pub fn new(context: RemoteActorSystem) -> ClusterWorkerBuilder {
         let server_listen_addr = "0.0.0.0:30101".to_owned();
         let seed = None;
         let seed_addr = None;

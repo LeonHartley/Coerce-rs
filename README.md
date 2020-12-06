@@ -32,7 +32,7 @@ impl Handler<EchoMessage> for EchoActor {
     async fn handle(
         &mut self,
         message: EchoMessage,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> String {
         message.0.clone()
     }
@@ -67,7 +67,7 @@ impl TimerTick for PrintTimer {}
 
 #[async_trait]
 impl Handler<PrintTimer> for EchoActor {
-    async fn handle(&mut self, msg: PrintTimer, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, msg: PrintTimer, _ctx: &mut ActorContext) {
         println!("{}", msg.0);
     }
 }

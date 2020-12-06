@@ -4,7 +4,7 @@ extern crate async_trait;
 #[macro_use]
 extern crate redis_async;
 
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+use coerce_rt::actor::context::{ActorSystem, ActorContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::{Actor, ActorRefErr};
 use coerce_rt::worker::{Worker, WorkerRef, WorkerRefExt};
@@ -30,10 +30,10 @@ impl RedisWorker {
     pub async fn new(
         addr: String,
         workers: usize,
-        context: &mut ActorContext,
+        system: &mut ActorSystem,
     ) -> Result<RedisWorkerRef, RedisWorkerErr> {
         let client = client::paired_connect(&addr.parse()?).await?;
-        let worker = Worker::new(RedisWorker { client }, workers, context).await?;
+        let worker = Worker::new(RedisWorker { client }, workers, system).await?;
 
         Ok(worker)
     }
@@ -84,7 +84,7 @@ where
     async fn handle(
         &mut self,
         message: RedisCommand<T>,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> Result<T, RedisWorkerErr> {
         Ok(self.client.send(message.cmd).await?)
     }

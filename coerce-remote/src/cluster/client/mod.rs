@@ -1,4 +1,4 @@
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::RemoteActorRef;
 use coerce_rt::actor::{Actor, ActorId};
 use serde::de::DeserializeOwned;
@@ -6,11 +6,11 @@ use serde::Serialize;
 
 #[derive(Clone)]
 pub struct RemoteClusterClient {
-    context: RemoteActorContext,
+    context: RemoteActorSystem,
 }
 
 impl RemoteClusterClient {
-    pub fn new(context: RemoteActorContext) -> RemoteClusterClient {
+    pub fn new(context: RemoteActorSystem) -> RemoteClusterClient {
         RemoteClusterClient { context }
     }
 }

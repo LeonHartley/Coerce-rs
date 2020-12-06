@@ -11,7 +11,7 @@ use coerce_remote::cluster::node::RemoteNode;
 use coerce_remote::cluster::workers::{
     ClusterWorker, ClusterWorkers, GetActiveWorkers, WorkerStore, WorkerStoreErr,
 };
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use uuid::Uuid;
 
 pub mod util;
@@ -49,7 +49,7 @@ impl WorkerStore for TestWorkerStore {
 
 #[tokio::test]
 pub async fn test_remote_worker_store() {
-    let mut context = ActorContext::new();
+    let mut system = ActorSystem::new();
     let mut workers = ClusterWorkers::new(TestWorkerStore, &mut context)
         .await
         .unwrap();

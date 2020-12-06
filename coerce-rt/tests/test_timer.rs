@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+use coerce_rt::actor::context::{ActorSystem, ActorContext};
 use coerce_rt::actor::scheduler::timer::{Timer, TimerTick};
 
 use crate::util::*;
@@ -23,14 +23,14 @@ impl TimerTick for TestTimer {}
 
 #[async_trait]
 impl Handler<TestTimer> for TestActor {
-    async fn handle(&mut self, _message: TestTimer, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, _message: TestTimer, _ctx: &mut ActorContext) {
         self.counter += 1;
     }
 }
 
 #[tokio::test]
 pub async fn test_timer() {
-    let mut actor_ref = ActorContext::new()
+    let mut actor_ref = ActorSystem::new()
         .new_tracked_actor(TestActor::new())
         .await
         .unwrap();

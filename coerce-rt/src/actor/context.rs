@@ -1,33 +1,33 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef};
+use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, LocalActorRef};
 use std::any::Any;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 lazy_static! {
-    static ref CURRENT_CONTEXT: ActorContext = { ActorContext::new() };
+    static ref CURRENT_SYSTEM: ActorSystem = ActorSystem::new();
 }
 
 #[derive(Clone)]
-pub struct ActorContext {
-    scheduler: ActorRef<ActorScheduler>,
+pub struct ActorSystem {
+    scheduler: LocalActorRef<ActorScheduler>,
 }
 
-impl ActorContext {
-    pub fn new() -> ActorContext {
-        ActorContext {
+impl ActorSystem {
+    pub fn new() -> ActorSystem {
+        ActorSystem {
             scheduler: ActorScheduler::new(),
         }
     }
 
-    pub fn current_context() -> ActorContext {
-        CURRENT_CONTEXT.clone()
+    pub fn current_system() -> ActorSystem {
+        CURRENT_SYSTEM.clone()
     }
 
     pub async fn new_tracked_actor<A: Actor>(
         &mut self,
         actor: A,
-    ) -> Result<ActorRef<A>, ActorRefErr>
+    ) -> Result<LocalActorRef<A>, ActorRefErr>
     where
         A: 'static + Sync + Send,
     {
@@ -35,7 +35,10 @@ impl ActorContext {
         self.new_actor(id, actor, ActorType::Tracked).await
     }
 
-    pub async fn new_anon_actor<A: Actor>(&mut self, actor: A) -> Result<ActorRef<A>, ActorRefErr>
+    pub async fn new_anon_actor<A: Actor>(
+        &mut self,
+        actor: A,
+    ) -> Result<LocalActorRef<A>, ActorRefErr>
     where
         A: 'static + Sync + Send,
     {
@@ -48,7 +51,7 @@ impl ActorContext {
         id: ActorId,
         actor: A,
         actor_type: ActorType,
-    ) -> Result<ActorRef<A>, ActorRefErr>
+    ) -> Result<LocalActorRef<A>, ActorRefErr>
     where
         A: 'static + Sync + Send,
     {
@@ -58,7 +61,7 @@ impl ActorContext {
             .send(RegisterActor {
                 id,
                 actor,
-                context: self.clone(),
+                system: self.clone(),
                 actor_type,
                 start_rx: tx,
             })
@@ -70,7 +73,7 @@ impl ActorContext {
         }
     }
 
-    pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<ActorRef<A>>
+    pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<LocalActorRef<A>>
     where
         A: 'static + Sync + Send,
     {
@@ -91,28 +94,30 @@ pub enum ActorStatus {
 
 type BoxedAttachment = Box<dyn Any + 'static + Sync + Send>;
 
-pub struct ActorHandlerContext {
+pub struct ActorContext {
     id: ActorId,
     status: ActorStatus,
     boxed_ref: BoxedActorRef,
-    core: Option<ActorContext>,
+    core: Option<ActorSystem>,
+    children: Vec<BoxedActorRef>,
     attachments: HashMap<&'static str, BoxedAttachment>,
 }
 
-impl ActorHandlerContext {
+impl ActorContext {
     pub fn new(
         id: ActorId,
-        core: Option<ActorContext>,
+        core: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
         attachments: HashMap<&'static str, BoxedAttachment>,
-    ) -> ActorHandlerContext {
-        ActorHandlerContext {
+    ) -> ActorContext {
+        ActorContext {
             id,
             status,
             boxed_ref,
             core,
             attachments,
+            children: vec![],
         }
     }
 
@@ -120,7 +125,7 @@ impl ActorHandlerContext {
         &self.id
     }
 
-    pub fn core(&self) -> &ActorContext {
+    pub fn system(&self) -> &ActorSystem {
         if let Some(ctx) = &self.core {
             ctx
         } else {
@@ -128,7 +133,7 @@ impl ActorHandlerContext {
         }
     }
 
-    pub fn core_mut(&mut self) -> &mut ActorContext {
+    pub fn core_mut(&mut self) -> &mut ActorSystem {
         if let Some(ctx) = &mut self.core {
             ctx
         } else {
@@ -144,11 +149,11 @@ impl ActorHandlerContext {
         &self.status
     }
 
-    pub(super) fn actor_ref<A: Actor>(&self) -> ActorRef<A>
+    pub(super) fn actor_ref<A: Actor>(&self) -> LocalActorRef<A>
     where
         A: 'static + Sync + Send,
     {
-        ActorRef::from(self.boxed_ref.clone())
+        LocalActorRef::from(self.boxed_ref.clone())
     }
 
     pub fn add_attachment<T: Any>(&mut self, key: &'static str, attachment: T)

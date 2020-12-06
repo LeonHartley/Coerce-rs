@@ -1,15 +1,15 @@
-use crate::actor::context::{ActorContext, ActorHandlerContext};
+use crate::actor::context::{ActorSystem, ActorContext};
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorRef, ActorRefErr};
+use crate::actor::{Actor, ActorRefErr, LocalActorRef};
 use std::collections::VecDeque;
 
-pub type WorkerRef<W> = ActorRef<Worker<W>>;
+pub type WorkerRef<W> = LocalActorRef<Worker<W>>;
 
 pub struct Worker<W: Actor>
 where
     W: 'static + Sync + Send,
 {
-    workers: VecDeque<ActorRef<W>>,
+    workers: VecDeque<LocalActorRef<W>>,
 }
 
 impl<W: Actor> Worker<W>
@@ -19,15 +19,15 @@ where
     pub async fn new(
         state: W,
         count: usize,
-        context: &mut ActorContext,
+        system: &mut ActorSystem,
     ) -> Result<WorkerRef<W>, ActorRefErr> {
         let mut workers = VecDeque::with_capacity(count);
 
         for _i in 0..count {
-            workers.push_back(context.new_anon_actor(state.clone()).await?);
+            workers.push_back(system.new_anon_actor(state.clone()).await?);
         }
 
-        Ok(context.new_anon_actor(Worker { workers }).await?)
+        Ok(system.new_anon_actor(Worker { workers }).await?)
     }
 }
 
@@ -69,7 +69,7 @@ where
 }
 
 #[async_trait]
-impl<W: Actor> WorkerRefExt<W> for ActorRef<Worker<W>>
+impl<W: Actor> WorkerRefExt<W> for LocalActorRef<Worker<W>>
 where
     W: 'static + Clone + Sync + Send,
 {
@@ -104,7 +104,7 @@ where
     W: Handler<M>,
     M::Result: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: WorkerMessage<M>, _ctx: &mut ActorHandlerContext) {
+    async fn handle(&mut self, message: WorkerMessage<M>, _ctx: &mut ActorContext) {
         if let Some(worker) = self.workers.pop_front() {
             let mut worker_ref = worker.clone();
 

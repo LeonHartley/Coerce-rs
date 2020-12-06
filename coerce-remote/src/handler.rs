@@ -1,8 +1,8 @@
 use crate::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::codec::MessageCodec;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::net::message::{ActorCreated, CreateActor};
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::scheduler::ActorType::Tracked;
 use coerce_rt::actor::{Actor, ActorId, ActorState, FromActorState};
@@ -17,7 +17,7 @@ pub trait ActorHandler: Any {
     async fn create(
         &self,
         args: CreateActor,
-        mut remote_ctx: RemoteActorContext,
+        mut remote_ctx: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
 
@@ -31,7 +31,7 @@ pub trait ActorMessageHandler: Any {
     async fn handle(
         &self,
         actor: ActorId,
-        mut remote_ctx: RemoteActorContext,
+        mut remote_ctx: RemoteActorSystem,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
@@ -98,7 +98,7 @@ where
     M: DeserializeOwned + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    context: ActorContext,
+    system: ActorSystem,
     codec: C,
     marker: RemoteActorMessageMarker<A, M>,
 }
@@ -110,10 +110,10 @@ where
     M: DeserializeOwned + 'static + Send + Sync,
     M::Result: Serialize + Send + Sync,
 {
-    pub fn new(context: ActorContext, codec: C) -> Box<RemoteActorMessageHandler<A, M, C>> {
+    pub fn new(system: ActorSystem, codec: C) -> Box<RemoteActorMessageHandler<A, M, C>> {
         let marker = RemoteActorMessageMarker::new();
         Box::new(RemoteActorMessageHandler {
-            context,
+            system,
             codec,
             marker,
         })
@@ -125,7 +125,7 @@ where
     C: Send + Sync,
     A: Send + Sync,
 {
-    context: ActorContext,
+    system: ActorSystem,
     codec: C,
     marker: RemoteActorMarker<A>,
 }
@@ -135,10 +135,10 @@ where
     A: 'static + Send + Sync,
     C: 'static + Send + Sync,
 {
-    pub fn new(context: ActorContext, codec: C) -> RemoteActorHandler<A, C> {
+    pub fn new(system: ActorSystem, codec: C) -> RemoteActorHandler<A, C> {
         let marker = RemoteActorMarker::new();
         RemoteActorHandler {
-            context,
+            system,
             codec,
             marker,
         }
@@ -155,10 +155,10 @@ where
     async fn create(
         &self,
         args: CreateActor,
-        remote_ctx: RemoteActorContext,
+        remote_ctx: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let mut context = self.context.clone();
+        let mut system = self.system.clone();
         let actor_id = args
             .actor_id
             .unwrap_or_else(|| format!("{}", Uuid::new_v4()));
@@ -181,7 +181,7 @@ where
 
     fn new_boxed(&self) -> BoxedActorHandler {
         Box::new(Self {
-            context: self.context.clone(),
+            system: self.system.clone(),
             marker: RemoteActorMarker::new(),
             codec: self.codec.clone(),
         })
@@ -204,11 +204,11 @@ where
     async fn handle(
         &self,
         actor_id: ActorId,
-        mut remote_ctx: RemoteActorContext,
+        mut remote_ctx: RemoteActorSystem,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let mut context = self.context.clone();
+        let mut system = self.system.clone();
         let mut actor = context.get_tracked_actor::<A>(actor_id.clone()).await;
 
         if let Some(mut actor) = actor {
@@ -227,7 +227,7 @@ where
 
     fn new_boxed(&self) -> BoxedMessageHandler {
         Box::new(Self {
-            context: self.context.clone(),
+            system: self.system.clone(),
             codec: self.codec.clone(),
             marker: RemoteActorMessageMarker::new(),
         })

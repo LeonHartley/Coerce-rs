@@ -1,5 +1,5 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorRef};
+use crate::actor::{Actor, LocalActorRef};
 use log::trace;
 
 use std::time::{Duration, Instant};
@@ -19,7 +19,7 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn start<A: Actor, T: TimerTick>(actor: ActorRef<A>, tick: Duration, msg: T) -> Timer
+    pub fn start<A: Actor, T: TimerTick>(actor: LocalActorRef<A>, tick: Duration, msg: T) -> Timer
     where
         A: 'static + Handler<T> + Sync + Send,
         T: 'static + Clone + Sync + Send,
@@ -43,7 +43,7 @@ impl Timer {
 pub async fn timer_loop<A: Actor, T: TimerTick>(
     tick: Duration,
     msg: T,
-    mut actor: ActorRef<A>,
+    mut actor: LocalActorRef<A>,
     mut stop_rx: tokio::sync::oneshot::Receiver<bool>,
 ) where
     A: 'static + Handler<T> + Sync + Send,

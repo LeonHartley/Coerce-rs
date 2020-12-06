@@ -1,20 +1,54 @@
 use crate::actor::RemoteResponse;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::net::message::{MessageRequest, SessionEvent};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::ActorRefErr::ActorUnavailable;
-use coerce_rt::actor::{Actor, ActorId, ActorRefErr};
+use coerce_rt::actor::{Actor, ActorId, ActorRefErr, LocalActorRef};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::marker::PhantomData;
 use uuid::Uuid;
+
+pub(crate) enum Ref<A: Actor>
+where
+    A: 'static + Sync + Send,
+{
+    Local(LocalActorRef<A>),
+    Remote(RemoteActorRef<A>),
+}
+
+pub struct ActorRef<A: Actor>
+where
+    A: 'static + Sync + Send,
+{
+    inner_ref: Ref<A>,
+}
+
+impl<A: Actor> ActorRef<A>
+where
+    A: 'static + Sync + Send,
+{
+    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
+    where
+        Msg: 'static + Serialize + Send + Sync,
+        A: Handler<Msg>,
+        Msg::Result: DeserializeOwned + Send + Sync,
+    {
+        match &mut self.inner_ref {
+            Ref::Local(local_ref) => local_ref.send(msg).await,
+            Ref::Remote(remote_ref) => remote_ref.send(msg).await,
+        }
+    }
+
+
+}
 
 pub struct RemoteActorRef<A: Actor>
 where
     A: 'static + Sync + Send,
 {
     id: ActorId,
-    context: RemoteActorContext,
+    context: RemoteActorSystem,
     node_id: Uuid,
     _a: PhantomData<A>,
 }
@@ -23,7 +57,7 @@ impl<A: Actor> RemoteActorRef<A>
 where
     A: 'static + Sync + Send,
 {
-    pub fn new(id: ActorId, node_id: Uuid, context: RemoteActorContext) -> RemoteActorRef<A> {
+    pub fn new(id: ActorId, node_id: Uuid, context: RemoteActorSystem) -> RemoteActorRef<A> {
         RemoteActorRef {
             id,
             context,

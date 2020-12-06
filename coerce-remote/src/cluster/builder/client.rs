@@ -1,12 +1,12 @@
 use crate::cluster::client::RemoteClusterClient;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 
 pub struct ClusterClientBuilder {
-    context: RemoteActorContext,
+    context: RemoteActorSystem,
 }
 
 impl ClusterClientBuilder {
-    pub fn new(context: RemoteActorContext) -> ClusterClientBuilder {
+    pub fn new(context: RemoteActorSystem) -> ClusterClientBuilder {
         ClusterClientBuilder { context }
     }
 

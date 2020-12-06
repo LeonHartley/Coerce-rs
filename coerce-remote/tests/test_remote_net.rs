@@ -1,9 +1,9 @@
 use coerce_remote::codec::json::JsonCodec;
 use coerce_remote::context::builder::RemoteActorHandlerBuilder;
-use coerce_remote::context::RemoteActorContext;
+use coerce_remote::context::RemoteActorSystem;
 use coerce_remote::net::client::RemoteClient;
 use coerce_remote::net::server::RemoteServer;
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 
 use coerce_remote::RemoteActorRef;
 
@@ -25,17 +25,17 @@ extern crate async_trait;
 pub async fn test_remote_server_client_connection() {
     util::create_trace_logger();
 
-    let mut context = ActorContext::new();
+    let mut system = ActorSystem::new();
     let actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
 
-    let remote = RemoteActorContext::builder()
+    let remote = RemoteActorSystem::builder()
         .with_actor_context(context)
         .with_handlers(build_handlers)
         .build()
         .await;
 
-    let mut remote_2 = RemoteActorContext::builder()
-        .with_actor_context(ActorContext::new())
+    let mut remote_2 = RemoteActorSystem::builder()
+        .with_actor_context(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
         .await;

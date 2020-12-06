@@ -1,16 +1,16 @@
-use crate::actor::message::SetContext;
+use crate::actor::message::SetSystem;
 use crate::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
     RemoteHandlerTypes, RemoteRegistry,
 };
 use crate::codec::json::JsonCodec;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use crate::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorHandler, RemoteActorMessageHandler,
 };
 use crate::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::storage::state::ActorStore;
-use coerce_rt::actor::context::ActorContext;
+use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::Actor;
 use serde::de::DeserializeOwned;
@@ -19,16 +19,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-pub struct RemoteActorContextBuilder {
+pub struct RemoteActorSystemBuilder {
     node_id: Option<Uuid>,
-    inner: Option<ActorContext>,
+    inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
     store: Option<Box<dyn ActorStore + Sync + Send>>,
 }
 
-impl RemoteActorContextBuilder {
-    pub fn new() -> RemoteActorContextBuilder {
-        RemoteActorContextBuilder {
+impl RemoteActorSystemBuilder {
+    pub fn new() -> RemoteActorSystemBuilder {
+        RemoteActorSystemBuilder {
             node_id: None,
             inner: None,
             handlers: vec![],
@@ -60,7 +60,7 @@ impl RemoteActorContextBuilder {
         self
     }
 
-    pub fn with_actor_context(mut self, ctx: ActorContext) -> Self {
+    pub fn with_actor_context(mut self, ctx: ActorSystem) -> Self {
         self.inner = Some(ctx.clone());
 
         self
@@ -75,10 +75,10 @@ impl RemoteActorContextBuilder {
         self
     }
 
-    pub async fn build(self) -> RemoteActorContext {
+    pub async fn build(self) -> RemoteActorSystem {
         let mut inner = match self.inner {
             Some(ctx) => ctx,
-            None => ActorContext::current_context(),
+            None => ActorSystem::current_system(),
         };
 
         let mut handlers = RemoteActorHandlerBuilder::new(inner.clone());
@@ -97,7 +97,7 @@ impl RemoteActorContextBuilder {
 
         let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
         let activator = ActorActivator::new(store);
-        let context = RemoteActorContext {
+        let system = RemoteActorSystem {
             node_id,
             inner,
             handler_ref,
@@ -108,11 +108,11 @@ impl RemoteActorContextBuilder {
         };
 
         registry_ref_clone
-            .send(SetContext(context.clone()))
+            .send(SetSystem(system.clone()))
             .await
             .expect("no context set");
 
-        context
+        system
     }
 }
 
@@ -123,17 +123,17 @@ pub(crate) type HandlerFn =
     Box<dyn (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder)>;
 
 pub struct RemoteActorHandlerBuilder {
-    context: ActorContext,
+    system: ActorSystem,
     actors: HashMap<String, BoxedActorHandler>,
     handlers: HashMap<String, BoxedMessageHandler>,
 }
 
 impl RemoteActorHandlerBuilder {
-    pub fn new(context: ActorContext) -> RemoteActorHandlerBuilder {
+    pub fn new(system: ActorSystem) -> RemoteActorHandlerBuilder {
         RemoteActorHandlerBuilder {
             actors: HashMap::new(),
             handlers: HashMap::new(),
-            context,
+            system,
         }
     }
 
@@ -144,7 +144,7 @@ impl RemoteActorHandlerBuilder {
         M::Result: Serialize + Send + Sync,
     {
         let handler =
-            RemoteActorMessageHandler::<A, M, _>::new(self.context.clone(), JsonCodec::new());
+            RemoteActorMessageHandler::<A, M, _>::new(self.system.clone(), JsonCodec::new());
         self.handlers.insert(String::from(identifier), handler);
 
         self
@@ -156,7 +156,7 @@ impl RemoteActorHandlerBuilder {
         A: DeserializeOwned,
     {
         let handler = Box::new(RemoteActorHandler::<A, _>::new(
-            self.context.clone(),
+            self.system.clone(),
             JsonCodec::new(),
         ));
         self.actors.insert(String::from(identifier), handler);

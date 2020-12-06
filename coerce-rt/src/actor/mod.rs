@@ -1,4 +1,4 @@
-use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
+use crate::actor::context::{ActorSystem, ActorContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
 use log::error;
@@ -14,9 +14,9 @@ pub type ActorId = String;
 
 #[async_trait]
 pub trait Actor {
-    async fn started(&mut self, _ctx: &mut ActorHandlerContext) {}
+    async fn started(&mut self, _ctx: &mut ActorContext) {}
 
-    async fn stopped(&mut self, _ctx: &mut ActorHandlerContext) {}
+    async fn stopped(&mut self, _ctx: &mut ActorContext) {}
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -26,13 +26,13 @@ pub struct ActorState {
 }
 
 pub trait GetActorRef {
-    fn get_ref(&self, ctx: &ActorHandlerContext) -> ActorRef<Self>
+    fn get_ref(&self, ctx: &ActorContext) -> LocalActorRef<Self>
     where
         Self: Actor + Sized + Send + Sync;
 }
 
 impl<A: Actor> GetActorRef for A {
-    fn get_ref(&self, ctx: &ActorHandlerContext) -> ActorRef<Self>
+    fn get_ref(&self, ctx: &ActorContext) -> LocalActorRef<Self>
     where
         Self: Sized + Send + Sync,
     {
@@ -40,20 +40,20 @@ impl<A: Actor> GetActorRef for A {
     }
 }
 
-pub async fn new_actor<A: Actor>(actor: A) -> Result<ActorRef<A>, ActorRefErr>
+pub async fn new_actor<A: Actor>(actor: A) -> Result<LocalActorRef<A>, ActorRefErr>
 where
     A: 'static + Sync + Send,
 {
-    ActorContext::current_context()
+    ActorSystem::current_system()
         .new_tracked_actor(actor)
         .await
 }
 
-pub async fn get_actor<A: Actor>(id: ActorId) -> Option<ActorRef<A>>
+pub async fn get_actor<A: Actor>(id: ActorId) -> Option<LocalActorRef<A>>
 where
     A: 'static + Sync + Send,
 {
-    ActorContext::current_context().get_tracked_actor(id).await
+    ActorSystem::current_system().get_tracked_actor(id).await
 }
 
 #[derive(Clone)]
@@ -62,7 +62,7 @@ pub struct BoxedActorRef {
     sender: tokio::sync::mpsc::Sender<Box<dyn Any + Sync + Send>>,
 }
 
-pub struct ActorRef<A: Actor>
+pub struct LocalActorRef<A: Actor>
 where
     A: 'static + Send + Sync,
 {
@@ -70,23 +70,23 @@ where
     sender: tokio::sync::mpsc::Sender<MessageHandler<A>>,
 }
 
-impl<A: Actor> From<BoxedActorRef> for ActorRef<A>
+impl<A: Actor> From<BoxedActorRef> for LocalActorRef<A>
 where
     A: 'static + Send + Sync,
 {
     fn from(b: BoxedActorRef) -> Self {
-        ActorRef {
+        LocalActorRef {
             id: b.id,
             sender: unsafe { std::mem::transmute(b.sender) },
         }
     }
 }
 
-impl<A: Actor> From<ActorRef<A>> for BoxedActorRef
+impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef
 where
     A: 'static + Send + Sync,
 {
-    fn from(r: ActorRef<A>) -> Self {
+    fn from(r: LocalActorRef<A>) -> Self {
         BoxedActorRef {
             id: r.id,
             sender: unsafe { std::mem::transmute(r.sender) },
@@ -94,7 +94,7 @@ where
     }
 }
 
-impl<A> Clone for ActorRef<A>
+impl<A> Clone for LocalActorRef<A>
 where
     A: Actor + Sync + Send + 'static,
 {
@@ -121,7 +121,7 @@ impl std::fmt::Display for ActorRefErr {
 
 impl std::error::Error for ActorRefErr {}
 
-impl<A: Actor> ActorRef<A>
+impl<A: Actor> LocalActorRef<A>
 where
     A: Sync + Send + 'static,
 {

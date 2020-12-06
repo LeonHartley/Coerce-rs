@@ -1,8 +1,8 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
-use crate::actor::context::{ActorContext, ActorHandlerContext, ActorStatus};
+use crate::actor::context::{ActorSystem, ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
-use crate::actor::{Actor, ActorId, ActorRef};
+use crate::actor::{Actor, ActorId, LocalActorRef};
 use std::collections::HashMap;
 
 pub struct Status();
@@ -22,7 +22,7 @@ impl<A> Handler<Status> for A
 where
     A: 'static + Actor + Sync + Send,
 {
-    async fn handle(&mut self, _message: Status, ctx: &mut ActorHandlerContext) -> ActorStatus {
+    async fn handle(&mut self, _message: Status, ctx: &mut ActorContext) -> ActorStatus {
         ctx.get_status().clone()
     }
 }
@@ -32,7 +32,7 @@ impl<A: Actor> Handler<Stop> for A
 where
     A: 'static + Sync + Send,
 {
-    async fn handle(&mut self, _message: Stop, ctx: &mut ActorHandlerContext) -> ActorStatus {
+    async fn handle(&mut self, _message: Stop, ctx: &mut ActorContext) -> ActorStatus {
         ctx.set_status(Stopping);
 
         Stopping
@@ -45,15 +45,15 @@ pub async fn actor_loop<A: Actor>(
     actor_type: ActorType,
     mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-    actor_ref: ActorRef<A>,
-    context: Option<ActorContext>,
-    scheduler: Option<ActorRef<ActorScheduler>>,
+    actor_ref: LocalActorRef<A>,
+    system: Option<ActorSystem>,
+    scheduler: Option<LocalActorRef<ActorScheduler>>,
 ) where
     A: 'static + Send + Sync,
 {
-    let mut ctx = ActorHandlerContext::new(
+    let mut ctx = ActorContext::new(
         id.clone(),
-        context,
+        system,
         Starting,
         actor_ref.into(),
         HashMap::new(),

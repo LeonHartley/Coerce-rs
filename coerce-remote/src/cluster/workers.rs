@@ -1,8 +1,8 @@
 use crate::cluster::node::RemoteNode;
 use chrono::{DateTime, Utc};
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+use coerce_rt::actor::context::{ActorSystem, ActorContext};
 use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::{Actor, ActorRef, ActorRefErr};
+use coerce_rt::actor::{Actor, ActorRefErr, LocalActorRef};
 
 use uuid::Uuid;
 
@@ -28,13 +28,13 @@ pub struct ClusterWorkers {
 impl ClusterWorkers {
     pub async fn new<T: WorkerStore>(
         store: T,
-        context: &mut ActorContext,
-    ) -> Result<ActorRef<ClusterWorkers>, WorkerStoreErr>
+        system: &mut ActorSystem,
+    ) -> Result<LocalActorRef<ClusterWorkers>, WorkerStoreErr>
     where
         T: 'static + Sync + Send,
     {
         let store = Box::new(store);
-        Ok(context.new_anon_actor(ClusterWorkers { store }).await?)
+        Ok(system.new_anon_actor(ClusterWorkers { store }).await?)
     }
 }
 
@@ -57,7 +57,7 @@ impl Handler<GetActiveWorkers> for ClusterWorkers {
     async fn handle(
         &mut self,
         _message: GetActiveWorkers,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> Result<Vec<ClusterWorker>, WorkerStoreErr> {
         self.store.get_active().await
     }
@@ -68,7 +68,7 @@ impl Handler<UpdateWorker> for ClusterWorkers {
     async fn handle(
         &mut self,
         message: UpdateWorker,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> Result<(), WorkerStoreErr> {
         self.store.put(&message.0).await
     }

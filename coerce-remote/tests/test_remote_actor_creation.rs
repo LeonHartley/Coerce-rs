@@ -9,14 +9,14 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
-use coerce_rt::actor::{Actor, ActorId, ActorState};
-use coerce_rt::actor::context::ActorContext;
-use coerce_remote::storage::activator::ActorActivator;
-use coerce_remote::storage::state::{ActorStore, ActorStoreErr};
 use coerce_remote::codec::json::JsonCodec;
 use coerce_remote::codec::MessageCodec;
-use coerce_remote::context::RemoteActorContext;
+use coerce_remote::context::RemoteActorSystem;
 use coerce_remote::net::message::{ActorCreated, CreateActor};
+use coerce_remote::storage::activator::ActorActivator;
+use coerce_remote::storage::state::{ActorStore, ActorStoreErr};
+use coerce_rt::actor::context::ActorSystem;
+use coerce_rt::actor::{Actor, ActorId, ActorState};
 use uuid::Uuid;
 
 pub struct TestActorStore {
@@ -39,8 +39,8 @@ pub async fn test_remote_actor_create_new() {
     let actor_state = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
     let codec = JsonCodec::new();
-    let mut context = ActorContext::new();
-    let mut remote = RemoteActorContext::builder()
+    let mut system = ActorSystem::new();
+    let mut remote = RemoteActorSystem::builder()
         .with_actor_context(context)
         .with_actors(|builder| builder.with_actor::<TestActor>("TestActor"))
         .build()

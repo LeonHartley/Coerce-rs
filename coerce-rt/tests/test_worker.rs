@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::{ActorContext, ActorHandlerContext};
+use coerce_rt::actor::context::{ActorSystem, ActorContext};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::Actor;
 use coerce_rt::worker::{Worker, WorkerRefExt};
@@ -22,7 +22,7 @@ impl Handler<HeavyTask> for MyWorker {
     async fn handle(
         &mut self,
         _message: HeavyTask,
-        _ctx: &mut ActorHandlerContext,
+        _ctx: &mut ActorContext,
     ) -> &'static str {
         // do some IO with a connection pool attached to `MyWorker`?
 
@@ -32,7 +32,7 @@ impl Handler<HeavyTask> for MyWorker {
 
 #[tokio::test]
 pub async fn test_workers() {
-    let mut context = ActorContext::new();
+    let mut system = ActorSystem::new();
 
     let state = MyWorker {};
     let mut worker = Worker::new(state, 4, &mut context).await.unwrap();

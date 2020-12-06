@@ -1,4 +1,4 @@
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 use coerce_rt::actor::{ActorId, ActorState};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -27,7 +27,7 @@ pub trait ActorStore {
 
 #[async_trait]
 pub trait StatefulActor {
-    async fn save(&mut self, _ctx: RemoteActorContext) {
+    async fn save(&mut self, _ctx: RemoteActorSystem) {
         trace!(target: "StatefulActor", "attempting to save actor state");
     }
 }

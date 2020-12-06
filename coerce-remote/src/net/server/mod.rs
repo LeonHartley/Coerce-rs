@@ -1,5 +1,5 @@
 use crate::codec::MessageCodec;
-use crate::context::RemoteActorContext;
+use crate::context::RemoteActorSystem;
 
 use crate::net::codec::NetworkCodec;
 use crate::net::message::{
@@ -9,7 +9,7 @@ use crate::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
 };
 use crate::net::{receive_loop, StreamReceiver};
-use coerce_rt::actor::ActorRef;
+use coerce_rt::actor::LocalActorRef;
 
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
@@ -26,7 +26,7 @@ where
     C: 'static + Sync + Send,
 {
     session_id: Uuid,
-    sessions: ActorRef<RemoteSessionStore<C>>,
+    sessions: LocalActorRef<RemoteSessionStore<C>>,
 }
 
 #[derive(Debug)]
@@ -47,7 +47,7 @@ where
 {
     pub fn new(
         session_id: Uuid,
-        sessions: ActorRef<RemoteSessionStore<C>>,
+        sessions: LocalActorRef<RemoteSessionStore<C>>,
     ) -> SessionMessageReceiver<C> {
         SessionMessageReceiver {
             session_id,
@@ -67,7 +67,7 @@ where
     pub async fn start(
         &mut self,
         addr: String,
-        mut context: RemoteActorContext,
+        mut context: RemoteActorSystem,
     ) -> Result<(), tokio::io::Error> {
         let listener = tokio::net::TcpListener::bind(addr).await?;
         let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
@@ -99,8 +99,8 @@ where
 
 pub async fn server_loop<C: MessageCodec>(
     mut listener: tokio::net::TcpListener,
-    context: RemoteActorContext,
-    mut session_store: ActorRef<RemoteSessionStore<C>>,
+    context: RemoteActorSystem,
+    mut session_store: LocalActorRef<RemoteSessionStore<C>>,
     codec: C,
 ) where
     C: 'static + Sync + Send,
@@ -140,7 +140,7 @@ impl<C: MessageCodec> StreamReceiver<SessionEvent> for SessionMessageReceiver<C>
 where
     C: Sync + Send,
 {
-    async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorContext) {
+    async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             SessionEvent::Handshake(msg) => {
                 trace!(target: "RemoteServer", "server recv {}, {:?}", &msg.node_id, &msg.nodes);
@@ -183,7 +183,7 @@ where
         }
     }
 
-    async fn on_close(&mut self, _ctx: &mut RemoteActorContext) {
+    async fn on_close(&mut self, _ctx: &mut RemoteActorSystem) {
         self.sessions
             .send(SessionClosed(self.session_id))
             .await
@@ -192,10 +192,10 @@ where
 }
 
 async fn session_handshake<C: MessageCodec>(
-    mut ctx: RemoteActorContext,
+    mut ctx: RemoteActorSystem,
     handshake: SessionHandshake,
     session_id: Uuid,
-    mut sessions: ActorRef<RemoteSessionStore<C>>,
+    mut sessions: LocalActorRef<RemoteSessionStore<C>>,
 ) where
     C: 'static + Sync + Send,
 {
@@ -217,8 +217,8 @@ async fn session_handshake<C: MessageCodec>(
 async fn session_handle_message<C: MessageCodec>(
     msg: MessageRequest,
     session_id: Uuid,
-    mut ctx: RemoteActorContext,
-    mut sessions: ActorRef<RemoteSessionStore<C>>,
+    mut ctx: RemoteActorSystem,
+    mut sessions: LocalActorRef<RemoteSessionStore<C>>,
 ) where
     C: 'static + Sync + Send,
 {
@@ -236,8 +236,8 @@ async fn session_handle_message<C: MessageCodec>(
 async fn session_create_actor<C: MessageCodec>(
     msg: CreateActor,
     session_id: Uuid,
-    mut ctx: RemoteActorContext,
-    mut sessions: ActorRef<RemoteSessionStore<C>>,
+    mut ctx: RemoteActorSystem,
+    mut sessions: LocalActorRef<RemoteSessionStore<C>>,
 ) where
     C: 'static + Sync + Send,
 {
@@ -254,7 +254,7 @@ async fn send_result<C: MessageCodec>(
     msg_id: Uuid,
     res: Vec<u8>,
     session_id: Uuid,
-    sessions: &mut ActorRef<RemoteSessionStore<C>>,
+    sessions: &mut LocalActorRef<RemoteSessionStore<C>>,
 ) where
     C: 'static + Sync + Send,
 {
