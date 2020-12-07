@@ -167,7 +167,7 @@ where
             actor_id: actor_id.clone(),
             state: args.actor,
         }) {
-            let actor_ref = context.new_actor(actor_id, state, Tracked).await;
+            let actor_ref = system.new_actor(actor_id, state, Tracked).await;
             if let Ok(actor_ref) = actor_ref {
                 let result = ActorCreated {
                     id: actor_ref.id,
@@ -209,7 +209,7 @@ where
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let mut system = self.system.clone();
-        let mut actor = context.get_tracked_actor::<A>(actor_id.clone()).await;
+        let mut actor = system.get_tracked_actor::<A>(actor_id.clone()).await;
 
         if let Some(mut actor) = actor {
             let message = self.codec.decode_msg::<M>(buffer.to_vec());

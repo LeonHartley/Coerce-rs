@@ -7,7 +7,7 @@ use coerce_rt::actor::context::ActorSystem;
 #[tokio::test]
 pub async fn test_redis_worker_store() {
     let mut system = ActorSystem::new();
-    let redis = RedisWorker::new("127.0.0.1:6379".to_owned(), 4, &mut context)
+    let redis = RedisWorker::new("127.0.0.1:6379".to_owned(), 4, &mut system)
         .await
         .unwrap();
 

@@ -1,4 +1,4 @@
-use crate::actor::context::{ActorSystem, ActorContext};
+use crate::actor::context::{ActorContext, ActorSystem};
 use crate::actor::lifecycle::actor_loop;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, BoxedActorRef, GetActorRef, LocalActorRef};

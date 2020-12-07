@@ -60,7 +60,7 @@ impl RemoteActorSystemBuilder {
         self
     }
 
-    pub fn with_actor_context(mut self, ctx: ActorSystem) -> Self {
+    pub fn with_actor_system(mut self, ctx: ActorSystem) -> Self {
         self.inner = Some(ctx.clone());
 
         self

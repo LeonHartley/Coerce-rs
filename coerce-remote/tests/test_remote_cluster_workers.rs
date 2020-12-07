@@ -50,7 +50,7 @@ impl WorkerStore for TestWorkerStore {
 #[tokio::test]
 pub async fn test_remote_worker_store() {
     let mut system = ActorSystem::new();
-    let mut workers = ClusterWorkers::new(TestWorkerStore, &mut context)
+    let mut workers = ClusterWorkers::new(TestWorkerStore, &mut system)
         .await
         .unwrap();
 

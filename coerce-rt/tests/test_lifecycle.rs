@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::{ActorSystem, ActorStatus};
+use coerce_rt::actor::context::{ActorStatus, ActorSystem};
 use coerce_rt::actor::ActorRefErr;
 use util::*;
 

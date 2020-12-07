@@ -21,7 +21,7 @@ pub async fn test_remote_handler_types() {
     let test_set_status = "TestActor.SetStatusRequest".to_string();
 
     let mut remote = RemoteActorSystem::builder()
-        .with_actor_context(ActorSystem::new())
+        .with_actor_system(ActorSystem::new())
         .with_handlers(|handlers| {
             handlers
                 .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
@@ -53,7 +53,7 @@ pub async fn test_remote_handle_from_json() {
     let mut actor = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 
     let mut remote = RemoteActorSystem::builder()
-        .with_actor_context(ctx)
+        .with_actor_system(ctx)
         .with_handlers(|handlers| {
             handlers
                 .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")

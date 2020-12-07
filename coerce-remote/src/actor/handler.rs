@@ -23,11 +23,7 @@ impl Handler<SetSystem> for RemoteRegistry {
 
 #[async_trait]
 impl Handler<GetNodes> for RemoteRegistry {
-    async fn handle(
-        &mut self,
-        _message: GetNodes,
-        _ctx: &mut ActorContext,
-    ) -> Vec<RemoteNode> {
+    async fn handle(&mut self, _message: GetNodes, _ctx: &mut ActorContext) -> Vec<RemoteNode> {
         self.nodes.get_all()
     }
 }

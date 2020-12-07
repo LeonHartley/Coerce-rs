@@ -26,16 +26,16 @@ pub async fn test_remote_server_client_connection() {
     util::create_trace_logger();
 
     let mut system = ActorSystem::new();
-    let actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
+    let actor = system.new_tracked_actor(TestActor::new()).await.unwrap();
 
     let remote = RemoteActorSystem::builder()
-        .with_actor_context(context)
+        .with_actor_system(system)
         .with_handlers(build_handlers)
         .build()
         .await;
 
     let mut remote_2 = RemoteActorSystem::builder()
-        .with_actor_context(ActorSystem::new())
+        .with_actor_system(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
         .await;

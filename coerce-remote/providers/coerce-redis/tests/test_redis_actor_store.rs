@@ -9,7 +9,7 @@ use uuid::Uuid;
 #[tokio::test]
 pub async fn test_redis_actor_store() {
     let mut system = ActorSystem::new();
-    let worker = RedisWorker::new("127.0.0.1:6379".to_owned(), 4, &mut context)
+    let worker = RedisWorker::new("127.0.0.1:6379".to_owned(), 4, &mut system)
         .await
         .unwrap();
 

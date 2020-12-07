@@ -1,4 +1,4 @@
-use crate::actor::context::{ActorSystem, ActorContext, ActorStatus};
+use crate::actor::context::{ActorContext, ActorStatus, ActorSystem};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
 use log::error;
@@ -44,9 +44,7 @@ pub async fn new_actor<A: Actor>(actor: A) -> Result<LocalActorRef<A>, ActorRefE
 where
     A: 'static + Sync + Send,
 {
-    ActorSystem::current_system()
-        .new_tracked_actor(actor)
-        .await
+    ActorSystem::current_system().new_tracked_actor(actor).await
 }
 
 pub async fn get_actor<A: Actor>(id: ActorId) -> Option<LocalActorRef<A>>

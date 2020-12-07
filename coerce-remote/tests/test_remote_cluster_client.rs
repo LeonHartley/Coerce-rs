@@ -22,9 +22,9 @@ pub async fn test_remote_cluster_client_builder() {
     util::create_trace_logger();
 
     let mut system = ActorSystem::new();
-    let _actor = context.new_tracked_actor(TestActor::new()).await.unwrap();
+    let _actor = system.new_tracked_actor(TestActor::new()).await.unwrap();
     let remote = RemoteActorSystem::builder()
-        .with_actor_context(context)
+        .with_actor_system(system)
         .with_handlers(|builder| builder.with_actor::<TestActor>("TestActor"))
         .build()
         .await;

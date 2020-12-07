@@ -39,8 +39,6 @@ where
             Ref::Remote(remote_ref) => remote_ref.send(msg).await,
         }
     }
-
-
 }
 
 pub struct RemoteActorRef<A: Actor>

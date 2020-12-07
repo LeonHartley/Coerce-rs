@@ -41,7 +41,7 @@ pub async fn test_remote_actor_create_new() {
     let codec = JsonCodec::new();
     let mut system = ActorSystem::new();
     let mut remote = RemoteActorSystem::builder()
-        .with_actor_context(context)
+        .with_actor_system(system)
         .with_actors(|builder| builder.with_actor::<TestActor>("TestActor"))
         .build()
         .await;

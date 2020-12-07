@@ -1,4 +1,4 @@
-use coerce_rt::actor::context::{ActorSystem, ActorContext};
+use coerce_rt::actor::context::{ActorContext, ActorSystem};
 use coerce_rt::actor::message::{Handler, Message};
 use coerce_rt::actor::Actor;
 use coerce_rt::worker::{Worker, WorkerRefExt};
@@ -19,11 +19,7 @@ impl Message for HeavyTask {
 
 #[async_trait]
 impl Handler<HeavyTask> for MyWorker {
-    async fn handle(
-        &mut self,
-        _message: HeavyTask,
-        _ctx: &mut ActorContext,
-    ) -> &'static str {
+    async fn handle(&mut self, _message: HeavyTask, _ctx: &mut ActorContext) -> &'static str {
         // do some IO with a connection pool attached to `MyWorker`?
 
         "my_result"
@@ -35,7 +31,7 @@ pub async fn test_workers() {
     let mut system = ActorSystem::new();
 
     let state = MyWorker {};
-    let mut worker = Worker::new(state, 4, &mut context).await.unwrap();
+    let mut worker = Worker::new(state, 4, &mut system).await.unwrap();
 
     assert_eq!(worker.dispatch(HeavyTask).await, Ok("my_result"));
 }
