@@ -51,13 +51,10 @@ pub async fn actor_loop<A: Actor>(
     A: 'static + Send + Sync,
 {
     let actor_id = actor_ref.id.clone();
-    let system_id = actor_ref.system_id.map_or("NO_SYS".to_string(), |s| s.to_string());
-    let mut ctx = ActorContext::new(
-        system,
-        Starting,
-        actor_ref.into(),
-        HashMap::new(),
-    );
+    let system_id = actor_ref
+        .system_id
+        .map_or("NO_SYS".to_string(), |s| s.to_string());
+    let mut ctx = ActorContext::new(system, Starting, actor_ref.into(), HashMap::new());
 
     trace!(target: "ActorLoop", "[System: {}], [{}] starting", system_id, ctx.id());
 

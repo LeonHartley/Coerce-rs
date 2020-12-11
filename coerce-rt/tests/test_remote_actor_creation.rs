@@ -10,7 +10,7 @@ extern crate chrono;
 extern crate async_trait;
 
 use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::actor::{Actor, ActorId, ActorState};
+use coerce_rt::actor::{Actor, ActorCreationErr, ActorId, ActorState, Factory};
 use coerce_rt::remote::codec::json::JsonCodec;
 use coerce_rt::remote::codec::MessageCodec;
 use coerce_rt::remote::net::message::{ActorCreated, CreateActor};
@@ -26,6 +26,22 @@ pub struct TestActorStore {
 #[derive(Deserialize)]
 pub struct TestActor {
     name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TestActorRecipe {
+    name: String,
+}
+
+pub struct TestActorFactory;
+
+#[async_trait]
+impl Factory<TestActor> for TestActorFactory {
+    type Recipe = TestActorRecipe;
+
+    async fn create(&self, recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
+        Ok(TestActor { name: recipe.name })
+    }
 }
 
 impl Actor for TestActor {}

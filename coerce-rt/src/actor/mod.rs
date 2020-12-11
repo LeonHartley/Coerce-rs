@@ -3,6 +3,7 @@ use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
 use log::error;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::any::Any;
 use uuid::Uuid;
 
@@ -18,6 +19,17 @@ pub trait Actor {
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
+}
+
+pub enum ActorCreationErr {
+    InvalidRecipe(String),
+}
+
+#[async_trait]
+pub trait Factory<A: Actor> {
+    type Recipe: Serialize + DeserializeOwned;
+
+    async fn create(&self, recipe: Self::Recipe) -> Result<A, ActorCreationErr>;
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

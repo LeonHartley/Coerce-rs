@@ -1,6 +1,6 @@
 use crate::actor::context::ActorSystem;
 use crate::actor::message::{Handler, Message};
-use crate::actor::Actor;
+use crate::actor::{Actor, Factory};
 use crate::remote::actor::message::SetSystem;
 use crate::remote::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
