@@ -80,7 +80,7 @@ pub async fn run() {
     let timer = Timer::start(actor.clone(), Duration::from_secs(5), TimerTick(hello_world));
     
     // timer is stopped when handle is out of scope or can be stopped manually by calling `.stop()`
-    delay_for(Duration::from_secs(20)).await;
+    sleep(Duration::from_secs(20)).await;
     timer.stop();
 }
 ```

@@ -6,8 +6,7 @@ use tokio_util::codec::{Decoder, Encoder};
 
 pub struct NetworkCodec;
 
-impl Encoder for NetworkCodec {
-    type Item = Vec<u8>;
+impl Encoder<Vec<u8>> for NetworkCodec {
     type Error = Error;
 
     fn encode(&mut self, item: Vec<u8>, dst: &mut BytesMut) -> Result<(), Error> {

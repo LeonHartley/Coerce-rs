@@ -2,7 +2,7 @@ use futures::io::Error;
 use std::io;
 use std::net::IpAddr;
 
-pub mod dns;
+// pub mod dns;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DiscoveredWorker {

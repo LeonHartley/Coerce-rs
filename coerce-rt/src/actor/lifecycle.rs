@@ -40,7 +40,6 @@ where
 }
 
 pub async fn actor_loop<A: Actor>(
-    id: ActorId,
     mut actor: A,
     actor_type: ActorType,
     mut rx: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
@@ -51,14 +50,16 @@ pub async fn actor_loop<A: Actor>(
 ) where
     A: 'static + Send + Sync,
 {
+    let actor_id = actor_ref.id.clone();
+    let system_id = actor_ref.system_id.map_or("NO_SYS".to_string(), |s| s.to_string());
     let mut ctx = ActorContext::new(
-        id.clone(),
         system,
         Starting,
         actor_ref.into(),
         HashMap::new(),
     );
-    trace!(target: "ActorLoop", "[{}] starting", ctx.id());
+
+    trace!(target: "ActorLoop", "[System: {}], [{}] starting", system_id, ctx.id());
 
     actor.started(&mut ctx).await;
 
@@ -76,7 +77,7 @@ pub async fn actor_loop<A: Actor>(
     }
 
     while let Some(mut msg) = rx.recv().await {
-        trace!(target: "ActorLoop", "[{}] recv", ctx.id());
+        trace!(target: "ActorLoop", "[{}] recv", &actor_id);
 
         msg.handle(&mut actor, &mut ctx).await;
 
@@ -86,7 +87,7 @@ pub async fn actor_loop<A: Actor>(
         }
     }
 
-    trace!(target: "ActorLoop", "[{}] stopping", ctx.id());
+    trace!(target: "ActorLoop", "[{}] stopping", &actor_id);
 
     ctx.set_status(Stopping);
 
@@ -97,7 +98,7 @@ pub async fn actor_loop<A: Actor>(
     if actor_type.is_tracked() {
         if let Some(mut scheduler) = scheduler {
             scheduler
-                .send(DeregisterActor(id))
+                .send(DeregisterActor(actor_id))
                 .await
                 .expect("de-register actor");
         }

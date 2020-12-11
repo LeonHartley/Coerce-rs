@@ -13,10 +13,10 @@ use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::actor::{Actor, ActorId, ActorState};
 use coerce_rt::remote::codec::json::JsonCodec;
 use coerce_rt::remote::codec::MessageCodec;
-use coerce_rt::remote::system::RemoteActorSystem;
 use coerce_rt::remote::net::message::{ActorCreated, CreateActor};
 use coerce_rt::remote::storage::activator::ActorActivator;
 use coerce_rt::remote::storage::state::{ActorStore, ActorStoreErr};
+use coerce_rt::remote::system::RemoteActorSystem;
 use uuid::Uuid;
 
 pub struct TestActorStore {

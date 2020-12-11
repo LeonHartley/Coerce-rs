@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 coerce-rt = { path = "../../coerce-rt" }
 async-trait = { version = "0.1" }
-redis-async = "0.6.1"
+redis-async = "0.7.3"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "0.2.6", features = ["full"] }

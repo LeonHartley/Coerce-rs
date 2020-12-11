@@ -6,16 +6,16 @@ use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub enum TestActorStatus {
     Inactive,
     Active,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct GetStatusRequest();
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub enum GetStatusResponse {
     Ok(TestActorStatus),
     None,
@@ -25,12 +25,12 @@ impl Message for GetStatusRequest {
     type Result = GetStatusResponse;
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SetStatusRequest {
     pub status: TestActorStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub enum SetStatusResponse {
     Ok,
     Unsuccessful,
@@ -40,7 +40,7 @@ impl Message for SetStatusRequest {
     type Result = SetStatusResponse;
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct GetCounterRequest();
 
 impl Message for GetCounterRequest {

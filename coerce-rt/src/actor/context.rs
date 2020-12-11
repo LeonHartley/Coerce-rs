@@ -116,9 +116,8 @@ pub enum ActorStatus {
 type BoxedAttachment = Box<dyn Any + 'static + Sync + Send>;
 
 pub struct ActorContext {
-    id: ActorId,
-    status: ActorStatus,
     boxed_ref: BoxedActorRef,
+    status: ActorStatus,
     core: Option<ActorSystem>,
     children: Vec<BoxedActorRef>,
     attachments: HashMap<&'static str, BoxedAttachment>,
@@ -126,16 +125,14 @@ pub struct ActorContext {
 
 impl ActorContext {
     pub fn new(
-        id: ActorId,
         core: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
         attachments: HashMap<&'static str, BoxedAttachment>,
     ) -> ActorContext {
         ActorContext {
-            id,
-            status,
             boxed_ref,
+            status,
             core,
             attachments,
             children: vec![],
@@ -143,7 +140,7 @@ impl ActorContext {
     }
 
     pub fn id(&self) -> &ActorId {
-        &self.id
+        &self.boxed_ref.id
     }
 
     pub fn system(&self) -> &ActorSystem {

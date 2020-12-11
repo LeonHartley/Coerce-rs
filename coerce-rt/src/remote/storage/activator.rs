@@ -37,7 +37,6 @@ impl ActorActivator {
     where
         A: FromActorState<A>,
     {
-
         let id = id.clone();
         let state = self.store.get(id).await;
         if let Ok(Some(state)) = state {

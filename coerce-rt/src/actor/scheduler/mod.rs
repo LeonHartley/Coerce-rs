@@ -186,13 +186,12 @@ where
     let system_id = system.as_ref().map(|s| *s.system_id());
 
     let actor_ref = LocalActorRef {
-        id: id.clone(),
+        id,
         sender: tx,
         system_id,
     };
 
     tokio::spawn(actor_loop(
-        id,
         actor,
         actor_type,
         rx,

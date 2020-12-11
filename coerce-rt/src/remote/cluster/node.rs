@@ -2,14 +2,15 @@ use hashring::HashRing;
 
 use std::collections::HashMap;
 
+use std::hash::Hash;
 use uuid::Uuid;
 
 pub struct RemoteNodeStore {
     nodes: HashMap<Uuid, RemoteNode>,
-    table: HashRing<RemoteNode, String>,
+    table: HashRing<RemoteNode>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Hash, Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteNode {
     pub id: Uuid,
     pub addr: String,
@@ -41,11 +42,11 @@ impl RemoteNodeStore {
     pub fn remove(&mut self, node_id: &Uuid) -> Option<RemoteNode> {
         self.nodes
             .remove(&node_id)
-            .and_then(|node| self.table.remove(node))
+            .and_then(|node| self.table.remove(&node))
     }
 
     pub fn get_by_key(&mut self, key: impl ToString) -> Option<&RemoteNode> {
-        self.table.get(key.to_string())
+        self.table.get(&key.to_string())
     }
 
     pub fn add(&mut self, node: RemoteNode) {
