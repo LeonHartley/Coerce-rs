@@ -115,33 +115,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "coerce"
-version = "0.3.0"
-dependencies = [
- "async-trait",
- "byteorder",
- "bytes",
- "chrono",
- "coerce-macros",
- "env_logger",
- "futures",
- "hashring",
- "lazy_static",
- "log",
- "serde",
- "serde_json",
- "tokio",
- "tokio-util",
- "trust-dns-client",
- "trust-dns-proto",
- "uuid",
-]
-
-[[package]]
 name = "coerce-chat-common"
 version = "0.1.0"
 dependencies = [
- "coerce",
+ "coerce-rt",
  "futures",
  "serde",
  "tokio",
@@ -157,7 +134,7 @@ version = "0.1.0"
 name = "coerce-chat-worker"
 version = "0.1.0"
 dependencies = [
- "coerce",
+ "coerce-rt",
  "futures",
  "tokio",
  "tokio-util",
@@ -176,10 +153,33 @@ name = "coerce-redis"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "coerce",
+ "coerce-rt",
  "redis-async",
  "serde",
  "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "coerce-rt"
+version = "0.3.0"
+dependencies = [
+ "async-trait",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "coerce-macros",
+ "env_logger",
+ "futures",
+ "hashring",
+ "lazy_static",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "trust-dns-client",
+ "trust-dns-proto",
  "uuid",
 ]
 

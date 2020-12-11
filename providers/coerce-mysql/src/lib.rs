@@ -1,5 +1,5 @@
 use crate::MySqlWorkerStoreErr::Database;
-use coerce::remote::cluster::workers::{ClusterWorker, WorkerStore, WorkerStoreErr};
+use coerce_rt::remote::cluster::workers::{ClusterWorker, WorkerStore, WorkerStoreErr};
 use mysql_async::{error::Error, Pool};
 
 #[macro_use]

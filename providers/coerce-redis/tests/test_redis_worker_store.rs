@@ -1,7 +1,7 @@
 use coerce_redis::workers::RedisWorkerStore;
 use coerce_redis::RedisWorker;
 
-use coerce::actor::context::ActorSystem;
+use coerce_rt::actor::context::ActorSystem;
 
 #[ignore] // ignored due to dependency on redis server
 #[tokio::test]

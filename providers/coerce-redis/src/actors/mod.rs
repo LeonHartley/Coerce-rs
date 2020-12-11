@@ -1,6 +1,6 @@
 use crate::{RedisWorkerErr, RedisWorkerRef, RedisWorkerRefExt};
-use coerce::remote::storage::state::{ActorStore, ActorStoreErr};
-use coerce::actor::{ActorId, ActorState};
+use coerce_rt::actor::{ActorId, ActorState};
+use coerce_rt::remote::storage::state::{ActorStore, ActorStoreErr};
 
 pub struct RedisActorStore {
     redis: RedisWorkerRef,
@@ -51,7 +51,7 @@ impl ActorStore for RedisActorStore {
 }
 
 fn actor_key(id: ActorId) -> String {
-    format!("coerce-actor-{}", id)
+    format!("actor-{}", id)
 }
 
 impl From<RedisWorkerErr> for ActorStoreErr {
