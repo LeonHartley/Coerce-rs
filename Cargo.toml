@@ -1,11 +1,10 @@
 [workspace]
 members = [
-    "coerce-rt",
-    "coerce-remote",
-    "coerce-remote/macros",
+    "coerce",
+    "coerce/macros",
 #    "coerce-remote/providers/coerce-mysql",
-    "coerce-remote/providers/coerce-redis",
-    "coerce-remote/examples/coerce-chat-common",
-    "coerce-remote/examples/coerce-chat-worker",
-    "coerce-remote/examples/coerce-chat-gateway"
+    "providers/coerce-redis",
+    "examples/coerce-chat-common",
+    "examples/coerce-chat-worker",
+    "examples/coerce-chat-gateway"
 ]
