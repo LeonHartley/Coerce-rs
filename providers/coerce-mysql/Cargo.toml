@@ -5,6 +5,6 @@ authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2018"
 
 [dependencies]
-coerce-rt = { path = "../../coerce" }
+coerce = { path = "../../coerce" }
 async-trait = { version = "0.1" }
 mysql_async = { version = "0.21" }
