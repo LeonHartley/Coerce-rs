@@ -9,18 +9,18 @@ pub struct ClusterWorkerBuilder {
     server_listen_addr: String,
     seed: Option<Box<dyn ClusterSeed + Send + Sync>>,
     seed_addr: Option<String>,
-    context: RemoteActorSystem,
+    system: RemoteActorSystem,
 }
 
 impl ClusterWorkerBuilder {
-    pub fn new(context: RemoteActorSystem) -> ClusterWorkerBuilder {
+    pub fn new(system: RemoteActorSystem) -> ClusterWorkerBuilder {
         let server_listen_addr = "0.0.0.0:30101".to_owned();
         let seed = None;
         let seed_addr = None;
 
         ClusterWorkerBuilder {
             server_listen_addr,
-            context,
+            system,
             seed,
             seed_addr,
         }
@@ -50,9 +50,9 @@ impl ClusterWorkerBuilder {
     pub async fn start(mut self) {
         let mut nodes = vec![];
 
-        self.context
+        self.system
             .register_node(RemoteNode::new(
-                self.context.node_id(),
+                self.system.node_id(),
                 self.server_listen_addr.clone(),
             ))
             .await;
@@ -61,7 +61,7 @@ impl ClusterWorkerBuilder {
             self.discover_peers(&mut nodes).await;
         }
 
-        let server_ctx = self.context.clone();
+        let server_ctx = self.system.clone();
         let mut server = RemoteServer::new(JsonCodec::new());
 
         server
@@ -72,16 +72,16 @@ impl ClusterWorkerBuilder {
 
     async fn discover_peers(&mut self, _nodes: &mut Vec<RemoteNode>) {
         if let Some(seed_addr) = self.seed_addr.take() {
-            let client_ctx = self.context.clone();
+            let client_ctx = self.system.clone();
             let client =
                 RemoteClient::connect(seed_addr.clone(), client_ctx, JsonCodec::new(), None)
                     .await
                     .expect("failed to connect to seed server");
 
-            self.context
+            self.system
                 .register_node(RemoteNode::new(client.node_id, seed_addr))
                 .await;
-            self.context.register_client(client.node_id, client).await;
+            self.system.register_client(client.node_id, client).await;
         }
     }
 }

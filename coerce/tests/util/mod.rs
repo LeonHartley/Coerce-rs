@@ -1,6 +1,7 @@
 use chrono::Local;
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::{Handler, Message, RemoteMessage};
+use coerce::actor::message::encoding::json::RemoteMessage;
+use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 use env_logger::Builder;
 use log::LevelFilter;

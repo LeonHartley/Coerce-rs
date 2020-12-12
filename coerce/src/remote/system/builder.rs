@@ -1,5 +1,5 @@
-use crate::actor::context::ActorSystem;
 use crate::actor::message::{Handler, Message};
+use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, Factory};
 use crate::remote::actor::message::SetSystem;
 use crate::remote::actor::{

@@ -1,4 +1,4 @@
-use crate::actor::{Actor, ActorId};
+use crate::actor::{Actor, ActorId, ActorRef, Factory};
 use crate::remote::system::RemoteActorSystem;
 use crate::remote::RemoteActorRef;
 use serde::de::DeserializeOwned;
@@ -6,30 +6,38 @@ use serde::Serialize;
 
 #[derive(Clone)]
 pub struct RemoteClusterClient {
-    context: RemoteActorSystem,
+    system: RemoteActorSystem,
 }
 
 impl RemoteClusterClient {
-    pub fn new(context: RemoteActorSystem) -> RemoteClusterClient {
-        RemoteClusterClient { context }
+    pub fn new(system: RemoteActorSystem) -> RemoteClusterClient {
+        RemoteClusterClient { system }
     }
 }
 
 impl RemoteClusterClient {
-    pub async fn create_actor<A: Actor>(
+    // pub async fn create_actor<A: Actor>(
+    //     &mut self,
+    //     id: Option<ActorId>,
+    //     state: A,
+    // ) -> Option<ActorRef<A>>
+    // where
+    //     A: 'static + Sync + Send,
+    //     A: Serialize + Sync + Send,
+    //     A: DeserializeOwned + Sync + Send,
+    // {
+    //     None
+    // }
+
+    pub async fn create_actor<F: Factory>(
         &mut self,
+        recipe: F::Recipe,
         id: Option<ActorId>,
-        state: A,
-    ) -> Option<RemoteActorRef<A>>
-    where
-        A: 'static + Sync + Send,
-        A: Serialize + Sync + Send,
-        A: DeserializeOwned + Sync + Send,
-    {
+    ) -> Option<ActorRef<F::Actor>> {
         None
     }
 
-    pub async fn get_actor<A: Actor>(&mut self, actor_id: ActorId) -> Option<RemoteActorRef<A>>
+    pub async fn get_actor<A: Actor>(&mut self, actor_id: ActorId) -> Option<ActorRef<A>>
     where
         A: 'static + Sync + Send,
     {

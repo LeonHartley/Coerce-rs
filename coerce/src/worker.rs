@@ -1,5 +1,6 @@
-use crate::actor::context::{ActorContext, ActorSystem};
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
+use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorRefErr, LocalActorRef};
 use std::collections::VecDeque;
 

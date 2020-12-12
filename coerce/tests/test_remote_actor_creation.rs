@@ -9,7 +9,7 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
-use coerce::actor::context::ActorSystem;
+use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, ActorCreationErr, ActorId, ActorState, Factory};
 use coerce::remote::codec::json::JsonCodec;
 use coerce::remote::codec::MessageCodec;

@@ -12,7 +12,7 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
-use coerce::actor::context::ActorSystem;
+use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 

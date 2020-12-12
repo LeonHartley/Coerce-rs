@@ -67,12 +67,12 @@ where
     pub async fn start(
         &mut self,
         addr: String,
-        mut context: RemoteActorSystem,
+        mut system: RemoteActorSystem,
     ) -> Result<(), tokio::io::Error> {
         let listener = tokio::net::TcpListener::bind(addr).await?;
         let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
 
-        let session_store = context
+        let session_store = system
             .inner()
             .new_anon_actor(RemoteSessionStore::new(self.codec.clone()))
             .await
@@ -80,7 +80,7 @@ where
 
         tokio::spawn(server_loop(
             listener,
-            context,
+            system,
             session_store,
             self.codec.clone(),
         ));
@@ -99,7 +99,7 @@ where
 
 pub async fn server_loop<C: MessageCodec>(
     mut listener: tokio::net::TcpListener,
-    context: RemoteActorSystem,
+    system: RemoteActorSystem,
     mut session_store: LocalActorRef<RemoteSessionStore<C>>,
     codec: C,
 ) where
@@ -123,7 +123,7 @@ pub async fn server_loop<C: MessageCodec>(
                     .expect("new session registered");
 
                 let _session = tokio::spawn(receive_loop(
-                    context.clone(),
+                    system.clone(),
                     read,
                     stop_rx,
                     SessionMessageReceiver::new(session_id, session_store.clone()),

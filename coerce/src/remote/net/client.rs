@@ -75,7 +75,7 @@ pub enum RemoteClientErr {
 impl<C: MessageCodec> RemoteClient<C> {
     pub async fn connect(
         addr: String,
-        mut context: RemoteActorSystem,
+        mut system: RemoteActorSystem,
         mut codec: C,
         nodes: Option<Vec<RemoteNode>>,
     ) -> Result<RemoteClient<C>, tokio::io::Error>
@@ -90,19 +90,19 @@ impl<C: MessageCodec> RemoteClient<C> {
 
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
         let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
-        let node_id = context.node_id();
+        let node_id = system.node_id();
 
         trace!("requesting nodes");
 
         let nodes = match nodes {
             Some(n) => n,
-            None => context.get_nodes().await,
+            None => system.get_nodes().await,
         };
 
         trace!("got nodes {:?}", &nodes);
 
         tokio::spawn(receive_loop(
-            context,
+            system,
             read,
             stop_rx,
             ClientMessageReceiver {

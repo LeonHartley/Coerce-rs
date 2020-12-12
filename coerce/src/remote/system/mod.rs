@@ -1,5 +1,5 @@
-use crate::actor::context::ActorSystem;
 use crate::actor::message::{Envelope, Message};
+use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode,
@@ -66,7 +66,7 @@ impl RemoteActorSystem {
         let handler = self.types.message_handler(&identifier);
 
         if let Some(handler) = handler {
-            handler.handle(actor_id, self.clone(), buffer, tx).await;
+            handler.handle(actor_id, buffer, tx).await;
         };
 
         match rx.await {

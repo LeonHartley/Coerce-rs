@@ -7,7 +7,7 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
-use coerce::actor::context::ActorSystem;
+use coerce::actor::system::ActorSystem;
 use coerce::remote::cluster::node::RemoteNode;
 use coerce::remote::cluster::workers::{
     ClusterWorker, ClusterWorkers, GetActiveWorkers, WorkerStore, WorkerStoreErr,

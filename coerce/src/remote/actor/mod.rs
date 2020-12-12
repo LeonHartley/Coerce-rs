@@ -1,7 +1,7 @@
 use crate::remote::cluster::node::RemoteNodeStore;
 
-use crate::actor::context::ActorSystem;
 use crate::actor::message::Message;
+use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,

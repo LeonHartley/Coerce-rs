@@ -70,7 +70,7 @@ pub async fn receive_loop<
     R: StreamReceiver<M>,
     S: tokio::io::AsyncRead + Unpin,
 >(
-    mut context: RemoteActorSystem,
+    mut system: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
     mut receiver: R,
@@ -83,7 +83,7 @@ pub async fn receive_loop<
     while let Some(res) = fut.next().await {
         match res {
             Some(res) => match codec.decode_msg::<M>(res) {
-                Some(msg) => receiver.on_recv(msg, &mut context).await,
+                Some(msg) => receiver.on_recv(msg, &mut system).await,
                 None => warn!(target: "RemoteReceive", "error decoding msg"),
             },
             None => {
@@ -94,5 +94,5 @@ pub async fn receive_loop<
     }
 
     trace!(target: "RemoteReceive", "closed");
-    receiver.on_close(&mut context).await;
+    receiver.on_close(&mut system).await;
 }

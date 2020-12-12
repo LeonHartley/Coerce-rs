@@ -1,6 +1,6 @@
-use crate::actor::context::ActorSystem;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
+use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorState, Factory};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::codec::MessageCodec;
@@ -31,7 +31,6 @@ pub trait ActorMessageHandler: Any {
     async fn handle(
         &self,
         actor: ActorId,
-        mut remote_ctx: RemoteActorSystem,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
@@ -209,7 +208,6 @@ where
     async fn handle(
         &self,
         actor_id: ActorId,
-        mut remote_ctx: RemoteActorSystem,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
@@ -217,15 +215,15 @@ where
         let mut actor = system.get_tracked_actor::<A>(actor_id.clone()).await;
 
         if let Some(mut actor) = actor {
-            let message = self.codec.decode_msg::<M>(buffer.to_vec());
-            match message {
-                Some(m) => {
+            let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
+            match envelope {
+                Ok(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
                         send_result(result, res, &self.codec)
                     }
                 }
-                None => error!(target: "RemoteHandler", "failed to decode message"),
+                Err(_) => error!(target: "RemoteHandler", "failed to decode message"),
             };
         }
     }

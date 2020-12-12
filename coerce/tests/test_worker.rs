@@ -1,5 +1,6 @@
-use coerce::actor::context::{ActorContext, ActorSystem};
+use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
+use coerce::actor::system::ActorSystem;
 use coerce::actor::Actor;
 use coerce::worker::{Worker, WorkerRefExt};
 

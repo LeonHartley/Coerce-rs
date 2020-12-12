@@ -1,5 +1,5 @@
 use crate::util::create_trace_logger;
-use coerce::actor::context::ActorSystem;
+use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
 use util::*;
 

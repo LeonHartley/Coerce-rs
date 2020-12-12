@@ -1,4 +1,4 @@
-use crate::actor::message::{Envelope, RemoteMessage};
+use crate::actor::message::Envelope;
 use crate::actor::ActorId;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

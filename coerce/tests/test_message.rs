@@ -1,5 +1,6 @@
-use coerce::actor::context::ActorSystem;
-use coerce::actor::message::{Envelope, EnvelopeType, Message, MessageWrapErr, RemoteMessage};
+use coerce::actor::message::encoding::json::RemoteMessage;
+use coerce::actor::message::{Envelope, EnvelopeType, Message, MessageWrapErr};
+use coerce::actor::system::ActorSystem;
 use util::*;
 
 pub mod util;

@@ -1,8 +1,9 @@
-use crate::actor::context::{ActorContext, ActorSystem};
-use crate::actor::lifecycle::actor_loop;
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, BoxedActorRef, GetActorRef, LocalActorRef};
 
+use crate::actor::lifecycle::ActorLoop;
+use crate::actor::system::ActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use uuid::Uuid;
@@ -53,9 +54,9 @@ impl ActorType {
     }
 }
 
-pub struct SetContext(pub ActorSystem);
+pub struct SetSystem(pub ActorSystem);
 
-impl Message for SetContext {
+impl Message for SetSystem {
     type Result = ();
 }
 
@@ -191,15 +192,11 @@ where
         system_id,
     };
 
-    tokio::spawn(actor_loop(
-        actor,
-        actor_type,
-        rx,
-        on_start,
-        actor_ref.clone(),
-        system,
-        scheduler,
-    ));
+    let cloned_ref = actor_ref.clone();
+    tokio::spawn(async move {
+        let mut actor_loop = ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, scheduler);
+        actor_loop.run(system).await
+    });
 
     actor_ref
 }

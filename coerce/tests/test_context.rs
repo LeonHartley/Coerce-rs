@@ -1,4 +1,4 @@
-use coerce::actor::context::ActorSystem;
+use coerce::actor::system::ActorSystem;
 use coerce::actor::{get_actor, new_actor};
 use util::*;
 use uuid::Uuid;

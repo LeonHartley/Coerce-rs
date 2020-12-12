@@ -1,4 +1,4 @@
-use crate::actor::message::{Envelope, EnvelopeType, Handler, Message, RemoteMessage};
+use crate::actor::message::{Envelope, EnvelopeType, Handler, Message};
 use crate::actor::ActorRefErr::ActorUnavailable;
 use crate::actor::{Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::actor::RemoteResponse;
@@ -14,7 +14,7 @@ where
     A: 'static + Sync + Send,
 {
     id: ActorId,
-    context: RemoteActorSystem,
+    system: RemoteActorSystem,
     node_id: Uuid,
     _a: PhantomData<A>,
 }
@@ -23,10 +23,10 @@ impl<A: Actor> RemoteActorRef<A>
 where
     A: 'static + Sync + Send,
 {
-    pub fn new(id: ActorId, node_id: Uuid, context: RemoteActorSystem) -> RemoteActorRef<A> {
+    pub fn new(id: ActorId, node_id: Uuid, system: RemoteActorSystem) -> RemoteActorRef<A> {
         RemoteActorRef {
             id,
-            context,
+            system,
             node_id,
             _a: PhantomData,
         }
@@ -49,23 +49,20 @@ where
             _ => return Err(ActorRefErr::ActorUnavailable),
         };
 
-        let event = self
-            .context
-            .create_header::<A, Msg>(&self.id)
-            .map(|header| {
-                SessionEvent::Message(MessageRequest {
-                    id,
-                    handler_type: header.handler_type,
-                    actor: header.actor_id,
-                    message: message_bytes,
-                })
-            });
+        let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
+            SessionEvent::Message(MessageRequest {
+                id,
+                handler_type: header.handler_type,
+                actor: header.actor_id,
+                message: message_bytes,
+            })
+        });
 
-        self.context.push_request(id, res_tx).await;
+        self.system.push_request(id, res_tx).await;
 
         match event {
             Some(event) => {
-                self.context.send_message(self.node_id, event).await;
+                self.system.send_message(self.node_id, event).await;
                 match res_rx.await {
                     Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
                         Ok(res) => Ok(res),
@@ -94,6 +91,6 @@ where
     A: 'static + Sync + Send,
 {
     fn clone(&self) -> Self {
-        RemoteActorRef::new(self.id.clone(), self.node_id, self.context.clone())
+        RemoteActorRef::new(self.id.clone(), self.node_id, self.system.clone())
     }
 }

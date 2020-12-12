@@ -1,6 +1,7 @@
-use crate::actor::context::{ActorContext, ActorStatus, ActorSystem};
+use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler};
+use crate::actor::system::ActorSystem;
 use crate::remote::RemoteActorRef;
 use log::error;
 use serde::de::DeserializeOwned;
@@ -12,6 +13,7 @@ pub mod context;
 pub mod lifecycle;
 pub mod message;
 pub mod scheduler;
+pub mod system;
 
 pub type ActorId = String;
 

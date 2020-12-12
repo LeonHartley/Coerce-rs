@@ -1,4 +1,4 @@
-use coerce::actor::context::ActorSystem;
+use coerce::actor::system::ActorSystem;
 use coerce::actor::ActorState;
 use coerce::remote::storage::state::ActorStore;
 use coerce_redis::actors::RedisActorStore;
