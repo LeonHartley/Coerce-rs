@@ -37,7 +37,7 @@ pub async fn test_remote_create_message() {
         .unwrap();
 
     let message = remote
-        .create_message::<TestActor, SetStatusRequest>(&actor.id, msg.clone())
+        .create_header::<TestActor, SetStatusRequest>(&actor.id, msg.clone())
         .unwrap();
 
     assert_eq!(message.actor_id, actor.id);

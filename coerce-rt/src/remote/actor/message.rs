@@ -6,6 +6,7 @@ use crate::actor::message::Message;
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::SessionEvent;
 
+use crate::actor::ActorId;
 use uuid::Uuid;
 
 pub struct SetSystem(pub RemoteActorSystem);
@@ -57,4 +58,19 @@ pub struct ClientWrite(pub Uuid, pub SessionEvent);
 
 impl Message for ClientWrite {
     type Result = ();
+}
+
+pub struct RegisterActor {
+    pub node_id: Uuid,
+    pub actor_id: ActorId,
+}
+
+impl Message for RegisterActor {
+    type Result = ();
+}
+
+pub struct GetActorNode(pub ActorId);
+
+impl Message for GetActorNode {
+    type Result = Option<Uuid>;
 }

@@ -1,6 +1,6 @@
 use chrono::Local;
 use coerce_rt::actor::context::ActorContext;
-use coerce_rt::actor::message::{Handler, Message};
+use coerce_rt::actor::message::{Handler, Message, RemoteMessage};
 use coerce_rt::actor::Actor;
 use env_logger::Builder;
 use log::LevelFilter;
@@ -21,7 +21,7 @@ pub enum GetStatusResponse {
     None,
 }
 
-impl Message for GetStatusRequest {
+impl RemoteMessage for GetStatusRequest {
     type Result = GetStatusResponse;
 }
 
@@ -36,7 +36,7 @@ pub enum SetStatusResponse {
     Unsuccessful,
 }
 
-impl Message for SetStatusRequest {
+impl RemoteMessage for SetStatusRequest {
     type Result = SetStatusResponse;
 }
 
@@ -125,7 +125,7 @@ pub fn create_trace_logger() {
             writeln!(
                 buf,
                 "{} [{}] {} - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"),
                 record.level(),
                 record.target(),
                 record.args(),

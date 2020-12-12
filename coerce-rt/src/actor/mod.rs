@@ -1,6 +1,7 @@
 use crate::actor::context::{ActorContext, ActorStatus, ActorSystem};
 use crate::actor::lifecycle::{Status, Stop};
-use crate::actor::message::{ActorMessage, Exec, Handler, Message, MessageHandler};
+use crate::actor::message::{ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler};
+use crate::remote::RemoteActorRef;
 use log::error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -26,10 +27,11 @@ pub enum ActorCreationErr {
 }
 
 #[async_trait]
-pub trait Factory<A: Actor> {
-    type Recipe: Serialize + DeserializeOwned;
+pub trait Factory: Clone {
+    type Actor: Actor + 'static + Sync + Send;
+    type Recipe: Serialize + DeserializeOwned + 'static + Sync + Send;
 
-    async fn create(&self, recipe: Self::Recipe) -> Result<A, ActorCreationErr>;
+    async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr>;
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -65,6 +67,58 @@ where
     A: 'static + Sync + Send,
 {
     ActorSystem::current_system().get_tracked_actor(id).await
+}
+
+pub(crate) enum Ref<A: Actor>
+where
+    A: 'static + Sync + Send,
+{
+    Local(LocalActorRef<A>),
+    Remote(RemoteActorRef<A>),
+}
+
+pub struct ActorRef<A: Actor>
+where
+    A: 'static + Sync + Send,
+{
+    inner_ref: Ref<A>,
+}
+
+impl<A: Actor> ActorRef<A>
+where
+    A: 'static + Sync + Send,
+{
+    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
+    where
+        Msg: 'static + Sync + Send,
+        Msg::Result: 'static + Sync + Send,
+        A: Handler<Msg>,
+    {
+        match &mut self.inner_ref {
+            Ref::Local(local_ref) => local_ref.send(msg).await,
+            Ref::Remote(remote_ref) => {
+                remote_ref
+                    .send(msg.into_envelope(EnvelopeType::Remote).unwrap())
+                    .await
+            }
+        }
+    }
+}
+
+impl<A: 'static + Actor + Sync + Send> From<LocalActorRef<A>> for ActorRef<A> {
+    fn from(r: LocalActorRef<A>) -> Self {
+        ActorRef {
+            inner_ref: Ref::Local(r),
+        }
+    }
+}
+
+impl<A: 'static + Actor + Sync + Send> From<RemoteActorRef<A>> for ActorRef<A> {
+    fn from(r: RemoteActorRef<A>) -> Self {
+        ActorRef {
+            inner_ref: Ref::Remote(r),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -204,25 +258,5 @@ where
 
     pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Stop {}).await
-    }
-}
-
-pub trait FromActorState<A: Actor> {
-    fn try_from(value: ActorState) -> Option<A>;
-}
-
-impl<A: Actor> FromActorState<A> for A
-where
-    A: DeserializeOwned + Sync + Send,
-{
-    fn try_from(value: ActorState) -> Option<A> {
-        match serde_json::from_slice(value.state.as_slice()) {
-            Ok(actor) => Some(actor),
-            Err(_e) => {
-                error!(target: "ActorStore", "failed to deserialize actor: {}", value.actor_id);
-
-                None
-            }
-        }
     }
 }

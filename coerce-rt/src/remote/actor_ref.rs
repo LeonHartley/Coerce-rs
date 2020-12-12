@@ -1,4 +1,4 @@
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::{Envelope, EnvelopeType, Handler, Message, RemoteMessage};
 use crate::actor::ActorRefErr::ActorUnavailable;
 use crate::actor::{Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::actor::RemoteResponse;
@@ -8,38 +8,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::marker::PhantomData;
 use uuid::Uuid;
-
-pub(crate) enum Ref<A: Actor>
-where
-    A: 'static + Sync + Send,
-{
-    Local(LocalActorRef<A>),
-    Remote(RemoteActorRef<A>),
-}
-
-pub struct ActorRef<A: Actor>
-where
-    A: 'static + Sync + Send,
-{
-    inner_ref: Ref<A>,
-}
-
-impl<A: Actor> ActorRef<A>
-where
-    A: 'static + Sync + Send,
-{
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
-    where
-        Msg: 'static + Serialize + Send + Sync,
-        A: Handler<Msg>,
-        Msg::Result: DeserializeOwned + Send + Sync,
-    {
-        match &mut self.inner_ref {
-            Ref::Local(local_ref) => local_ref.send(msg).await,
-            Ref::Remote(remote_ref) => remote_ref.send(msg).await,
-        }
-    }
-}
 
 pub struct RemoteActorRef<A: Actor>
 where
@@ -64,32 +32,32 @@ where
         }
     }
 
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
+    pub async fn send<Msg: Message>(
+        &mut self,
+        msg: Envelope<Msg>,
+    ) -> Result<Msg::Result, ActorRefErr>
     where
-        Msg: 'static + Serialize + Send + Sync,
         A: Handler<Msg>,
-        Msg::Result: DeserializeOwned + Send + Sync,
+        Msg: 'static + Send + Sync,
+        <Msg as Message>::Result: 'static + Send + Sync,
     {
         let id = Uuid::new_v4();
         let (res_tx, res_rx) = tokio::sync::oneshot::channel();
 
-        let message = match serde_json::to_string(&msg) {
-            Ok(e) => e,
-            Err(_) => {
-                error!(target: "RemoteActorRef", "error encoding message");
-                return Err(ActorUnavailable);
-            }
+        let message_bytes = match msg {
+            Envelope::Remote(b) => b,
+            _ => return Err(ActorRefErr::ActorUnavailable),
         };
 
         let event = self
             .context
-            .create_message::<A, Msg>(&self.id, msg)
-            .map(|m| {
+            .create_header::<A, Msg>(&self.id)
+            .map(|header| {
                 SessionEvent::Message(MessageRequest {
                     id,
-                    handler_type: m.handler_type,
-                    actor: m.actor_id,
-                    message,
+                    handler_type: header.handler_type,
+                    actor: header.actor_id,
+                    message: message_bytes,
                 })
             });
 
@@ -99,15 +67,13 @@ where
             Some(event) => {
                 self.context.send_message(self.node_id, event).await;
                 match res_rx.await {
-                    Ok(RemoteResponse::Ok(res)) => {
-                        match serde_json::from_slice::<Msg::Result>(res.as_slice()) {
-                            Ok(res) => Ok(res),
-                            Err(_) => {
-                                error!(target: "RemoteActorRef", "failed to decode result");
-                                Err(ActorUnavailable)
-                            }
+                    Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
+                        Ok(res) => Ok(res),
+                        Err(_) => {
+                            error!(target: "RemoteActorRef", "failed to decode result");
+                            Err(ActorUnavailable)
                         }
-                    }
+                    },
                     _ => {
                         error!(target: "RemoteActorRef", "failed to receive result");
                         Err(ActorUnavailable)

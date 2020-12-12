@@ -1,7 +1,7 @@
 use crate::actor::context::ActorSystem;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
-use crate::actor::{Actor, ActorId, ActorState, FromActorState};
+use crate::actor::{Actor, ActorId, ActorState, Factory};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::codec::MessageCodec;
 use crate::remote::net::message::{ActorCreated, CreateActor};
@@ -120,36 +120,40 @@ where
     }
 }
 
-pub struct RemoteActorHandler<A: Actor, C: MessageCodec>
+pub struct RemoteActorHandler<A: Actor, F: Factory, C: MessageCodec>
 where
     C: Send + Sync,
+    F: Send + Sync,
     A: Send + Sync,
 {
     system: ActorSystem,
     codec: C,
+    factory: F,
     marker: RemoteActorMarker<A>,
 }
 
-impl<A: Actor, C: MessageCodec> RemoteActorHandler<A, C>
+impl<A: Actor, F: Factory, C: MessageCodec> RemoteActorHandler<A, F, C>
 where
     A: 'static + Send + Sync,
+    F: 'static + Send + Sync,
     C: 'static + Send + Sync,
 {
-    pub fn new(system: ActorSystem, codec: C) -> RemoteActorHandler<A, C> {
+    pub fn new(system: ActorSystem, factory: F, codec: C) -> RemoteActorHandler<A, F, C> {
         let marker = RemoteActorMarker::new();
         RemoteActorHandler {
             system,
             codec,
+            factory,
             marker,
         }
     }
 }
 
 #[async_trait]
-impl<A: Actor, C: MessageCodec> ActorHandler for RemoteActorHandler<A, C>
+impl<A: Actor, F: Factory<Actor = A>, C: MessageCodec> ActorHandler for RemoteActorHandler<A, F, C>
 where
     A: 'static + Sync + Send,
-    A: DeserializeOwned,
+    F: 'static + Send + Sync,
     C: 'static + Send + Sync,
 {
     async fn create(
@@ -163,18 +167,18 @@ where
             .actor_id
             .unwrap_or_else(|| format!("{}", Uuid::new_v4()));
 
-        if let Some(state) = A::try_from(ActorState {
-            actor_id: actor_id.clone(),
-            state: args.actor,
-        }) {
-            let actor_ref = system.new_actor(actor_id, state, Tracked).await;
-            if let Ok(actor_ref) = actor_ref {
-                let result = ActorCreated {
-                    id: actor_ref.id,
-                    node_id: remote_ctx.node_id(),
-                };
+        let recipe = self.codec.decode_msg::<F::Recipe>(args.recipe);
+        if let Some(recipe) = recipe {
+            if let Ok(state) = self.factory.create(recipe).await {
+                let actor_ref = system.new_actor(actor_id, state, Tracked).await;
+                if let Ok(actor_ref) = actor_ref {
+                    let result = ActorCreated {
+                        id: actor_ref.id,
+                        node_id: remote_ctx.node_id(),
+                    };
 
-                send_result(result, res, &self.codec)
+                    send_result(result, res, &self.codec)
+                }
             }
         }
     }
@@ -184,6 +188,7 @@ where
             system: self.system.clone(),
             marker: RemoteActorMarker::new(),
             codec: self.codec.clone(),
+            factory: self.factory.clone(),
         })
     }
 

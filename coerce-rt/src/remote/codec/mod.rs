@@ -1,3 +1,4 @@
+use crate::actor::message::{Envelope, RemoteMessage};
 use crate::actor::ActorId;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -17,8 +18,7 @@ pub trait MessageCodec {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RemoteHandlerMessage<M: Serialize> {
+pub struct RemoteMessageHeader {
     pub actor_id: ActorId,
     pub handler_type: String,
-    pub message: M,
 }

@@ -22,12 +22,18 @@ pub enum EnvelopeType {
 #[derive(Debug, Eq, PartialEq)]
 pub enum MessageWrapErr {
     NotTransmittable,
+    SerializationErr,
+}
+#[derive(Debug, Eq, PartialEq)]
+pub enum MessageUnwrapErr {
+    NotTransmittable,
+    DeserializationErr,
 }
 
 pub trait Message: Sized {
     type Result;
 
-    fn wrap(self, envelope_type: EnvelopeType) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn into_envelope(self, envelope_type: EnvelopeType) -> Result<Envelope<Self>, MessageWrapErr> {
         match envelope_type {
             EnvelopeType::Local => Ok(Envelope::Local(self)),
             EnvelopeType::Remote => self.into_remote_envelope(),
@@ -37,20 +43,44 @@ pub trait Message: Sized {
     fn into_remote_envelope(self) -> Result<Envelope<Self>, MessageWrapErr> {
         Err(MessageWrapErr::NotTransmittable)
     }
+
+    fn from_envelope(envelope: Envelope<Self>) -> Result<Self, MessageUnwrapErr> {
+        match envelope {
+            Envelope::Local(msg) => Ok(msg),
+            Envelope::Remote(bytes) => Self::from_remote_envelope(bytes),
+        }
+    }
+
+    fn from_remote_envelope(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        Err(MessageUnwrapErr::NotTransmittable)
+    }
+
+    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Err(MessageUnwrapErr::NotTransmittable)
+    }
 }
 
-pub trait RemoteMessage: Message + Sized + Serialize + DeserializeOwned {
-    type Result: Serialize + DeserializeOwned;
+pub trait RemoteMessage: Sized + Serialize + DeserializeOwned {
+    type Result: Sync + Send + Serialize + DeserializeOwned;
 }
 
 impl<M: RemoteMessage> Message for M
 where
     M: 'static + Sync + Send + Serialize + DeserializeOwned,
+    <Self as RemoteMessage>::Result: 'static + Sync + Send + Serialize + DeserializeOwned,
 {
-    type Result = <M as RemoteMessage>::Result;
+    type Result = <Self as RemoteMessage>::Result;
 
     fn into_remote_envelope(self) -> Result<Envelope<Self>, MessageWrapErr> {
-        Ok(Envelope::Remote(vec![1])) // todo: serialize the msg
+        Ok(Envelope::Remote(serde_json::to_vec(&self).unwrap()))
+    }
+
+    fn from_remote_envelope(bytes: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        Ok(serde_json::from_slice(bytes.as_slice()).unwrap())
+    }
+
+    fn read_remote_result(bytes: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Ok(serde_json::from_slice(bytes.as_slice()).unwrap())
     }
 }
 

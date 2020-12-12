@@ -1,8 +1,9 @@
 use crate::actor::context::ActorSystem;
-use crate::actor::message::Message;
+use crate::actor::message::{Envelope, Message};
 use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::actor::message::{
-    ClientWrite, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes,
+    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode,
+    RegisterNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteHandlerTypes, RemoteRegistry, RemoteRequest,
@@ -11,7 +12,7 @@ use crate::remote::actor::{
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::codec::RemoteHandlerMessage;
+use crate::remote::codec::RemoteMessageHeader;
 use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::{CreateActor, SessionEvent};
@@ -51,6 +52,7 @@ impl RemoteActorSystem {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum RemoteActorError {
     ActorUnavailable,
+    ActorExists,
 }
 
 impl RemoteActorSystem {
@@ -78,6 +80,19 @@ impl RemoteActorSystem {
         args: CreateActor,
     ) -> Result<Vec<u8>, RemoteActorError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
+
+        if let Some(actor_id) = args.actor_id.as_ref().map(|s| s.clone()) {
+            if let Some(node_id) = self
+                .registry_ref
+                .send(GetActorNode(actor_id.clone()))
+                .await
+                .unwrap()
+            {
+                log::warn!("actor {} already exists on node: {}", &actor_id, &node_id);
+                return Err(RemoteActorError::ActorExists);
+            }
+        }
+
         let handler = self.types.actor_handler(&args.actor_type);
 
         if let Some(handler) = handler {
@@ -104,21 +119,19 @@ impl RemoteActorSystem {
         self.types.handler_name(marker)
     }
 
-    pub fn create_message<A: Actor, M: Message>(
+    pub fn create_header<A: Actor, M: Message>(
         &mut self,
         id: &ActorId,
-        message: M,
-    ) -> Option<RemoteHandlerMessage<M>>
+    ) -> Option<RemoteMessageHeader>
     where
         A: 'static + Send + Sync,
-        M: 'static + Serialize + Send + Sync,
+        M: 'static + Send + Sync,
         M::Result: Send + Sync,
     {
         match self.handler_name::<A, M>() {
-            Some(handler_type) => Some(RemoteHandlerMessage {
+            Some(handler_type) => Some(RemoteMessageHeader {
                 actor_id: id.clone(),
                 handler_type,
-                message,
             }),
             None => None,
         }

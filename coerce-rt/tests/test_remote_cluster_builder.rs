@@ -16,7 +16,49 @@ use coerce_rt::actor::context::ActorSystem;
 use coerce_rt::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce_rt::remote::system::RemoteActorSystem;
 
+use coerce_rt::actor::{ActorCreationErr, Factory};
 use util::*;
+
+#[derive(Serialize, Deserialize)]
+pub struct TestActorRecipe {
+    name: String,
+}
+
+#[derive(Clone)]
+pub struct TestActorFactory;
+
+#[async_trait]
+impl Factory for TestActorFactory {
+    type Actor = TestActor;
+    type Recipe = TestActorRecipe;
+
+    async fn create(&self, _recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
+        log::info!("recipe create :D");
+        // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
+        Ok(TestActor {
+            status: None,
+            counter: 0,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EchoActorRecipe {}
+
+#[derive(Clone)]
+pub struct EchoActorFactory;
+
+#[async_trait]
+impl Factory for EchoActorFactory {
+    type Actor = EchoActor;
+    type Recipe = EchoActorRecipe;
+
+    async fn create(&self, _recipe: Self::Recipe) -> Result<EchoActor, ActorCreationErr> {
+        log::info!("recipe create :D");
+        // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
+        Ok(EchoActor {})
+    }
+}
 
 #[coerce_test]
 pub async fn test_remote_cluster_worker_builder() {
@@ -93,8 +135,8 @@ pub async fn test_remote_cluster_worker_builder() {
 
 fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
     handlers
-        .with_actor::<TestActor>("TestActor")
-        .with_actor::<EchoActor>("EchoActor")
+        .with_actor::<TestActorFactory>("TestActor", TestActorFactory {})
+        .with_actor::<EchoActorFactory>("EchoActor", EchoActorFactory {})
         .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
         .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
         .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")

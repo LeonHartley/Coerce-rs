@@ -150,12 +150,13 @@ impl RemoteActorHandlerBuilder {
         self
     }
 
-    pub fn with_actor<A: Actor>(&mut self, identifier: &'static str) -> &mut Self
+    pub fn with_actor<F: Factory>(&mut self, identifier: &'static str, factory: F) -> &mut Self
     where
-        A: 'static + DeserializeOwned + Send + Sync,
+        F: 'static + Factory + Send + Sync,
     {
-        let handler = Box::new(RemoteActorHandler::<A, _>::new(
+        let handler = Box::new(RemoteActorHandler::<F::Actor, F, _>::new(
             self.system.clone(),
+            factory,
             JsonCodec::new(),
         ));
         self.actors.insert(String::from(identifier), handler);

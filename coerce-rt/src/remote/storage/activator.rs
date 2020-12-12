@@ -1,4 +1,4 @@
-use crate::actor::{Actor, ActorId, ActorState, FromActorState};
+use crate::actor::{Actor, ActorId, ActorState};
 use crate::remote::storage::state::{ActorStore, ActorStoreErr};
 
 pub struct ActorActivator {
@@ -31,22 +31,22 @@ impl ActorStore for DefaultActorStore {
         Box::new(DefaultActorStore)
     }
 }
-
-impl ActorActivator {
-    pub async fn activate<A: Actor>(&mut self, id: &ActorId) -> Option<A>
-    where
-        A: FromActorState<A>,
-    {
-        let id = id.clone();
-        let state = self.store.get(id).await;
-        if let Ok(Some(state)) = state {
-            A::try_from(state)
-        } else {
-            None
-        }
-    }
-}
-
+//
+// impl ActorActivator {
+//     pub async fn activate<A: Actor>(&mut self, id: &ActorId) -> Option<A>
+//     where
+//         A: FromActorState<A>,
+//     {
+//         let id = id.clone();
+//         let state = self.store.get(id).await;
+//         if let Ok(Some(state)) = state {
+//             A::try_from(state)
+//         } else {
+//             None
+//         }
+//     }
+// }
+//
 impl Clone for ActorActivator {
     fn clone(&self) -> Self {
         ActorActivator {

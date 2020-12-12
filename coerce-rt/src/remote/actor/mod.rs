@@ -2,7 +2,7 @@ use crate::remote::cluster::node::RemoteNodeStore;
 
 use crate::actor::context::ActorSystem;
 use crate::actor::message::Message;
-use crate::actor::{Actor, LocalActorRef};
+use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
@@ -26,6 +26,7 @@ pub struct RemoteClientRegistry {
 
 pub struct RemoteRegistry {
     nodes: RemoteNodeStore,
+    actors: HashMap<ActorId, Uuid>,
     system: Option<RemoteActorSystem>,
 }
 
@@ -156,6 +157,7 @@ impl RemoteRegistry {
         ctx.new_actor(
             format!("RemoteRegistry-0"),
             RemoteRegistry {
+                actors: HashMap::new(),
                 nodes: RemoteNodeStore::new(vec![]),
                 system: None,
             },

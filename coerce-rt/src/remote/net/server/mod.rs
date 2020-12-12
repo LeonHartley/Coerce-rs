@@ -223,7 +223,7 @@ async fn session_handle_message<C: MessageCodec>(
     C: 'static + Sync + Send,
 {
     match ctx
-        .handle_message(msg.handler_type, msg.actor, msg.message.as_bytes())
+        .handle_message(msg.handler_type, msg.actor, msg.message.as_slice())
         .await
     {
         Ok(buf) => send_result(msg.id, buf, session_id, &mut sessions).await,
@@ -258,7 +258,9 @@ async fn send_result<C: MessageCodec>(
 ) where
     C: 'static + Sync + Send,
 {
+    trace!(target: "RemoteSession", "sending result");
     let event = ClientEvent::Result(msg_id, res);
+
     if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
         trace!(target: "RemoteSession", "sent result successfully");
     } else {

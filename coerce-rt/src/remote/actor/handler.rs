@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::Handler;
+use crate::actor::message::{Handler, Message};
 use crate::remote::actor::message::{
-    ClientWrite, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode, RegisterNodes,
-    SetSystem,
+    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode,
+    RegisterNodes, SetSystem,
 };
 use crate::remote::actor::{RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest};
 use crate::remote::cluster::node::RemoteNode;
@@ -105,6 +105,13 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
         } else {
             trace!(target: "RemoteRegistry", "client {} not found", &client_id);
         }
+    }
+}
+
+#[async_trait]
+impl Handler<GetActorNode> for RemoteRegistry {
+    async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) -> Option<Uuid> {
+        self.actors.get(&message.0).map(|s| *s)
     }
 }
 

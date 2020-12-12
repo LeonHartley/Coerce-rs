@@ -29,7 +29,7 @@ pub struct CreateActor {
     pub id: Uuid,
     pub actor_id: Option<ActorId>,
     pub actor_type: String,
-    pub actor: Vec<u8>,
+    pub recipe: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,7 +43,7 @@ pub struct MessageRequest {
     pub id: Uuid,
     pub handler_type: String,
     pub actor: ActorId,
-    pub message: String,
+    pub message: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize)]
