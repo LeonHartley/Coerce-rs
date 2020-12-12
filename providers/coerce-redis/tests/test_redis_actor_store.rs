@@ -1,8 +1,8 @@
 use coerce_redis::actors::RedisActorStore;
 use coerce_redis::RedisWorker;
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::actor::ActorState;
-use coerce_rt::remote::storage::state::ActorStore;
+use coerce::actor::context::ActorSystem;
+use coerce::actor::ActorState;
+use coerce::remote::storage::state::ActorStore;
 use uuid::Uuid;
 
 #[ignore] // ignored due to dependency on redis server

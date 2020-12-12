@@ -1,5 +1,5 @@
 use crate::channel::ChannelMeta;
-use coerce_rt::actor::Actor;
+use coerce::actor::Actor;
 use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 

@@ -1,4 +1,4 @@
-use coerce_rt::actor::Actor;
+use coerce::actor::Actor;
 use std::collections::HashMap;
 use uuid::Uuid;
 

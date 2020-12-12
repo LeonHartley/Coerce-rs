@@ -1,6 +1,6 @@
 use crate::{RedisWorkerErr, RedisWorkerRef, RedisWorkerRefExt};
-use coerce_rt::actor::{ActorId, ActorState};
-use coerce_rt::remote::storage::state::{ActorStore, ActorStoreErr};
+use coerce::actor::{ActorId, ActorState};
+use coerce::remote::storage::state::{ActorStore, ActorStoreErr};
 
 pub struct RedisActorStore {
     redis: RedisWorkerRef,

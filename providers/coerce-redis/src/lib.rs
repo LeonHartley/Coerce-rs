@@ -4,10 +4,10 @@ extern crate async_trait;
 #[macro_use]
 extern crate redis_async;
 
-use coerce_rt::actor::context::{ActorContext, ActorSystem};
-use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::{Actor, ActorRefErr};
-use coerce_rt::worker::{Worker, WorkerRef, WorkerRefExt};
+use coerce::actor::context::{ActorContext, ActorSystem};
+use coerce::actor::message::{Handler, Message};
+use coerce::actor::{Actor, ActorRefErr};
+use coerce::worker::{Worker, WorkerRef, WorkerRefExt};
 use redis_async::client::PairedConnection;
 use redis_async::resp::{FromResp, RespValue};
 use redis_async::{client, error::Error};
