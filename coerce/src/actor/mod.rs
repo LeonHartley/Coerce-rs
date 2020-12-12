@@ -262,3 +262,7 @@ where
         self.send(Stop {}).await
     }
 }
+
+pub fn new_actor_id() -> ActorId {
+    Uuid::new_v4().to_string()
+}

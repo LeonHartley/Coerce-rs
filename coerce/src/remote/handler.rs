@@ -1,7 +1,7 @@
 use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, Factory};
+use crate::actor::{Actor, ActorId, Factory, new_actor_id};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::codec::MessageCodec;
 use crate::remote::net::message::{ActorCreated, CreateActor};
@@ -162,9 +162,7 @@ where
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let mut system = self.system.clone();
-        let actor_id = args
-            .actor_id
-            .unwrap_or_else(|| format!("{}", Uuid::new_v4()));
+        let actor_id = args.actor_id.unwrap_or_else(|| new_actor_id());
 
         let recipe = self.codec.decode_msg::<F::Recipe>(args.recipe);
         if let Some(recipe) = recipe {

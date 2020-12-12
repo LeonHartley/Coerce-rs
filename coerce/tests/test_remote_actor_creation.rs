@@ -7,7 +7,7 @@ extern crate serde;
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, ActorCreationErr, ActorState, Factory};
+use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorState, Factory};
 use coerce::remote::codec::json::JsonCodec;
 use coerce::remote::codec::MessageCodec;
 use coerce::remote::net::message::{ActorCreated, CreateActor};
@@ -50,7 +50,7 @@ impl Actor for TestActor {}
 pub async fn test_remote_actor_create_new() {
     util::create_trace_logger();
 
-    let actor_id = format!("{}", Uuid::new_v4());
+    let actor_id = new_actor_id();
     let expected_actor_name = "test-actor-123".to_string();
     let recipe = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
@@ -108,7 +108,7 @@ pub async fn test_remote_actor_create_new() {
 //     }
 //
 //     let expected_actor_name = "test-actor".to_string();
-//     let actor_id = format!("{}", Uuid::new_v4());
+//     let actor_id = new_actor_id();
 //     let store = TestActorStore {
 //         state: Some(ActorState {
 //             actor_id: actor_id.clone(),

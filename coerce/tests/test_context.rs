@@ -1,5 +1,5 @@
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{get_actor, new_actor};
+use coerce::actor::{get_actor, new_actor, new_actor_id};
 use util::*;
 use uuid::Uuid;
 
@@ -52,9 +52,7 @@ pub async fn test_context_get_tracked_actor() {
 #[tokio::test]
 pub async fn test_context_get_actor_not_found() {
     let mut ctx = ActorSystem::new();
-    let actor = ctx
-        .get_tracked_actor::<TestActor>(format!("{}", Uuid::new_v4()))
-        .await;
+    let actor = ctx.get_tracked_actor::<TestActor>(new_actor_id()).await;
 
     assert_eq!(actor.is_none(), true);
 }

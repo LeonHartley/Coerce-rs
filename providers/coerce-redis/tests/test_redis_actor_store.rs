@@ -1,5 +1,5 @@
 use coerce::actor::system::ActorSystem;
-use coerce::actor::ActorState;
+use coerce::actor::{ActorId, ActorState, new_actor_id};
 use coerce::remote::storage::state::ActorStore;
 use coerce_redis::actors::RedisActorStore;
 use coerce_redis::RedisWorker;
@@ -14,7 +14,7 @@ pub async fn test_redis_actor_store() {
         .unwrap();
 
     let mut store = RedisActorStore::new(&worker);
-    let actor_id = format!("{}", Uuid::new_v4());
+    let actor_id = new_actor_id();
     let state = ActorState {
         actor_id: actor_id.clone(),
         state: vec![1, 3, 3, 7],

@@ -60,9 +60,16 @@ impl Message for ClientWrite {
     type Result = ();
 }
 
+#[derive(Debug)]
 pub struct RegisterActor {
-    pub node_id: Uuid,
     pub actor_id: ActorId,
+    pub node_id: Option<Uuid>,
+}
+
+impl RegisterActor {
+    pub fn new(actor_id: ActorId, node_id: Option<Uuid>) -> RegisterActor {
+        RegisterActor { actor_id, node_id }
+    }
 }
 
 impl Message for RegisterActor {

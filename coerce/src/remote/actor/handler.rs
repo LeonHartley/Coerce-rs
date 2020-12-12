@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::Handler;
+use crate::actor::message::{Handler, Message};
 use crate::remote::actor::message::{
-    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode,
-    RegisterNodes, SetSystem,
+    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
+    RegisterNode, RegisterNodes, SetSystem,
 };
 use crate::remote::actor::{RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest};
 use crate::remote::cluster::node::RemoteNode;
@@ -12,6 +12,7 @@ use crate::remote::system::RemoteActorSystem;
 
 use std::collections::HashMap;
 
+use crate::remote::net::message::{ActorCreated, SessionEvent};
 use uuid::Uuid;
 
 #[async_trait]
@@ -112,6 +113,36 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
 impl Handler<GetActorNode> for RemoteRegistry {
     async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) -> Option<Uuid> {
         self.actors.get(&message.0).map(|s| *s)
+    }
+}
+
+#[async_trait]
+impl Handler<RegisterActor> for RemoteRegistry {
+    async fn handle(&mut self, message: RegisterActor, ctx: &mut ActorContext) {
+        info!(target: "RemoteRegistry", "Registering actor: {:?}", &message);
+
+        match message.node_id {
+            Some(node_id) => {
+                self.actors.insert(message.actor_id, node_id);
+            }
+
+            None => {
+                if let Some(system) = self.system.as_mut() {
+                    let node_id = system.node_id();
+                    let id = message.actor_id;
+
+                    let assigned_registry_node =
+                        self.nodes.get_by_key(&id).map_or_else(|| node_id, |n| n.id);
+
+                    if &assigned_registry_node == &node_id {
+                        self.actors.insert(id, node_id);
+                    } else {
+                        let event = SessionEvent::RegisterActor(ActorCreated { node_id, id });
+                        system.send_message(assigned_registry_node, event).await;
+                    }
+                }
+            }
+        }
     }
 }
 

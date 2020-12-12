@@ -143,13 +143,18 @@ where
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             SessionEvent::Handshake(msg) => {
-                trace!(target: "RemoteServer", "server recv {}, {:?}", &msg.node_id, &msg.nodes);
+                trace!(target: "RemoteServer", "handshake {}, {:?}", &msg.node_id, &msg.nodes);
                 tokio::spawn(session_handshake(
                     ctx.clone(),
                     msg,
                     self.session_id,
                     self.sessions.clone(),
                 ));
+            }
+
+            SessionEvent::RegisterActor(actor) => {
+                trace!(target: "RemoteServer", "register actor {}, {}", &actor.id, &actor.node_id);
+                ctx.register_actor(actor.id, Some(actor.node_id)).await;
             }
 
             SessionEvent::Message(msg) => {

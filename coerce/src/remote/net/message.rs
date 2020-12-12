@@ -60,4 +60,5 @@ pub enum SessionEvent {
     Handshake(SessionHandshake),
     Message(MessageRequest),
     CreateActor(CreateActor),
+    RegisterActor(ActorCreated),
 }

@@ -1,5 +1,5 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{Actor, ActorId, ActorRefErr, LocalActorRef};
+use crate::actor::{Actor, ActorId, ActorRefErr, LocalActorRef, new_actor_id};
 use crate::remote::system::RemoteActorSystem;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -51,7 +51,7 @@ impl ActorSystem {
     where
         A: 'static + Sync + Send,
     {
-        let id = format!("{}", Uuid::new_v4());
+        let id = new_actor_id();
         self.new_actor(id, actor, ActorType::Tracked).await
     }
 
@@ -62,7 +62,7 @@ impl ActorSystem {
     where
         A: 'static + Sync + Send,
     {
-        let id = format!("{}", Uuid::new_v4());
+        let id = new_actor_id();
         self.new_actor(id, actor, ActorType::Anonymous).await
     }
 

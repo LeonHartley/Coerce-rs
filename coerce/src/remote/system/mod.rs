@@ -1,9 +1,9 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, LocalActorRef};
+use crate::actor::{Actor, ActorId, LocalActorRef, new_actor_id};
 use crate::remote::actor::message::{
-    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode,
-    RegisterNodes,
+    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
+    RegisterNode, RegisterNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteHandlerTypes, RemoteRegistry, RemoteRequest,
@@ -15,7 +15,7 @@ use crate::remote::cluster::node::RemoteNode;
 use crate::remote::codec::RemoteMessageHeader;
 use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
-use crate::remote::net::message::{CreateActor, SessionEvent};
+use crate::remote::net::message::{ActorCreated, CreateActor, SessionEvent};
 use crate::remote::storage::activator::ActorActivator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
 use serde::Serialize;
@@ -77,7 +77,7 @@ impl RemoteActorSystem {
 
     pub async fn handle_create_actor(
         &mut self,
-        args: CreateActor,
+        mut args: CreateActor,
     ) -> Result<Vec<u8>, RemoteActorError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
@@ -93,6 +93,11 @@ impl RemoteActorSystem {
             }
         }
 
+        let actor_id = args.actor_id.map_or_else(|| new_actor_id(), |id| id);
+
+        args.actor_id = Some(actor_id.clone());
+
+        self.register_actor(actor_id, None).await;
         let handler = self.types.actor_handler(&args.actor_type);
 
         if let Some(handler) = handler {
@@ -156,6 +161,12 @@ impl RemoteActorSystem {
             .notify(RegisterNodes(nodes))
             .await
             .unwrap()
+    }
+
+    pub async fn register_actor(&mut self, actor_id: ActorId, node_id: Option<Uuid>) {
+        self.registry_ref
+            .notify(RegisterActor::new(actor_id, node_id))
+            .await;
     }
 
     pub async fn register_node(&mut self, node: RemoteNode) {
