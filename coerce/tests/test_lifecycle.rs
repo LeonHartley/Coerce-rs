@@ -1,5 +1,5 @@
-use coerce_rt::actor::context::{ActorStatus, ActorSystem};
-use coerce_rt::actor::ActorRefErr;
+use coerce::actor::context::{ActorStatus, ActorSystem};
+use coerce::actor::ActorRefErr;
 use util::*;
 
 pub mod util;

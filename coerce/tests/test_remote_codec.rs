@@ -1,5 +1,5 @@
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::remote::system::RemoteActorSystem;
+use coerce::actor::context::ActorSystem;
+use coerce::remote::system::RemoteActorSystem;
 
 use util::*;
 

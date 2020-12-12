@@ -12,10 +12,10 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::actor::{ActorCreationErr, Factory};
-use coerce_rt::remote::cluster::client::RemoteClusterClient;
-use coerce_rt::remote::system::RemoteActorSystem;
+use coerce::actor::context::ActorSystem;
+use coerce::actor::{ActorCreationErr, Factory};
+use coerce::remote::cluster::client::RemoteClusterClient;
+use coerce::remote::system::RemoteActorSystem;
 use util::*;
 
 #[derive(Serialize, Deserialize)]

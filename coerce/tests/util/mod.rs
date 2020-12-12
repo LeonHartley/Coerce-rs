@@ -1,7 +1,7 @@
 use chrono::Local;
-use coerce_rt::actor::context::ActorContext;
-use coerce_rt::actor::message::{Handler, Message, RemoteMessage};
-use coerce_rt::actor::Actor;
+use coerce::actor::context::ActorContext;
+use coerce::actor::message::{Handler, Message, RemoteMessage};
+use coerce::actor::Actor;
 use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;

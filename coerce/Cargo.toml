@@ -1,5 +1,5 @@
 [package]
-name = "coerce-rt"
+name = "coerce"
 description = "Async actor runtime and distributed systems framework"
 license = "Apache-2.0"
 version = "0.3.0"

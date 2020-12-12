@@ -1,5 +1,5 @@
-// use coerce_rt::remote::cluster::discovery::dns::DnsClusterSeed;
-// use coerce_rt::remote::cluster::discovery::{ClusterSeed, DiscoveredWorker};
+// use coerce::remote::cluster::discovery::dns::DnsClusterSeed;
+// use coerce::remote::cluster::discovery::{ClusterSeed, DiscoveredWorker};
 // use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 // use std::str::FromStr;
 //

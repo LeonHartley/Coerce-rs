@@ -1,8 +1,8 @@
-use coerce_rt::actor::context::{ActorContext, ActorSystem};
-use coerce_rt::actor::scheduler::timer::{Timer, TimerTick};
+use coerce::actor::context::{ActorContext, ActorSystem};
+use coerce::actor::scheduler::timer::{Timer, TimerTick};
 
 use crate::util::*;
-use coerce_rt::actor::message::{Handler, Message};
+use coerce::actor::message::{Handler, Message};
 use std::time::Duration;
 
 pub mod util;

@@ -12,11 +12,11 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::remote::system::builder::RemoteActorHandlerBuilder;
-use coerce_rt::remote::system::RemoteActorSystem;
+use coerce::actor::context::ActorSystem;
+use coerce::remote::system::builder::RemoteActorHandlerBuilder;
+use coerce::remote::system::RemoteActorSystem;
 
-use coerce_rt::actor::{ActorCreationErr, Factory};
+use coerce::actor::{ActorCreationErr, Factory};
 use util::*;
 
 #[derive(Serialize, Deserialize)]

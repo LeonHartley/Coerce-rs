@@ -9,14 +9,14 @@ extern crate chrono;
 #[macro_use]
 extern crate async_trait;
 
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::actor::{Actor, ActorCreationErr, ActorId, ActorState, Factory};
-use coerce_rt::remote::codec::json::JsonCodec;
-use coerce_rt::remote::codec::MessageCodec;
-use coerce_rt::remote::net::message::{ActorCreated, CreateActor};
-use coerce_rt::remote::storage::activator::ActorActivator;
-use coerce_rt::remote::storage::state::{ActorStore, ActorStoreErr};
-use coerce_rt::remote::system::RemoteActorSystem;
+use coerce::actor::context::ActorSystem;
+use coerce::actor::{Actor, ActorCreationErr, ActorId, ActorState, Factory};
+use coerce::remote::codec::json::JsonCodec;
+use coerce::remote::codec::MessageCodec;
+use coerce::remote::net::message::{ActorCreated, CreateActor};
+use coerce::remote::storage::activator::ActorActivator;
+use coerce::remote::storage::state::{ActorStore, ActorStoreErr};
+use coerce::remote::system::RemoteActorSystem;
 use uuid::Uuid;
 
 pub struct TestActorStore {

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "coerce-rt",
-    "coerce-rt/macros",
+    "coerce",
+    "coerce/macros",
     "providers/coerce-redis",
     "examples/coerce-chat-common",
     "examples/coerce-chat-worker",

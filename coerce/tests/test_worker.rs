@@ -1,7 +1,7 @@
-use coerce_rt::actor::context::{ActorContext, ActorSystem};
-use coerce_rt::actor::message::{Handler, Message};
-use coerce_rt::actor::Actor;
-use coerce_rt::worker::{Worker, WorkerRefExt};
+use coerce::actor::context::{ActorContext, ActorSystem};
+use coerce::actor::message::{Handler, Message};
+use coerce::actor::Actor;
+use coerce::worker::{Worker, WorkerRefExt};
 
 #[macro_use]
 extern crate async_trait;

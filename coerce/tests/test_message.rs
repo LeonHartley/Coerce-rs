@@ -1,5 +1,5 @@
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::actor::message::{Envelope, EnvelopeType, Message, MessageWrapErr, RemoteMessage};
+use coerce::actor::context::ActorSystem;
+use coerce::actor::message::{Envelope, EnvelopeType, Message, MessageWrapErr, RemoteMessage};
 use util::*;
 
 pub mod util;

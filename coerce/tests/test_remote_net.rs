@@ -1,13 +1,13 @@
-use coerce_rt::actor::context::ActorSystem;
-use coerce_rt::remote::codec::json::JsonCodec;
-use coerce_rt::remote::net::client::RemoteClient;
-use coerce_rt::remote::net::server::RemoteServer;
-use coerce_rt::remote::system::builder::RemoteActorHandlerBuilder;
-use coerce_rt::remote::system::RemoteActorSystem;
+use coerce::actor::context::ActorSystem;
+use coerce::remote::codec::json::JsonCodec;
+use coerce::remote::net::client::RemoteClient;
+use coerce::remote::net::server::RemoteServer;
+use coerce::remote::system::builder::RemoteActorHandlerBuilder;
+use coerce::remote::system::RemoteActorSystem;
 
-use coerce_rt::remote::RemoteActorRef;
+use coerce::remote::RemoteActorRef;
 
-use coerce_rt::actor::ActorRef;
+use coerce::actor::ActorRef;
 use util::*;
 use uuid::Uuid;
 
