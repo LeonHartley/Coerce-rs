@@ -7,9 +7,7 @@ use crate::remote::actor::{
     RemoteHandlerTypes, RemoteRegistry,
 };
 use crate::remote::codec::json::JsonCodec;
-use crate::remote::handler::{
-    ActorHandler, ActorMessageHandler, RemoteActorHandler, RemoteActorMessageHandler,
-};
+use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::remote::storage::state::ActorStore;
 use crate::remote::system::RemoteActorSystem;
@@ -115,9 +113,6 @@ impl RemoteActorSystemBuilder {
         system
     }
 }
-
-pub(crate) type ActorFn =
-    Box<dyn (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder)>;
 
 pub(crate) type HandlerFn =
     Box<dyn (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder)>;

@@ -12,7 +12,6 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 use crate::actor::scheduler::ActorType::Tracked;
-use crate::remote::net::message::ActorCreated;
 use uuid::Uuid;
 
 pub mod ext;

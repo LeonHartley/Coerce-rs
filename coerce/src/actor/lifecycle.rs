@@ -3,9 +3,8 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, LocalActorRef};
+use crate::actor::{Actor, LocalActorRef};
 use std::collections::HashMap;
-use std::future::Future;
 
 pub struct Status();
 

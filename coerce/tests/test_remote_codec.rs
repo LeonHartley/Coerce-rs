@@ -7,9 +7,6 @@ pub mod util;
 
 #[macro_use]
 extern crate serde;
-extern crate serde_json;
-
-extern crate chrono;
 
 #[macro_use]
 extern crate async_trait;
@@ -26,7 +23,7 @@ pub async fn test_remote_create_message() {
         .build()
         .await;
 
-    let msg = SetStatusRequest {
+    let _msg = SetStatusRequest {
         status: TestActorStatus::Active,
     };
 

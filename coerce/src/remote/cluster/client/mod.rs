@@ -1,8 +1,5 @@
 use crate::actor::{Actor, ActorId, ActorRef, Factory};
 use crate::remote::system::RemoteActorSystem;
-use crate::remote::RemoteActorRef;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 
 #[derive(Clone)]
 pub struct RemoteClusterClient {
@@ -31,13 +28,13 @@ impl RemoteClusterClient {
 
     pub async fn create_actor<F: Factory>(
         &mut self,
-        recipe: F::Recipe,
-        id: Option<ActorId>,
+        _recipe: F::Recipe,
+        _id: Option<ActorId>,
     ) -> Option<ActorRef<F::Actor>> {
         None
     }
 
-    pub async fn get_actor<A: Actor>(&mut self, actor_id: ActorId) -> Option<ActorRef<A>>
+    pub async fn get_actor<A: Actor>(&mut self, _actor_id: ActorId) -> Option<ActorRef<A>>
     where
         A: 'static + Sync + Send,
     {

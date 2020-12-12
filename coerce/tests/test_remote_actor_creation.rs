@@ -2,20 +2,17 @@ pub mod util;
 
 #[macro_use]
 extern crate serde;
-extern crate serde_json;
-
-extern crate chrono;
 
 #[macro_use]
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, ActorCreationErr, ActorId, ActorState, Factory};
+use coerce::actor::{Actor, ActorCreationErr, ActorState, Factory};
 use coerce::remote::codec::json::JsonCodec;
 use coerce::remote::codec::MessageCodec;
 use coerce::remote::net::message::{ActorCreated, CreateActor};
-use coerce::remote::storage::activator::ActorActivator;
-use coerce::remote::storage::state::{ActorStore, ActorStoreErr};
+
+use coerce::remote::storage::state::ActorStore;
 use coerce::remote::system::RemoteActorSystem;
 use uuid::Uuid;
 
@@ -58,7 +55,7 @@ pub async fn test_remote_actor_create_new() {
     let recipe = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
     let codec = JsonCodec::new();
-    let mut system = ActorSystem::new();
+    let system = ActorSystem::new();
 
     let factory = TestActorFactory {};
     let mut remote = RemoteActorSystem::builder()

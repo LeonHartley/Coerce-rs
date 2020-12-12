@@ -1,4 +1,4 @@
-use crate::actor::{Actor, ActorId, ActorState};
+use crate::actor::{ActorId, ActorState};
 use crate::remote::storage::state::{ActorStore, ActorStoreErr};
 
 pub struct ActorActivator {

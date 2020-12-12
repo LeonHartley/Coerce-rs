@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Handler;
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterClient, RegisterNode,
     RegisterNodes, SetSystem,

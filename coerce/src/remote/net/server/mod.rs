@@ -98,7 +98,7 @@ where
 }
 
 pub async fn server_loop<C: MessageCodec>(
-    mut listener: tokio::net::TcpListener,
+    listener: tokio::net::TcpListener,
     system: RemoteActorSystem,
     mut session_store: LocalActorRef<RemoteSessionStore<C>>,
     codec: C,

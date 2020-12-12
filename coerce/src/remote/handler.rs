@@ -1,7 +1,7 @@
 use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorState, Factory};
+use crate::actor::{Actor, ActorId, Factory};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::codec::MessageCodec;
 use crate::remote::net::message::{ActorCreated, CreateActor};
@@ -99,7 +99,7 @@ where
 {
     system: ActorSystem,
     codec: C,
-    marker: RemoteActorMessageMarker<A, M>,
+    _marker: RemoteActorMessageMarker<A, M>,
 }
 
 impl<A: Actor, M: Message, C: MessageCodec> RemoteActorMessageHandler<A, M, C>
@@ -110,11 +110,11 @@ where
     M::Result: Serialize + Send + Sync,
 {
     pub fn new(system: ActorSystem, codec: C) -> Box<RemoteActorMessageHandler<A, M, C>> {
-        let marker = RemoteActorMessageMarker::new();
+        let _marker = RemoteActorMessageMarker::new();
         Box::new(RemoteActorMessageHandler {
             system,
             codec,
-            marker,
+            _marker,
         })
     }
 }
@@ -212,7 +212,7 @@ where
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let mut system = self.system.clone();
-        let mut actor = system.get_tracked_actor::<A>(actor_id.clone()).await;
+        let actor = system.get_tracked_actor::<A>(actor_id.clone()).await;
 
         if let Some(mut actor) = actor {
             let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
@@ -232,12 +232,12 @@ where
         Box::new(Self {
             system: self.system.clone(),
             codec: self.codec.clone(),
-            marker: RemoteActorMessageMarker::new(),
+            _marker: RemoteActorMessageMarker::new(),
         })
     }
 
     fn id(&self) -> TypeId {
-        self.marker.id()
+        self._marker.id()
     }
 }
 

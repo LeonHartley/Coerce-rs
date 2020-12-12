@@ -16,15 +16,15 @@ where
 
     fn into_remote_envelope(self) -> Result<Envelope<Self>, MessageWrapErr> {
         serde_json::to_vec(&self)
-            .map_err(|e| MessageWrapErr::SerializationErr)
+            .map_err(|_e| MessageWrapErr::SerializationErr)
             .map(|bytes| Envelope::Remote(bytes))
     }
 
     fn from_remote_envelope(bytes: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        serde_json::from_slice(bytes.as_slice()).map_err(|e| MessageUnwrapErr::DeserializationErr)
+        serde_json::from_slice(bytes.as_slice()).map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }
 
     fn read_remote_result(bytes: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
-        serde_json::from_slice(bytes.as_slice()).map_err(|e| MessageUnwrapErr::DeserializationErr)
+        serde_json::from_slice(bytes.as_slice()).map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }
 }

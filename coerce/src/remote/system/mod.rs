@@ -1,4 +1,4 @@
-use crate::actor::message::{Envelope, Message};
+use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::actor::message::{

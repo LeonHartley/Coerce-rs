@@ -1,11 +1,8 @@
-use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, LocalActorRef};
-use crate::remote::system::RemoteActorSystem;
+use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+
 use std::any::Any;
 use std::collections::HashMap;
-use std::sync::Arc;
-use uuid::Uuid;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ActorStatus {

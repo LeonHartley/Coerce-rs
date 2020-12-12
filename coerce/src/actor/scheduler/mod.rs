@@ -6,7 +6,6 @@ use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use uuid::Uuid;
 
 pub mod timer;
 
