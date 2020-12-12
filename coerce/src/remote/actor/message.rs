@@ -7,6 +7,7 @@ use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::SessionEvent;
 
 use crate::actor::ActorId;
+use tokio::sync::oneshot::Sender;
 use uuid::Uuid;
 
 pub struct SetSystem(pub RemoteActorSystem);
@@ -76,8 +77,11 @@ impl Message for RegisterActor {
     type Result = ();
 }
 
-pub struct GetActorNode(pub ActorId);
+pub struct GetActorNode {
+    pub actor_id: ActorId,
+    pub sender: tokio::sync::oneshot::Sender<Option<Uuid>>,
+}
 
 impl Message for GetActorNode {
-    type Result = Option<Uuid>;
+    type Result = ();
 }

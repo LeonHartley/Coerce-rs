@@ -1,6 +1,6 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, LocalActorRef, new_actor_id};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes,
@@ -56,6 +56,10 @@ pub enum RemoteActorError {
 }
 
 impl RemoteActorSystem {
+    pub async fn handle_actor_lookup() {
+
+    }
+
     pub async fn handle_message(
         &mut self,
         identifier: String,
@@ -82,19 +86,13 @@ impl RemoteActorSystem {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         if let Some(actor_id) = args.actor_id.as_ref().map(|s| s.clone()) {
-            if let Some(node_id) = self
-                .registry_ref
-                .send(GetActorNode(actor_id.clone()))
-                .await
-                .unwrap()
-            {
+            if let Some(node_id) = self.actor_node_id(actor_id.clone()).await {
                 log::warn!("actor {} already exists on node: {}", &actor_id, &node_id);
                 return Err(RemoteActorError::ActorExists);
             }
         }
 
         let actor_id = args.actor_id.map_or_else(|| new_actor_id(), |id| id);
-
         args.actor_id = Some(actor_id.clone());
 
         self.register_actor(actor_id, None).await;
@@ -182,6 +180,30 @@ impl RemoteActorSystem {
             .send(ClientWrite(node_id, message))
             .await
             .unwrap()
+    }
+
+    pub async fn actor_node_id(&mut self, actor_id: ActorId) -> Option<Uuid> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        match self
+            .registry_ref
+            .send(GetActorNode {
+                actor_id,
+                sender: tx,
+            })
+            .await
+        {
+            Ok(_) => match rx.await {
+                Ok(res) => res,
+                Err(_e) => {
+                    error!(target: "ActorRef", "error receiving result");
+                    None
+                }
+            },
+            Err(_e) => {
+                error!(target: "ActorRef", "error sending message");
+                None
+            }
+        }
     }
 
     pub async fn push_request(

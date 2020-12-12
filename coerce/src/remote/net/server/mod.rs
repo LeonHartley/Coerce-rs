@@ -152,6 +152,10 @@ where
                 ));
             }
 
+            SessionEvent::ActorLookup(msg_id, actor_id) => {
+                trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, actor_id);
+            },
+
             SessionEvent::RegisterActor(actor) => {
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.id, &actor.node_id);
                 ctx.register_actor(actor.id, Some(actor.node_id)).await;
@@ -185,6 +189,7 @@ where
                     self.sessions.clone(),
                 ));
             }
+            _ => {}
         }
     }
 

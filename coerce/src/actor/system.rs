@@ -1,5 +1,5 @@
 use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{Actor, ActorId, ActorRefErr, LocalActorRef, new_actor_id};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 use std::sync::Arc;
 use uuid::Uuid;

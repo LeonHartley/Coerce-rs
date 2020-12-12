@@ -4,7 +4,9 @@ use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes, SetSystem,
 };
-use crate::remote::actor::{RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest};
+use crate::remote::actor::{
+    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
+};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::codec::json::JsonCodec;
 use crate::remote::net::client::{RemoteClient, RemoteClientStream};
@@ -12,7 +14,8 @@ use crate::remote::system::RemoteActorSystem;
 
 use std::collections::HashMap;
 
-use crate::remote::net::message::{ActorCreated, SessionEvent};
+use crate::remote::net::message::{ActorCreated, ActorNode, SessionEvent};
+use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
 
 #[async_trait]
@@ -111,8 +114,40 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
 
 #[async_trait]
 impl Handler<GetActorNode> for RemoteRegistry {
-    async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) -> Option<Uuid> {
-        self.actors.get(&message.0).map(|s| *s)
+    async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) {
+        let id = message.actor_id;
+        let current_system = self.system.as_ref().unwrap().node_id();
+        let assigned_registry_node = self
+            .nodes
+            .get_by_key(&id)
+            .map_or_else(|| current_system, |n| n.id);
+
+        if &assigned_registry_node == &current_system {
+            message.sender.send(self.actors.get(&id).map(|s| *s));
+        } else {
+            let system = self.system.as_ref().unwrap().clone();
+            let sender = message.sender;
+            tokio::spawn(async move {
+                let message_id = Uuid::new_v4();
+                let mut system = system;
+                let (res_tx, res_rx) = tokio::sync::oneshot::channel();
+
+                system.push_request(message_id, res_tx).await;
+                system
+                    .send_message(
+                        assigned_registry_node,
+                        SessionEvent::ActorLookup(message_id, id),
+                    )
+                    .await;
+                match res_rx.await {
+                    Ok(RemoteResponse::Ok(res)) => {
+                        let res: ActorNode = serde_json::from_slice(res.as_slice()).unwrap();
+                        sender.send(res.node_id)
+                    }
+                    _ => panic!("get actornode failed"),
+                }
+            });
+        }
     }
 }
 

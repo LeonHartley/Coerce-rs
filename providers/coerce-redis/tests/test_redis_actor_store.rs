@@ -1,5 +1,5 @@
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorId, ActorState, new_actor_id};
+use coerce::actor::{new_actor_id, ActorId, ActorState};
 use coerce::remote::storage::state::ActorStore;
 use coerce_redis::actors::RedisActorStore;
 use coerce_redis::RedisWorker;

@@ -39,6 +39,12 @@ pub struct ActorCreated {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ActorNode {
+    pub id: ActorId,
+    pub node_id: Option<Uuid>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct MessageRequest {
     pub id: Uuid,
     pub handler_type: String,
@@ -61,4 +67,5 @@ pub enum SessionEvent {
     Message(MessageRequest),
     CreateActor(CreateActor),
     RegisterActor(ActorCreated),
+    ActorLookup(Uuid, ActorId),
 }

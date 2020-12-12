@@ -1,7 +1,7 @@
 use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, Factory, new_actor_id};
+use crate::actor::{new_actor_id, Actor, ActorId, Factory};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::codec::MessageCodec;
 use crate::remote::net::message::{ActorCreated, CreateActor};
