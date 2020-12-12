@@ -28,6 +28,10 @@ impl ActorSystem {
         &self.system_id
     }
 
+    pub fn scheduler(&self) -> LocalActorRef<ActorScheduler> {
+        self.scheduler.clone()
+    }
+
     pub fn current_system() -> ActorSystem {
         CURRENT_SYSTEM.clone()
     }

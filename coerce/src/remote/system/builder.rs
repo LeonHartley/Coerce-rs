@@ -1,7 +1,7 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, Factory};
-use crate::remote::actor::message::SetSystem;
+use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
     RemoteHandlerTypes, RemoteRegistry,
@@ -106,7 +106,14 @@ impl RemoteActorSystemBuilder {
         };
 
         registry_ref_clone
-            .send(SetSystem(system.clone()))
+            .send(SetRemote(system.clone()))
+            .await
+            .expect("no system set");
+
+        system
+            .inner
+            .scheduler()
+            .send(SetRemote(system.clone()))
             .await
             .expect("no system set");
 

@@ -10,9 +10,9 @@ use crate::actor::ActorId;
 use tokio::sync::oneshot::Sender;
 use uuid::Uuid;
 
-pub struct SetSystem(pub RemoteActorSystem);
+pub struct SetRemote(pub RemoteActorSystem);
 
-impl Message for SetSystem {
+impl Message for SetRemote {
     type Result = ();
 }
 

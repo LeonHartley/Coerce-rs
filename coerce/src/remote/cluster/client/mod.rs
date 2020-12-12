@@ -26,14 +26,6 @@ impl RemoteClusterClient {
     //     None
     // }
 
-    pub async fn create_actor<F: Factory>(
-        &mut self,
-        _recipe: F::Recipe,
-        _id: Option<ActorId>,
-    ) -> Option<ActorRef<F::Actor>> {
-        None
-    }
-
     pub async fn get_actor<A: Actor>(&mut self, _actor_id: ActorId) -> Option<ActorRef<A>>
     where
         A: 'static + Sync + Send,

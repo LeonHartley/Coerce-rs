@@ -2,7 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
-    RegisterNode, RegisterNodes, SetSystem,
+    RegisterNode, RegisterNodes, SetRemote,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -19,8 +19,8 @@ use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
 
 #[async_trait]
-impl Handler<SetSystem> for RemoteRegistry {
-    async fn handle(&mut self, message: SetSystem, _ctx: &mut ActorContext) {
+impl Handler<SetRemote> for RemoteRegistry {
+    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
         self.system = Some(message.0);
     }
 }

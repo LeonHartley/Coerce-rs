@@ -4,6 +4,8 @@ use crate::actor::{Actor, ActorId, BoxedActorRef, GetActorRef, LocalActorRef};
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
+use crate::remote::actor::message::SetRemote;
+use crate::remote::system::RemoteActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -11,6 +13,7 @@ pub mod timer;
 
 pub struct ActorScheduler {
     actors: HashMap<ActorId, BoxedActorRef>,
+    remote: Option<RemoteActorSystem>,
 }
 
 impl ActorScheduler {
@@ -18,6 +21,7 @@ impl ActorScheduler {
         start_actor(
             ActorScheduler {
                 actors: HashMap::new(),
+                remote: None,
             },
             "ActorScheduler-0".to_string(),
             ActorType::Anonymous,
@@ -111,6 +115,14 @@ where
 }
 
 #[async_trait]
+impl Handler<SetRemote> for ActorScheduler {
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+        self.remote = Some(message.0);
+        info!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
+    }
+}
+
+#[async_trait]
 impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler
 where
     A: 'static + Sync + Send,
@@ -135,7 +147,11 @@ where
                 .actors
                 .insert(actor.id.clone(), BoxedActorRef::from(actor.clone()));
 
-            warn!(target: "ActorScheduler", "actor {} registered", actor.id);
+            if let Some(remote) = self.remote.as_mut() {
+                remote.register_actor(actor.id.clone(), Some(remote.node_id())).await;
+            }
+
+            info!(target: "ActorScheduler", "actor {} registered", actor.id);
         }
 
         actor

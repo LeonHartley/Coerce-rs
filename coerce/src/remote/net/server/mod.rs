@@ -1,10 +1,11 @@
 use crate::remote::codec::MessageCodec;
 use crate::remote::system::RemoteActorSystem;
 
-use crate::actor::LocalActorRef;
+use crate::actor::{ActorId, LocalActorRef};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{
-    ClientEvent, ClientHandshake, CreateActor, MessageRequest, SessionEvent, SessionHandshake,
+    ActorNode, ClientEvent, ClientHandshake, CreateActor, MessageRequest, SessionEvent,
+    SessionHandshake,
 };
 use crate::remote::net::server::session::{
     NewSession, RemoteSession, RemoteSessionStore, SessionClosed, SessionWrite,
@@ -154,7 +155,14 @@ where
 
             SessionEvent::ActorLookup(msg_id, actor_id) => {
                 trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, actor_id);
-            },
+                tokio::spawn(session_handle_lookup(
+                    msg_id,
+                    actor_id,
+                    self.session_id,
+                    ctx.clone(),
+                    self.sessions.clone(),
+                ));
+            }
 
             SessionEvent::RegisterActor(actor) => {
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.id, &actor.node_id);
@@ -237,6 +245,25 @@ async fn session_handle_message<C: MessageCodec>(
         .await
     {
         Ok(buf) => send_result(msg.id, buf, session_id, &mut sessions).await,
+        Err(_) => {
+            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+        }
+    }
+}
+
+async fn session_handle_lookup<C: MessageCodec>(
+    msg_id: Uuid,
+    id: ActorId,
+    session_id: Uuid,
+    mut ctx: RemoteActorSystem,
+    mut sessions: LocalActorRef<RemoteSessionStore<C>>,
+) where
+    C: 'static + Sync + Send,
+{
+    let node_id = ctx.locate_actor(id.clone()).await;
+    trace!(target: "RemoteSession", "sending actor lookup result");
+    match serde_json::to_vec(&ActorNode { node_id, id }) {
+        Ok(buf) => send_result(msg_id, buf, session_id, &mut sessions).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }

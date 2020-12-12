@@ -13,7 +13,7 @@ use coerce::remote::codec::MessageCodec;
 use coerce::remote::net::message::{ActorCreated, CreateActor};
 
 use coerce::remote::storage::state::ActorStore;
-use coerce::remote::system::RemoteActorSystem;
+use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
 use uuid::Uuid;
 
 pub struct TestActorStore {
@@ -68,10 +68,19 @@ pub async fn test_remote_actor_create_new() {
         id: Uuid::new_v4(),
         actor_id: Some(actor_id.clone()),
         actor_type: String::from("TestActor"),
+        recipe: recipe.clone(),
+    };
+
+    let message_duplicate = CreateActor {
+        id: Uuid::new_v4(),
+        actor_id: Some(actor_id.clone()),
+        actor_type: String::from("TestActor"),
         recipe,
     };
 
     let result = remote.handle_create_actor(message).await;
+    let duplicate = remote.handle_create_actor(message_duplicate).await;
+
     let create_actor_res = codec.decode_msg::<ActorCreated>(result.unwrap()).unwrap();
 
     let mut actor = remote
@@ -81,8 +90,12 @@ pub async fn test_remote_actor_create_new() {
         .unwrap();
     let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
 
+    let node = remote.locate_actor(actor_id.clone()).await;
+
+    assert_eq!(Err(RemoteActorErr::ActorExists), duplicate);
     assert_eq!(&create_actor_res.id, &actor_id);
     assert_eq!(create_actor_res.node_id, remote.node_id());
+    assert_eq!(node.unwrap(), remote.node_id());
     assert_eq!(actor_name, expected_actor_name);
 }
 //
