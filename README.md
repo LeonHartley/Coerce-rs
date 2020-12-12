@@ -1,5 +1,5 @@
-# Coerce-rs [![crates.io](http://meritbadge.herokuapp.com/coerce)](https://crates.io/crates/coerce) ![coerce-rs](https://action-badges.now.sh/leonhartley/coerce-rs)
-Coerce-rs is an asynchronous (async/await) Actor runtime for Rust. It allows for extremely simple yet powerful actor-based multithreaded application development.
+# Coerce [![crates.io](http://meritbadge.herokuapp.com/coerce)](https://crates.io/crates/coerce) ![coerce-rs](https://action-badges.now.sh/leonhartley/coerce-rs)
+Coerce is an asynchronous (async/await) Actor runtime for Rust. It allows for extremely simple yet powerful actor-based multithreaded application development.
 
 ### async/await Actors
 An actor is just another word for a unit of computation. It can have mutable state, it can receive messages and perform actions.
