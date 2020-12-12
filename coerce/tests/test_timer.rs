@@ -41,7 +41,7 @@ pub async fn test_timer() {
 
     let timer = Timer::start(actor_ref.clone(), Duration::from_millis(11), TestTimer {});
 
-    tokio::time::sleep(Duration::from_millis(40)).await;
+    tokio::time::sleep(Duration::from_millis(45)).await;
     let counter_40ms_later = actor_ref.exec(|a| a.counter).await;
 
     tokio::time::sleep(Duration::from_millis(40)).await;
@@ -50,7 +50,7 @@ pub async fn test_timer() {
     let stop = timer.stop();
 
     let counter_now = actor_ref.exec(|a| a.counter).await.unwrap();
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    tokio::time::sleep(Duration::from_millis(25)).await;
 
     let counter_changed_after_stop = counter_now != actor_ref.exec(|a| a.counter).await.unwrap();
 

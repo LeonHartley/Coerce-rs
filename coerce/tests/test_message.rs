@@ -154,8 +154,8 @@ pub async fn test_messages_into_remote_envelope() {
     let message = MessageOne {};
     let non_serializable_message = NonSerializableMessage {};
 
-    let serializable_message = message.wrap(EnvelopeType::Remote);
-    let non_serializable_envelope = non_serializable_message.wrap(EnvelopeType::Remote);
+    let serializable_message = message.into_envelope(EnvelopeType::Remote);
+    let non_serializable_envelope = non_serializable_message.into_envelope(EnvelopeType::Remote);
 
     let serialized_bytes = match serializable_message {
         Ok(Envelope::Remote(bytes)) => Some(bytes),
