@@ -30,7 +30,7 @@ impl Factory for TestActorFactory {
     type Recipe = TestActorRecipe;
 
     async fn create(&self, _recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
-        log::info!("recipe create :D");
+        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(TestActor {
             status: None,
@@ -51,7 +51,7 @@ impl Factory for EchoActorFactory {
     type Recipe = EchoActorRecipe;
 
     async fn create(&self, _recipe: Self::Recipe) -> Result<EchoActor, ActorCreationErr> {
-        log::info!("recipe create :D");
+        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(EchoActor {})
     }
@@ -111,9 +111,9 @@ pub async fn test_remote_cluster_worker_builder() {
     let nodes_b = remote_2_c.get_nodes().await;
     let nodes_c = remote_3_c.get_nodes().await;
 
-    log::info!("a: {:?}", &nodes_a);
-    log::info!("b: {:?}", &nodes_b);
-    log::info!("c: {:?}", &nodes_c);
+    log::trace!("a: {:?}", &nodes_a);
+    log::trace!("b: {:?}", &nodes_b);
+    log::trace!("c: {:?}", &nodes_c);
 
     let nodes_a_in_b = nodes_a.iter().filter(|n| nodes_b.contains(n)).count();
     let nodes_a_in_c = nodes_a.iter().filter(|n| nodes_c.contains(n)).count();

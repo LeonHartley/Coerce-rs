@@ -74,7 +74,7 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             .map(|node| node.clone())
             .collect();
 
-        trace!("unregistered nodes {:?}", &unregistered_nodes);
+        trace!("registering new nodes {:?}", &unregistered_nodes);
         let current_nodes = self.nodes.get_all();
 
         let clients = connect_all(unregistered_nodes, current_nodes, &remote_ctx).await;
@@ -119,26 +119,45 @@ impl Handler<GetActorNode> for RemoteRegistry {
         let current_system = self.system.as_ref().unwrap().node_id();
         let assigned_registry_node = self
             .nodes
-            .get_by_key(&id)
-            .map_or_else(|| current_system, |n| n.id);
+            .get_by_key(&id).map(|n| n.id);
+
+        if assigned_registry_node.is_none() {
+            trace!("oops");
+            return;
+        }
+
+        let assigned_registry_node = assigned_registry_node.unwrap();
+
+        trace!("{:?}", &self.nodes.get_all());
 
         if &assigned_registry_node == &current_system {
-            message.sender.send(self.actors.get(&id).map(|s| *s));
+            trace!(target: "RemoteRegistry::GetActorNode", "searching locally, {}", current_system);
+            let node = self.actors.get(&id).map(|s| *s);
+
+            trace!(target: "RemoteRegistry::GetActorNode", "found: {:?}", &node);
+            message.sender.send(node);
         } else {
             let system = self.system.as_ref().unwrap().clone();
             let sender = message.sender;
+
+            trace!(target: "RemoteRegistry::GetActorNode", "asking remotely, current_sys={}, target_sys={}", current_system, assigned_registry_node);
             tokio::spawn(async move {
                 let message_id = Uuid::new_v4();
                 let mut system = system;
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
 
+                trace!(target: "RemoteRegistry::GetActorNode", "remote request={}", message_id);
                 system.push_request(message_id, res_tx).await;
+
+                trace!(target: "RemoteRegistry::GetActorNode", "sending actor lookup request to={}", assigned_registry_node);
                 system
                     .send_message(
                         assigned_registry_node,
                         SessionEvent::ActorLookup(message_id, id),
                     )
                     .await;
+
+                trace!(target: "RemoteRegistry::GetActorNode", "lookup sent, waiting for result");
                 match res_rx.await {
                     Ok(RemoteResponse::Ok(res)) => {
                         let res: ActorNode = serde_json::from_slice(res.as_slice()).unwrap();
@@ -154,10 +173,11 @@ impl Handler<GetActorNode> for RemoteRegistry {
 #[async_trait]
 impl Handler<RegisterActor> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterActor, ctx: &mut ActorContext) {
-        info!(target: "RemoteRegistry", "Registering actor: {:?}", &message);
+        trace!(target: "RemoteRegistry::RegisterActor", "Registering actor: {:?}", &message);
 
         match message.node_id {
             Some(node_id) => {
+                trace!("registering actor locally {}", node_id);
                 self.actors.insert(message.actor_id, node_id);
             }
 
@@ -167,9 +187,10 @@ impl Handler<RegisterActor> for RemoteRegistry {
                     let id = message.actor_id;
 
                     let assigned_registry_node =
-                        self.nodes.get_by_key(&id).map_or_else(|| node_id, |n| n.id);
+                        self.nodes.get_by_key(&id).map_or_else(|| panic!("dafuq2"), |n| n.id);
 
                     if &assigned_registry_node == &node_id {
+                        trace!("registering actor locally {}", assigned_registry_node);
                         self.actors.insert(id, node_id);
                     } else {
                         let event = SessionEvent::RegisterActor(ActorCreated { node_id, id });

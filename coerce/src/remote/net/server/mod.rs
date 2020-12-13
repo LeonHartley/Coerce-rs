@@ -261,7 +261,7 @@ async fn session_handle_lookup<C: MessageCodec>(
     C: 'static + Sync + Send,
 {
     let node_id = ctx.locate_actor(id.clone()).await;
-    trace!(target: "RemoteSession", "sending actor lookup result");
+    trace!(target: "RemoteSession", "sending actor lookup result: {:?}", node_id);
     match serde_json::to_vec(&ActorNode { node_id, id }) {
         Ok(buf) => send_result(msg_id, buf, session_id, &mut sessions).await,
         Err(_) => {

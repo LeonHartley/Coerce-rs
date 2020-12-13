@@ -28,7 +28,7 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
     async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
-                info!("{}, {:?}", ctx.node_id(), &msg.nodes);
+                trace!("{}, {:?}", ctx.node_id(), &msg.nodes);
 
                 let node_id = msg.node_id;
                 let nodes = msg.nodes.into_iter().filter(|n| n.id != node_id).collect();

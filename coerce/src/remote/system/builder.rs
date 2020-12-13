@@ -34,12 +34,6 @@ impl RemoteActorSystemBuilder {
         }
     }
 
-    pub fn with_node_id(mut self, node_id: Uuid) -> Self {
-        self.node_id = Some(node_id);
-
-        self
-    }
-
     pub fn with_actors<F>(mut self, f: F) -> Self
     where
         F: 'static + (FnOnce(&mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder),
@@ -58,8 +52,8 @@ impl RemoteActorSystemBuilder {
         self
     }
 
-    pub fn with_actor_system(mut self, ctx: ActorSystem) -> Self {
-        self.inner = Some(ctx.clone());
+    pub fn with_actor_system(mut self, sys: ActorSystem) -> Self {
+        self.inner = Some(sys);
 
         self
     }
@@ -86,7 +80,7 @@ impl RemoteActorSystemBuilder {
         });
 
         let types = handlers.build();
-        let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
+        let node_id = *inner.system_id();
         let handler_ref = RemoteHandler::new(&mut inner).await;
         let registry_ref = RemoteRegistry::new(&mut inner).await;
 

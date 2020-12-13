@@ -118,7 +118,7 @@ where
 impl Handler<SetRemote> for ActorScheduler {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         self.remote = Some(message.0);
-        info!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
+        trace!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
     }
 }
 
@@ -148,10 +148,12 @@ where
                 .insert(actor.id.clone(), BoxedActorRef::from(actor.clone()));
 
             if let Some(remote) = self.remote.as_mut() {
-                remote.register_actor(actor.id.clone(), Some(remote.node_id())).await;
+                remote
+                    .register_actor(actor.id.clone(), None)
+                    .await;
             }
 
-            info!(target: "ActorScheduler", "actor {} registered", actor.id);
+            trace!(target: "ActorScheduler", "actor {} registered", actor.id);
         }
 
         actor

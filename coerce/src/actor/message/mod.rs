@@ -54,6 +54,10 @@ pub trait Message: Sized {
     fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
         Err(MessageUnwrapErr::NotTransmittable)
     }
+
+    fn name(&self) -> &str {
+        std::any::type_name::<Self>()
+    }
 }
 
 pub(crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
@@ -88,7 +92,9 @@ pub trait ActorMessageHandler<A>: Sync + Send
 where
     A: Actor + Sync + Send,
 {
-    async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext) -> ();
+    async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext);
+
+    fn name(&self) -> &str;
 }
 
 #[async_trait]
@@ -100,6 +106,10 @@ where
 {
     async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext) -> () {
         self.handle_msg(actor, ctx).await;
+    }
+
+    fn name(&self) -> &str {
+        std::any::type_name::<M>()
     }
 }
 

@@ -4,6 +4,7 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
+use std::any::Any;
 use std::collections::HashMap;
 
 pub struct Status();
@@ -76,10 +77,6 @@ where
 
     pub async fn run(&mut self, system: Option<ActorSystem>) {
         let actor_id = self.actor_ref.id.clone();
-        let system_id = self
-            .actor_ref
-            .system_id
-            .map_or("NO_SYS".to_string(), |s| s.to_string());
 
         let mut ctx = ActorContext::new(
             system,
@@ -87,8 +84,16 @@ where
             self.actor_ref.clone().into(),
             HashMap::new(),
         );
+        let system_id = self
+            .actor_ref
+            .system_id
+            .map_or("system-creation".to_string(), |s| s.to_string());
 
-        trace!(target: "ActorLoop", "[System: {}], [{}] starting", system_id, ctx.id());
+        trace!(
+            target:"Actor",
+            "[{}] starting on system: {}",
+            ctx.id(), system_id
+        );
 
         self.actor.started(&mut ctx).await;
 
@@ -99,14 +104,22 @@ where
 
         ctx.set_status(Started);
 
-        trace!(target: "ActorLoop", "[{}] ready", ctx.id());
+        trace!(
+            target:"Actor",
+            "[{}] ready",
+            ctx.id(),
+        );
 
         if let Some(on_start) = self.on_start.take() {
             let _ = on_start.send(true);
         }
 
         while let Some(mut msg) = self.receiver.recv().await {
-            trace!(target: "ActorLoop", "[{}] recv", &actor_id);
+            trace!(
+                target:"Actor",
+                "[{}] recv {}",
+                &actor_id, msg.name()
+            );
 
             msg.handle(&mut self.actor, &mut ctx).await;
 
@@ -116,7 +129,11 @@ where
             }
         }
 
-        trace!(target: "ActorLoop", "[{}] stopping", &actor_id);
+        trace!(
+            target:"Actor",
+            "[{}] stopping",
+            &actor_id
+        );
 
         ctx.set_status(Stopping);
 

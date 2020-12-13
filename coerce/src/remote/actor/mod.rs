@@ -2,7 +2,7 @@ use crate::remote::cluster::node::RemoteNodeStore;
 
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, LocalActorRef};
+use crate::actor::{scheduler::ActorType, Actor, ActorId, LocalActorRef};
 use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
@@ -136,9 +136,13 @@ impl Actor for RemoteClientRegistry {}
 
 impl RemoteClientRegistry {
     pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteClientRegistry> {
-        ctx.new_anon_actor(RemoteClientRegistry {
-            clients: HashMap::new(),
-        })
+        ctx.new_actor(
+            "RemoteClientRegistry".to_string(),
+            RemoteClientRegistry {
+                clients: HashMap::new(),
+            },
+            ActorType::Anonymous,
+        )
         .await
         .expect("RemoteClientRegistry")
     }

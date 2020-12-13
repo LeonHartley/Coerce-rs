@@ -38,7 +38,7 @@ impl Factory for TestActorFactory {
     type Recipe = TestActorRecipe;
 
     async fn create(&self, recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
-        log::info!("recipe create :D");
+        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(TestActor { name: recipe.name })
     }
