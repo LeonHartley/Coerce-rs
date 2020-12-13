@@ -46,13 +46,20 @@ pub async fn test_remote_actor_locate_remotely() {
 
     let mut system_a = ActorSystem::new();
     let mut system_b = ActorSystem::new();
+    let mut system_c = ActorSystem::new();
 
     let mut remote_a = RemoteActorSystem::builder()
         .with_actor_system(system_a.clone())
         .build()
         .await;
+
     let mut remote_b = RemoteActorSystem::builder()
         .with_actor_system(system_b.clone())
+        .build()
+        .await;
+
+    let mut remote_c = RemoteActorSystem::builder()
+        .with_actor_system(system_c.clone())
         .build()
         .await;
 
@@ -68,6 +75,14 @@ pub async fn test_remote_actor_locate_remotely() {
         .cluster_worker()
         .listen_addr("localhost:30102")
         .with_seed_addr("localhost:30101")
+        .start()
+        .await;
+
+    remote_c
+        .clone()
+        .cluster_worker()
+        .listen_addr("localhost:30103")
+        .with_seed_addr("localhost:30102")
         .start()
         .await;
 
@@ -87,9 +102,11 @@ pub async fn test_remote_actor_locate_remotely() {
 
     let locate_after_creation_a = remote_a.locate_actor("leon".to_string()).await;
     let locate_after_creation_b = remote_b.locate_actor("leon".to_string()).await;
+    let locate_after_creation_c = remote_c.locate_actor("leon".to_string()).await;
 
     assert!(locate_before_creation_a.is_none());
     assert!(locate_before_creation_b.is_none());
     assert!(locate_after_creation_a.is_some());
     assert!(locate_after_creation_b.is_some());
+    assert!(locate_after_creation_c.is_some());
 }

@@ -187,7 +187,7 @@ impl Handler<RegisterActor> for RemoteRegistry {
                     let id = message.actor_id;
 
                     let assigned_registry_node =
-                        self.nodes.get_by_key(&id).map_or_else(|| panic!("dafuq2"), |n| n.id);
+                        self.nodes.get_by_key(&id).map_or_else(|| node_id, |n| n.id);
 
                     if &assigned_registry_node == &node_id {
                         trace!("registering actor locally {}", assigned_registry_node);
