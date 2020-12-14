@@ -121,12 +121,10 @@ impl Handler<GetActorNode> for RemoteRegistry {
             .nodes
             .get_by_key(&id).map(|n| n.id);
 
-        if assigned_registry_node.is_none() {
-            trace!("oops");
-            return;
-        }
-
-        let assigned_registry_node = assigned_registry_node.unwrap();
+        let assigned_registry_node = assigned_registry_node.map_or_else(|| {
+            trace!("no nodes configured, assigning locally");
+            current_system
+        }, |n| n);
 
         trace!("{:?}", &self.nodes.get_all());
 

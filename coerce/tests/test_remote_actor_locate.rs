@@ -14,8 +14,11 @@ use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
 use tokio::time::Duration;
 
+
 #[coerce_test]
 pub async fn test_remote_actor_locate_locally() {
+    util::create_trace_logger();
+
     let mut system = ActorSystem::new();
     let mut remote = RemoteActorSystem::builder()
         .with_actor_system(system.clone())
@@ -40,9 +43,9 @@ pub async fn test_remote_actor_locate_locally() {
     assert!(locate_after_creation.is_some());
 }
 
-#[coerce_test]
+#[tokio::test]
 pub async fn test_remote_actor_locate_remotely() {
-    util::create_trace_logger();
+    // util::create_trace_logger();
 
     let mut system_a = ActorSystem::new();
     let mut system_b = ActorSystem::new();
@@ -104,9 +107,9 @@ pub async fn test_remote_actor_locate_remotely() {
     let locate_after_creation_b = remote_b.locate_actor("leon".to_string()).await;
     let locate_after_creation_c = remote_c.locate_actor("leon".to_string()).await;
 
-    assert!(locate_before_creation_a.is_none());
-    assert!(locate_before_creation_b.is_none());
-    assert!(locate_after_creation_a.is_some());
-    assert!(locate_after_creation_b.is_some());
-    assert!(locate_after_creation_c.is_some());
+    assert_eq!(locate_before_creation_a, None);
+    assert_eq!(locate_before_creation_b, None);
+    assert_eq!(locate_after_creation_a,  Some(remote_a.node_id()));
+    assert_eq!(locate_after_creation_b,  Some(remote_a.node_id()));
+    assert_eq!(locate_after_creation_c,  Some(remote_a.node_id()));
 }
