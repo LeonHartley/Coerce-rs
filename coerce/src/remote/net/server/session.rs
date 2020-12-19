@@ -4,6 +4,7 @@ use crate::actor::Actor;
 use crate::remote::codec::MessageCodec;
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::ClientEvent;
+use crate::remote::net::StreamMessage;
 use futures::SinkExt;
 use std::collections::HashMap;
 use tokio_util::codec::FramedWrite;
@@ -29,8 +30,7 @@ pub struct RemoteSessionStore {
 
 impl Actor for RemoteSessionStore {}
 
-impl RemoteSessionStore
-{
+impl RemoteSessionStore {
     pub fn new() -> RemoteSessionStore {
         RemoteSessionStore {
             sessions: HashMap::new(),
@@ -57,8 +57,7 @@ impl Message for SessionWrite {
 }
 
 #[async_trait]
-impl Handler<NewSession> for RemoteSessionStore
-{
+impl Handler<NewSession> for RemoteSessionStore {
     async fn handle(&mut self, message: NewSession, _ctx: &mut ActorContext) {
         trace!(target: "SessionStore", "new session {}", &message.0.id);
         self.sessions.insert(message.0.id, message.0);
@@ -66,8 +65,7 @@ impl Handler<NewSession> for RemoteSessionStore
 }
 
 #[async_trait]
-impl Handler<SessionClosed> for RemoteSessionStore
-{
+impl Handler<SessionClosed> for RemoteSessionStore {
     async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorContext) {
         self.sessions.remove(&message.0);
         trace!(target: "SessionStore", "disposed session {}", &message.0);
@@ -75,14 +73,13 @@ impl Handler<SessionClosed> for RemoteSessionStore
 }
 
 #[async_trait]
-impl Handler<SessionWrite> for RemoteSessionStore
-{
+impl Handler<SessionWrite> for RemoteSessionStore {
     async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorContext) {
         match self.sessions.get_mut(&message.0) {
             Some(session) => {
                 trace!(target: "RemoteSession", "writing to session {}", &message.0);
 
-                match self.codec.encode_msg(message.1) {
+                match message.1.write_to_bytes() {
                     Some(msg) => {
                         trace!(target: "RemoteSession", "message encoded");
                         if session.write.send(msg).await.is_ok() {

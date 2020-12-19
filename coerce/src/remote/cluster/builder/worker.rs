@@ -73,10 +73,9 @@ impl ClusterWorkerBuilder {
     async fn discover_peers(&mut self, _nodes: &mut Vec<RemoteNode>) {
         if let Some(seed_addr) = self.seed_addr.take() {
             let client_ctx = self.system.clone();
-            let client =
-                RemoteClient::connect(seed_addr.clone(), client_ctx, None)
-                    .await
-                    .expect("failed to connect to seed server");
+            let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None)
+                .await
+                .expect("failed to connect to seed server");
 
             self.system
                 .register_node(RemoteNode::new(client.node_id, seed_addr))

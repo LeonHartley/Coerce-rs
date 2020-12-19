@@ -73,10 +73,7 @@ where
     }
 }
 
-pub async fn receive_loop<
-    R: StreamReceiver,
-    S: tokio::io::AsyncRead + Unpin,
->(
+pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
     mut system: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,

@@ -180,7 +180,7 @@ where
                         ..ActorAddress::default()
                     };
 
-                    send_result(result, res, &self.codec)
+                    send_proto_result(result, res)
                 }
             }
         }
@@ -224,7 +224,17 @@ where
                 Ok(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        send_result(result, res, &self.codec)
+                        match M::write_remote_result(result) {
+                            Ok(buffer) => {
+                                if res.send(buffer).is_err() {
+                                    error!(target: "RemoteHandler", "failed to send message")
+                                }
+                            }
+
+                            Err(_) => {
+                                error!(target: "RemoteHandler", "failed to encode message result")
+                            }
+                        }
                     }
                 }
                 Err(_) => error!(target: "RemoteHandler", "failed to decode message"),
@@ -245,20 +255,16 @@ where
     }
 }
 
-fn send_result<M: Serialize, C: MessageCodec>(
-    msg: M,
-    res: tokio::sync::oneshot::Sender<Vec<u8>>,
-    codec: &C,
-) where
+fn send_proto_result<M: protobuf::Message>(msg: M, res: tokio::sync::oneshot::Sender<Vec<u8>>)
+where
     M: 'static + Sync + Send,
-    C: 'static + Sync + Send,
 {
-    match codec.encode_msg(msg) {
-        Some(buffer) => {
+    match msg.write_to_bytes() {
+        Ok(buffer) => {
             if res.send(buffer).is_err() {
                 error!(target: "RemoteHandler", "failed to send message")
             }
         }
-        None => error!(target: "RemoteHandler", "failed to encode message result"),
+        Err(e) => error!(target: "RemoteHandler", "failed to encode message result - {}", e),
     }
 }

@@ -44,7 +44,7 @@ pub async fn test_remote_actor_locate_node_locally() {
 
 #[tokio::test]
 pub async fn test_remote_actor_locate_remotely() {
-    // util::create_trace_logger();
+    util::create_trace_logger();
 
     let mut system_a = ActorSystem::new();
     let mut system_b = ActorSystem::new();
@@ -77,47 +77,41 @@ pub async fn test_remote_actor_locate_remotely() {
     let locate_before_creation_a = remote_a.locate_actor_node("leon".to_string()).await;
     let locate_before_creation_b = remote_b.locate_actor_node("leon".to_string()).await;
 
-    let mut tasks = vec![];
+    system_a.new_actor("leon".to_string(), util::TestActor {
+        status: None,
+        counter: 0,
+    }, Tracked).await;
 
-    let actor_create = |sys: ActorSystem, i: i32| {
-        let mut sys = sys;
-        sys.new_actor(
-            format!("actor-a-{}", i),
-            util::TestActor {
-                status: None,
-                counter: 0,
-            },
-            Tracked,
-        )
-    };
+    // let mut tasks = vec![];
+    //
+    // for i in 0..100 {
+    //     let mut sys = system_a.clone();
+    //     tasks.push(async move {
+    //         sys.clone()
+    //             .new_actor(
+    //                 format!("actor-{}", i),
+    //                 util::TestActor {
+    //                     status: None,
+    //                     counter: 0,
+    //                 },
+    //                 Tracked,
+    //             )
+    //             .await;
+    //     });
+    // }
 
-    for i in 0..50_000 {
-        let mut sys = system_a.clone();
-        tasks.push(actor_create(sys, i));
-    }
-
-    for i in 50_000..100_000 {
-        let mut sys = system_b.clone();
-        tasks.push(actor_create(sys, i));
-    }
-
-    futures::future::join_all(tasks).await;
-
-    let locate_after_creation_a = remote_a.locate_actor_node("actor-9999".to_string()).await;
-    let locate_after_creation_b = remote_b.locate_actor_node("actor-9999".to_string()).await;
+    // futures::future::join_all(tasks).await;
 
     let local_ref = remote_a
-        .actor_ref::<util::TestActor>("actor-9999".to_string())
-        .await;
+        .actor_ref::<util::TestActor>("leon".to_string())
+        .await.expect("unable to get local ref");
 
     let remote_ref = remote_b
-        .actor_ref::<util::TestActor>("actor-9999".to_string())
-        .await;
+        .actor_ref::<util::TestActor>("leon".to_string())
+        .await.expect("unable to get remote ref");
 
     assert_eq!(locate_before_creation_a, None);
     assert_eq!(locate_before_creation_b, None);
-    assert_eq!(remote_ref.unwrap().is_remote(), true);
-    assert_eq!(local_ref.unwrap().is_local(), true);
-    assert_eq!(locate_after_creation_a, Some(remote_a.node_id()));
-    assert_eq!(locate_after_creation_b, Some(remote_a.node_id()));
+    assert_eq!(remote_ref.is_remote(), true);
+    assert_eq!(local_ref.is_local(), true);
 }

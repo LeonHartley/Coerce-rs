@@ -11,10 +11,11 @@ use crate::remote::net::{receive_loop, StreamReceiver};
 
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::protocol::{
-    ActorAddress, ClientHandshake, CreateActor, MessageRequest, RemoteNode as RemoteNodeProto,
-    SessionHandshake,
+    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
+    RemoteNode as RemoteNodeProto, SessionHandshake,
 };
 use protobuf::Message;
+use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
@@ -136,11 +137,11 @@ impl StreamReceiver for SessionMessageReceiver {
                 ));
             }
 
-            SessionEvent::FindActor(msg_id, actor_id) => {
-                trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, actor_id);
+            SessionEvent::FindActor(find_actor) => {
+                trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, &find_actor.actor_id);
                 tokio::spawn(session_handle_lookup(
-                    msg_id,
-                    actor_id,
+                    Uuid::from_str(&find_actor.message_id).unwrap(),
+                    find_actor.actor_id,
                     self.session_id,
                     ctx.clone(),
                     self.sessions.clone(),
@@ -148,11 +149,13 @@ impl StreamReceiver for SessionMessageReceiver {
             }
 
             SessionEvent::RegisterActor(actor) => {
-                trace!(target: "RemoteServer", "register actor {}, {}", &actor.id, &actor.node_id);
-                ctx.register_actor(actor.id, Some(actor.node_id)).await;
+                let node_id = Uuid::from_str(actor.get_node_id()).unwrap();
+
+                trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
+                ctx.register_actor(actor.actor_id, Some(node_id)).await;
             }
 
-            SessionEvent::Message(msg) => {
+            SessionEvent::NotifyActor(msg) => {
                 tokio::spawn(session_handle_message(
                     msg,
                     self.session_id,
@@ -161,10 +164,16 @@ impl StreamReceiver for SessionMessageReceiver {
                 ));
             }
 
-            SessionEvent::Ping(id) => {
+            SessionEvent::Ping(ping) => {
                 trace!(target: "RemoteServer", "ping received, sending pong");
                 self.sessions
-                    .send(SessionWrite(self.session_id, ClientEvent::Pong(id)))
+                    .send(SessionWrite(
+                        self.session_id,
+                        ClientEvent::Pong(Pong {
+                            message_id: ping.message_id,
+                            ..Pong::default()
+                        }),
+                    ))
                     .await
                     .expect("send session write");
             }
@@ -197,8 +206,7 @@ async fn session_handshake(
     handshake: SessionHandshake,
     session_id: Uuid,
     mut sessions: LocalActorRef<RemoteSessionStore>,
-)
-{
+) {
     let nodes = ctx.get_nodes().await;
     let mut response = ClientHandshake {
         node_id: ctx.node_id().to_string(),
@@ -233,8 +241,7 @@ async fn session_handle_message(
     session_id: Uuid,
     mut ctx: RemoteActorSystem,
     mut sessions: LocalActorRef<RemoteSessionStore>,
-)
-{
+) {
     match ctx
         .handle_message(msg.handler_type, msg.actor_id, msg.message.as_slice())
         .await
@@ -266,7 +273,7 @@ async fn session_handle_lookup(
 
     let response = ActorAddress {
         actor_id: id,
-        node_id: node_id.map_or_else(String::default(), |n| n.to_string()),
+        node_id: node_id.map_or_else(|| String::default(), |n| n.to_string()),
         ..ActorAddress::default()
     };
 
@@ -300,7 +307,11 @@ async fn send_result(
     sessions: &mut LocalActorRef<RemoteSessionStore>,
 ) {
     trace!(target: "RemoteSession", "sending result");
-    let event = ClientEvent::Result(msg_id, res);
+    let event = ClientEvent::Result(ClientResult {
+        message_id: msg_id.to_string(),
+        result: res,
+        ..ClientResult::default()
+    });
 
     if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
         trace!(target: "RemoteSession", "sent result successfully");

@@ -90,14 +90,20 @@ impl RemoteActorSystem {
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        if let Some(actor_id) = args.actor_id.as_ref().map(|s| s.clone()) {
+        let actor_id = if args.actor_id.is_empty() {
+            None
+        } else {
+            Some(args.actor_id)
+        };
+
+        if let Some(actor_id) = &actor_id {
             if let Some(node_id) = self.locate_actor_node(actor_id.clone()).await {
                 log::warn!("actor {} already exists on node: {}", &actor_id, &node_id);
                 return Err(RemoteActorErr::ActorExists);
             }
         }
 
-        let actor_id = args.actor_id.map_or_else(|| new_actor_id(), |id| id);
+        let actor_id = actor_id.map_or_else(|| new_actor_id(), |id| id);
         args.actor_id = actor_id.clone();
 
         let handler = self.types.actor_handler(&args.actor_type);

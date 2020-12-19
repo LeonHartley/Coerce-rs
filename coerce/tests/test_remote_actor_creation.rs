@@ -8,10 +8,9 @@ extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorState, Factory};
-use coerce::remote::codec::json::JsonCodec;
 use coerce::remote::codec::MessageCodec;
-use coerce::remote::net::message::{ActorCreated, CreateActor};
 
+use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use coerce::remote::storage::state::ActorStore;
 use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
 use uuid::Uuid;
@@ -54,7 +53,6 @@ pub async fn test_remote_actor_create_new() {
     let expected_actor_name = "test-actor-123".to_string();
     let recipe = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
-    let codec = JsonCodec::new();
     let system = ActorSystem::new();
 
     let factory = TestActorFactory {};
@@ -65,23 +63,25 @@ pub async fn test_remote_actor_create_new() {
         .await;
 
     let message = CreateActor {
-        id: Uuid::new_v4(),
-        actor_id: Some(actor_id.clone()),
-        actor_type: String::from("TestActor"),
+        message_id: Uuid::new_v4().to_string(),
+        actor_id: actor_id.clone(),
+        actor_type: "TestActor".to_string(),
         recipe: recipe.clone(),
+        ..CreateActor::default()
     };
 
     let message_duplicate = CreateActor {
-        id: Uuid::new_v4(),
-        actor_id: Some(actor_id.clone()),
-        actor_type: String::from("TestActor"),
-        recipe,
+        message_id: Uuid::new_v4().to_string(),
+        actor_id: actor_id.clone(),
+        actor_type: "TestActor".to_string(),
+        recipe: recipe.clone(),
+        ..CreateActor::default()
     };
 
     let result = remote.handle_create_actor(message).await;
     let duplicate = remote.handle_create_actor(message_duplicate).await;
 
-    let create_actor_res = codec.decode_msg::<ActorCreated>(result.unwrap()).unwrap();
+    let create_actor_res = protobuf::parse_from_bytes::<ActorAddress>(&result.unwrap()).unwrap();
 
     let mut actor = remote
         .inner()
@@ -93,8 +93,8 @@ pub async fn test_remote_actor_create_new() {
     let node = remote.locate_actor_node(actor_id.clone()).await;
 
     assert_eq!(Err(RemoteActorErr::ActorExists), duplicate);
-    assert_eq!(&create_actor_res.id, &actor_id);
-    assert_eq!(create_actor_res.node_id, remote.node_id());
+    assert_eq!(&create_actor_res.actor_id, &actor_id);
+    assert_eq!(create_actor_res.node_id, remote.node_id().to_string());
     assert_eq!(node.unwrap(), remote.node_id());
     assert_eq!(actor_name, expected_actor_name);
 }

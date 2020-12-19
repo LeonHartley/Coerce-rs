@@ -1,5 +1,4 @@
 use coerce::actor::system::ActorSystem;
-use coerce::remote::codec::json::JsonCodec;
 use coerce::remote::net::client::RemoteClient;
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
@@ -38,7 +37,7 @@ pub async fn test_remote_server_client_connection() {
         .build()
         .await;
 
-    let mut server = RemoteServer::new(JsonCodec::new());
+    let mut server = RemoteServer::new();
     match server.start("localhost:30101".to_string(), remote).await {
         Ok(_) => log::trace!("started!"),
         Err(_e) => panic!("failed to start server"),
@@ -51,7 +50,6 @@ pub async fn test_remote_server_client_connection() {
             RemoteClient::connect(
                 "localhost:30101".to_string(),
                 remote_2.clone(),
-                JsonCodec::new(),
                 None,
             )
             .await

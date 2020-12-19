@@ -18,6 +18,7 @@ enum Event {
   CreateActor = 6;
   FindActor = 7;
   RegisterActor = 8;
+  NotifyActor = 9;
 }
 
 message ClientHandshake {

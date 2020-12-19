@@ -2374,6 +2374,7 @@ pub enum Event {
     CreateActor = 6,
     FindActor = 7,
     RegisterActor = 8,
+    NotifyActor = 9,
 }
 
 impl ::protobuf::ProtobufEnum for Event {
@@ -2392,6 +2393,7 @@ impl ::protobuf::ProtobufEnum for Event {
             6 => ::std::option::Option::Some(Event::CreateActor),
             7 => ::std::option::Option::Some(Event::FindActor),
             8 => ::std::option::Option::Some(Event::RegisterActor),
+            9 => ::std::option::Option::Some(Event::NotifyActor),
             _ => ::std::option::Option::None
         }
     }
@@ -2407,6 +2409,7 @@ impl ::protobuf::ProtobufEnum for Event {
             Event::CreateActor,
             Event::FindActor,
             Event::RegisterActor,
+            Event::NotifyActor,
         ];
         values
     }
@@ -2509,12 +2512,13 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x01(\x0cR\x07messageB\0:\0\"u\n\x10SessionHandshake\x12\x19\n\x07node_i\
     d\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\
     \x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01\
-    (\x0cR\x05tokenB\0:\0*~\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHand\
-    shake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\
-    \n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\
-    \x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x1a\
-    \0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\
-    \x10ProcessingFailed\x10\x01\x1a\0B\0b\x06proto3\
+    (\x0cR\x05tokenB\0:\0*\x8f\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\
+    \n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\
+    \x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreate\
+    Actor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\
+    \x08\x12\x0f\n\x0bNotifyActor\x10\t\x1a\0*?\n\x0fClientErrorCode\x12\x14\
+    \n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0\
+    B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

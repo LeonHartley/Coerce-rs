@@ -15,7 +15,7 @@ use crate::remote::system::RemoteActorSystem;
 use std::collections::HashMap;
 
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::ActorAddress;
+use crate::remote::net::proto::protocol::{ActorAddress, FindActor};
 use protobuf::parse_from_bytes;
 use std::str::FromStr;
 use tokio::sync::oneshot::error::RecvError;
@@ -155,7 +155,11 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 system
                     .send_message(
                         assigned_registry_node,
-                        SessionEvent::FindActor(message_id, id),
+                        SessionEvent::FindActor(FindActor {
+                            message_id: message_id.to_string(),
+                            actor_id: id,
+                            ..FindActor::default()
+                        }),
                     )
                     .await;
 
@@ -206,7 +210,11 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         trace!("registering actor locally {}", assigned_registry_node);
                         self.actors.insert(id, node_id);
                     } else {
-                        let event = SessionEvent::RegisterActor(ActorAddress { node_id: node_id.to_string(), actor_id: id, ..ActorAddress::default() });
+                        let event = SessionEvent::RegisterActor(ActorAddress {
+                            node_id: node_id.to_string(),
+                            actor_id: id,
+                            ..ActorAddress::default()
+                        });
                         system.send_message(assigned_registry_node, event).await;
                     }
                 }
@@ -223,13 +231,7 @@ async fn connect_all(
     let mut clients = HashMap::new();
     for node in nodes {
         let addr = node.addr.to_string();
-        match RemoteClient::connect(
-            addr,
-            ctx.clone(),
-            Some(current_nodes.clone()),
-        )
-        .await
-        {
+        match RemoteClient::connect(addr, ctx.clone(), Some(current_nodes.clone())).await {
             Ok(client) => {
                 trace!(target: "RemoteRegistry", "connected to node");
                 clients.insert(node.id, Some(client));

@@ -5,9 +5,9 @@ use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::system::RemoteActorSystem;
 
+use crate::remote::net::proto::protocol::MessageRequest;
 use std::marker::PhantomData;
 use uuid::Uuid;
-use crate::remote::net::proto::protocol::MessageRequest;
 
 pub struct RemoteActorRef<A: Actor>
 where
@@ -55,7 +55,7 @@ where
         };
 
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
-            SessionEvent::Message(MessageRequest {
+            SessionEvent::NotifyActor(MessageRequest {
                 message_id: id.to_string(),
                 handler_type: header.handler_type,
                 actor_id: header.actor_id,
