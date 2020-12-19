@@ -73,7 +73,7 @@ impl StreamMessage for SessionEvent {
                     Some(SessionEvent::Pong(parse_from_bytes(message).unwrap()))
                 }
                 Some(Event::FindActor) => {
-                    Some(SessionEvent::Pong(parse_from_bytes(message).unwrap()))
+                    Some(SessionEvent::FindActor(parse_from_bytes(message).unwrap()))
                 }
                 Some(Event::NotifyActor) => Some(SessionEvent::NotifyActor(
                     parse_from_bytes(message).unwrap(),
