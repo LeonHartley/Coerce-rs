@@ -90,7 +90,7 @@ pub async fn test_remote_actor_create_new() {
         .unwrap();
     let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
 
-    let node = remote.locate_actor(actor_id.clone()).await;
+    let node = remote.locate_actor_node(actor_id.clone()).await;
 
     assert_eq!(Err(RemoteActorErr::ActorExists), duplicate);
     assert_eq!(&create_actor_res.id, &actor_id);

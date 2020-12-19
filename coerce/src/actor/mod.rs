@@ -105,6 +105,20 @@ where
             }
         }
     }
+
+    pub fn is_local(&self) -> bool {
+        match &self.inner_ref {
+            &Ref::Local(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_remote(&self) -> bool {
+        match &self.inner_ref {
+            &Ref::Remote(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<A: 'static + Actor + Sync + Send> From<LocalActorRef<A>> for ActorRef<A> {

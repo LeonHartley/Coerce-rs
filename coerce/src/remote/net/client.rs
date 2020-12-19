@@ -1,20 +1,21 @@
 use crate::remote::codec::MessageCodec;
 use crate::remote::net::codec::NetworkCodec;
-use crate::remote::net::{receive_loop, StreamReceiver};
+use crate::remote::net::{receive_loop, StreamReceiver, StreamMessage};
 use crate::remote::system::RemoteActorSystem;
 
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::message::{ClientEvent, SessionEvent, SessionHandshake};
+use crate::remote::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
 use serde::Serialize;
 
+use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
+use crate::remote::net::proto::protocol::SessionHandshake;
 
-pub struct RemoteClient<C: MessageCodec> {
+pub struct RemoteClient {
     pub node_id: Uuid,
-    codec: C,
     write: FramedWrite<tokio::io::WriteHalf<tokio::net::TcpStream>, NetworkCodec>,
     stop: Option<tokio::sync::oneshot::Sender<bool>>,
 }
@@ -24,7 +25,9 @@ pub struct ClientMessageReceiver {
 }
 
 #[async_trait]
-impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
+impl StreamReceiver for ClientMessageReceiver {
+    type Message = ClientEvent;
+
     async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
@@ -36,7 +39,10 @@ impl StreamReceiver<ClientEvent> for ClientMessageReceiver {
                 ctx.notify_register_nodes(nodes).await;
 
                 if let Some(handshake_tx) = self.handshake_tx.take() {
-                    if !handshake_tx.send(msg.node_id).is_ok() {
+                    if !handshake_tx
+                        .send(Uuid::from_str(&msg.node_id).unwrap())
+                        .is_ok()
+                    {
                         warn!(target: "RemoteClient", "error sending handshake_tx");
                     }
                 }
@@ -72,15 +78,12 @@ pub enum RemoteClientErr {
     StreamErr(tokio::io::Error),
 }
 
-impl<C: MessageCodec> RemoteClient<C> {
+impl RemoteClient {
     pub async fn connect(
         addr: String,
         mut system: RemoteActorSystem,
-        mut codec: C,
         nodes: Option<Vec<RemoteNode>>,
-    ) -> Result<RemoteClient<C>, tokio::io::Error>
-    where
-        C: 'static + Sync + Send,
+    ) -> Result<RemoteClient, tokio::io::Error>
     {
         let stream = tokio::net::TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
@@ -108,17 +111,15 @@ impl<C: MessageCodec> RemoteClient<C> {
             ClientMessageReceiver {
                 handshake_tx: Some(handshake_tx),
             },
-            codec.clone(),
         ));
 
         trace!("writing handshake");
         write_msg(
             SessionEvent::Handshake(SessionHandshake {
-                node_id,
-                nodes,
+                node_id: node_id.to_string(),
                 token: vec![],
+                ..SessionHandshake::default()
             }),
-            &mut codec,
             &mut write,
         )
         .await
@@ -130,18 +131,16 @@ impl<C: MessageCodec> RemoteClient<C> {
         trace!("recv id");
         Ok(RemoteClient {
             write,
-            codec,
             node_id,
             stop: Some(stop_tx),
         })
     }
 
-    pub async fn write<M: Serialize>(&mut self, message: M) -> Result<(), RemoteClientErr>
+    pub async fn write<M: protobuf::Message>(&mut self, message: M) -> Result<(), RemoteClientErr>
     where
-        C: 'static + Sync + Send,
         M: Sync + Send,
     {
-        write_msg(message, &mut self.codec, &mut self.write).await
+        write_msg(message, &mut self.write).await
     }
 
     pub fn close(&mut self) -> bool {
@@ -159,25 +158,20 @@ pub trait RemoteClientStream {
 }
 
 #[async_trait]
-impl<C: MessageCodec> RemoteClientStream for RemoteClient<C>
-where
-    C: 'static + Sync + Send,
-{
+impl RemoteClientStream for RemoteClient {
     async fn send(&mut self, message: SessionEvent) -> Result<(), RemoteClientErr> {
         self.write(message).await
     }
 }
 
-async fn write_msg<M: Serialize, C: MessageCodec>(
+async fn write_msg<M: StreamMessage>(
     message: M,
-    codec: &mut C,
     write: &mut FramedWrite<tokio::io::WriteHalf<tokio::net::TcpStream>, NetworkCodec>,
 ) -> Result<(), RemoteClientErr>
 where
-    C: Sync + Send,
     M: Sync + Send,
 {
-    match codec.encode_msg(message) {
+    match message.write_to_bytes() {
         Some(message) => match write.send(message).await {
             Ok(()) => Ok(()),
             Err(e) => Err(RemoteClientErr::StreamErr(e)),

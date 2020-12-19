@@ -12,12 +12,13 @@ use crate::remote::actor::{
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::codec::RemoteMessageHeader;
 use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
-use crate::remote::net::message::{ActorCreated, CreateActor, SessionEvent};
+use crate::remote::net::message::SessionEvent;
+use crate::remote::net::proto::protocol::CreateActor;
 use crate::remote::storage::activator::ActorActivator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
+use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use serde::Serialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -90,14 +91,14 @@ impl RemoteActorSystem {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         if let Some(actor_id) = args.actor_id.as_ref().map(|s| s.clone()) {
-            if let Some(node_id) = self.locate_actor(actor_id.clone()).await {
+            if let Some(node_id) = self.locate_actor_node(actor_id.clone()).await {
                 log::warn!("actor {} already exists on node: {}", &actor_id, &node_id);
                 return Err(RemoteActorErr::ActorExists);
             }
         }
 
         let actor_id = args.actor_id.map_or_else(|| new_actor_id(), |id| id);
-        args.actor_id = Some(actor_id.clone());
+        args.actor_id = actor_id.clone();
 
         let handler = self.types.actor_handler(&args.actor_type);
 
@@ -185,7 +186,30 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub async fn locate_actor(&mut self, actor_id: ActorId) -> Option<Uuid> {
+    pub async fn actor_ref<A: Actor + 'static + Sync + Send>(
+        &mut self,
+        actor_id: ActorId,
+    ) -> Option<ActorRef<A>> {
+        match self.locate_actor_node(actor_id.clone()).await {
+            Some(node_id) => {
+                if node_id == self.node_id {
+                    self.inner()
+                        .get_tracked_actor(actor_id)
+                        .await
+                        .map(|actor_ref| ActorRef::from(actor_ref))
+                } else {
+                    Some(ActorRef::from(RemoteActorRef::new(
+                        actor_id,
+                        node_id,
+                        self.clone(),
+                    )))
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub async fn locate_actor_node(&mut self, actor_id: ActorId) -> Option<Uuid> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self
             .registry_ref

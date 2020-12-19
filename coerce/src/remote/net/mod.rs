@@ -16,11 +16,20 @@ use tokio_util::codec::FramedRead;
 pub mod client;
 pub mod codec;
 pub mod message;
+pub mod proto;
 pub mod server;
 
+pub trait StreamMessage: Sized {
+    fn read_from_bytes(data: Vec<u8>) -> Option<Self>;
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>>;
+}
+
 #[async_trait]
-pub trait StreamReceiver<Msg: DeserializeOwned> {
-    async fn on_recv(&mut self, msg: Msg, ctx: &mut RemoteActorSystem);
+pub trait StreamReceiver {
+    type Message: StreamMessage;
+
+    async fn on_recv(&mut self, msg: Self::Message, ctx: &mut RemoteActorSystem);
 
     async fn on_close(&mut self, ctx: &mut RemoteActorSystem);
 }
@@ -65,24 +74,20 @@ where
 }
 
 pub async fn receive_loop<
-    C: MessageCodec,
-    M: DeserializeOwned,
-    R: StreamReceiver<M>,
+    R: StreamReceiver,
     S: tokio::io::AsyncRead + Unpin,
 >(
     mut system: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
     mut receiver: R,
-    codec: C,
 ) where
-    M: Sync + Send,
     R: Send,
 {
     let mut fut = StreamReceiverFuture::new(read, stop_rx);
     while let Some(res) = fut.next().await {
         match res {
-            Some(res) => match codec.decode_msg::<M>(res) {
+            Some(res) => match R::Message::read_from_bytes(res) {
                 Some(msg) => receiver.on_recv(msg, &mut system).await,
                 None => warn!(target: "RemoteReceive", "error decoding msg"),
             },

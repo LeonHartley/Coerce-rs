@@ -4,8 +4,9 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{new_actor_id, Actor, ActorId, Factory};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::codec::MessageCodec;
-use crate::remote::net::message::{ActorCreated, CreateActor};
+use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use crate::remote::system::RemoteActorSystem;
+use crate::remote::RemoteActorRef;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
@@ -162,16 +163,21 @@ where
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let mut system = self.system.clone();
-        let actor_id = args.actor_id.unwrap_or_else(|| new_actor_id());
+        let actor_id = if !args.actor_id.is_empty() {
+            args.actor_id
+        } else {
+            new_actor_id()
+        };
 
         let recipe = self.codec.decode_msg::<F::Recipe>(args.recipe);
         if let Some(recipe) = recipe {
             if let Ok(state) = self.factory.create(recipe).await {
                 let actor_ref = system.new_actor(actor_id, state, Tracked).await;
                 if let Ok(actor_ref) = actor_ref {
-                    let result = ActorCreated {
-                        id: actor_ref.id,
-                        node_id: remote_ctx.node_id(),
+                    let result = ActorAddress {
+                        actor_id: actor_ref.id,
+                        node_id: remote_ctx.node_id().to_string(),
+                        ..ActorAddress::default()
                     };
 
                     send_result(result, res, &self.codec)

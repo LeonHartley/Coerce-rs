@@ -148,9 +148,7 @@ where
                 .insert(actor.id.clone(), BoxedActorRef::from(actor.clone()));
 
             if let Some(remote) = self.remote.as_mut() {
-                remote
-                    .register_actor(actor.id.clone(), None)
-                    .await;
+                remote.register_actor(actor.id.clone(), None).await;
             }
 
             trace!(target: "ActorScheduler", "actor {} registered", actor.id);

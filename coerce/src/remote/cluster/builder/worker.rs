@@ -62,7 +62,7 @@ impl ClusterWorkerBuilder {
         }
 
         let server_ctx = self.system.clone();
-        let mut server = RemoteServer::new(JsonCodec::new());
+        let mut server = RemoteServer::new();
 
         server
             .start(self.server_listen_addr, server_ctx)
@@ -74,7 +74,7 @@ impl ClusterWorkerBuilder {
         if let Some(seed_addr) = self.seed_addr.take() {
             let client_ctx = self.system.clone();
             let client =
-                RemoteClient::connect(seed_addr.clone(), client_ctx, JsonCodec::new(), None)
+                RemoteClient::connect(seed_addr.clone(), client_ctx, None)
                     .await
                     .expect("failed to connect to seed server");
 

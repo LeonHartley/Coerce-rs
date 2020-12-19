@@ -15,9 +15,3 @@ pub trait MessageCodec {
 
     fn clone(&self) -> Self;
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RemoteMessageHeader {
-    pub actor_id: ActorId,
-    pub handler_type: String,
-}

@@ -23,21 +23,17 @@ impl RemoteSession {
     }
 }
 
-pub struct RemoteSessionStore<C: MessageCodec> {
+pub struct RemoteSessionStore {
     sessions: HashMap<Uuid, RemoteSession>,
-    codec: C,
 }
 
-impl<C: MessageCodec> Actor for RemoteSessionStore<C> where C: 'static + Sync + Send {}
+impl Actor for RemoteSessionStore {}
 
-impl<C: MessageCodec> RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
+impl RemoteSessionStore
 {
-    pub fn new(codec: C) -> RemoteSessionStore<C> {
+    pub fn new() -> RemoteSessionStore {
         RemoteSessionStore {
             sessions: HashMap::new(),
-            codec,
         }
     }
 }
@@ -61,9 +57,7 @@ impl Message for SessionWrite {
 }
 
 #[async_trait]
-impl<C: MessageCodec> Handler<NewSession> for RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
+impl Handler<NewSession> for RemoteSessionStore
 {
     async fn handle(&mut self, message: NewSession, _ctx: &mut ActorContext) {
         trace!(target: "SessionStore", "new session {}", &message.0.id);
@@ -72,9 +66,7 @@ where
 }
 
 #[async_trait]
-impl<C: MessageCodec> Handler<SessionClosed> for RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
+impl Handler<SessionClosed> for RemoteSessionStore
 {
     async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorContext) {
         self.sessions.remove(&message.0);
@@ -83,9 +75,7 @@ where
 }
 
 #[async_trait]
-impl<C: MessageCodec> Handler<SessionWrite> for RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
+impl Handler<SessionWrite> for RemoteSessionStore
 {
     async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorContext) {
         match self.sessions.get_mut(&message.0) {

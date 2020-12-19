@@ -14,7 +14,10 @@ use crate::remote::system::RemoteActorSystem;
 
 use std::collections::HashMap;
 
-use crate::remote::net::message::{ActorCreated, ActorNode, SessionEvent};
+use crate::remote::net::message::SessionEvent;
+use crate::remote::net::proto::protocol::ActorAddress;
+use protobuf::parse_from_bytes;
+use std::str::FromStr;
 use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
 
@@ -117,14 +120,15 @@ impl Handler<GetActorNode> for RemoteRegistry {
     async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) {
         let id = message.actor_id;
         let current_system = self.system.as_ref().unwrap().node_id();
-        let assigned_registry_node = self
-            .nodes
-            .get_by_key(&id).map(|n| n.id);
+        let assigned_registry_node = self.nodes.get_by_key(&id).map(|n| n.id);
 
-        let assigned_registry_node = assigned_registry_node.map_or_else(|| {
-            trace!("no nodes configured, assigning locally");
-            current_system
-        }, |n| n);
+        let assigned_registry_node = assigned_registry_node.map_or_else(
+            || {
+                trace!("no nodes configured, assigning locally");
+                current_system
+            },
+            |n| n,
+        );
 
         trace!("{:?}", &self.nodes.get_all());
 
@@ -151,15 +155,26 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 system
                     .send_message(
                         assigned_registry_node,
-                        SessionEvent::ActorLookup(message_id, id),
+                        SessionEvent::FindActor(message_id, id),
                     )
                     .await;
 
                 trace!(target: "RemoteRegistry::GetActorNode", "lookup sent, waiting for result");
                 match res_rx.await {
                     Ok(RemoteResponse::Ok(res)) => {
-                        let res: ActorNode = serde_json::from_slice(res.as_slice()).unwrap();
-                        sender.send(res.node_id)
+                        let res = parse_from_bytes::<ActorAddress>(&res);
+                        match res {
+                            Ok(res) => {
+                                sender.send(if res.get_node_id().is_empty() {
+                                    None
+                                } else {
+                                    Some(Uuid::from_str(res.get_node_id()).unwrap())
+                                });
+                            }
+                            Err(e) => {
+                                panic!("failed to decode message - {}", e.to_string());
+                            }
+                        }
                     }
                     _ => panic!("get actornode failed"),
                 }
@@ -191,7 +206,7 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         trace!("registering actor locally {}", assigned_registry_node);
                         self.actors.insert(id, node_id);
                     } else {
-                        let event = SessionEvent::RegisterActor(ActorCreated { node_id, id });
+                        let event = SessionEvent::RegisterActor(ActorAddress { node_id: node_id.to_string(), actor_id: id, ..ActorAddress::default() });
                         system.send_message(assigned_registry_node, event).await;
                     }
                 }
@@ -204,14 +219,13 @@ async fn connect_all(
     nodes: Vec<RemoteNode>,
     current_nodes: Vec<RemoteNode>,
     ctx: &RemoteActorSystem,
-) -> HashMap<Uuid, Option<RemoteClient<JsonCodec>>> {
+) -> HashMap<Uuid, Option<RemoteClient>> {
     let mut clients = HashMap::new();
     for node in nodes {
         let addr = node.addr.to_string();
         match RemoteClient::connect(
             addr,
             ctx.clone(),
-            JsonCodec::new(),
             Some(current_nodes.clone()),
         )
         .await

@@ -2,11 +2,12 @@ use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::ActorRefErr::ActorUnavailable;
 use crate::actor::{Actor, ActorId, ActorRefErr};
 use crate::remote::actor::RemoteResponse;
-use crate::remote::net::message::{MessageRequest, SessionEvent};
+use crate::remote::net::message::SessionEvent;
 use crate::remote::system::RemoteActorSystem;
 
 use std::marker::PhantomData;
 use uuid::Uuid;
+use crate::remote::net::proto::protocol::MessageRequest;
 
 pub struct RemoteActorRef<A: Actor>
 where
@@ -16,6 +17,11 @@ where
     system: RemoteActorSystem,
     node_id: Uuid,
     _a: PhantomData<A>,
+}
+
+pub struct RemoteMessageHeader {
+    pub actor_id: ActorId,
+    pub handler_type: String,
 }
 
 impl<A: Actor> RemoteActorRef<A>
@@ -50,10 +56,11 @@ where
 
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
             SessionEvent::Message(MessageRequest {
-                id,
+                message_id: id.to_string(),
                 handler_type: header.handler_type,
-                actor: header.actor_id,
+                actor_id: header.actor_id,
                 message: message_bytes,
+                ..MessageRequest::default()
             })
         });
 
