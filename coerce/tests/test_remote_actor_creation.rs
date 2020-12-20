@@ -7,8 +7,7 @@ extern crate serde;
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorState, Factory};
-use coerce::remote::codec::MessageCodec;
+use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorState, Factory, ActorRecipe};
 
 use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use coerce::remote::storage::state::ActorStore;
@@ -27,6 +26,17 @@ pub struct TestActor {
 pub struct TestActorRecipe {
     name: String,
 }
+
+impl ActorRecipe for TestActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
+}
+
 
 #[derive(Clone)]
 pub struct TestActorFactory;

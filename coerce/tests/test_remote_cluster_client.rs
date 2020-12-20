@@ -10,7 +10,7 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorCreationErr, Factory};
+use coerce::actor::{ActorCreationErr, Factory, ActorRecipe};
 
 use coerce::remote::system::RemoteActorSystem;
 use util::*;
@@ -20,6 +20,16 @@ struct TestActorRecipe;
 
 #[derive(Clone)]
 struct TestActorFactory;
+
+impl ActorRecipe for TestActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
+}
 
 #[async_trait]
 impl Factory for TestActorFactory {

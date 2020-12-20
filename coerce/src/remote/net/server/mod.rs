@@ -151,7 +151,7 @@ impl StreamReceiver for SessionMessageReceiver {
                 let node_id = Uuid::from_str(actor.get_node_id()).unwrap();
 
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
-                ctx.register_actor(actor.actor_id, Some(node_id)).await;
+                ctx.register_actor(actor.actor_id, Some(node_id));
             }
 
             SessionEvent::NotifyActor(msg) => {

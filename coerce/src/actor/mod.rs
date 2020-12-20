@@ -147,7 +147,7 @@ impl<A: 'static + Actor + Sync + Send> From<RemoteActorRef<A>> for ActorRef<A> {
 pub struct BoxedActorRef {
     id: ActorId,
     system_id: Option<Uuid>,
-    sender: tokio::sync::mpsc::Sender<Box<dyn Any + Sync + Send>>,
+    sender: tokio::sync::mpsc::UnboundedSender<Box<dyn Any + Sync + Send>>,
 }
 
 pub struct LocalActorRef<A: Actor>
@@ -156,7 +156,7 @@ where
 {
     pub id: ActorId,
     pub system_id: Option<Uuid>,
-    sender: tokio::sync::mpsc::Sender<MessageHandler<A>>,
+    sender: tokio::sync::mpsc::UnboundedSender<MessageHandler<A>>,
 }
 
 impl<A: Actor> From<BoxedActorRef> for LocalActorRef<A>
@@ -227,7 +227,6 @@ where
         match self
             .sender
             .send(Box::new(ActorMessage::new(msg, Some(tx))))
-            .await
         {
             Ok(_) => match rx.await {
                 Ok(res) => Ok(res),
@@ -243,7 +242,7 @@ where
         }
     }
 
-    pub async fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefErr>
+    pub fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefErr>
     where
         Msg: 'static + Send + Sync,
         A: Handler<Msg>,
@@ -252,7 +251,6 @@ where
         match self
             .sender
             .send(Box::new(ActorMessage::new(msg, None)))
-            .await
         {
             Ok(_) => Ok(()),
             Err(_e) => Err(ActorRefErr::ActorUnavailable),
@@ -267,11 +265,11 @@ where
         self.send(Exec::new(f)).await
     }
 
-    pub async fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefErr>
+    pub fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefErr>
     where
         F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
     {
-        self.notify(Exec::new(f)).await
+        self.notify(Exec::new(f))
     }
 
     pub async fn status(&mut self) -> Result<ActorStatus, ActorRefErr> {

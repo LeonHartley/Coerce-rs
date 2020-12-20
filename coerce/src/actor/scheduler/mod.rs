@@ -68,17 +68,14 @@ where
     A: 'static + Sync + Send,
 {
     pub id: ActorId,
-    pub actor: A,
-    pub actor_type: ActorType,
-    pub system: ActorSystem,
-    pub start_rx: tokio::sync::oneshot::Sender<bool>,
+    pub actor_ref: LocalActorRef<A>,
 }
 
 impl<A: Actor> Message for RegisterActor<A>
 where
     A: 'static + Sync + Send,
 {
-    type Result = LocalActorRef<A>;
+    type Result = ();
 }
 
 pub struct DeregisterActor(pub ActorId);
@@ -127,34 +124,16 @@ impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler
 where
     A: 'static + Sync + Send,
 {
-    async fn handle(
-        &mut self,
-        message: RegisterActor<A>,
-        ctx: &mut ActorContext,
-    ) -> LocalActorRef<A> {
-        let actor_type = message.actor_type;
-        let actor = start_actor(
-            message.actor,
-            message.id,
-            actor_type,
-            Some(message.start_rx),
-            Some(self.get_ref(ctx)),
-            Some(message.system),
-        );
+    async fn handle(&mut self, message: RegisterActor<A>, ctx: &mut ActorContext) {
+        let _ = self
+            .actors
+            .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));
 
-        if actor_type.is_tracked() {
-            let _ = self
-                .actors
-                .insert(actor.id.clone(), BoxedActorRef::from(actor.clone()));
-
-            if let Some(remote) = self.remote.as_mut() {
-                remote.register_actor(actor.id.clone(), None).await;
-            }
-
-            trace!(target: "ActorScheduler", "actor {} registered", actor.id);
+        if let Some(remote) = self.remote.as_mut() {
+            remote.register_actor(message.id.clone(), None);
         }
 
-        actor
+        trace!(target: "ActorScheduler", "actor {} registered", message.id);
     }
 }
 
@@ -186,7 +165,7 @@ where
     }
 }
 
-fn start_actor<A: Actor>(
+pub fn start_actor<A: Actor>(
     actor: A,
     id: ActorId,
     actor_type: ActorType,
@@ -197,7 +176,7 @@ fn start_actor<A: Actor>(
 where
     A: 'static + Send + Sync,
 {
-    let (tx, rx) = tokio::sync::mpsc::channel(128);
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     let system_id = system.as_ref().map(|s| *s.system_id());
 

@@ -1,4 +1,5 @@
-use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
+use crate::actor::scheduler::ActorType::Tracked;
+use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 use std::sync::Arc;
@@ -80,19 +81,30 @@ impl ActorSystem {
         A: 'static + Sync + Send,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let actor_ref = self
-            .scheduler
-            .send(RegisterActor {
-                id,
-                actor,
-                system: self.clone(),
-                actor_type,
-                start_rx: tx,
-            })
-            .await;
+        let actor_ref = start_actor(
+            actor,
+            id.clone(),
+            actor_type,
+            Some(tx),
+            if actor_type.is_tracked() {
+                Some(self.scheduler.clone())
+            } else {
+                None
+            },
+            Some(self.clone()),
+        );
+
+        if actor_type.is_tracked() {
+            let _ = self
+                .scheduler
+                .notify(RegisterActor {
+                    id,
+                    actor_ref: actor_ref.clone(),
+                });
+        }
 
         match rx.await {
-            Ok(true) => actor_ref,
+            Ok(true) => Ok(actor_ref),
             _ => Err(ActorRefErr::ActorUnavailable),
         }
     }

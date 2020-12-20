@@ -13,12 +13,22 @@ use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
-use coerce::actor::{ActorCreationErr, Factory};
+use coerce::actor::{ActorCreationErr, Factory, ActorRecipe};
 use util::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct TestActorRecipe {
     name: String,
+}
+
+impl ActorRecipe for TestActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
 }
 
 #[derive(Clone)]
@@ -41,6 +51,17 @@ impl Factory for TestActorFactory {
 
 #[derive(Serialize, Deserialize)]
 pub struct EchoActorRecipe {}
+
+impl ActorRecipe for EchoActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
+}
+
 
 #[derive(Clone)]
 pub struct EchoActorFactory;

@@ -164,17 +164,15 @@ impl RemoteActorSystem {
         self.registry_ref.send(RegisterNodes(nodes)).await.unwrap()
     }
 
-    pub async fn notify_register_nodes(&mut self, nodes: Vec<RemoteNode>) {
+    pub fn notify_register_nodes(&mut self, nodes: Vec<RemoteNode>) {
         self.registry_ref
             .notify(RegisterNodes(nodes))
-            .await
             .unwrap()
     }
 
-    pub async fn register_actor(&mut self, actor_id: ActorId, node_id: Option<Uuid>) {
+    pub fn register_actor(&mut self, actor_id: ActorId, node_id: Option<Uuid>) {
         self.registry_ref
-            .notify(RegisterActor::new(actor_id, node_id))
-            .await;
+            .notify(RegisterActor::new(actor_id, node_id));
     }
 
     pub async fn register_node(&mut self, node: RemoteNode) {

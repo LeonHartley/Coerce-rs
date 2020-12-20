@@ -48,7 +48,7 @@ where
     actor: A,
     actor_type: ActorType,
     actor_ref: LocalActorRef<A>,
-    receiver: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
+    receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
     scheduler: Option<LocalActorRef<ActorScheduler>>,
 }
@@ -60,7 +60,7 @@ where
     pub fn new(
         actor: A,
         actor_type: ActorType,
-        receiver: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
+        receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
         on_start: Option<tokio::sync::oneshot::Sender<bool>>,
         actor_ref: LocalActorRef<A>,
         scheduler: Option<LocalActorRef<ActorScheduler>>,
