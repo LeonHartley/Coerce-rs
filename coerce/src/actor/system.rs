@@ -97,10 +97,10 @@ impl ActorSystem {
         );
 
         if actor_type.is_tracked() {
-            let _ = self.scheduler.notify(RegisterActor {
+            let _ = self.scheduler.send(RegisterActor {
                 id,
                 actor_ref: actor_ref.clone(),
-            });
+            }).await;
         }
 
         match rx.await {
