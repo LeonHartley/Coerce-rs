@@ -1,10 +1,10 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, GetActorRef, LocalActorRef};
+use crate::actor::system::ActorSystem;
+use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::net::StreamMessage;
 use crate::remote::stream::mediator::SubscribeErr;
 use serde::export::PhantomData;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ pub trait TopicEmitter: Send + Sync {
 }
 
 pub trait Subscriber<T: Topic>: Send + Sync {
-    fn receive(&mut self, message: StreamEvent<T>);
+    fn send(&mut self, message: StreamEvent<T>);
 }
 
 pub struct TopicSubscriber<A: Actor, T: Topic>
@@ -46,7 +46,7 @@ impl<A: Actor, T: Topic> Subscriber<T> for TopicSubscriber<A, T>
 where
     A: Handler<StreamEvent<T>>,
 {
-    fn receive(&mut self, message: StreamEvent<T>) {
+    fn send(&mut self, message: StreamEvent<T>) {
         self.actor_ref.notify(message).unwrap();
     }
 }
@@ -55,14 +55,28 @@ pub struct TopicSubscriberStore<T: Topic> {
     subscribers: HashMap<ActorId, Box<dyn Subscriber<T>>>,
 }
 
+impl<T: Topic> TopicSubscriberStore<T> {
+    pub fn broadcast(&mut self, msg: Arc<T::Message>) {
+        for subscriber in self.subscribers.values_mut() {
+            subscriber.send(StreamEvent::Receive(msg.clone()));
+        }
+    }
+
+    pub fn broadcast_err(&mut self) {
+        for subscriber in self.subscribers.values_mut() {
+            subscriber.send(StreamEvent::Err);
+        }
+    }
+}
+
 #[async_trait]
 impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
     async fn emit(&mut self, bytes: Vec<u8>) {
         if let Some(message) = T::Message::read_from_bytes(bytes) {
             let message = Arc::new(message);
-            for subscriber in self.subscribers.values_mut() {
-                subscriber.receive(StreamEvent::Receive(message.clone()));
-            }
+            self.broadcast(message);
+        } else {
+            self.broadcast_err()
         }
     }
 }
@@ -75,11 +89,13 @@ impl PubSub {
         Ok(())
     }
 
-    pub async fn unsubscribe<A: Actor, T: Topic>(ctx: &mut ActorContext) -> Result<(), SubscribeErr> {
+    pub async fn unsubscribe<A: Actor, T: Topic>(
+        ctx: &mut ActorContext,
+    ) -> Result<(), SubscribeErr> {
         unimplemented!()
     }
 
-    pub async fn publish<T: Topic>(message: T::Message, ctx: &mut ActorContext) {
+    pub async fn publish<T: Topic>(message: T::Message, system: &mut ActorSystem) {
         unimplemented!()
     }
 }

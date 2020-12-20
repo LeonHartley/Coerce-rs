@@ -36,7 +36,9 @@ impl Actor for TestStreamConsumer {
     }
 
     async fn stopped(&mut self, ctx: &mut ActorContext) {
-        PubSub::unsubscribe::<Self, StatusStream>(ctx).await.unwrap()
+        PubSub::unsubscribe::<Self, StatusStream>(ctx)
+            .await
+            .unwrap()
     }
 }
 
