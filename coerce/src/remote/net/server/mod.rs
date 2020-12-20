@@ -9,10 +9,7 @@ use crate::remote::net::server::session::{
 use crate::remote::net::{receive_loop, StreamReceiver};
 
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::proto::protocol::{
-    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
-    RemoteNode as RemoteNodeProto, SessionHandshake,
-};
+use crate::remote::net::proto::protocol::{ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong, RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish};
 use protobuf::Message;
 use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -188,7 +185,14 @@ impl StreamReceiver for SessionMessageReceiver {
                     self.sessions.clone(),
                 ));
             }
-            _ => {}
+
+            SessionEvent::StreamPublish(msg) => {
+                trace!(target: "RemoteServer", "stream publish {}, {:?}", self.session_id, &msg);
+                tokio::spawn(session_stream_publish(
+                    msg,
+                    ctx.clone(),
+                ));
+            }
         }
     }
 
@@ -297,6 +301,13 @@ async fn session_create_actor(
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }
     }
+}
+
+async fn session_stream_publish(
+    msg: StreamPublish,
+    mut ctx: RemoteActorSystem,
+) {
+   info!("stream publish");
 }
 
 async fn send_result(

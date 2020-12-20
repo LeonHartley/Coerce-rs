@@ -28,6 +28,8 @@ impl<T: Topic> Message for StreamEvent<T> {
 #[async_trait]
 pub trait TopicEmitter: Send + Sync {
     async fn emit(&mut self, bytes: Vec<u8>);
+
+    fn add_subscriber(&mut self);
 }
 
 pub trait Subscriber<T: Topic>: Send + Sync {

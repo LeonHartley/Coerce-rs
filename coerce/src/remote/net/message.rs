@@ -1,6 +1,6 @@
 use crate::remote::net::proto::protocol::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
-    MessageRequest, Ping, Pong, SessionHandshake,
+    MessageRequest, Ping, Pong, SessionHandshake, StreamPublish,
 };
 use crate::remote::net::StreamMessage;
 
@@ -22,6 +22,7 @@ pub enum SessionEvent {
     CreateActor(CreateActor),
     RegisterActor(ActorAddress),
     FindActor(FindActor),
+    StreamPublish(StreamPublish),
 }
 
 impl StreamMessage for ClientEvent {
@@ -77,6 +78,9 @@ impl StreamMessage for SessionEvent {
                 Some(Event::RegisterActor) => Some(SessionEvent::RegisterActor(
                     parse_from_bytes(message).unwrap(),
                 )),
+                Some(Event::StreamPublish) => Some(SessionEvent::StreamPublish(
+                    parse_from_bytes(message).unwrap(),
+                )),
                 _ => None,
             },
             None => None,
@@ -92,6 +96,7 @@ impl StreamMessage for SessionEvent {
             SessionEvent::NotifyActor(e) => (Event::NotifyActor, e.write_to_bytes()),
             SessionEvent::FindActor(e) => (Event::FindActor, e.write_to_bytes()),
             SessionEvent::CreateActor(e) => (Event::CreateActor, e.write_to_bytes()),
+            SessionEvent::StreamPublish(e) => (Event::StreamPublish, e.write_to_bytes()),
         };
 
         write_event(event_id, message)

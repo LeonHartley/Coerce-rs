@@ -19,6 +19,7 @@ enum Event {
   FindActor = 7;
   RegisterActor = 8;
   NotifyActor = 9;
+  StreamPublish = 10;
 }
 
 message ClientHandshake {
@@ -91,4 +92,10 @@ message SessionHandshake {
   repeated RemoteNode nodes = 2;
 
   bytes token = 3;
+}
+
+message StreamPublish {
+  string topic = 1;
+
+  bytes message = 2;
 }
