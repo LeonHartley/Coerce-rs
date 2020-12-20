@@ -1,15 +1,13 @@
-use crate::remote::codec::MessageCodec;
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::{receive_loop, StreamMessage, StreamReceiver};
 use crate::remote::system::RemoteActorSystem;
 
 use crate::remote::actor::RemoteResponse;
-use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
 use serde::Serialize;
 
-use crate::remote::net::proto::protocol::SessionHandshake;
+use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
 use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
@@ -31,14 +29,14 @@ impl StreamReceiver for ClientMessageReceiver {
     async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
-                trace!("{}, {:?}", ctx.node_id(), &msg.nodes);
+                trace!("{}", ctx.node_id());
 
                 let node_id = msg.node_id;
                 let nodes = msg
                     .nodes
                     .into_iter()
                     .filter(|n| n.node_id != node_id)
-                    .map(|n| RemoteNode {
+                    .map(|n| crate::remote::cluster::node::RemoteNode {
                         id: Uuid::from_str(n.get_node_id()).unwrap(),
                         addr: n.addr,
                     })
@@ -93,7 +91,7 @@ impl RemoteClient {
     pub async fn connect(
         addr: String,
         mut system: RemoteActorSystem,
-        nodes: Option<Vec<RemoteNode>>,
+        nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
     ) -> Result<RemoteClient, tokio::io::Error> {
         let stream = tokio::net::TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
@@ -124,16 +122,24 @@ impl RemoteClient {
         ));
 
         trace!("writing handshake");
-        write_msg(
-            SessionEvent::Handshake(SessionHandshake {
-                node_id: node_id.to_string(),
-                token: vec![],
-                ..SessionHandshake::default()
-            }),
-            &mut write,
-        )
-        .await
-        .expect("write handshake");
+
+        let mut msg = SessionHandshake {
+            node_id: node_id.to_string(),
+            token: vec![],
+            ..SessionHandshake::default()
+        };
+
+        for node in nodes {
+            msg.nodes.push(RemoteNode {
+                node_id: node.id.to_string(),
+                addr: node.addr,
+                ..RemoteNode::default()
+            });
+        }
+
+        write_msg(SessionEvent::Handshake(msg), &mut write)
+            .await
+            .expect("write handshake");
 
         trace!("waiting for id");
         let node_id = handshake_rx.await.expect("handshake node_id");

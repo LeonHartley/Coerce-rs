@@ -1,6 +1,5 @@
 use crate::remote::cluster::discovery::ClusterSeed;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::codec::json::JsonCodec;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::server::RemoteServer;
 use crate::remote::system::RemoteActorSystem;

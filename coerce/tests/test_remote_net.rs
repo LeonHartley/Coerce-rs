@@ -47,13 +47,9 @@ pub async fn test_remote_server_client_connection() {
     remote_2
         .register_client(
             node_id,
-            RemoteClient::connect(
-                "localhost:30101".to_string(),
-                remote_2.clone(),
-                None,
-            )
-            .await
-            .unwrap(),
+            RemoteClient::connect("localhost:30101".to_string(), remote_2.clone(), None)
+                .await
+                .unwrap(),
         )
         .await;
 

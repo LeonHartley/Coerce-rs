@@ -1,4 +1,3 @@
-use crate::remote::codec::MessageCodec;
 use crate::remote::system::RemoteActorSystem;
 
 use crate::actor::{ActorId, LocalActorRef};

@@ -8,7 +8,6 @@ use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::codec::json::JsonCodec;
 use crate::remote::net::client::{RemoteClient, RemoteClientStream};
 use crate::remote::system::RemoteActorSystem;
 

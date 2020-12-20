@@ -6,7 +6,6 @@ use crate::remote::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
     RemoteHandlerTypes, RemoteRegistry,
 };
-use crate::remote::codec::json::JsonCodec;
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::remote::storage::state::ActorStore;
@@ -139,8 +138,7 @@ impl RemoteActorHandlerBuilder {
         M: 'static + DeserializeOwned + Send + Sync,
         M::Result: Serialize + Send + Sync,
     {
-        let handler =
-            RemoteActorMessageHandler::<A, M, _>::new(self.system.clone(), JsonCodec::new());
+        let handler = RemoteActorMessageHandler::<A, M>::new(self.system.clone());
         self.handlers.insert(String::from(identifier), handler);
 
         self
@@ -150,10 +148,9 @@ impl RemoteActorHandlerBuilder {
     where
         F: 'static + Factory + Send + Sync,
     {
-        let handler = Box::new(RemoteActorHandler::<F::Actor, F, _>::new(
+        let handler = Box::new(RemoteActorHandler::<F::Actor, F>::new(
             self.system.clone(),
             factory,
-            JsonCodec::new(),
         ));
         self.actors.insert(String::from(identifier), handler);
 

@@ -1,5 +1,3 @@
-use crate::remote::codec::MessageCodec;
-
 use crate::remote::system::RemoteActorSystem;
 
 use serde::de::DeserializeOwned;

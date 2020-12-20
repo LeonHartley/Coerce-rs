@@ -28,10 +28,16 @@ pub enum ActorCreationErr {
     InvalidRecipe(String),
 }
 
+pub trait ActorRecipe: Sized {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self>;
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>>;
+}
+
 #[async_trait]
 pub trait Factory: Clone {
     type Actor: Actor + 'static + Sync + Send;
-    type Recipe: Serialize + DeserializeOwned + 'static + Sync + Send;
+    type Recipe: ActorRecipe + 'static + Sync + Send;
 
     async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr>;
 }

@@ -41,9 +41,9 @@ impl StreamMessage for ClientEvent {
                 Some(Event::Err) => Some(ClientEvent::Err(parse_from_bytes(message).unwrap())),
                 Some(Event::Ping) => Some(ClientEvent::Ping(parse_from_bytes(message).unwrap())),
                 Some(Event::Pong) => Some(ClientEvent::Pong(parse_from_bytes(message).unwrap())),
-                _ => panic!("lolwut"),
+                _ => None,
             },
-            None => panic!("lolwut2"),
+            None => None,
         }
     }
 
@@ -69,9 +69,9 @@ impl StreamMessage for SessionEvent {
                 }
                 Some(Event::Ping) => Some(SessionEvent::Ping(parse_from_bytes(message).unwrap())),
                 Some(Event::Pong) => Some(SessionEvent::Pong(parse_from_bytes(message).unwrap())),
-                Some(Event::CreateActor) => {
-                    Some(SessionEvent::Pong(parse_from_bytes(message).unwrap()))
-                }
+                Some(Event::CreateActor) => Some(SessionEvent::CreateActor(
+                    parse_from_bytes(message).unwrap(),
+                )),
                 Some(Event::FindActor) => {
                     Some(SessionEvent::FindActor(parse_from_bytes(message).unwrap()))
                 }
@@ -81,9 +81,9 @@ impl StreamMessage for SessionEvent {
                 Some(Event::RegisterActor) => Some(SessionEvent::RegisterActor(
                     parse_from_bytes(message).unwrap(),
                 )),
-                _ => panic!("lolwut4"),
+                _ => None,
             },
-            None => panic!("lolwut3"),
+            None => None,
         }
     }
 
