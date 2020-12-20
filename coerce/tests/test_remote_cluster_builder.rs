@@ -13,7 +13,7 @@ use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
-use coerce::actor::{ActorCreationErr, Factory, ActorRecipe};
+use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
 use util::*;
 
 #[derive(Serialize, Deserialize)]
@@ -61,7 +61,6 @@ impl ActorRecipe for EchoActorRecipe {
         serde_json::to_vec(&self).map_or(None, |b| Some(b))
     }
 }
-
 
 #[derive(Clone)]
 pub struct EchoActorFactory;

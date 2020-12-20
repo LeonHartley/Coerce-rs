@@ -5,7 +5,6 @@ use crate::remote::system::RemoteActorSystem;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
-use serde::Serialize;
 
 use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
 use std::str::FromStr;

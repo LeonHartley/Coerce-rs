@@ -1,4 +1,3 @@
-use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
@@ -37,15 +36,18 @@ impl ActorSystem {
         CURRENT_SYSTEM.clone()
     }
 
-    fn remote(&self) -> &RemoteActorSystem {
+    pub fn set_remote(&mut self) {}
+
+    pub fn remote(&self) -> &RemoteActorSystem {
         self.remote
             .as_ref()
             .expect("this ActorSystem is not setup for remoting")
     }
 
-    fn remote_mut(&mut self) -> &RemoteActorSystem {
+    pub fn remote_owned(&mut self) -> RemoteActorSystem {
         self.remote
-            .as_mut()
+            .as_ref()
+            .map(|s| s.as_ref().clone())
             .expect("this ActorSystem is not setup for remoting")
     }
 
@@ -95,12 +97,10 @@ impl ActorSystem {
         );
 
         if actor_type.is_tracked() {
-            let _ = self
-                .scheduler
-                .notify(RegisterActor {
-                    id,
-                    actor_ref: actor_ref.clone(),
-                });
+            let _ = self.scheduler.notify(RegisterActor {
+                id,
+                actor_ref: actor_ref.clone(),
+            });
         }
 
         match rx.await {

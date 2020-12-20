@@ -1,9 +1,8 @@
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor_id, ActorId, ActorState};
+use coerce::actor::{new_actor_id, ActorState};
 use coerce::remote::storage::state::ActorStore;
 use coerce_redis::actors::RedisActorStore;
 use coerce_redis::RedisWorker;
-use uuid::Uuid;
 
 #[ignore] // ignored due to dependency on redis server
 #[tokio::test]

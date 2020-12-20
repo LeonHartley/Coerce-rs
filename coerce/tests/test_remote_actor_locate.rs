@@ -9,10 +9,9 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
-use coerce::actor::scheduler::ActorType::{Tracked, Anonymous};
+use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
-use tokio::time::Duration;
 
 #[coerce_test]
 pub async fn test_remote_actor_locate_node_locally() {
@@ -45,7 +44,7 @@ pub async fn test_remote_actor_locate_node_locally() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 pub async fn test_remote_actor_locate_remotely() {
     let mut system_a = ActorSystem::new();
-    let mut system_b = ActorSystem::new();
+    let system_b = ActorSystem::new();
 
     let mut remote_a = RemoteActorSystem::builder()
         .with_actor_system(system_a.clone())

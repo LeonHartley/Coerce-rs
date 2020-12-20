@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, BoxedActorRef, GetActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
@@ -113,7 +113,7 @@ where
 
 #[async_trait]
 impl Handler<SetRemote> for ActorScheduler {
-    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
         self.remote = Some(message.0);
         trace!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
     }
@@ -124,7 +124,7 @@ impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler
 where
     A: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: RegisterActor<A>, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: RegisterActor<A>, _ctx: &mut ActorContext) {
         let _ = self
             .actors
             .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));

@@ -1,1 +1,2 @@
-pub trait RemoteStreamSubscriber {}
+pub mod mediator;
+pub mod pubsub;

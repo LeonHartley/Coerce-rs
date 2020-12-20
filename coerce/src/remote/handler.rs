@@ -5,12 +5,11 @@ use crate::actor::{new_actor_id, Actor, ActorId, ActorRecipe, Factory};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use crate::remote::system::RemoteActorSystem;
-use crate::remote::RemoteActorRef;
+
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
-use uuid::Uuid;
 
 #[async_trait]
 pub trait ActorHandler: Any {

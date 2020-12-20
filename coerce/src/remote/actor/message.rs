@@ -7,7 +7,7 @@ use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::SessionEvent;
 
 use crate::actor::ActorId;
-use tokio::sync::oneshot::Sender;
+
 use uuid::Uuid;
 
 pub struct SetRemote(pub RemoteActorSystem);

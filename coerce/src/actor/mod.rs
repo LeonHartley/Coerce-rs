@@ -4,8 +4,7 @@ use crate::actor::message::{ActorMessage, EnvelopeType, Exec, Handler, Message, 
 use crate::actor::system::ActorSystem;
 use crate::remote::RemoteActorRef;
 use log::error;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+
 use std::any::Any;
 use uuid::Uuid;
 
@@ -18,7 +17,7 @@ pub mod system;
 pub type ActorId = String;
 
 #[async_trait]
-pub trait Actor {
+pub trait Actor: 'static + Send + Sync {
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
@@ -224,10 +223,7 @@ where
         Msg::Result: Send + Sync,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        match self
-            .sender
-            .send(Box::new(ActorMessage::new(msg, Some(tx))))
-        {
+        match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
             Ok(_) => match rx.await {
                 Ok(res) => Ok(res),
                 Err(_e) => {
@@ -248,10 +244,7 @@ where
         A: Handler<Msg>,
         Msg::Result: Send + Sync,
     {
-        match self
-            .sender
-            .send(Box::new(ActorMessage::new(msg, None)))
-        {
+        match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
             Ok(_) => Ok(()),
             Err(_e) => Err(ActorRefErr::ActorUnavailable),
         }

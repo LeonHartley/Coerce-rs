@@ -1,6 +1,6 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRef, ActorRefErr, Factory, LocalActorRef};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRef, Factory, LocalActorRef};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes,
@@ -21,6 +21,7 @@ use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use serde::Serialize;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 use uuid::Uuid;
 
 pub mod builder;
@@ -71,7 +72,7 @@ impl RemoteActorSystem {
         actor_id: ActorId,
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorErr> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = oneshot::channel();
         let handler = self.types.message_handler(&identifier);
 
         if let Some(handler) = handler {
@@ -88,7 +89,7 @@ impl RemoteActorSystem {
         &mut self,
         mut args: CreateActor,
     ) -> Result<Vec<u8>, RemoteActorErr> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = oneshot::channel();
 
         let actor_id = if args.actor_id.is_empty() {
             None
@@ -165,9 +166,7 @@ impl RemoteActorSystem {
     }
 
     pub fn notify_register_nodes(&mut self, nodes: Vec<RemoteNode>) {
-        self.registry_ref
-            .notify(RegisterNodes(nodes))
-            .unwrap()
+        self.registry_ref.notify(RegisterNodes(nodes)).unwrap()
     }
 
     pub fn register_actor(&mut self, actor_id: ActorId, node_id: Option<Uuid>) {
@@ -214,7 +213,7 @@ impl RemoteActorSystem {
     }
 
     pub async fn locate_actor_node(&mut self, actor_id: ActorId) -> Option<Uuid> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = oneshot::channel();
         match self
             .registry_ref
             .send(GetActorNode {
@@ -237,21 +236,14 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn push_request(
-        &mut self,
-        id: Uuid,
-        res_tx: tokio::sync::oneshot::Sender<RemoteResponse>,
-    ) {
+    pub async fn push_request(&mut self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
         self.handler_ref
             .send(PushRequest(id, RemoteRequest { res_tx }))
             .await
             .expect("push request send");
     }
 
-    pub async fn pop_request(
-        &mut self,
-        id: Uuid,
-    ) -> Option<tokio::sync::oneshot::Sender<RemoteResponse>> {
+    pub async fn pop_request(&mut self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
         match self.handler_ref.send(PopRequest(id)).await {
             Ok(s) => s.map(|s| s.res_tx),
             Err(_) => None,

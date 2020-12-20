@@ -1,14 +1,10 @@
-use crate::actor::ActorId;
-use crate::remote::cluster::node::RemoteNode;
-
 use crate::remote::net::proto::protocol::{
-    ActorAddress, ClientErr, ClientErrorCode, ClientHandshake, ClientResult, CreateActor, Event,
-    FindActor, MessageRequest, Ping, Pong, SessionHandshake,
+    ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
+    MessageRequest, Ping, Pong, SessionHandshake,
 };
 use crate::remote::net::StreamMessage;
-use futures::AsyncWriteExt;
+
 use protobuf::{parse_from_bytes, Message, ProtobufEnum, ProtobufError};
-use uuid::Uuid;
 
 pub enum ClientEvent {
     Handshake(ClientHandshake),

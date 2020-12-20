@@ -1,6 +1,5 @@
 use crate::remote::system::RemoteActorSystem;
 
-use serde::de::DeserializeOwned;
 use std::future::Future;
 use std::io::Error;
 
@@ -17,7 +16,7 @@ pub mod message;
 pub mod proto;
 pub mod server;
 
-pub trait StreamMessage: Sized {
+pub trait StreamMessage: 'static + Send + Sync + Sized {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self>;
 
     fn write_to_bytes(&self) -> Option<Vec<u8>>;

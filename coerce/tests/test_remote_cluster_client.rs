@@ -10,7 +10,7 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorCreationErr, Factory, ActorRecipe};
+use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
 
 use coerce::remote::system::RemoteActorSystem;
 use util::*;
@@ -48,7 +48,7 @@ impl Factory for TestActorFactory {
 pub async fn test_remote_cluster_client_get_actor() {
     util::create_trace_logger();
 
-    let mut system = ActorSystem::new();
+    let system = ActorSystem::new();
     let mut remote = RemoteActorSystem::builder()
         .with_actor_system(system)
         .with_handlers(|builder| {
@@ -57,7 +57,7 @@ pub async fn test_remote_cluster_client_get_actor() {
         .build()
         .await;
 
-    let actor = remote
+    let _actor = remote
         .inner()
         .new_tracked_actor(TestActor::new())
         .await

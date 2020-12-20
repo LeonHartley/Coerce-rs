@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Handler;
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes, SetRemote,
@@ -17,7 +17,7 @@ use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::{ActorAddress, FindActor};
 use protobuf::parse_from_bytes;
 use std::str::FromStr;
-use tokio::sync::oneshot::error::RecvError;
+
 use uuid::Uuid;
 
 #[async_trait]
@@ -188,7 +188,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
 
 #[async_trait]
 impl Handler<RegisterActor> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterActor, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: RegisterActor, _ctx: &mut ActorContext) {
         trace!(target: "RemoteRegistry::RegisterActor", "Registering actor: {:?}", &message);
 
         match message.node_id {

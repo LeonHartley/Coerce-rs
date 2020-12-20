@@ -55,7 +55,7 @@ pub trait Message: Sized {
         Err(MessageUnwrapErr::NotTransmittable)
     }
 
-    fn write_remote_result(res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
         Err(MessageWrapErr::NotTransmittable)
     }
 

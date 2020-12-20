@@ -4,12 +4,17 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
-use std::any::Any;
+
+use crate::actor::message::encoding::json::RemoteMessage;
 use std::collections::HashMap;
 
 pub struct Status();
 
 pub struct Stop();
+
+impl RemoteMessage for Stop {
+    type Result = ();
+}
 
 impl Message for Status {
     type Result = ActorStatus;

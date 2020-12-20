@@ -50,7 +50,7 @@ impl ActorContext {
         }
     }
 
-    pub fn core_mut(&mut self) -> &mut ActorSystem {
+    pub fn system_mut(&mut self) -> &mut ActorSystem {
         if let Some(ctx) = &mut self.core {
             ctx
         } else {
@@ -66,7 +66,7 @@ impl ActorContext {
         &self.status
     }
 
-    pub(super) fn actor_ref<A: Actor>(&self) -> LocalActorRef<A>
+    pub(crate) fn actor_ref<A: Actor>(&self) -> LocalActorRef<A>
     where
         A: 'static + Sync + Send,
     {

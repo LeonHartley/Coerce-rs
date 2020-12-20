@@ -1,4 +1,4 @@
-use crate::actor::{Actor, ActorId, ActorRef, Factory};
+use crate::actor::{Actor, ActorId, ActorRef};
 use crate::remote::system::RemoteActorSystem;
 
 #[derive(Clone)]
