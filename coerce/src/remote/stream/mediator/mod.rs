@@ -48,8 +48,8 @@ pub enum PublishErr {
 }
 
 pub struct Publish<T: Topic> {
-    topic: T,
-    message: T::Message,
+    pub topic: T,
+    pub message: T::Message,
 }
 pub struct PublishRaw {
     pub topic: String,
@@ -70,7 +70,7 @@ impl Message for PublishRaw {
 }
 
 impl StreamMediator {
-    pub fn add_topic<T: Topic>(mut self) -> Self {
+    pub fn add_topic<T: Topic>(&mut self) -> &mut Self {
         let subscriber_store = TopicSubscriberStore::<T>::new();
         let topic = MediatorTopic(Box::new(subscriber_store));
 
@@ -110,7 +110,6 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                 }
 
                 if let Some(topic) = self.topics.get_mut(T::topic_name()) {
-                    info!("hi");
                     topic.0.emit(&message.topic.key(), bytes).await;
                     Ok(())
                 } else {

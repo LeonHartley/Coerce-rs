@@ -17,6 +17,7 @@ use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::CreateActor;
 use crate::remote::storage::activator::ActorActivator;
+use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use serde::Serialize;
@@ -34,6 +35,7 @@ pub struct RemoteActorSystem {
     handler_ref: LocalActorRef<RemoteHandler>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
+    pub mediator_ref: Option<LocalActorRef<StreamMediator>>,
     types: Arc<RemoteHandlerTypes>,
 }
 

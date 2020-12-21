@@ -36,7 +36,9 @@ impl ActorSystem {
         CURRENT_SYSTEM.clone()
     }
 
-    pub fn set_remote(&mut self) {}
+    pub fn set_remote(&mut self, remote: RemoteActorSystem) {
+        self.remote = Some(Arc::new(remote))
+    }
 
     pub fn remote(&self) -> &RemoteActorSystem {
         self.remote
@@ -44,7 +46,7 @@ impl ActorSystem {
             .expect("this ActorSystem is not setup for remoting")
     }
 
-    pub fn remote_owned(&mut self) -> RemoteActorSystem {
+    pub fn remote_owned(&self) -> RemoteActorSystem {
         self.remote
             .as_ref()
             .map(|s| s.as_ref().clone())

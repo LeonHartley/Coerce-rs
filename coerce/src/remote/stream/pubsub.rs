@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
 use crate::remote::net::StreamMessage;
-use crate::remote::stream::mediator::SubscribeErr;
+use crate::remote::stream::mediator::{Publish, Subscribe, SubscribeErr};
 use serde::export::PhantomData;
 use std::any::Any;
 use std::collections::hash_map::RandomState;
@@ -143,11 +143,22 @@ impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
 }
 
 impl PubSub {
-    pub async fn subscribe<A: Actor, T: Topic>(ctx: &mut ActorContext) -> Result<(), SubscribeErr>
+    pub async fn subscribe<A: Actor, T: Topic>(
+        topic: T,
+        ctx: &mut ActorContext,
+    ) -> Result<(), SubscribeErr>
     where
         A: Handler<StreamEvent<T>>,
     {
-        Ok(())
+        let system = ctx.system().remote_owned();
+        if let Some(mut mediator) = system.mediator_ref {
+            mediator
+                .send(Subscribe::<A, T>::new(topic, ctx.actor_ref()))
+                .await
+                .unwrap()
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
     }
 
     pub async fn unsubscribe<A: Actor, T: Topic>(
@@ -156,7 +167,15 @@ impl PubSub {
         unimplemented!()
     }
 
-    pub async fn publish<T: Topic>(message: T::Message, system: &mut ActorSystem) {
-        unimplemented!()
+    pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &mut ActorSystem) {
+        let system = system.remote_owned();
+        if let Some(mut mediator) = system.mediator_ref {
+            mediator
+                .send(Publish::<T> { topic, message })
+                .await
+                .unwrap();
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
     }
 }

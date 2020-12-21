@@ -9,7 +9,9 @@ use crate::remote::actor::{
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::remote::storage::state::ActorStore;
+use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::RemoteActorSystem;
+use futures::TryFutureExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -21,6 +23,7 @@ pub struct RemoteActorSystemBuilder {
     inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
     store: Option<Box<dyn ActorStore + Sync + Send>>,
+    mediator: Option<StreamMediator>,
 }
 
 impl RemoteActorSystemBuilder {
@@ -29,6 +32,7 @@ impl RemoteActorSystemBuilder {
             node_id: None,
             inner: None,
             handlers: vec![],
+            mediator: None,
             store: None,
         }
     }
@@ -66,6 +70,22 @@ impl RemoteActorSystemBuilder {
         self
     }
 
+    pub fn with_distributed_streams<F>(mut self, f: F) -> Self
+    where
+        F: 'static + (FnOnce(&mut StreamMediator) -> &mut StreamMediator),
+    {
+        let mut mediator = if let Some(mediator) = &mut self.mediator {
+            mediator
+        } else {
+            let mediator = StreamMediator::new();
+            self.mediator = Some(mediator);
+            self.mediator.as_mut().unwrap()
+        };
+
+        f(mediator);
+        self
+    }
+
     pub async fn build(self) -> RemoteActorSystem {
         let mut inner = match self.inner {
             Some(ctx) => ctx,
@@ -88,7 +108,8 @@ impl RemoteActorSystemBuilder {
 
         let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
         let activator = ActorActivator::new(store);
-        let system = RemoteActorSystem {
+
+        let mut system = RemoteActorSystem {
             node_id,
             inner,
             handler_ref,
@@ -96,8 +117,25 @@ impl RemoteActorSystemBuilder {
             clients_ref,
             activator,
             types,
+            mediator_ref: None,
         };
 
+        system.inner.set_remote(system.clone());
+        system.mediator_ref = if let Some(mediator) = self.mediator {
+            trace!("mediator set");
+            Some(
+                system
+                    .inner
+                    .new_tracked_actor(mediator)
+                    .await
+                    .expect("unable to start mediator actor"),
+            )
+        } else {
+            trace!("no mediator");
+            None
+        };
+
+        system.inner.set_remote(system.clone());
         registry_ref_clone
             .send(SetRemote(system.clone()))
             .await
