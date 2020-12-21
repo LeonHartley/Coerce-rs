@@ -1,9 +1,15 @@
 use coerce::actor::context::ActorContext;
+use coerce::actor::lifecycle::Status;
 use coerce::actor::message::encoding::json::RemoteMessage;
 use coerce::actor::message::{Handler, Message};
+use coerce::actor::system::ActorSystem;
 use coerce::actor::{new_actor, Actor};
 use coerce::remote::net::StreamMessage;
+use coerce::remote::stream::mediator::{PublishErr, PublishRaw, StreamMediator, Subscribe};
 use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Topic};
+use tokio::time::Duration;
+
+pub mod util;
 
 #[macro_use]
 extern crate serde;
@@ -53,8 +59,32 @@ impl Handler<StreamEvent<StatusStream>> for TestStreamConsumer {
 }
 
 #[tokio::test]
-pub async fn test_remote_pubsub_publish_message_and_consume() {
-    let actor = new_actor(TestStreamConsumer {}).await.unwrap();
+pub async fn test_pubsub_mediator() {
+    util::create_trace_logger();
+
+    let mut sys = ActorSystem::new();
+
+    let actor = sys.new_tracked_actor(TestStreamConsumer {}).await.unwrap();
+    let mut mediator = sys
+        .new_anon_actor(StreamMediator::new().add_topic::<StatusStream>())
+        .await
+        .unwrap();
+
+    mediator
+        .send(Subscribe::new(StatusStream, actor))
+        .await
+        .unwrap();
+
+    for i in 0..10 {
+        mediator
+            .send(PublishRaw {
+                topic: "test-topic".to_string(),
+                key: String::default(),
+                message: vec![1],
+            })
+            .await
+            .unwrap();
+    }
 }
 
 impl StreamMessage for StatusEvent {
