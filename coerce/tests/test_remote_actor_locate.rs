@@ -110,8 +110,8 @@ pub async fn test_remote_actor_locate_remotely() {
         .await
         .expect("unable to get local ref");
 
-    // TODO: remote actor registration
-    tokio::time::sleep(Duration::from_millis(10));
+    // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
+    tokio::time::sleep(Duration::from_millis(10)).await;
 
     let remote_ref = remote_b
         .actor_ref::<util::TestActor>("leon".to_string())
