@@ -2,7 +2,7 @@
 members = [
     "coerce",
     "coerce/macros",
-    "providers/coerce-redis",
+#    "providers/coerce-redis",
     "examples/coerce-chat-common",
     "examples/coerce-chat-worker",
     "examples/coerce-chat-gateway"
