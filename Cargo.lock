@@ -208,7 +208,7 @@ dependencies = [
  "coerce",
  "redis-async",
  "serde",
- "tokio 0.2.24",
+ "tokio 1.0.1",
  "uuid",
 ]
 
@@ -755,17 +755,20 @@ dependencies = [
 
 [[package]]
 name = "redis-async"
-version = "0.7.3"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c63dfeb412ec613c234ec275ce0d2ffbe7aaa5e25e69cbec6eef97ea4c202288"
+checksum = "e8f5a920ab6d700f442cadd6006a2a43f7ec0a5223065f3eaa517fc3fca6d2b3"
 dependencies = [
  "bytes 0.6.0",
+ "bytes 1.0.0",
  "futures-channel",
  "futures-sink",
  "futures-util",
  "log",
  "tokio 0.3.5",
+ "tokio 1.0.1",
  "tokio-util 0.5.1",
+ "tokio-util 0.6.0",
 ]
 
 [[package]]
@@ -951,6 +954,7 @@ dependencies = [
  "libc",
  "mio 0.7.6",
  "pin-project-lite 0.2.0",
+ "slab",
 ]
 
 [[package]]
