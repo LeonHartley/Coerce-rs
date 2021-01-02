@@ -8,6 +8,7 @@ use coerce::remote::net::StreamMessage;
 use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Topic};
 use coerce::remote::system::RemoteActorSystem;
 use tokio::time::Duration;
+use tokio::sync::oneshot::{Sender, channel};
 
 pub mod util;
 
@@ -34,7 +35,9 @@ impl Topic for StatusStream {
 }
 
 pub struct TestStreamConsumer {
-    received_stream_messages: i32,
+    expected_stream_messages: u32,
+    on_completion: Option<Sender<u32>>,
+    received_stream_messages: u32,
 }
 
 #[async_trait]
@@ -60,6 +63,10 @@ impl Handler<StreamEvent<StatusStream>> for TestStreamConsumer {
                 log::info!("received msg: {:?}", &msg);
 
                 self.received_stream_messages += 1;
+
+                if self.received_stream_messages == self.expected_stream_messages {
+                    self.on_completion.take().unwrap().send(self.received_stream_messages);
+                }
             }
             StreamEvent::Err => {}
         }
@@ -77,9 +84,14 @@ pub async fn test_pubsub_local() {
         .build()
         .await;
 
+    let (mut sender_a, mut receiver_a) = channel::<u32>();
+    let (mut sender_b, mut receiver_b) = channel::<u32>();
+
     let mut actor = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            expected_stream_messages: 10,
+            on_completion: Some(sender_a),
             received_stream_messages: 0,
         })
         .await
@@ -88,6 +100,8 @@ pub async fn test_pubsub_local() {
     let mut actor_2 = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            expected_stream_messages: 10,
+            on_completion: Some(sender_b),
             received_stream_messages: 0,
         })
         .await
@@ -97,8 +111,8 @@ pub async fn test_pubsub_local() {
         PubSub::publish(StatusStream, StatusEvent::Online, remote.inner()).await;
     }
 
-    let received_stream_messages = actor.exec(|a| a.received_stream_messages).await.unwrap();
-    let received_stream_messages_2 = actor_2.exec(|a| a.received_stream_messages).await.unwrap();
+    let received_stream_messages = receiver_a.await.unwrap();
+    let received_stream_messages_2 = receiver_b.await.unwrap();
 
     assert_eq!(received_stream_messages, 10);
     assert_eq!(received_stream_messages_2, 10);
@@ -136,9 +150,14 @@ pub async fn test_pubsub_distributed() {
         .start()
         .await;
 
+    let (mut sender_a, mut receiver_a) = channel::<u32>();
+    let (mut sender_b, mut receiver_b) = channel::<u32>();
+
     let mut actor = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            expected_stream_messages: 10,
+            on_completion: Some(sender_a),
             received_stream_messages: 0,
         })
         .await
@@ -147,6 +166,8 @@ pub async fn test_pubsub_distributed() {
     let mut actor_2 = remote_b
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            expected_stream_messages: 10,
+            on_completion: Some(sender_b),
             received_stream_messages: 0,
         })
         .await
@@ -162,13 +183,9 @@ pub async fn test_pubsub_distributed() {
         PubSub::publish(StatusStream, StatusEvent::Online, remote_b.inner()).await;
     }
 
-    // remote stream publishing is asynchronous so there's no way to wait until actors have processed the messages
-    // todo: create oneshot channel within test actors that publish once the actor receives 10 messages so we don't need to delay here
-    tokio::time::sleep(Duration::from_millis(5)).await;
-
     // ensure both actors (one on each system) receives all stream messages from both servers
-    let received_stream_messages = actor.exec(|a| a.received_stream_messages).await.unwrap();
-    let received_stream_messages_2 = actor_2.exec(|a| a.received_stream_messages).await.unwrap();
+    let received_stream_messages = receiver_a.await.unwrap();
+    let received_stream_messages_2 = receiver_b.await.unwrap();
 
     assert_eq!(received_stream_messages, 10);
     assert_eq!(received_stream_messages_2, 10);
