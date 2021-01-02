@@ -157,7 +157,7 @@ pub async fn test_pubsub_distributed() {
     let (mut sender_a, mut receiver_a) = channel::<u32>();
     let (mut sender_b, mut receiver_b) = channel::<u32>();
 
-    let _ = remote
+    let mut actor = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
             expected_stream_messages: 10,
@@ -167,7 +167,7 @@ pub async fn test_pubsub_distributed() {
         .await
         .unwrap();
 
-    let _ = remote_b
+    let mut actor_2 = remote_b
         .inner()
         .new_anon_actor(TestStreamConsumer {
             expected_stream_messages: 10,
@@ -188,12 +188,16 @@ pub async fn test_pubsub_distributed() {
     }
 
     // ensure both actors (one on each system) receives all stream messages from both servers within 2 seconds
-    tokio::time::timeout(
+    if tokio::time::timeout(
         Duration::from_secs(10),
         futures::future::join_all(vec![receiver_a, receiver_b]),
     )
-    .await
-    .expect("timeout exceeded");
+    .await.is_err() {
+        let received_stream_messages = actor.exec(|a| a.received_stream_messages).await.unwrap();
+        let received_stream_messages_2 = actor_2.exec(|a| a.received_stream_messages).await.unwrap();
+
+        panic!("received {}/10, {}/10", received_stream_messages, received_stream_messages_2);
+    }
 }
 
 impl StreamMessage for StatusEvent {

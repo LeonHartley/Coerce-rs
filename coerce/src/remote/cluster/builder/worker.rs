@@ -79,6 +79,7 @@ impl ClusterWorkerBuilder {
             self.system
                 .register_node(RemoteNode::new(client.node_id, seed_addr))
                 .await;
+
             self.system.register_client(client.node_id, client).await;
         }
     }
