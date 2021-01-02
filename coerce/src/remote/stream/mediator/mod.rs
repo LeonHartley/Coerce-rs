@@ -95,6 +95,8 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                 if !nodes.is_empty() {
                     let topic = T::topic_name().to_string();
                     let message = bytes.clone();
+
+                    trace!("notifying {} nodes", nodes.len());
                     tokio::spawn(async move {
                         let publish = StreamPublish {
                             topic,
@@ -102,12 +104,18 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                             ..StreamPublish::default()
                         };
 
+                        let node_count = nodes.len();
                         for node in nodes {
                             remote
                                 .send_message(node.id, SessionEvent::StreamPublish(publish.clone()))
                                 .await;
                         }
+
+                        trace!("notified {} nodes", node_count);
                     });
+
+                } else {
+                    trace!("no nodes to notify");
                 }
 
                 if let Some(topic) = self.topics.get_mut(T::topic_name()) {
