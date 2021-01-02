@@ -105,13 +105,13 @@ pub async fn test_remote_actor_locate_remotely() {
     //
     // futures::future::join_all(tasks).await;
 
+    // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
     let local_ref = remote_a
         .actor_ref::<util::TestActor>("leon".to_string())
         .await
         .expect("unable to get local ref");
-
-    // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
-    tokio::time::sleep(Duration::from_millis(10)).await;
 
     let remote_ref = remote_b
         .actor_ref::<util::TestActor>("leon".to_string())
