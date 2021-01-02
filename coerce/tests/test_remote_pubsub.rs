@@ -189,7 +189,7 @@ pub async fn test_pubsub_distributed() {
 
     // ensure both actors (one on each system) receives all stream messages from both servers within 2 seconds
     tokio::time::timeout(
-        Duration::from_secs(2),
+        Duration::from_secs(10),
         futures::future::join_all(vec![receiver_a, receiver_b]),
     )
     .await
