@@ -27,4 +27,8 @@ where
     fn read_remote_result(bytes: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
         serde_json::from_slice(bytes.as_slice()).map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }
+
+    fn write_remote_result(res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        serde_json::to_vec(&res).map_err(|_e| MessageWrapErr::SerializationErr)
+    }
 }

@@ -1,7 +1,6 @@
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{get_actor, new_actor, new_actor_id};
 use util::*;
-use uuid::Uuid;
 
 pub mod util;
 

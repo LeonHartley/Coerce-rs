@@ -32,6 +32,7 @@ impl Handler<TestTimer> for TestActor {
 
 #[tokio::test]
 pub async fn test_timer() {
+    util::create_trace_logger();
     let mut actor_ref = ActorSystem::new()
         .new_tracked_actor(TestActor::new())
         .await
@@ -39,8 +40,8 @@ pub async fn test_timer() {
 
     let timer = Timer::start(actor_ref.clone(), Duration::from_millis(5), TestTimer {});
 
-    tokio::time::sleep(Duration::from_millis(50)).await;
-    let counter_50ms_later = actor_ref.exec(|a| a.counter).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(60)).await;
+    let counter_60ms_later = actor_ref.exec(|a| a.counter).await.unwrap();
     let stop = timer.stop();
 
     let counter_now = actor_ref.exec(|a| a.counter).await.unwrap();
@@ -48,7 +49,8 @@ pub async fn test_timer() {
 
     let counter_changed_after_stop = counter_now != actor_ref.exec(|a| a.counter).await.unwrap();
 
-    assert!(counter_50ms_later >= 10);
+    log::trace!("{}", counter_60ms_later);
+    assert!(counter_60ms_later >= 10);
     assert_eq!(stop, true);
     assert_eq!(counter_changed_after_stop, false);
 }

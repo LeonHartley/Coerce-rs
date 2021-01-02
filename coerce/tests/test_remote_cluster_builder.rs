@@ -13,12 +13,23 @@ use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
-use coerce::actor::{ActorCreationErr, Factory};
+use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
 use util::*;
+use tokio::time::Duration;
 
 #[derive(Serialize, Deserialize)]
 pub struct TestActorRecipe {
     name: String,
+}
+
+impl ActorRecipe for TestActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
 }
 
 #[derive(Clone)]
@@ -30,7 +41,7 @@ impl Factory for TestActorFactory {
     type Recipe = TestActorRecipe;
 
     async fn create(&self, _recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
-        log::info!("recipe create :D");
+        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(TestActor {
             status: None,
@@ -42,6 +53,16 @@ impl Factory for TestActorFactory {
 #[derive(Serialize, Deserialize)]
 pub struct EchoActorRecipe {}
 
+impl ActorRecipe for EchoActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
+}
+
 #[derive(Clone)]
 pub struct EchoActorFactory;
 
@@ -51,7 +72,7 @@ impl Factory for EchoActorFactory {
     type Recipe = EchoActorRecipe;
 
     async fn create(&self, _recipe: Self::Recipe) -> Result<EchoActor, ActorCreationErr> {
-        log::info!("recipe create :D");
+        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(EchoActor {})
     }
@@ -107,13 +128,15 @@ pub async fn test_remote_cluster_worker_builder() {
         .start()
         .await;
 
+    // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
+    tokio::time::sleep(Duration::from_millis(10)).await;
     let nodes_a = remote_c.get_nodes().await;
     let nodes_b = remote_2_c.get_nodes().await;
     let nodes_c = remote_3_c.get_nodes().await;
 
-    log::info!("a: {:?}", &nodes_a);
-    log::info!("b: {:?}", &nodes_b);
-    log::info!("c: {:?}", &nodes_c);
+    log::trace!("a: {:?}", &nodes_a);
+    log::trace!("b: {:?}", &nodes_b);
+    log::trace!("c: {:?}", &nodes_c);
 
     let nodes_a_in_b = nodes_a.iter().filter(|n| nodes_b.contains(n)).count();
     let nodes_a_in_c = nodes_a.iter().filter(|n| nodes_c.contains(n)).count();

@@ -1,9 +1,10 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::Actor;
-use crate::remote::codec::MessageCodec;
+
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::ClientEvent;
+use crate::remote::net::StreamMessage;
 use futures::SinkExt;
 use std::collections::HashMap;
 use tokio_util::codec::FramedWrite;
@@ -23,21 +24,16 @@ impl RemoteSession {
     }
 }
 
-pub struct RemoteSessionStore<C: MessageCodec> {
+pub struct RemoteSessionStore {
     sessions: HashMap<Uuid, RemoteSession>,
-    codec: C,
 }
 
-impl<C: MessageCodec> Actor for RemoteSessionStore<C> where C: 'static + Sync + Send {}
+impl Actor for RemoteSessionStore {}
 
-impl<C: MessageCodec> RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
-{
-    pub fn new(codec: C) -> RemoteSessionStore<C> {
+impl RemoteSessionStore {
+    pub fn new() -> RemoteSessionStore {
         RemoteSessionStore {
             sessions: HashMap::new(),
-            codec,
         }
     }
 }
@@ -61,10 +57,7 @@ impl Message for SessionWrite {
 }
 
 #[async_trait]
-impl<C: MessageCodec> Handler<NewSession> for RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
-{
+impl Handler<NewSession> for RemoteSessionStore {
     async fn handle(&mut self, message: NewSession, _ctx: &mut ActorContext) {
         trace!(target: "SessionStore", "new session {}", &message.0.id);
         self.sessions.insert(message.0.id, message.0);
@@ -72,10 +65,7 @@ where
 }
 
 #[async_trait]
-impl<C: MessageCodec> Handler<SessionClosed> for RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
-{
+impl Handler<SessionClosed> for RemoteSessionStore {
     async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorContext) {
         self.sessions.remove(&message.0);
         trace!(target: "SessionStore", "disposed session {}", &message.0);
@@ -83,16 +73,13 @@ where
 }
 
 #[async_trait]
-impl<C: MessageCodec> Handler<SessionWrite> for RemoteSessionStore<C>
-where
-    C: 'static + Sync + Send,
-{
+impl Handler<SessionWrite> for RemoteSessionStore {
     async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorContext) {
         match self.sessions.get_mut(&message.0) {
             Some(session) => {
                 trace!(target: "RemoteSession", "writing to session {}", &message.0);
 
-                match self.codec.encode_msg(message.1) {
+                match message.1.write_to_bytes() {
                     Some(msg) => {
                         trace!(target: "RemoteSession", "message encoded");
                         if session.write.send(msg).await.is_ok() {

@@ -1,6 +1,5 @@
 use crate::remote::cluster::discovery::ClusterSeed;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::codec::json::JsonCodec;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::server::RemoteServer;
 use crate::remote::system::RemoteActorSystem;
@@ -62,7 +61,7 @@ impl ClusterWorkerBuilder {
         }
 
         let server_ctx = self.system.clone();
-        let mut server = RemoteServer::new(JsonCodec::new());
+        let mut server = RemoteServer::new();
 
         server
             .start(self.server_listen_addr, server_ctx)
@@ -73,14 +72,14 @@ impl ClusterWorkerBuilder {
     async fn discover_peers(&mut self, _nodes: &mut Vec<RemoteNode>) {
         if let Some(seed_addr) = self.seed_addr.take() {
             let client_ctx = self.system.clone();
-            let client =
-                RemoteClient::connect(seed_addr.clone(), client_ctx, JsonCodec::new(), None)
-                    .await
-                    .expect("failed to connect to seed server");
+            let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None)
+                .await
+                .expect("failed to connect to seed server");
 
             self.system
                 .register_node(RemoteNode::new(client.node_id, seed_addr))
                 .await;
+
             self.system.register_client(client.node_id, client).await;
         }
     }

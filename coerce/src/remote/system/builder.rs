@@ -1,16 +1,17 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, Factory};
-use crate::remote::actor::message::SetSystem;
+use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
     RemoteHandlerTypes, RemoteRegistry,
 };
-use crate::remote::codec::json::JsonCodec;
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::remote::storage::state::ActorStore;
+use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::RemoteActorSystem;
+use futures::TryFutureExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -22,6 +23,7 @@ pub struct RemoteActorSystemBuilder {
     inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
     store: Option<Box<dyn ActorStore + Sync + Send>>,
+    mediator: Option<StreamMediator>,
 }
 
 impl RemoteActorSystemBuilder {
@@ -30,14 +32,9 @@ impl RemoteActorSystemBuilder {
             node_id: None,
             inner: None,
             handlers: vec![],
+            mediator: None,
             store: None,
         }
-    }
-
-    pub fn with_node_id(mut self, node_id: Uuid) -> Self {
-        self.node_id = Some(node_id);
-
-        self
     }
 
     pub fn with_actors<F>(mut self, f: F) -> Self
@@ -58,8 +55,8 @@ impl RemoteActorSystemBuilder {
         self
     }
 
-    pub fn with_actor_system(mut self, ctx: ActorSystem) -> Self {
-        self.inner = Some(ctx.clone());
+    pub fn with_actor_system(mut self, sys: ActorSystem) -> Self {
+        self.inner = Some(sys);
 
         self
     }
@@ -70,6 +67,22 @@ impl RemoteActorSystemBuilder {
     {
         self.store = Some(Box::new(store));
 
+        self
+    }
+
+    pub fn with_distributed_streams<F>(mut self, f: F) -> Self
+    where
+        F: 'static + (FnOnce(&mut StreamMediator) -> &mut StreamMediator),
+    {
+        let mut mediator = if let Some(mediator) = &mut self.mediator {
+            mediator
+        } else {
+            let mediator = StreamMediator::new();
+            self.mediator = Some(mediator);
+            self.mediator.as_mut().unwrap()
+        };
+
+        f(mediator);
         self
     }
 
@@ -86,7 +99,7 @@ impl RemoteActorSystemBuilder {
         });
 
         let types = handlers.build();
-        let node_id = self.node_id.or_else(|| Some(Uuid::new_v4())).unwrap();
+        let node_id = *inner.system_id();
         let handler_ref = RemoteHandler::new(&mut inner).await;
         let registry_ref = RemoteRegistry::new(&mut inner).await;
 
@@ -95,7 +108,8 @@ impl RemoteActorSystemBuilder {
 
         let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
         let activator = ActorActivator::new(store);
-        let system = RemoteActorSystem {
+
+        let mut system = RemoteActorSystem {
             node_id,
             inner,
             handler_ref,
@@ -103,10 +117,35 @@ impl RemoteActorSystemBuilder {
             clients_ref,
             activator,
             types,
+            mediator_ref: None,
         };
 
+        system.inner.set_remote(system.clone());
+        system.mediator_ref = if let Some(mediator) = self.mediator {
+            trace!("mediator set");
+            Some(
+                system
+                    .inner
+                    .new_tracked_actor(mediator)
+                    .await
+                    .expect("unable to start mediator actor"),
+            )
+        } else {
+            trace!("no mediator");
+            None
+        };
+
+        system.inner.set_remote(system.clone());
         registry_ref_clone
-            .send(SetSystem(system.clone()))
+            .send(SetRemote(system.clone()))
+            .await
+            .expect("no system set");
+
+        let cloned_system = system.clone();
+        system
+            .inner
+            .scheduler_mut()
+            .send(SetRemote(cloned_system))
             .await
             .expect("no system set");
 
@@ -138,8 +177,7 @@ impl RemoteActorHandlerBuilder {
         M: 'static + DeserializeOwned + Send + Sync,
         M::Result: Serialize + Send + Sync,
     {
-        let handler =
-            RemoteActorMessageHandler::<A, M, _>::new(self.system.clone(), JsonCodec::new());
+        let handler = RemoteActorMessageHandler::<A, M>::new(self.system.clone());
         self.handlers.insert(String::from(identifier), handler);
 
         self
@@ -149,10 +187,9 @@ impl RemoteActorHandlerBuilder {
     where
         F: 'static + Factory + Send + Sync,
     {
-        let handler = Box::new(RemoteActorHandler::<F::Actor, F, _>::new(
+        let handler = Box::new(RemoteActorHandler::<F::Actor, F>::new(
             self.system.clone(),
             factory,
-            JsonCodec::new(),
         ));
         self.actors.insert(String::from(identifier), handler);
 

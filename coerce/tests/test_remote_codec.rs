@@ -1,6 +1,7 @@
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
 
+use coerce::remote::net::proto::protocol::CreateActor;
 use util::*;
 
 pub mod util;
@@ -14,6 +15,8 @@ extern crate async_trait;
 #[tokio::test]
 pub async fn test_remote_create_message() {
     util::create_trace_logger();
+
+    let _createActor = CreateActor::new();
 
     let mut remote = RemoteActorSystem::builder()
         .with_actor_system(ActorSystem::new())

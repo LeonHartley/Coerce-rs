@@ -50,8 +50,18 @@ impl RemoteNodeStore {
     }
 
     pub fn add(&mut self, node: RemoteNode) {
-        self.table.add(node.clone());
-        self.nodes.insert(node.id.clone(), node);
+        let mut nodes = self.get_all();
+        nodes.push(node);
+        nodes.sort_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
+
+        self.table = HashRing::new();
+        self.nodes = nodes
+            .into_iter()
+            .map(|n| {
+                self.table.add(n.clone());
+                (n.id, n)
+            })
+            .collect();
     }
 
     pub fn get_all(&self) -> Vec<RemoteNode> {

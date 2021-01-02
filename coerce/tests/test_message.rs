@@ -125,9 +125,7 @@ pub async fn test_actor_notify() {
         .unwrap();
 
     for i in 1..=25 as i32 {
-        let _ = actor_ref
-            .notify_exec(move |mut actor| actor.counter = i)
-            .await;
+        let _ = actor_ref.notify_exec(move |mut actor| actor.counter = i);
     }
 
     let counter = actor_ref.exec(|actor| actor.counter).await;

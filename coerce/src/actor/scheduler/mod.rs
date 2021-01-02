@@ -1,9 +1,11 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, BoxedActorRef, GetActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
+use crate::remote::actor::message::SetRemote;
+use crate::remote::system::RemoteActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -11,6 +13,7 @@ pub mod timer;
 
 pub struct ActorScheduler {
     actors: HashMap<ActorId, BoxedActorRef>,
+    remote: Option<RemoteActorSystem>,
 }
 
 impl ActorScheduler {
@@ -18,6 +21,7 @@ impl ActorScheduler {
         start_actor(
             ActorScheduler {
                 actors: HashMap::new(),
+                remote: None,
             },
             "ActorScheduler-0".to_string(),
             ActorType::Anonymous,
@@ -64,17 +68,14 @@ where
     A: 'static + Sync + Send,
 {
     pub id: ActorId,
-    pub actor: A,
-    pub actor_type: ActorType,
-    pub system: ActorSystem,
-    pub start_rx: tokio::sync::oneshot::Sender<bool>,
+    pub actor_ref: LocalActorRef<A>,
 }
 
 impl<A: Actor> Message for RegisterActor<A>
 where
     A: 'static + Sync + Send,
 {
-    type Result = LocalActorRef<A>;
+    type Result = ();
 }
 
 pub struct DeregisterActor(pub ActorId);
@@ -111,34 +112,28 @@ where
 }
 
 #[async_trait]
+impl Handler<SetRemote> for ActorScheduler {
+    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
+        self.remote = Some(message.0);
+        trace!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
+    }
+}
+
+#[async_trait]
 impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler
 where
     A: 'static + Sync + Send,
 {
-    async fn handle(
-        &mut self,
-        message: RegisterActor<A>,
-        ctx: &mut ActorContext,
-    ) -> LocalActorRef<A> {
-        let actor_type = message.actor_type;
-        let actor = start_actor(
-            message.actor,
-            message.id,
-            actor_type,
-            Some(message.start_rx),
-            Some(self.get_ref(ctx)),
-            Some(message.system),
-        );
+    async fn handle(&mut self, message: RegisterActor<A>, _ctx: &mut ActorContext) {
+        let _ = self
+            .actors
+            .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));
 
-        if actor_type.is_tracked() {
-            let _ = self
-                .actors
-                .insert(actor.id.clone(), BoxedActorRef::from(actor.clone()));
-
-            warn!(target: "ActorScheduler", "actor {} registered", actor.id);
+        if let Some(remote) = self.remote.as_mut() {
+            remote.register_actor(message.id.clone(), None);
         }
 
-        actor
+        trace!(target: "ActorScheduler", "actor {} registered", message.id);
     }
 }
 
@@ -170,7 +165,7 @@ where
     }
 }
 
-fn start_actor<A: Actor>(
+pub fn start_actor<A: Actor>(
     actor: A,
     id: ActorId,
     actor_type: ActorType,
@@ -181,7 +176,7 @@ fn start_actor<A: Actor>(
 where
     A: 'static + Send + Sync,
 {
-    let (tx, rx) = tokio::sync::mpsc::channel(128);
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     let system_id = system.as_ref().map(|s| *s.system_id());
 
@@ -193,8 +188,9 @@ where
 
     let cloned_ref = actor_ref.clone();
     tokio::spawn(async move {
-        let mut actor_loop = ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, scheduler);
-        actor_loop.run(system).await
+        ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, system)
+            .run()
+            .await
     });
 
     actor_ref

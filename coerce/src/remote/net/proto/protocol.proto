@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package protocol;
+
+message RemoteNode {
+  string node_id = 1;
+
+  string addr = 2;
+}
+
+enum Event {
+  Exit = 0;
+  Handshake = 1;
+  Result = 2;
+  Err = 3;
+  Ping = 4;
+  Pong = 5;
+  CreateActor = 6;
+  FindActor = 7;
+  RegisterActor = 8;
+  NotifyActor = 9;
+  StreamPublish = 10;
+}
+
+message ClientHandshake {
+  string node_id = 1;
+
+  repeated RemoteNode nodes = 2;
+}
+
+message ClientResult {
+  string message_id = 1;
+
+  bytes result = 2;
+}
+
+enum ClientErrorCode {
+  ActorUnavailable = 0;
+  ProcessingFailed = 1;
+}
+
+message ClientErr {
+
+  string message_id = 1;
+
+  ClientErrorCode code = 2;
+}
+
+message Ping {
+  string message_id = 1;
+}
+
+message Pong {
+  string message_id = 1;
+}
+
+message CreateActor {
+  string message_id = 1;
+
+  string actor_id = 2;
+
+  string actor_type = 3;
+
+  bytes recipe = 4;
+}
+
+message FindActor {
+  string message_id = 1;
+
+  string actor_id = 2;
+}
+
+message ActorAddress {
+  string actor_id = 1;
+
+  string node_id = 2;
+}
+
+message MessageRequest {
+  string message_id = 1;
+
+  string handler_type = 2;
+
+  string actor_id = 3;
+
+  bytes message = 4;
+}
+
+message SessionHandshake {
+  string node_id = 1;
+
+  repeated RemoteNode nodes = 2;
+
+  bytes token = 3;
+}
+
+message StreamPublish {
+  string topic = 1;
+
+  string key = 2;
+
+  bytes message = 3;
+}

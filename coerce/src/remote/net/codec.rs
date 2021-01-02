@@ -32,7 +32,7 @@ impl Decoder for NetworkCodec {
         trace!(target: "NetworkCodec", "decoding message");
 
         let len = LittleEndian::read_i32(src.as_ref()) as usize;
-        if src.remaining() < len {
+        if (src.remaining() - 4) < len {
             return Ok(None);
         }
 

@@ -1,5 +1,5 @@
-use crate::actor::scheduler::{ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{Actor, ActorId, ActorRefErr, LocalActorRef, new_actor_id};
+use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -28,19 +28,28 @@ impl ActorSystem {
         &self.system_id
     }
 
+    pub fn scheduler_mut(&mut self) -> &mut LocalActorRef<ActorScheduler> {
+        &mut self.scheduler
+    }
+
     pub fn current_system() -> ActorSystem {
         CURRENT_SYSTEM.clone()
     }
 
-    fn remote(&self) -> &RemoteActorSystem {
+    pub fn set_remote(&mut self, remote: RemoteActorSystem) {
+        self.remote = Some(Arc::new(remote))
+    }
+
+    pub fn remote(&self) -> &RemoteActorSystem {
         self.remote
             .as_ref()
             .expect("this ActorSystem is not setup for remoting")
     }
 
-    fn remote_mut(&mut self) -> &RemoteActorSystem {
+    pub fn remote_owned(&self) -> RemoteActorSystem {
         self.remote
-            .as_mut()
+            .as_ref()
+            .map(|s| s.as_ref().clone())
             .expect("this ActorSystem is not setup for remoting")
     }
 
@@ -76,19 +85,31 @@ impl ActorSystem {
         A: 'static + Sync + Send,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let actor_ref = self
-            .scheduler
-            .send(RegisterActor {
-                id,
-                actor,
-                system: self.clone(),
-                actor_type,
-                start_rx: tx,
-            })
-            .await;
+        let actor_ref = start_actor(
+            actor,
+            id.clone(),
+            actor_type,
+            Some(tx),
+            if actor_type.is_tracked() {
+                Some(self.scheduler.clone())
+            } else {
+                None
+            },
+            Some(self.clone()),
+        );
+
+        if actor_type.is_tracked() {
+            let _ = self
+                .scheduler
+                .send(RegisterActor {
+                    id,
+                    actor_ref: actor_ref.clone(),
+                })
+                .await;
+        }
 
         match rx.await {
-            Ok(true) => actor_ref,
+            Ok(true) => Ok(actor_ref),
             _ => Err(ActorRefErr::ActorUnavailable),
         }
     }

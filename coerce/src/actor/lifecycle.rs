@@ -4,11 +4,17 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
+
+use crate::actor::message::encoding::json::RemoteMessage;
 use std::collections::HashMap;
 
 pub struct Status();
 
 pub struct Stop();
+
+impl RemoteMessage for Stop {
+    type Result = ();
+}
 
 impl Message for Status {
     type Result = ActorStatus;
@@ -47,9 +53,9 @@ where
     actor: A,
     actor_type: ActorType,
     actor_ref: LocalActorRef<A>,
-    receiver: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
+    receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-    scheduler: Option<LocalActorRef<ActorScheduler>>,
+    system: Option<ActorSystem>,
 }
 
 impl<A: Actor> ActorLoop<A>
@@ -59,10 +65,10 @@ where
     pub fn new(
         actor: A,
         actor_type: ActorType,
-        receiver: tokio::sync::mpsc::Receiver<MessageHandler<A>>,
+        receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
         on_start: Option<tokio::sync::oneshot::Sender<bool>>,
         actor_ref: LocalActorRef<A>,
-        scheduler: Option<LocalActorRef<ActorScheduler>>,
+        system: Option<ActorSystem>,
     ) -> Self {
         ActorLoop {
             actor,
@@ -70,25 +76,29 @@ where
             actor_ref,
             receiver,
             on_start,
-            scheduler,
+            system,
         }
     }
 
-    pub async fn run(&mut self, system: Option<ActorSystem>) {
+    pub async fn run(&mut self) {
         let actor_id = self.actor_ref.id.clone();
-        let system_id = self
-            .actor_ref
-            .system_id
-            .map_or("NO_SYS".to_string(), |s| s.to_string());
 
         let mut ctx = ActorContext::new(
-            system,
+            self.system.clone(),
             Starting,
             self.actor_ref.clone().into(),
             HashMap::new(),
         );
+        let system_id = self
+            .actor_ref
+            .system_id
+            .map_or("system-creation".to_string(), |s| s.to_string());
 
-        trace!(target: "ActorLoop", "[System: {}], [{}] starting", system_id, ctx.id());
+        trace!(
+            target:"Actor",
+            "[{}] starting on system: {}",
+            ctx.id(), system_id
+        );
 
         self.actor.started(&mut ctx).await;
 
@@ -99,14 +109,22 @@ where
 
         ctx.set_status(Started);
 
-        trace!(target: "ActorLoop", "[{}] ready", ctx.id());
+        trace!(
+            target:"Actor",
+            "[{}] ready",
+            ctx.id(),
+        );
 
         if let Some(on_start) = self.on_start.take() {
             let _ = on_start.send(true);
         }
 
         while let Some(mut msg) = self.receiver.recv().await {
-            trace!(target: "ActorLoop", "[{}] recv", &actor_id);
+            trace!(
+                target:"Actor",
+                "[{}] recv {}",
+                &actor_id, msg.name()
+            );
 
             msg.handle(&mut self.actor, &mut ctx).await;
 
@@ -116,7 +134,11 @@ where
             }
         }
 
-        trace!(target: "ActorLoop", "[{}] stopping", &actor_id);
+        trace!(
+            target:"Actor",
+            "[{}] stopping",
+            &actor_id
+        );
 
         ctx.set_status(Stopping);
 
@@ -125,8 +147,9 @@ where
         ctx.set_status(Stopped);
 
         if self.actor_type.is_tracked() {
-            if let Some(mut scheduler) = self.scheduler.take() {
-                scheduler
+            if let Some(mut system) = self.system.take() {
+                system
+                    .scheduler_mut()
                     .send(DeregisterActor(actor_id))
                     .await
                     .expect("de-register actor");

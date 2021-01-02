@@ -7,13 +7,11 @@ extern crate serde;
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorState, Factory};
-use coerce::remote::codec::json::JsonCodec;
-use coerce::remote::codec::MessageCodec;
-use coerce::remote::net::message::{ActorCreated, CreateActor};
+use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorRecipe, ActorState, Factory};
 
+use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use coerce::remote::storage::state::ActorStore;
-use coerce::remote::system::RemoteActorSystem;
+use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
 use uuid::Uuid;
 
 pub struct TestActorStore {
@@ -29,6 +27,16 @@ pub struct TestActorRecipe {
     name: String,
 }
 
+impl ActorRecipe for TestActorRecipe {
+    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+    }
+}
+
 #[derive(Clone)]
 pub struct TestActorFactory;
 
@@ -38,7 +46,7 @@ impl Factory for TestActorFactory {
     type Recipe = TestActorRecipe;
 
     async fn create(&self, recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
-        log::info!("recipe create :D");
+        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(TestActor { name: recipe.name })
     }
@@ -54,7 +62,6 @@ pub async fn test_remote_actor_create_new() {
     let expected_actor_name = "test-actor-123".to_string();
     let recipe = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
-    let codec = JsonCodec::new();
     let system = ActorSystem::new();
 
     let factory = TestActorFactory {};
@@ -65,14 +72,25 @@ pub async fn test_remote_actor_create_new() {
         .await;
 
     let message = CreateActor {
-        id: Uuid::new_v4(),
-        actor_id: Some(actor_id.clone()),
-        actor_type: String::from("TestActor"),
-        recipe,
+        message_id: Uuid::new_v4().to_string(),
+        actor_id: actor_id.clone(),
+        actor_type: "TestActor".to_string(),
+        recipe: recipe.clone(),
+        ..CreateActor::default()
+    };
+
+    let message_duplicate = CreateActor {
+        message_id: Uuid::new_v4().to_string(),
+        actor_id: actor_id.clone(),
+        actor_type: "TestActor".to_string(),
+        recipe: recipe.clone(),
+        ..CreateActor::default()
     };
 
     let result = remote.handle_create_actor(message).await;
-    let create_actor_res = codec.decode_msg::<ActorCreated>(result.unwrap()).unwrap();
+    let duplicate = remote.handle_create_actor(message_duplicate).await;
+
+    let create_actor_res = protobuf::parse_from_bytes::<ActorAddress>(&result.unwrap()).unwrap();
 
     let mut actor = remote
         .inner()
@@ -81,8 +99,12 @@ pub async fn test_remote_actor_create_new() {
         .unwrap();
     let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
 
-    assert_eq!(&create_actor_res.id, &actor_id);
-    assert_eq!(create_actor_res.node_id, remote.node_id());
+    let node = remote.locate_actor_node(actor_id.clone()).await;
+
+    assert_eq!(Err(RemoteActorErr::ActorExists), duplicate);
+    assert_eq!(&create_actor_res.actor_id, &actor_id);
+    assert_eq!(create_actor_res.node_id, remote.node_id().to_string());
+    assert_eq!(node.unwrap(), remote.node_id());
     assert_eq!(actor_name, expected_actor_name);
 }
 //
