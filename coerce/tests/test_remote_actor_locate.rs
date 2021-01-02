@@ -12,6 +12,7 @@ extern crate coerce_macros;
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
+use tokio::time::Duration;
 
 #[coerce_test]
 pub async fn test_remote_actor_locate_node_locally() {
@@ -108,6 +109,9 @@ pub async fn test_remote_actor_locate_remotely() {
         .actor_ref::<util::TestActor>("leon".to_string())
         .await
         .expect("unable to get local ref");
+
+    // TODO: remote actor registration
+    tokio::time::sleep(Duration::from_millis(10));
 
     let remote_ref = remote_b
         .actor_ref::<util::TestActor>("leon".to_string())

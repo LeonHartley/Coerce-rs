@@ -23,6 +23,8 @@ use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
+use tokio::time::error::Elapsed;
 use uuid::Uuid;
 
 pub mod builder;
@@ -224,13 +226,16 @@ impl RemoteActorSystem {
             })
             .await
         {
-            Ok(_) => match rx.await {
-                Ok(res) => res,
-                Err(_e) => {
-                    error!(target: "ActorRef", "error receiving result");
-                    None
+            Ok(_) => {
+                // TODO: configurable timeouts (?)
+                match tokio::time::timeout(tokio::time::Duration::from_millis(250), rx).await {
+                    Ok(Ok(res)) => res,
+                    Err(_) | Ok(Err(_)) => {
+                        error!(target: "ActorRef", "error receiving result");
+                        None
+                    }
                 }
-            },
+            }
             Err(_e) => {
                 error!(target: "ActorRef", "error sending message");
                 None

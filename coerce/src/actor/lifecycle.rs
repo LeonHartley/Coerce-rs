@@ -148,7 +148,8 @@ where
 
         if self.actor_type.is_tracked() {
             if let Some(mut system) = self.system.take() {
-                system.scheduler_mut()
+                system
+                    .scheduler_mut()
                     .send(DeregisterActor(actor_id))
                     .await
                     .expect("de-register actor");

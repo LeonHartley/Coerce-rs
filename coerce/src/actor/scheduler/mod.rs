@@ -187,7 +187,11 @@ where
     };
 
     let cloned_ref = actor_ref.clone();
-    tokio::spawn(async move { ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, system).run().await });
+    tokio::spawn(async move {
+        ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, system)
+            .run()
+            .await
+    });
 
     actor_ref
 }

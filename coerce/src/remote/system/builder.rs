@@ -141,7 +141,6 @@ impl RemoteActorSystemBuilder {
             .await
             .expect("no system set");
 
-
         let cloned_system = system.clone();
         system
             .inner
