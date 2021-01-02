@@ -17,6 +17,7 @@ use protobuf::Message;
 use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
+use crate::remote::stream::mediator::PublishRaw;
 
 pub mod session;
 
@@ -305,6 +306,11 @@ async fn session_create_actor(
 
 async fn session_stream_publish(msg: StreamPublish, mut ctx: RemoteActorSystem) {
     info!("stream publish");
+
+    // TODO: node should acknowledge the message
+    if let Some(mediator) = ctx.mediator_ref.as_mut() {
+        mediator.notify::<PublishRaw>(msg.into()).unwrap()
+    }
 }
 
 async fn send_result(

@@ -51,6 +51,7 @@ pub struct Publish<T: Topic> {
     pub topic: T,
     pub message: T::Message,
 }
+
 pub struct PublishRaw {
     pub topic: String,
     pub key: String,
@@ -117,6 +118,20 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                 }
             }
             None => Err(PublishErr::SerializationErr),
+        }
+    }
+}
+
+impl From<StreamPublish> for PublishRaw {
+    fn from(s: StreamPublish) -> Self {
+        let topic = s.topic;
+        let key = s.key;
+        let message = s.message;
+
+        Self {
+            topic,
+            key,
+            message,
         }
     }
 }

@@ -2367,6 +2367,7 @@ impl ::protobuf::reflect::ProtobufValue for SessionHandshake {
 pub struct StreamPublish {
     // message fields
     pub topic: ::std::string::String,
+    pub key: ::std::string::String,
     pub message: ::std::vec::Vec<u8>,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
@@ -2410,7 +2411,33 @@ impl StreamPublish {
         ::std::mem::replace(&mut self.topic, ::std::string::String::new())
     }
 
-    // bytes message = 2;
+    // string key = 2;
+
+
+    pub fn get_key(&self) -> &str {
+        &self.key
+    }
+    pub fn clear_key(&mut self) {
+        self.key.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_key(&mut self, v: ::std::string::String) {
+        self.key = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_key(&mut self) -> &mut ::std::string::String {
+        &mut self.key
+    }
+
+    // Take field
+    pub fn take_key(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.key, ::std::string::String::new())
+    }
+
+    // bytes message = 3;
 
 
     pub fn get_message(&self) -> &[u8] {
@@ -2450,6 +2477,9 @@ impl ::protobuf::Message for StreamPublish {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.topic)?;
                 },
                 2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.key)?;
+                },
+                3 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.message)?;
                 },
                 _ => {
@@ -2467,8 +2497,11 @@ impl ::protobuf::Message for StreamPublish {
         if !self.topic.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.topic);
         }
+        if !self.key.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.key);
+        }
         if !self.message.is_empty() {
-            my_size += ::protobuf::rt::bytes_size(2, &self.message);
+            my_size += ::protobuf::rt::bytes_size(3, &self.message);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -2479,8 +2512,11 @@ impl ::protobuf::Message for StreamPublish {
         if !self.topic.is_empty() {
             os.write_string(1, &self.topic)?;
         }
+        if !self.key.is_empty() {
+            os.write_string(2, &self.key)?;
+        }
         if !self.message.is_empty() {
-            os.write_bytes(2, &self.message)?;
+            os.write_bytes(3, &self.message)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2525,6 +2561,11 @@ impl ::protobuf::Message for StreamPublish {
                 |m: &StreamPublish| { &m.topic },
                 |m: &mut StreamPublish| { &mut m.topic },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "key",
+                |m: &StreamPublish| { &m.key },
+                |m: &mut StreamPublish| { &mut m.key },
+            ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
                 "message",
                 |m: &StreamPublish| { &m.message },
@@ -2547,6 +2588,7 @@ impl ::protobuf::Message for StreamPublish {
 impl ::protobuf::Clear for StreamPublish {
     fn clear(&mut self) {
         self.topic.clear();
+        self.key.clear();
         self.message.clear();
         self.unknown_fields.clear();
     }
@@ -2716,15 +2758,16 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x01(\x0cR\x07messageB\0:\0\"u\n\x10SessionHandshake\x12\x19\n\x07node_i\
     d\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\
     \x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01\
-    (\x0cR\x05tokenB\0:\0\"E\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
-    \x01(\tR\x05topicB\0\x12\x1a\n\x07message\x18\x02\x20\x01(\x0cR\x07messa\
-    geB\0:\0*\xa2\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\
-    \x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\
-    \x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\
-    \x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\
-    \n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClie\
-    ntErrorCode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingF\
-    ailed\x10\x01\x1a\0B\0b\x06proto3\
+    (\x0cR\x05tokenB\0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
+    \x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\
+    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0:\0*\xa2\x01\n\x05E\
+    vent\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Resul\
+    t\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
+    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
+    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
+    \x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10Ac\
+    torUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0B\0b\x06\
+    proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

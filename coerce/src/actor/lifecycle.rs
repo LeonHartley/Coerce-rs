@@ -55,7 +55,7 @@ where
     actor_ref: LocalActorRef<A>,
     receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-    scheduler: Option<LocalActorRef<ActorScheduler>>,
+    system: Option<ActorSystem>,
 }
 
 impl<A: Actor> ActorLoop<A>
@@ -68,7 +68,7 @@ where
         receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
         on_start: Option<tokio::sync::oneshot::Sender<bool>>,
         actor_ref: LocalActorRef<A>,
-        scheduler: Option<LocalActorRef<ActorScheduler>>,
+        system: Option<ActorSystem>,
     ) -> Self {
         ActorLoop {
             actor,
@@ -76,15 +76,15 @@ where
             actor_ref,
             receiver,
             on_start,
-            scheduler,
+            system,
         }
     }
 
-    pub async fn run(&mut self, system: Option<ActorSystem>) {
+    pub async fn run(&mut self) {
         let actor_id = self.actor_ref.id.clone();
 
         let mut ctx = ActorContext::new(
-            system,
+            self.system.clone(),
             Starting,
             self.actor_ref.clone().into(),
             HashMap::new(),
@@ -147,8 +147,8 @@ where
         ctx.set_status(Stopped);
 
         if self.actor_type.is_tracked() {
-            if let Some(mut scheduler) = self.scheduler.take() {
-                scheduler
+            if let Some(mut system) = self.system.take() {
+                system.scheduler_mut()
                     .send(DeregisterActor(actor_id))
                     .await
                     .expect("de-register actor");

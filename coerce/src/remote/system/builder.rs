@@ -141,10 +141,12 @@ impl RemoteActorSystemBuilder {
             .await
             .expect("no system set");
 
+
+        let cloned_system = system.clone();
         system
             .inner
-            .scheduler()
-            .send(SetRemote(system.clone()))
+            .scheduler_mut()
+            .send(SetRemote(cloned_system))
             .await
             .expect("no system set");
 

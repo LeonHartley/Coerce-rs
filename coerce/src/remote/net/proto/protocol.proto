@@ -97,5 +97,7 @@ message SessionHandshake {
 message StreamPublish {
   string topic = 1;
 
-  bytes message = 2;
+  string key = 2;
+
+  bytes message = 3;
 }
