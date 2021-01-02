@@ -15,6 +15,7 @@ use coerce::remote::system::RemoteActorSystem;
 
 use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
 use util::*;
+use tokio::time::Duration;
 
 #[derive(Serialize, Deserialize)]
 pub struct TestActorRecipe {
@@ -127,6 +128,8 @@ pub async fn test_remote_cluster_worker_builder() {
         .start()
         .await;
 
+    // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
+    tokio::time::sleep(Duration::from_millis(10)).await;
     let nodes_a = remote_c.get_nodes().await;
     let nodes_b = remote_2_c.get_nodes().await;
     let nodes_c = remote_3_c.get_nodes().await;
