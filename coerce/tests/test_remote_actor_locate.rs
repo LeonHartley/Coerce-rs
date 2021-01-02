@@ -41,7 +41,7 @@ pub async fn test_remote_actor_locate_node_locally() {
     assert!(locate_after_creation.is_some());
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test]
 pub async fn test_remote_actor_locate_remotely() {
     let mut system_a = ActorSystem::new();
     let system_b = ActorSystem::new();
