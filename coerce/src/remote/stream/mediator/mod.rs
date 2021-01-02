@@ -106,9 +106,11 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
 
                         let node_count = nodes.len();
                         for node in nodes {
-                            remote
-                                .send_message(node.id, SessionEvent::StreamPublish(publish.clone()))
-                                .await;
+                            if node.id != remote.node_id() {
+                                remote
+                                    .send_message(node.id, SessionEvent::StreamPublish(publish.clone()))
+                                    .await;
+                            }
                         }
 
                         trace!("notified {} nodes", node_count);
