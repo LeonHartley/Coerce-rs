@@ -45,7 +45,7 @@ impl<S: tokio::io::AsyncRead> StreamReceiverFuture<S> {
     }
 }
 
-impl<S: tokio::io::AsyncRead> tokio::stream::Stream for StreamReceiverFuture<S>
+impl<S: tokio::io::AsyncRead> tokio_stream::Stream for StreamReceiverFuture<S>
 where
     S: Unpin,
 {
