@@ -5,7 +5,7 @@ use coerce::actor::message::{Handler, Message};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{new_actor, Actor};
 use coerce::remote::net::StreamMessage;
-use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Topic};
+use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Topic, Subscription};
 use coerce::remote::system::RemoteActorSystem;
 use tokio::sync::oneshot::{channel, Sender};
 use tokio::time::Duration;
@@ -35,6 +35,7 @@ impl Topic for StatusStream {
 }
 
 pub struct TestStreamConsumer {
+    subscription: Option<Subscription>,
     expected_stream_messages: u32,
     on_completion: Option<Sender<u32>>,
     received_stream_messages: u32,
@@ -43,15 +44,9 @@ pub struct TestStreamConsumer {
 #[async_trait]
 impl Actor for TestStreamConsumer {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        PubSub::subscribe::<Self, StatusStream>(StatusStream, ctx)
+        self.subscription = Some(PubSub::subscribe::<Self, StatusStream>(StatusStream, ctx)
             .await
-            .unwrap()
-    }
-
-    async fn stopped(&mut self, ctx: &mut ActorContext) {
-        PubSub::unsubscribe::<Self, StatusStream>(ctx)
-            .await
-            .unwrap()
+            .unwrap());
     }
 }
 
@@ -93,6 +88,7 @@ pub async fn test_pubsub_local() {
     let mut actor = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            subscription: None,
             expected_stream_messages: 10,
             on_completion: Some(sender_a),
             received_stream_messages: 0,
@@ -103,6 +99,7 @@ pub async fn test_pubsub_local() {
     let mut actor_2 = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            subscription: None,
             expected_stream_messages: 10,
             on_completion: Some(sender_b),
             received_stream_messages: 0,
@@ -121,7 +118,7 @@ pub async fn test_pubsub_local() {
     assert_eq!(received_stream_messages_2, 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 pub async fn test_pubsub_distributed() {
     // util::create_trace_logger();
 
@@ -160,6 +157,7 @@ pub async fn test_pubsub_distributed() {
     let mut actor = remote
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            subscription: None,
             expected_stream_messages: 10,
             on_completion: Some(sender_a),
             received_stream_messages: 0,
@@ -170,6 +168,7 @@ pub async fn test_pubsub_distributed() {
     let mut actor_2 = remote_b
         .inner()
         .new_anon_actor(TestStreamConsumer {
+            subscription: None,
             expected_stream_messages: 10,
             on_completion: Some(sender_b),
             received_stream_messages: 0,
@@ -189,14 +188,20 @@ pub async fn test_pubsub_distributed() {
 
     // ensure both actors (one on each system) receives all stream messages from both servers within 2 seconds
     if tokio::time::timeout(
-        Duration::from_secs(10),
+        Duration::from_secs(2),
         futures::future::join_all(vec![receiver_a, receiver_b]),
     )
-    .await.is_err() {
+    .await
+    .is_err()
+    {
         let received_stream_messages = actor.exec(|a| a.received_stream_messages).await.unwrap();
-        let received_stream_messages_2 = actor_2.exec(|a| a.received_stream_messages).await.unwrap();
+        let received_stream_messages_2 =
+            actor_2.exec(|a| a.received_stream_messages).await.unwrap();
 
-        panic!("received {}/10, {}/10", received_stream_messages, received_stream_messages_2);
+        panic!(
+            "received {}/10, {}/10",
+            received_stream_messages, received_stream_messages_2
+        );
     }
 }
 

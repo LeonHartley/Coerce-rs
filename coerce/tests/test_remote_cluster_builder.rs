@@ -14,8 +14,8 @@ use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
 use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
-use util::*;
 use tokio::time::Duration;
+use util::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct TestActorRecipe {

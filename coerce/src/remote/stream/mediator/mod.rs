@@ -4,7 +4,9 @@ use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::StreamPublish;
 use crate::remote::net::StreamMessage;
-use crate::remote::stream::pubsub::{StreamEvent, Topic, TopicEmitter, TopicSubscriberStore};
+use crate::remote::stream::pubsub::{
+    StreamEvent, Subscription, Topic, TopicEmitter, TopicSubscriberStore,
+};
 use std::any::Any;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -26,7 +28,9 @@ impl StreamMediator {
 impl Actor for StreamMediator {}
 
 #[derive(Debug)]
-pub enum SubscribeErr {}
+pub enum SubscribeErr {
+    Err,
+}
 
 pub struct Subscribe<A: Actor, T: Topic> {
     receiver_ref: LocalActorRef<A>,
@@ -59,7 +63,7 @@ pub struct PublishRaw {
 }
 
 impl<A: Actor, T: Topic> Message for Subscribe<A, T> {
-    type Result = Result<(), SubscribeErr>;
+    type Result = Result<Subscription, SubscribeErr>;
 }
 
 impl<T: Topic> Message for Publish<T> {
@@ -108,14 +112,16 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                         for node in nodes {
                             if node.id != remote.node_id() {
                                 remote
-                                    .send_message(node.id, SessionEvent::StreamPublish(publish.clone()))
+                                    .send_message(
+                                        node.id,
+                                        SessionEvent::StreamPublish(publish.clone()),
+                                    )
                                     .await;
                             }
                         }
 
                         trace!("notified {} nodes", node_count);
                     });
-
                 } else {
                     trace!("no nodes to notify");
                 }
@@ -164,20 +170,26 @@ where
         &mut self,
         message: Subscribe<A, T>,
         _ctx: &mut ActorContext,
-    ) -> Result<(), SubscribeErr> {
-        if let Some(topic) = self.topics.remove(T::topic_name()) {
+    ) -> Result<Subscription, SubscribeErr> {
+        let subscription = if let Some(topic) = self.topics.remove(T::topic_name()) {
             let topic = topic.0.into_any().downcast::<TopicSubscriberStore<T>>();
 
             if let Ok(mut topic) = topic {
-                topic.add_subscriber(message.topic.key(), message.receiver_ref);
+                let receiver = topic.receiver(&message.topic.key());
+                let subscription = Subscription::new(receiver, message.receiver_ref);
 
                 self.topics
                     .insert(T::topic_name().to_string(), MediatorTopic(topic));
+
+                Some(subscription)
             } else {
                 error!("incorrect topic subscriber store type, unable to add back");
+                None
             }
-        }
+        } else {
+            None
+        };
 
-        Ok(())
+        subscription.map_or(Err(SubscribeErr::Err), |s| Ok(s))
     }
 }

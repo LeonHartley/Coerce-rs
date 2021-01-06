@@ -4,11 +4,19 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
 use crate::remote::net::StreamMessage;
 use crate::remote::stream::mediator::{Publish, Subscribe, SubscribeErr};
+use futures::future::{BoxFuture, LocalBoxFuture};
+use futures::task::{Context, Poll};
+use futures::{Future, FutureExt, Stream};
 use serde::export::PhantomData;
 use std::any::Any;
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::macros::support::Pin;
+use tokio::sync::broadcast::Sender;
+use tokio::sync::oneshot::error::RecvError;
+use tokio::sync::{broadcast, oneshot};
+use tokio::task::JoinHandle;
 
 pub struct PubSub;
 
@@ -27,6 +35,15 @@ pub enum StreamEvent<T: Topic> {
     Err,
 }
 
+impl<T: Topic> Clone for StreamEvent<T> {
+    fn clone(&self) -> Self {
+        match &self {
+            StreamEvent::Receive(msg) => StreamEvent::Receive(msg.clone()),
+            StreamEvent::Err => StreamEvent::Err,
+        }
+    }
+}
+
 impl<T: Topic> Message for StreamEvent<T> {
     type Result = ();
 }
@@ -38,74 +55,33 @@ pub trait TopicEmitter: Send + Sync {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
 }
 
-pub trait Subscriber<T: Topic>: Send + Sync {
-    fn send(&mut self, message: StreamEvent<T>);
-}
-
-pub struct TopicSubscriber<A: Actor, T: Topic>
-where
-    A: Handler<StreamEvent<T>>,
-{
-    actor_ref: LocalActorRef<A>,
-    _t: PhantomData<T>,
-}
-
-impl<A: Actor, T: Topic> Subscriber<T> for TopicSubscriber<A, T>
-where
-    A: Handler<StreamEvent<T>>,
-{
-    fn send(&mut self, message: StreamEvent<T>) {
-        self.actor_ref.notify(message).unwrap();
-    }
-}
-
-impl<A: Actor, T: Topic> TopicSubscriber<A, T>
-where
-    A: Handler<StreamEvent<T>>,
-{
-    pub fn new(actor_ref: LocalActorRef<A>) -> Self {
-        let _t = PhantomData;
-        TopicSubscriber { actor_ref, _t }
-    }
-}
-
 pub struct TopicSubscriberStore<T: Topic> {
-    subscribers: HashMap<String, HashMap<ActorId, Box<dyn Subscriber<T>>>>,
+    channels: HashMap<String, broadcast::Sender<StreamEvent<T>>>,
 }
 
 impl<T: Topic> TopicSubscriberStore<T> {
     pub fn new() -> Self {
         TopicSubscriberStore {
-            subscribers: HashMap::new(),
+            channels: HashMap::new(),
         }
     }
 
-    pub fn add_subscriber<A: Actor>(&mut self, key: String, actor_ref: LocalActorRef<A>)
-    where
-        A: Handler<StreamEvent<T>>,
-    {
-        let id = actor_ref.id.clone();
-        let subscriber = TopicSubscriber::new(actor_ref);
-
-        match self.subscribers.get_mut(&key) {
-            Some(key_subscribers) => {
-                key_subscribers.insert(id, Box::new(subscriber) as Box<dyn Subscriber<T>>);
-            }
+    pub fn receiver(&mut self, key: &str) -> broadcast::Receiver<StreamEvent<T>> {
+        match self.channels.get(key) {
+            Some(channel) => channel.subscribe(),
             None => {
-                let mut subs = HashMap::new();
+                let (sender, receiver) = broadcast::channel(1024);
+                self.channels.insert(key.to_string(), sender);
 
-                subs.insert(id, Box::new(subscriber) as Box<dyn Subscriber<T>>);
-                self.subscribers.insert(key.clone(), subs);
+                receiver
             }
-        };
+        }
     }
 
     pub fn broadcast(&mut self, key: &str, msg: Arc<T::Message>) {
-        match self.subscribers.get_mut(key) {
-            Some(subscribers) => {
-                for subscriber in subscribers.values_mut() {
-                    subscriber.send(StreamEvent::Receive(msg.clone()));
-                }
+        match self.channels.get_mut(key) {
+            Some(sender) => {
+                sender.send(StreamEvent::Receive(msg));
             }
             None => trace!(
                 target: &format!("PubSub-topic-{}-{}", T::topic_name(), key),
@@ -115,13 +91,11 @@ impl<T: Topic> TopicSubscriberStore<T> {
     }
 
     pub fn broadcast_err(&mut self, key: &str) {
-        match self.subscribers.get_mut(key) {
-            Some(subscribers) => {
-                for subscriber in subscribers.values_mut() {
-                    subscriber.send(StreamEvent::Err);
-                }
+        match self.channels.get_mut(key) {
+            Some(sender) => {
+                sender.send(StreamEvent::Err);
             }
-            None => {}
+            None => (),
         }
     }
 }
@@ -142,11 +116,51 @@ impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
     }
 }
 
+pub struct Subscription {
+    task_handle: Option<JoinHandle<()>>,
+}
+
+impl Subscription {
+    pub fn unsubscribe(&mut self) {
+        if let Some(handle) = self.task_handle.take() {
+            handle.abort();
+        }
+    }
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        self.unsubscribe();
+    }
+}
+
+impl Subscription {
+    pub(crate) fn new<A: Actor, T: Topic>(
+        topic_receiver: broadcast::Receiver<StreamEvent<T>>,
+        receiver_ref: LocalActorRef<A>,
+    ) -> Subscription
+    where
+        A: Handler<StreamEvent<T>>,
+    {
+        let task_handle = Some(tokio::spawn(async move {
+            let mut receiver_ref = receiver_ref;
+            let mut stream_receiver = topic_receiver;
+            while let Ok(message) = stream_receiver.recv().await {
+                receiver_ref
+                    .notify(message)
+                    .expect("unable to notify receiver ref");
+            }
+        }));
+
+        Subscription { task_handle }
+    }
+}
+
 impl PubSub {
     pub async fn subscribe<A: Actor, T: Topic>(
         topic: T,
         ctx: &mut ActorContext,
-    ) -> Result<(), SubscribeErr>
+    ) -> Result<Subscription, SubscribeErr>
     where
         A: Handler<StreamEvent<T>>,
     {
@@ -159,12 +173,6 @@ impl PubSub {
         } else {
             panic!("no stream mediator found, system not setup for distributed streams")
         }
-    }
-
-    pub async fn unsubscribe<A: Actor, T: Topic>(
-        ctx: &mut ActorContext,
-    ) -> Result<(), SubscribeErr> {
-        unimplemented!()
     }
 
     pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &mut ActorSystem) {
