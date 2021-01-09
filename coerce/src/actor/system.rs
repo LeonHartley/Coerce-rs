@@ -94,11 +94,6 @@ impl ActorSystem {
             id.clone(),
             actor_type,
             Some(tx),
-            if actor_type.is_tracked() {
-                Some(self.scheduler.clone())
-            } else {
-                None
-            },
             Some(self.clone()),
         );
 

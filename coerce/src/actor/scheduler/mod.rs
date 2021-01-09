@@ -27,7 +27,6 @@ impl ActorScheduler {
             ActorType::Anonymous,
             None,
             None,
-            None,
         )
     }
 }
@@ -170,7 +169,6 @@ pub fn start_actor<A: Actor>(
     id: ActorId,
     actor_type: ActorType,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-    scheduler: Option<LocalActorRef<ActorScheduler>>,
     system: Option<ActorSystem>,
 ) -> LocalActorRef<A>
 where
