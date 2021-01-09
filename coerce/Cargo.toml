@@ -2,7 +2,7 @@
 name = "coerce"
 description = "Async actor runtime and distributed systems framework"
 license = "Apache-2.0"
-version = "0.3.1-prerelease2"
+version = "0.3.1-prerelease3"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2018"
 readme = "README.md"
