@@ -101,3 +101,16 @@ message StreamPublish {
 
   bytes message = 3;
 }
+
+enum SystemEvent {
+  ClusterNewNode = 0;
+  ClusterNodeRemoved = 1;
+}
+
+message NewNodeEvent {
+    string node_id = 1;
+}
+
+message NodeRemovedEvent {
+    string node_id = 1;
+}

@@ -5,7 +5,7 @@ use coerce::actor::message::{Handler, Message};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{new_actor, Actor};
 use coerce::remote::net::StreamMessage;
-use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Topic, Subscription};
+use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;
 use tokio::sync::oneshot::{channel, Sender};
 use tokio::time::Duration;
@@ -44,9 +44,11 @@ pub struct TestStreamConsumer {
 #[async_trait]
 impl Actor for TestStreamConsumer {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        self.subscription = Some(PubSub::subscribe::<Self, StatusStream>(StatusStream, ctx)
-            .await
-            .unwrap());
+        self.subscription = Some(
+            PubSub::subscribe::<Self, StatusStream>(StatusStream, ctx)
+                .await
+                .unwrap(),
+        );
     }
 }
 

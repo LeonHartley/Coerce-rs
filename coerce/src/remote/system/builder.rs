@@ -10,6 +10,7 @@ use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::remote::storage::state::ActorStore;
 use crate::remote::stream::mediator::StreamMediator;
+use crate::remote::stream::system::SystemTopic;
 use crate::remote::system::RemoteActorSystem;
 use futures::TryFutureExt;
 use serde::de::DeserializeOwned;
@@ -28,11 +29,14 @@ pub struct RemoteActorSystemBuilder {
 
 impl RemoteActorSystemBuilder {
     pub fn new() -> RemoteActorSystemBuilder {
+        let mut mediator = StreamMediator::new();
+        mediator.add_topic::<SystemTopic>();
+
         RemoteActorSystemBuilder {
             node_id: None,
             inner: None,
             handlers: vec![],
-            mediator: None,
+            mediator: Some(mediator),
             store: None,
         }
     }
@@ -77,7 +81,7 @@ impl RemoteActorSystemBuilder {
         let mut mediator = if let Some(mediator) = &mut self.mediator {
             mediator
         } else {
-            let mediator = StreamMediator::new();
+            let mut mediator = StreamMediator::new();
             self.mediator = Some(mediator);
             self.mediator.as_mut().unwrap()
         };

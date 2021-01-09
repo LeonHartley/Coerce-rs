@@ -5,6 +5,7 @@ use crate::actor::system::ActorSystem;
 use crate::remote::RemoteActorRef;
 use log::error;
 
+use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
 use uuid::Uuid;
 
@@ -21,6 +22,24 @@ pub trait Actor: 'static + Send + Sync {
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
+}
+
+#[async_trait]
+pub trait IntoActor: Actor + Sized {
+    async fn into_actor(
+        self,
+        id: Option<ActorId>,
+        sys: &mut ActorSystem,
+    ) -> Result<LocalActorRef<Self>, ActorRefErr>;
+}
+
+#[async_trait]
+pub trait IntoChild: Actor + Sized {
+    async fn into_child(
+        self,
+        id: Option<ActorId>,
+        ctx: &mut ActorContext,
+    ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 }
 
 pub enum ActorCreationErr {
@@ -122,6 +141,21 @@ where
         match &self.inner_ref {
             &Ref::Remote(_) => true,
             _ => false,
+        }
+    }
+}
+
+#[async_trait]
+impl<A: Actor> IntoActor for A {
+    async fn into_actor(
+        self,
+        id: Option<ActorId>,
+        sys: &mut ActorSystem,
+    ) -> Result<LocalActorRef<Self>, ActorRefErr> {
+        if let Some(id) = id {
+            sys.new_actor(id, self, Tracked).await
+        } else {
+            sys.new_anon_actor(self).await
         }
     }
 }

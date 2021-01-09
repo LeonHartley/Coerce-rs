@@ -137,7 +137,7 @@ dependencies = [
 
 [[package]]
 name = "coerce"
-version = "0.3.0-prerelease"
+version = "0.3.1-prerelease2"
 dependencies = [
  "async-trait",
  "bincode",

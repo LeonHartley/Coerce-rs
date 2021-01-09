@@ -53,6 +53,10 @@ impl ActorSystem {
             .expect("this ActorSystem is not setup for remoting")
     }
 
+    pub fn is_remote(&self) -> bool {
+        self.remote.is_some()
+    }
+
     pub async fn new_tracked_actor<A: Actor>(
         &mut self,
         actor: A,

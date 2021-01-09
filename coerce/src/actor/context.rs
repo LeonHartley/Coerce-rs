@@ -58,6 +58,10 @@ impl ActorContext {
         }
     }
 
+    pub fn set_system(&mut self, system: ActorSystem) {
+        self.core = Some(system);
+    }
+
     pub fn set_status(&mut self, state: ActorStatus) {
         self.status = state
     }

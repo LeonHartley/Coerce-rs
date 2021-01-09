@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
 use crate::remote::net::StreamMessage;
-use crate::remote::stream::mediator::{Publish, Subscribe, SubscribeErr};
+use crate::remote::stream::mediator::{Publish, PublishRaw, Subscribe, SubscribeErr};
 use futures::future::{BoxFuture, LocalBoxFuture};
 use futures::task::{Context, Poll};
 use futures::{Future, FutureExt, Stream};
@@ -180,6 +180,30 @@ impl PubSub {
         if let Some(mut mediator) = system.mediator_ref {
             mediator
                 .send(Publish::<T> { topic, message })
+                .await
+                .unwrap();
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
+    }
+
+    pub async fn publish_locally<T: Topic>(
+        topic: T,
+        message: T::Message,
+        system: &mut ActorSystem,
+    ) {
+        let system = system.remote_owned();
+        if let Some(mut mediator) = system.mediator_ref {
+            let key = topic.key();
+            let topic = T::topic_name().to_string();
+            let message = message.write_to_bytes().unwrap();
+
+            mediator
+                .send(PublishRaw {
+                    topic,
+                    key,
+                    message,
+                })
                 .await
                 .unwrap();
         } else {

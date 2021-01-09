@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::Handler;
+use crate::actor::message::{Handler, Message};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes, SetRemote,
@@ -18,12 +18,25 @@ use crate::remote::net::proto::protocol::{ActorAddress, FindActor};
 use protobuf::parse_from_bytes;
 use std::str::FromStr;
 
+use crate::actor::ActorId;
+use crate::remote::stream::pubsub::{PubSub, StreamEvent};
+use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
+use std::alloc::System;
+use std::borrow::{Borrow, BorrowMut};
 use uuid::Uuid;
 
 #[async_trait]
 impl Handler<SetRemote> for RemoteRegistry {
-    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
-        self.system = Some(message.0);
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+        let mut sys = message.0;
+        ctx.set_system(sys.inner().clone());
+        self.system = Some(sys);
+
+        let subscription = PubSub::subscribe::<Self, SystemTopic>(SystemTopic, ctx).await;
+        if let Ok(subscription) = subscription {
+            trace!(target: "RemoteRegistry", "subscribed to system event");
+            self.system_event_subscription = Some(subscription);
+        }
     }
 }
 
@@ -66,7 +79,7 @@ where
 
 #[async_trait]
 impl Handler<RegisterNodes> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterNodes, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: RegisterNodes, ctx: &mut ActorContext) {
         let mut remote_ctx = self.system.as_ref().unwrap().clone();
         let nodes = message.0;
 
@@ -76,7 +89,7 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             .map(|node| node.clone())
             .collect();
 
-        trace!("registering new nodes {:?}", &unregistered_nodes);
+        trace!(target: "RemoteRegistry", "registering new nodes {:?}", &unregistered_nodes);
         let current_nodes = self.nodes.get_all();
 
         let clients = connect_all(unregistered_nodes, current_nodes, &remote_ctx).await;
@@ -87,6 +100,18 @@ impl Handler<RegisterNodes> for RemoteRegistry {
         }
 
         for node in nodes {
+            let sys = remote_ctx.clone();
+            let node_id = node.id;
+            tokio::spawn(async move {
+                let mut sys = sys;
+                PubSub::publish_locally(
+                    SystemTopic,
+                    SystemEvent::Cluster(ClusterEvent::NodeAdded(node_id)),
+                    sys.inner(),
+                )
+                .await;
+            });
+
             self.nodes.add(node)
         }
     }
@@ -94,7 +119,16 @@ impl Handler<RegisterNodes> for RemoteRegistry {
 
 #[async_trait]
 impl Handler<RegisterNode> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterNode, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: RegisterNode, ctx: &mut ActorContext) {
+        if ctx.system().is_remote() {
+            PubSub::publish_locally(
+                SystemTopic,
+                SystemEvent::Cluster(ClusterEvent::NodeAdded(message.0.id)),
+                ctx.system_mut(),
+            )
+            .await;
+        }
+
         self.nodes.add(message.0);
     }
 }
@@ -123,13 +157,13 @@ impl Handler<GetActorNode> for RemoteRegistry {
 
         let assigned_registry_node = assigned_registry_node.map_or_else(
             || {
-                trace!("no nodes configured, assigning locally");
+                trace!(target: "RemoteRegistry", "no nodes configured, assigning locally");
                 current_system
             },
             |n| n,
         );
 
-        trace!("{:?}", &self.nodes.get_all());
+        trace!(target: "RemoteRegistry", "{:?}", &self.nodes.get_all());
 
         if &assigned_registry_node == &current_system {
             trace!(target: "RemoteRegistry::GetActorNode", "searching locally, {}", current_system);
@@ -193,7 +227,7 @@ impl Handler<RegisterActor> for RemoteRegistry {
 
         match message.node_id {
             Some(node_id) => {
-                trace!("registering actor locally {}", node_id);
+                trace!(target: "RemoteRegistry", "registering actor locally {}", node_id);
                 self.actors.insert(message.actor_id, node_id);
             }
 
@@ -217,6 +251,40 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         system.send_message(assigned_registry_node, event).await;
                     }
                 }
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
+    async fn handle(&mut self, event: StreamEvent<SystemTopic>, ctx: &mut ActorContext) {
+        match event {
+            StreamEvent::Receive(msg) => match msg.as_ref() {
+                SystemEvent::Cluster(_) => {
+                    trace!(target: "RemoteRegistry", "cluster event");
+                    let system = self.system.as_ref().unwrap().clone();
+                    let mut registry_ref = ctx.actor_ref::<Self>();
+
+                    tokio::spawn(async move {
+                        let mut sys = system;
+                        let actor_ids = sys
+                            .inner()
+                            .scheduler_mut()
+                            .exec::<_, Vec<ActorId>>(|s| {
+                                s.actors.keys().map(|k| k.clone()).collect()
+                            })
+                            .await
+                            .expect("unable to get active actor ids from scheduler");
+
+                        for actor_id in actor_ids {
+                            registry_ref.notify(RegisterActor::new(actor_id, None));
+                        }
+                    });
+                }
+            },
+            StreamEvent::Err => {
+                warn!(target: "RemoteRegistry", "received stream err");
             }
         }
     }

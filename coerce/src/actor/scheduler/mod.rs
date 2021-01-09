@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 pub mod timer;
 
 pub struct ActorScheduler {
-    actors: HashMap<ActorId, BoxedActorRef>,
+    pub(crate) actors: HashMap<ActorId, BoxedActorRef>,
     remote: Option<RemoteActorSystem>,
 }
 

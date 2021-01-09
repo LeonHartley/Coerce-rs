@@ -2606,6 +2606,324 @@ impl ::protobuf::reflect::ProtobufValue for StreamPublish {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct NewNodeEvent {
+    // message fields
+    pub node_id: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a NewNodeEvent {
+    fn default() -> &'a NewNodeEvent {
+        <NewNodeEvent as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl NewNodeEvent {
+    pub fn new() -> NewNodeEvent {
+        ::std::default::Default::default()
+    }
+
+    // string node_id = 1;
+
+
+    pub fn get_node_id(&self) -> &str {
+        &self.node_id
+    }
+    pub fn clear_node_id(&mut self) {
+        self.node_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_node_id(&mut self, v: ::std::string::String) {
+        self.node_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_node_id(&mut self) -> &mut ::std::string::String {
+        &mut self.node_id
+    }
+
+    // Take field
+    pub fn take_node_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.node_id, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for NewNodeEvent {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_id)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.node_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.node_id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.node_id.is_empty() {
+            os.write_string(1, &self.node_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> NewNodeEvent {
+        NewNodeEvent::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "node_id",
+                |m: &NewNodeEvent| { &m.node_id },
+                |m: &mut NewNodeEvent| { &mut m.node_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<NewNodeEvent>(
+                "NewNodeEvent",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static NewNodeEvent {
+        static instance: ::protobuf::rt::LazyV2<NewNodeEvent> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(NewNodeEvent::new)
+    }
+}
+
+impl ::protobuf::Clear for NewNodeEvent {
+    fn clear(&mut self) {
+        self.node_id.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for NewNodeEvent {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for NewNodeEvent {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct NodeRemovedEvent {
+    // message fields
+    pub node_id: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a NodeRemovedEvent {
+    fn default() -> &'a NodeRemovedEvent {
+        <NodeRemovedEvent as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl NodeRemovedEvent {
+    pub fn new() -> NodeRemovedEvent {
+        ::std::default::Default::default()
+    }
+
+    // string node_id = 1;
+
+
+    pub fn get_node_id(&self) -> &str {
+        &self.node_id
+    }
+    pub fn clear_node_id(&mut self) {
+        self.node_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_node_id(&mut self, v: ::std::string::String) {
+        self.node_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_node_id(&mut self) -> &mut ::std::string::String {
+        &mut self.node_id
+    }
+
+    // Take field
+    pub fn take_node_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.node_id, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for NodeRemovedEvent {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_id)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.node_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.node_id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.node_id.is_empty() {
+            os.write_string(1, &self.node_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> NodeRemovedEvent {
+        NodeRemovedEvent::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "node_id",
+                |m: &NodeRemovedEvent| { &m.node_id },
+                |m: &mut NodeRemovedEvent| { &mut m.node_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<NodeRemovedEvent>(
+                "NodeRemovedEvent",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static NodeRemovedEvent {
+        static instance: ::protobuf::rt::LazyV2<NodeRemovedEvent> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(NodeRemovedEvent::new)
+    }
+}
+
+impl ::protobuf::Clear for NodeRemovedEvent {
+    fn clear(&mut self) {
+        self.node_id.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for NodeRemovedEvent {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for NodeRemovedEvent {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum Event {
     Exit = 0,
@@ -2733,6 +3051,56 @@ impl ::protobuf::reflect::ProtobufValue for ClientErrorCode {
     }
 }
 
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum SystemEvent {
+    ClusterNewNode = 0,
+    ClusterNodeRemoved = 1,
+}
+
+impl ::protobuf::ProtobufEnum for SystemEvent {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<SystemEvent> {
+        match value {
+            0 => ::std::option::Option::Some(SystemEvent::ClusterNewNode),
+            1 => ::std::option::Option::Some(SystemEvent::ClusterNodeRemoved),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [SystemEvent] = &[
+            SystemEvent::ClusterNewNode,
+            SystemEvent::ClusterNodeRemoved,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<SystemEvent>("SystemEvent", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for SystemEvent {
+}
+
+impl ::std::default::Default for SystemEvent {
+    fn default() -> Self {
+        SystemEvent::ClusterNewNode
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for SystemEvent {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0eprotocol.proto\x12\x08protocol\"?\n\nRemoteNode\x12\x19\n\x07node_\
     id\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12\x14\n\x04addr\x18\x02\x20\x01(\t\
@@ -2760,14 +3128,17 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01\
     (\x0cR\x05tokenB\0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
     \x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\
-    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0:\0*\xa2\x01\n\x05E\
-    vent\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Resul\
-    t\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
-    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
-    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
-    \x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10Ac\
-    torUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0B\0b\x06\
-    proto3\
+    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0:\0\"+\n\x0cNewNode\
+    Event\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\"/\n\x10N\
+    odeRemovedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\
+    *\xa2\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\
+    \x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\
+    \x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\
+    \r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNo\
+    tifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClientErrorC\
+    ode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\
+    \x10\x01\x1a\0*;\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\
+    \x16\n\x12ClusterNodeRemoved\x10\x01\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

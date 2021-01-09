@@ -11,7 +11,10 @@ use crate::remote::system::RemoteActorSystem;
 use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::actor::scheduler::ActorType::Tracked;
+use crate::actor::context::ActorContext;
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
+use crate::remote::stream::pubsub::{PubSub, Subscription};
+use crate::remote::stream::system::{SystemEvent, SystemTopic};
 use uuid::Uuid;
 
 pub mod ext;
@@ -27,6 +30,7 @@ pub struct RemoteRegistry {
     nodes: RemoteNodeStore,
     actors: HashMap<ActorId, Uuid>,
     system: Option<RemoteActorSystem>,
+    system_event_subscription: Option<Subscription>,
 }
 
 pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
@@ -163,8 +167,9 @@ impl RemoteRegistry {
                 actors: HashMap::new(),
                 nodes: RemoteNodeStore::new(vec![]),
                 system: None,
+                system_event_subscription: None,
             },
-            Tracked,
+            Anonymous,
         )
         .await
         .expect("RemoteRegistry")

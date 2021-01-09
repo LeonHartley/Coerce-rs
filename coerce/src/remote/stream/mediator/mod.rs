@@ -79,7 +79,9 @@ impl StreamMediator {
         let subscriber_store = TopicSubscriberStore::<T>::new();
         let topic = MediatorTopic(Box::new(subscriber_store));
 
-        self.topics.insert(T::topic_name().to_string(), topic);
+        let topic_name = T::topic_name().to_string();
+        trace!("adding topic: {}", &topic_name);
+        self.topics.insert(topic_name, topic);
         self
     }
 }
@@ -157,6 +159,8 @@ impl Handler<PublishRaw> for StreamMediator {
     async fn handle(&mut self, message: PublishRaw, _ctx: &mut ActorContext) {
         if let Some(topic) = self.topics.get_mut(&message.topic) {
             topic.0.emit(&message.key, message.message).await;
+        } else {
+            trace!("no topic: {}", &message.topic)
         }
     }
 }
