@@ -38,7 +38,13 @@ where
             );
         }
 
-        Ok(system.new_anon_actor(Worker { workers }).await?)
+        Ok(system
+            .new_actor(
+                format!("{}-supervisor", name_prefix),
+                Worker { workers },
+                Anonymous,
+            )
+            .await?)
     }
 }
 
@@ -57,8 +63,8 @@ where
 
 #[async_trait]
 impl<W: Actor> IntoWorker<W> for W
-    where
-        W: 'static + Clone + Sync + Send,
+where
+    W: 'static + Clone + Sync + Send,
 {
     async fn into_worker(
         self,
