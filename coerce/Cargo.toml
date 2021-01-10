@@ -2,7 +2,7 @@
 name = "coerce"
 description = "Async actor runtime and distributed systems framework"
 license = "Apache-2.0"
-version = "0.3.1-prerelease3"
+version = "0.3.1-prerelease5"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2018"
 readme = "README.md"
@@ -27,6 +27,7 @@ byteorder = "1.3.4"
 chrono = "0.4"
 bincode = "1.3"
 protobuf = "2.18.1"
+protobuf-codegen-pure = "2.18.1"
 
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }
@@ -36,6 +37,6 @@ protobuf = "2.18.1"
 env_logger = "0.7.1"
 coerce-macros = { path = "./macros" }
 
-
-[build-dependencies]
-protobuf-codegen-pure = "2.18.1"
+[[bin]]
+name = "proto-build"
+path = "proto-build.rs"

@@ -32,7 +32,7 @@ pub async fn test_workers() {
     let mut system = ActorSystem::new();
 
     let state = MyWorker {};
-    let mut worker = Worker::new(state, 4, &mut system).await.unwrap();
+    let mut worker = Worker::new(state, 4, "worker", &mut system).await.unwrap();
 
     assert_eq!(worker.dispatch(HeavyTask).await, Ok("my_result"));
 }

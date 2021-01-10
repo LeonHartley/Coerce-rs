@@ -1,7 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
+use crate::actor::scheduler::ActorType::Anonymous;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorRefErr, LocalActorRef};
+use crate::actor::{Actor, ActorRecipe, ActorRefErr, LocalActorRef};
 use std::collections::VecDeque;
 
 pub type WorkerRef<W> = LocalActorRef<Worker<W>>;
@@ -20,15 +21,52 @@ where
     pub async fn new(
         state: W,
         count: usize,
+        name_prefix: &'static str,
         system: &mut ActorSystem,
     ) -> Result<WorkerRef<W>, ActorRefErr> {
         let mut workers = VecDeque::with_capacity(count);
 
-        for _i in 0..count {
-            workers.push_back(system.new_anon_actor(state.clone()).await?);
+        for i in 0..count {
+            workers.push_back(
+                system
+                    .new_actor(
+                        format!("{}-{}", name_prefix, i + 1),
+                        state.clone(),
+                        Anonymous,
+                    )
+                    .await?,
+            );
         }
 
         Ok(system.new_anon_actor(Worker { workers }).await?)
+    }
+}
+
+#[async_trait]
+pub trait IntoWorker<W: Actor>
+where
+    W: 'static + Clone + Sync + Send,
+{
+    async fn into_worker(
+        self,
+        count: usize,
+        name_prefix: &'static str,
+        sys: &mut ActorSystem,
+    ) -> Result<WorkerRef<W>, ActorRefErr>;
+}
+
+#[async_trait]
+impl<W: Actor> IntoWorker<W> for W
+    where
+        W: 'static + Clone + Sync + Send,
+{
+    async fn into_worker(
+        self,
+        count: usize,
+        name_prefix: &'static str,
+        sys: &mut ActorSystem,
+    ) -> Result<WorkerRef<W>, ActorRefErr> {
+        Worker::new(self, count, name_prefix, sys).await
     }
 }
 

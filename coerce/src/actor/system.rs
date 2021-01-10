@@ -89,13 +89,7 @@ impl ActorSystem {
         A: 'static + Sync + Send,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let actor_ref = start_actor(
-            actor,
-            id.clone(),
-            actor_type,
-            Some(tx),
-            Some(self.clone()),
-        );
+        let actor_ref = start_actor(actor, id.clone(), actor_type, Some(tx), Some(self.clone()));
 
         if actor_type.is_tracked() {
             let _ = self
