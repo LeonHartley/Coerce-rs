@@ -165,7 +165,6 @@ impl Handler<GetStatusRequest> for OtherActor {
 
 #[tokio::test]
 pub async fn test_actor_receiver() {
-
     let mut sys = ActorSystem::new();
 
     let actor_a = NewActor.into_actor(None, &mut sys).await.expect("NewActor");
