@@ -95,10 +95,7 @@ where
     ActorSystem::current_system().get_tracked_actor(id).await
 }
 
-pub(crate) enum Ref<A: Actor>
-where
-    A: 'static + Sync + Send,
-{
+pub(crate) enum Ref<A: Actor> {
     Local(LocalActorRef<A>),
     Remote(RemoteActorRef<A>),
 }
@@ -110,14 +107,41 @@ where
     inner_ref: Ref<A>,
 }
 
-impl<A: Actor> ActorRef<A>
+#[async_trait]
+trait MessageReceiver<M: Message>: 'static + Send + Sync {
+    async fn send(&mut self, msg: M) -> Result<M::Result, ActorRefErr>;
+}
+
+#[async_trait]
+impl<A: Actor, M: Message> MessageReceiver<M> for LocalActorRef<A>
 where
-    A: 'static + Sync + Send,
+    A: Handler<M>,
 {
+    async fn send(&mut self, msg: M) -> Result<M::Result, ActorRefErr> {
+        self.send(msg).await
+    }
+}
+
+impl<A: Actor, M: Message> From<LocalActorRef<A>> for Receiver<M>
+where
+    A: Handler<M>,
+{
+    fn from(actor_ref: LocalActorRef<A>) -> Self {
+        Self(Box::new(actor_ref))
+    }
+}
+
+pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
+
+impl<M: Message> Receiver<M> {
+    pub async fn send(&mut self, msg: M) -> Result<M::Result, ActorRefErr> {
+        self.0.send(msg).await
+    }
+}
+
+impl<A: Actor> ActorRef<A> {
     pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
-        Msg: 'static + Sync + Send,
-        Msg::Result: 'static + Sync + Send,
         A: Handler<Msg>,
     {
         match &mut self.inner_ref {
@@ -160,7 +184,7 @@ impl<A: Actor> IntoActor for A {
     }
 }
 
-impl<A: 'static + Actor + Sync + Send> From<LocalActorRef<A>> for ActorRef<A> {
+impl<A: Actor> From<LocalActorRef<A>> for ActorRef<A> {
     fn from(r: LocalActorRef<A>) -> Self {
         ActorRef {
             inner_ref: Ref::Local(r),
@@ -168,7 +192,7 @@ impl<A: 'static + Actor + Sync + Send> From<LocalActorRef<A>> for ActorRef<A> {
     }
 }
 
-impl<A: 'static + Actor + Sync + Send> From<RemoteActorRef<A>> for ActorRef<A> {
+impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
     fn from(r: RemoteActorRef<A>) -> Self {
         ActorRef {
             inner_ref: Ref::Remote(r),
@@ -183,19 +207,13 @@ pub struct BoxedActorRef {
     sender: tokio::sync::mpsc::UnboundedSender<Box<dyn Any + Sync + Send>>,
 }
 
-pub struct LocalActorRef<A: Actor>
-where
-    A: 'static + Send + Sync,
-{
+pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,
     pub system_id: Option<Uuid>,
     sender: tokio::sync::mpsc::UnboundedSender<MessageHandler<A>>,
 }
 
-impl<A: Actor> From<BoxedActorRef> for LocalActorRef<A>
-where
-    A: 'static + Send + Sync,
-{
+impl<A: Actor> From<BoxedActorRef> for LocalActorRef<A> {
     fn from(b: BoxedActorRef) -> Self {
         LocalActorRef {
             id: b.id,
@@ -205,10 +223,7 @@ where
     }
 }
 
-impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef
-where
-    A: 'static + Send + Sync,
-{
+impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef {
     fn from(r: LocalActorRef<A>) -> Self {
         BoxedActorRef {
             system_id: r.system_id,
@@ -218,10 +233,7 @@ where
     }
 }
 
-impl<A> Clone for LocalActorRef<A>
-where
-    A: Actor + Sync + Send + 'static,
-{
+impl<A: Actor> Clone for LocalActorRef<A> {
     fn clone(&self) -> Self {
         Self {
             id: self.id.clone(),
@@ -246,15 +258,10 @@ impl std::fmt::Display for ActorRefErr {
 
 impl std::error::Error for ActorRefErr {}
 
-impl<A: Actor> LocalActorRef<A>
-where
-    A: Sync + Send + 'static,
-{
+impl<A: Actor> LocalActorRef<A> {
     pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
-        Msg: 'static + Send + Sync,
         A: Handler<Msg>,
-        Msg::Result: Send + Sync,
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
@@ -274,9 +281,7 @@ where
 
     pub fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefErr>
     where
-        Msg: 'static + Send + Sync,
         A: Handler<Msg>,
-        Msg::Result: Send + Sync,
     {
         match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
             Ok(_) => Ok(()),

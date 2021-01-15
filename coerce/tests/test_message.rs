@@ -1,6 +1,9 @@
+use coerce::actor::context::{ActorContext, ActorStatus};
 use coerce::actor::message::encoding::json::RemoteMessage;
-use coerce::actor::message::{Envelope, EnvelopeType, Message, MessageWrapErr};
+use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWrapErr};
 use coerce::actor::system::ActorSystem;
+use coerce::actor::{Actor, ActorState, IntoActor, Receiver};
+use futures::{FutureExt, TryFutureExt};
 use util::*;
 
 pub mod util;
@@ -130,6 +133,63 @@ pub async fn test_actor_notify() {
 
     let counter = actor_ref.exec(|actor| actor.counter).await;
     assert_eq!(counter, Ok(25));
+}
+
+struct NewActor;
+struct OtherActor;
+
+impl Actor for NewActor {}
+impl Actor for OtherActor {}
+
+#[async_trait]
+impl Handler<GetStatusRequest> for NewActor {
+    async fn handle(
+        &mut self,
+        message: GetStatusRequest,
+        ctx: &mut ActorContext,
+    ) -> <GetStatusRequest as Message>::Result {
+        GetStatusResponse::Ok(TestActorStatus::Active)
+    }
+}
+
+#[async_trait]
+impl Handler<GetStatusRequest> for OtherActor {
+    async fn handle(
+        &mut self,
+        message: GetStatusRequest,
+        ctx: &mut ActorContext,
+    ) -> <GetStatusRequest as Message>::Result {
+        GetStatusResponse::Ok(TestActorStatus::Active)
+    }
+}
+
+#[tokio::test]
+pub async fn test_actor_receiver() {
+
+    let mut sys = ActorSystem::new();
+
+    let actor_a = NewActor.into_actor(None, &mut sys).await.expect("NewActor");
+    let actor_b = OtherActor
+        .into_actor(None, &mut sys)
+        .await
+        .expect("OtherActor");
+
+    let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
+
+    let results =
+        futures::future::join_all(receivers.iter_mut().map(|r| r.send(GetStatusRequest())))
+            .await
+            .into_iter()
+            .map(|s| s.unwrap())
+            .collect::<Vec<GetStatusResponse>>();
+
+    assert_eq!(
+        results,
+        vec![
+            GetStatusResponse::Ok(TestActorStatus::Active),
+            GetStatusResponse::Ok(TestActorStatus::Active)
+        ]
+    )
 }
 
 #[derive(Serialize, Deserialize)]

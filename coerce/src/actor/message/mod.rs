@@ -26,8 +26,8 @@ pub enum MessageUnwrapErr {
     DeserializationErr,
 }
 
-pub trait Message: Sized {
-    type Result;
+pub trait Message: 'static + Sync + Send + Sized {
+    type Result: 'static + Sync + Send;
 
     fn into_envelope(self, envelope_type: EnvelopeType) -> Result<Envelope<Self>, MessageWrapErr> {
         match envelope_type {
@@ -174,6 +174,7 @@ where
 impl<F, A, R> Message for Exec<F, A, R>
 where
     for<'r> F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
+    A: Actor,
     R: 'static + Send + Sync,
 {
     type Result = R;
