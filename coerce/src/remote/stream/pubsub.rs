@@ -7,7 +7,6 @@ use crate::remote::stream::mediator::{Publish, PublishRaw, Subscribe, SubscribeE
 use futures::future::{BoxFuture, LocalBoxFuture};
 use futures::task::{Context, Poll};
 use futures::{Future, FutureExt, Stream};
-use serde::export::PhantomData;
 use std::any::Any;
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
