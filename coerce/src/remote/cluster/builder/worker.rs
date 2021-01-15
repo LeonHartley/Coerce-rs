@@ -69,7 +69,7 @@ impl ClusterWorkerBuilder {
             self.discover_peers(&mut nodes).await;
         }
 
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
     }
 
     async fn discover_peers(&mut self, _nodes: &mut Vec<RemoteNode>) {
