@@ -48,8 +48,6 @@ impl ClusterWorkerBuilder {
     }
 
     pub async fn start(mut self) {
-        let mut nodes = vec![];
-
         self.system
             .register_node(RemoteNode::new(
                 self.system.node_id(),
