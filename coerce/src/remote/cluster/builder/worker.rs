@@ -65,14 +65,10 @@ impl ClusterWorkerBuilder {
             .await
             .expect("failed to start server");
 
-        if self.seed_addr.is_some() {
-            self.discover_peers(&mut nodes).await;
-        }
-
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        self.discover_peers().await;
     }
 
-    async fn discover_peers(&mut self, _nodes: &mut Vec<RemoteNode>) {
+    async fn discover_peers(&mut self) {
         if let Some(seed_addr) = self.seed_addr.take() {
             let client_ctx = self.system.clone();
             let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None)
@@ -84,7 +80,7 @@ impl ClusterWorkerBuilder {
                 .await;
 
             self.system.register_client(client.node_id, client).await;
-
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }
 }
