@@ -1,4 +1,4 @@
-# Coerce [![crates.io](http://meritbadge.herokuapp.com/coerce)](https://crates.io/crates/coerce) ![coerce-rs](https://action-badges.now.sh/leonhartley/coerce-rs)
+# Coerce [![crates.io](http://meritbadge.herokuapp.com/coerce)](https://crates.io/crates/coerce) ![coerce-rs tests](https://github.com/LeonHartley/Coerce-rs/workflows/coerce-rs%20tests/badge.svg)
 Coerce is an asynchronous (async/await) Actor runtime for Rust. It allows for extremely simple yet powerful actor-based multithreaded application development.
 
 ### async/await Actors
