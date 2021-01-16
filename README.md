@@ -19,7 +19,7 @@ when all references are dropped. Tracked actors (using global fn `new_actor`) mu
 pub struct EchoActor {}
 
 #[async_trait]
-impl Actor for EchoActor {}
+impl Actor for EchoActor;
 
 pub struct EchoMessage(String);
 
@@ -39,7 +39,9 @@ impl Handler<EchoMessage> for EchoActor {
 }
 
 pub async fn run() {
-    let mut actor = new_actor(EchoActor {}).await.unwrap();
+    let mut sys = ActorSystem::new();
+    
+    let mut actor = EchoActor.into_actor(None, &mut sys).await.unwrap();
 
     let hello_world = "hello, world".to_string();
     let result = actor.send(EchoMessage(hello_world.clone())).await;
@@ -73,7 +75,9 @@ impl Handler<PrintTimer> for EchoActor {
 }
 
 pub async fn run() {
-    let mut actor = new_actor(EchoActor {}).await.unwrap();
+    let mut sys = ActorSystem::new();
+    let mut actor = EchoActor.into_actor(None, &mut sys).await.unwrap();
+
     let hello_world = "hello world!".to_string();
 
     // print "hello world!" every 5 seconds
