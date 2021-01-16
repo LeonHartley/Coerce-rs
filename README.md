@@ -19,7 +19,7 @@ when all references are dropped. Tracked actors (using global fn `new_actor`) mu
 pub struct EchoActor;
 
 #[async_trait]
-impl Actor for EchoActor;
+impl Actor for EchoActor {}
 
 pub struct EchoMessage(String);
 
