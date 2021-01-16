@@ -16,7 +16,7 @@ when all references are dropped. Tracked actors (using global fn `new_actor`) mu
 
 ### Example
 ```rust
-pub struct EchoActor {}
+pub struct EchoActor;
 
 #[async_trait]
 impl Actor for EchoActor;
@@ -52,7 +52,7 @@ pub async fn run() {
 
 ### Timer Example
 ```rust
-pub struct EchoActor {}
+pub struct EchoActor;
 
 #[async_trait]
 impl Actor for EchoActor {}
