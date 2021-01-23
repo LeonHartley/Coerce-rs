@@ -1,11 +1,9 @@
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::{receive_loop, StreamMessage, StreamReceiver};
 use crate::remote::system::RemoteActorSystem;
-
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
-
 use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
 use std::str::FromStr;
 use tokio::io::WriteHalf;
@@ -16,12 +14,26 @@ use uuid::Uuid;
 
 pub struct RemoteClient {
     pub node_id: Uuid,
+    pub node_tag: String,
     write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
     stop: Option<oneshot::Sender<bool>>,
 }
 
+pub struct HandshakeAcknowledge {
+    node_id: Uuid,
+    node_tag: String,
+}
+
 pub struct ClientMessageReceiver {
-    handshake_tx: Option<oneshot::Sender<Uuid>>,
+    handshake_tx: Option<oneshot::Sender<HandshakeAcknowledge>>,
+}
+
+impl ClientMessageReceiver {
+    pub fn new(handshake_tx: oneshot::Sender<HandshakeAcknowledge>) -> ClientMessageReceiver {
+        Self {
+            handshake_tx: Some(handshake_tx),
+        }
+    }
 }
 
 #[async_trait]
@@ -47,7 +59,13 @@ impl StreamReceiver for ClientMessageReceiver {
                 ctx.notify_register_nodes(nodes);
 
                 if let Some(handshake_tx) = self.handshake_tx.take() {
-                    if !handshake_tx.send(Uuid::from_str(&node_id).unwrap()).is_ok() {
+                    if !handshake_tx
+                        .send(HandshakeAcknowledge {
+                            node_id: Uuid::from_str(&node_id).unwrap(),
+                            node_tag: msg.node_tag,
+                        })
+                        .is_ok()
+                    {
                         warn!(target: "RemoteClient", "error sending handshake_tx");
                     }
                 }
@@ -103,7 +121,8 @@ impl RemoteClient {
 
         let (stop_tx, stop_rx) = oneshot::channel();
         let (handshake_tx, handshake_rx) = oneshot::channel();
-        let node_id = system.node_id();
+        let node_id = system.node_id().to_string();
+        let node_tag = system.node_tag().to_string();
 
         trace!("requesting nodes");
 
@@ -118,15 +137,14 @@ impl RemoteClient {
             system,
             read,
             stop_rx,
-            ClientMessageReceiver {
-                handshake_tx: Some(handshake_tx),
-            },
+            ClientMessageReceiver::new(handshake_tx),
         ));
 
         trace!("writing handshake");
 
         let mut msg = SessionHandshake {
-            node_id: node_id.to_string(),
+            node_id,
+            node_tag,
             token: vec![],
             ..SessionHandshake::default()
         };
@@ -143,13 +161,16 @@ impl RemoteClient {
             .await
             .expect("write handshake");
 
-        trace!("waiting for id");
-        let node_id = handshake_rx.await.expect("handshake node_id");
+        trace!("waiting for handshake ack");
+        let handshake_ack = handshake_rx.await.expect("handshake ack");
+        let node_id = handshake_ack.node_id;
+        let node_tag = handshake_ack.node_tag;
 
-        trace!("recv id");
+        trace!("handshake ack (node_id={}, node_tag={})", node_id, node_tag);
         Ok(RemoteClient {
             write,
             node_id,
+            node_tag,
             stop: Some(stop_tx),
         })
     }

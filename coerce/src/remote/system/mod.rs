@@ -62,11 +62,19 @@ pub enum RemoteActorErr {
 }
 
 impl RemoteActorSystem {
-    pub async fn create_actor<F: Factory>(
+    pub fn node_tag(&self) -> &str {
+        self.types.node_tag()
+    }
+
+    pub async fn deploy_actor<F: Factory>(
         &mut self,
-        _recipe: F::Recipe,
-        _id: Option<ActorId>,
+        id: Option<ActorId>,
+        recipe: F::Recipe,
+        node: Option<Uuid>,
     ) -> Option<ActorRef<F::Actor>> {
+        let id = id.map_or_else(new_actor_id, |id| id);
+        let node = node.map_or_else(|| self.node_id, |n| n);
+
         None
     }
 

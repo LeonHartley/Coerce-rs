@@ -26,6 +26,8 @@ message ClientHandshake {
   string node_id = 1;
 
   repeated RemoteNode nodes = 2;
+
+  string node_tag = 3;
 }
 
 message ClientResult {
@@ -92,6 +94,8 @@ message SessionHandshake {
   repeated RemoteNode nodes = 2;
 
   bytes token = 3;
+
+  string node_tag = 4;
 }
 
 message StreamPublish {

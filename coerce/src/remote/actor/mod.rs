@@ -17,7 +17,6 @@ use crate::remote::stream::pubsub::{PubSub, Subscription};
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
 use uuid::Uuid;
 
-pub mod ext;
 pub mod handler;
 pub mod heartbeat;
 pub mod message;
@@ -38,6 +37,7 @@ pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
 pub(crate) type BoxedMessageHandler = Box<dyn ActorMessageHandler + Send + Sync>;
 
 pub struct RemoteHandlerTypes {
+    node_tag: String,
     actor_types: HashMap<TypeId, String>,
     handler_types: HashMap<TypeId, String>,
     message_handlers: HashMap<String, BoxedMessageHandler>,
@@ -46,17 +46,23 @@ pub struct RemoteHandlerTypes {
 
 impl RemoteHandlerTypes {
     pub fn new(
+        node_tag: String,
         actor_types: HashMap<TypeId, String>,
         handler_types: HashMap<TypeId, String>,
         message_handlers: HashMap<String, BoxedMessageHandler>,
         actor_handlers: HashMap<String, BoxedActorHandler>,
     ) -> RemoteHandlerTypes {
         RemoteHandlerTypes {
+            node_tag,
             actor_types,
             handler_types,
             message_handlers,
             actor_handlers,
         }
+    }
+
+    pub fn node_tag(&self) -> &str {
+        &self.node_tag
     }
 
     pub fn handler_name<A: Actor, M: Message>(

@@ -21,6 +21,7 @@ use uuid::Uuid;
 
 pub struct RemoteActorSystemBuilder {
     node_id: Option<Uuid>,
+    node_tag: Option<String>,
     inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
     store: Option<Box<dyn ActorStore + Sync + Send>>,
@@ -34,11 +35,18 @@ impl RemoteActorSystemBuilder {
 
         RemoteActorSystemBuilder {
             node_id: None,
+            node_tag: None,
             inner: None,
             handlers: vec![],
             mediator: Some(mediator),
             store: None,
         }
+    }
+
+    pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
+        self.node_tag = Some(tag.into());
+
+        self
     }
 
     pub fn with_actors<F>(mut self, f: F) -> Self
@@ -102,7 +110,7 @@ impl RemoteActorSystemBuilder {
             h(&mut handlers);
         });
 
-        let types = handlers.build();
+        let types = handlers.build(self.node_tag);
         let node_id = *inner.system_id();
         let handler_ref = RemoteHandler::new(&mut inner).await;
         let registry_ref = RemoteRegistry::new(&mut inner).await;
@@ -195,12 +203,12 @@ impl RemoteActorHandlerBuilder {
             self.system.clone(),
             factory,
         ));
-        self.actors.insert(String::from(identifier), handler);
 
+        self.actors.insert(String::from(identifier), handler);
         self
     }
 
-    pub fn build(self) -> Arc<RemoteHandlerTypes> {
+    pub fn build(self, tag: Option<String>) -> Arc<RemoteHandlerTypes> {
         let mut handler_types = HashMap::new();
         let mut actor_types = HashMap::new();
 
@@ -212,7 +220,9 @@ impl RemoteActorHandlerBuilder {
             let _ = actor_types.insert(v.id(), k.clone());
         }
 
+        let node_tag = tag.map_or_else(|| format!("cluster-node-{}", Uuid::new_v4()), |t| t);
         Arc::new(RemoteHandlerTypes::new(
+            node_tag,
             actor_types,
             handler_types,
             self.handlers,

@@ -214,6 +214,7 @@ async fn session_handshake(
     let nodes = ctx.get_nodes().await;
     let mut response = ClientHandshake {
         node_id: ctx.node_id().to_string(),
+        node_tag: ctx.node_tag().to_string(),
         ..ClientHandshake::default()
     };
 

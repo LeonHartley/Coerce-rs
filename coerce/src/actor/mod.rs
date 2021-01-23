@@ -14,6 +14,7 @@ pub mod lifecycle;
 pub mod message;
 pub mod scheduler;
 pub mod system;
+pub mod worker;
 
 pub type ActorId = String;
 

@@ -12,4 +12,3 @@ extern crate log;
 
 pub mod actor;
 pub mod remote;
-pub mod worker;

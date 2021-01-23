@@ -85,6 +85,7 @@ pub async fn test_remote_cluster_worker_builder() {
     let mut system = ActorSystem::new();
     let _actor = system.new_tracked_actor(TestActor::new()).await.unwrap();
     let remote = RemoteActorSystem::builder()
+        .with_tag("remote-1")
         .with_actor_system(system)
         .with_handlers(build_handlers)
         .build()
@@ -93,6 +94,7 @@ pub async fn test_remote_cluster_worker_builder() {
     let mut remote_c = remote.clone();
 
     let remote_2 = RemoteActorSystem::builder()
+        .with_tag("remote-2")
         .with_actor_system(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
@@ -101,6 +103,7 @@ pub async fn test_remote_cluster_worker_builder() {
     let mut remote_2_c = remote_2.clone();
 
     let remote_3 = RemoteActorSystem::builder()
+        .with_tag("remote-3")
         .with_actor_system(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()

@@ -229,6 +229,7 @@ pub struct ClientHandshake {
     // message fields
     pub node_id: ::std::string::String,
     pub nodes: ::protobuf::RepeatedField<RemoteNode>,
+    pub node_tag: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -295,6 +296,32 @@ impl ClientHandshake {
     pub fn take_nodes(&mut self) -> ::protobuf::RepeatedField<RemoteNode> {
         ::std::mem::replace(&mut self.nodes, ::protobuf::RepeatedField::new())
     }
+
+    // string node_tag = 3;
+
+
+    pub fn get_node_tag(&self) -> &str {
+        &self.node_tag
+    }
+    pub fn clear_node_tag(&mut self) {
+        self.node_tag.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_node_tag(&mut self, v: ::std::string::String) {
+        self.node_tag = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_node_tag(&mut self) -> &mut ::std::string::String {
+        &mut self.node_tag
+    }
+
+    // Take field
+    pub fn take_node_tag(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.node_tag, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for ClientHandshake {
@@ -317,6 +344,9 @@ impl ::protobuf::Message for ClientHandshake {
                 2 => {
                     ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.nodes)?;
                 },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_tag)?;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -336,6 +366,9 @@ impl ::protobuf::Message for ClientHandshake {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         };
+        if !self.node_tag.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.node_tag);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -350,6 +383,9 @@ impl ::protobuf::Message for ClientHandshake {
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
         };
+        if !self.node_tag.is_empty() {
+            os.write_string(3, &self.node_tag)?;
+        }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -398,6 +434,11 @@ impl ::protobuf::Message for ClientHandshake {
                 |m: &ClientHandshake| { &m.nodes },
                 |m: &mut ClientHandshake| { &mut m.nodes },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "node_tag",
+                |m: &ClientHandshake| { &m.node_tag },
+                |m: &mut ClientHandshake| { &mut m.node_tag },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ClientHandshake>(
                 "ClientHandshake",
                 fields,
@@ -416,6 +457,7 @@ impl ::protobuf::Clear for ClientHandshake {
     fn clear(&mut self) {
         self.node_id.clear();
         self.nodes.clear();
+        self.node_tag.clear();
         self.unknown_fields.clear();
     }
 }
@@ -2119,6 +2161,7 @@ pub struct SessionHandshake {
     pub node_id: ::std::string::String,
     pub nodes: ::protobuf::RepeatedField<RemoteNode>,
     pub token: ::std::vec::Vec<u8>,
+    pub node_tag: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2211,6 +2254,32 @@ impl SessionHandshake {
     pub fn take_token(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.token, ::std::vec::Vec::new())
     }
+
+    // string node_tag = 4;
+
+
+    pub fn get_node_tag(&self) -> &str {
+        &self.node_tag
+    }
+    pub fn clear_node_tag(&mut self) {
+        self.node_tag.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_node_tag(&mut self, v: ::std::string::String) {
+        self.node_tag = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_node_tag(&mut self) -> &mut ::std::string::String {
+        &mut self.node_tag
+    }
+
+    // Take field
+    pub fn take_node_tag(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.node_tag, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for SessionHandshake {
@@ -2236,6 +2305,9 @@ impl ::protobuf::Message for SessionHandshake {
                 3 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.token)?;
                 },
+                4 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_tag)?;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -2258,6 +2330,9 @@ impl ::protobuf::Message for SessionHandshake {
         if !self.token.is_empty() {
             my_size += ::protobuf::rt::bytes_size(3, &self.token);
         }
+        if !self.node_tag.is_empty() {
+            my_size += ::protobuf::rt::string_size(4, &self.node_tag);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2274,6 +2349,9 @@ impl ::protobuf::Message for SessionHandshake {
         };
         if !self.token.is_empty() {
             os.write_bytes(3, &self.token)?;
+        }
+        if !self.node_tag.is_empty() {
+            os.write_string(4, &self.node_tag)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2328,6 +2406,11 @@ impl ::protobuf::Message for SessionHandshake {
                 |m: &SessionHandshake| { &m.token },
                 |m: &mut SessionHandshake| { &mut m.token },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "node_tag",
+                |m: &SessionHandshake| { &m.node_tag },
+                |m: &mut SessionHandshake| { &mut m.node_tag },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<SessionHandshake>(
                 "SessionHandshake",
                 fields,
@@ -2347,6 +2430,7 @@ impl ::protobuf::Clear for SessionHandshake {
         self.node_id.clear();
         self.nodes.clear();
         self.token.clear();
+        self.node_tag.clear();
         self.unknown_fields.clear();
     }
 }
@@ -3104,41 +3188,43 @@ impl ::protobuf::reflect::ProtobufValue for SystemEvent {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0eprotocol.proto\x12\x08protocol\"?\n\nRemoteNode\x12\x19\n\x07node_\
     id\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12\x14\n\x04addr\x18\x02\x20\x01(\t\
-    R\x04addrB\0:\0\"\\\n\x0fClientHandshake\x12\x19\n\x07node_id\x18\x01\
-    \x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\x14.prot\
-    ocol.RemoteNodeR\x05nodesB\0:\0\"K\n\x0cClientResult\x12\x1f\n\nmessage_\
-    id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01\
-    (\x0cR\x06resultB\0:\0\"_\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\x20\
-    \x01(\tR\tmessageIdB\0\x12/\n\x04code\x18\x02\x20\x01(\x0e2\x19.protocol\
-    .ClientErrorCodeR\x04codeB\0:\0\")\n\x04Ping\x12\x1f\n\nmessage_id\x18\
-    \x01\x20\x01(\tR\tmessageIdB\0:\0\")\n\x04Pong\x12\x1f\n\nmessage_id\x18\
-    \x01\x20\x01(\tR\tmessageIdB\0:\0\"\x88\x01\n\x0bCreateActor\x12\x1f\n\n\
-    message_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\
-    \x02\x20\x01(\tR\x07actorIdB\0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\
-    \tactorTypeB\0\x12\x18\n\x06recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0:\0\
-    \"K\n\tFindActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
-    \x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\0:\0\"H\n\x0cActo\
-    rAddress\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x19\
-    \n\x07node_id\x18\x02\x20\x01(\tR\x06nodeIdB\0:\0\"\x91\x01\n\x0eMessage\
-    Request\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\
-    \x0chandler_type\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08acto\
-    r_id\x18\x03\x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\
-    \x01(\x0cR\x07messageB\0:\0\"u\n\x10SessionHandshake\x12\x19\n\x07node_i\
-    d\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\
+    R\x04addrB\0:\0\"y\n\x0fClientHandshake\x12\x19\n\x07node_id\x18\x01\x20\
+    \x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\x14.protocol\
+    .RemoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\x18\x03\x20\x01(\tR\x07no\
+    deTagB\0:\0\"K\n\x0cClientResult\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\
+    \tR\tmessageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01(\x0cR\x06resultB\0\
+    :\0\"_\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\
+    B\0\x12/\n\x04code\x18\x02\x20\x01(\x0e2\x19.protocol.ClientErrorCodeR\
+    \x04codeB\0:\0\")\n\x04Ping\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tm\
+    essageIdB\0:\0\")\n\x04Pong\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tm\
+    essageIdB\0:\0\"\x88\x01\n\x0bCreateActor\x12\x1f\n\nmessage_id\x18\x01\
+    \x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07\
+    actorIdB\0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\tactorTypeB\0\x12\
+    \x18\n\x06recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0:\0\"K\n\tFindActor\
+    \x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08ac\
+    tor_id\x18\x02\x20\x01(\tR\x07actorIdB\0:\0\"H\n\x0cActorAddress\x12\x1b\
+    \n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x19\n\x07node_id\
+    \x18\x02\x20\x01(\tR\x06nodeIdB\0:\0\"\x91\x01\n\x0eMessageRequest\x12\
+    \x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0chandler_t\
+    ype\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08actor_id\x18\x03\
+    \x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\
+    \x07messageB\0:\0\"\x92\x01\n\x10SessionHandshake\x12\x19\n\x07node_id\
+    \x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\
     \x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01\
-    (\x0cR\x05tokenB\0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
-    \x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\
-    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0:\0\"+\n\x0cNewNode\
-    Event\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\"/\n\x10N\
-    odeRemovedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\
-    *\xa2\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\
-    \x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\
-    \x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\
-    \r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNo\
-    tifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClientErrorC\
-    ode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\
-    \x10\x01\x1a\0*;\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\
-    \x16\n\x12ClusterNodeRemoved\x10\x01\x1a\0B\0b\x06proto3\
+    (\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07nodeTagB\
+    \0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\x01(\tR\x05topi\
+    cB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\n\x07message\
+    \x18\x03\x20\x01(\x0cR\x07messageB\0:\0\"+\n\x0cNewNodeEvent\x12\x19\n\
+    \x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\"/\n\x10NodeRemovedEvent\
+    \x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0*\xa2\x01\n\x05\
+    Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Resu\
+    lt\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
+    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
+    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
+    \x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10Ac\
+    torUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*;\n\x0b\
+    SystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRe\
+    moved\x10\x01\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;
