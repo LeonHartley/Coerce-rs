@@ -1,7 +1,7 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
-use crate::actor::scheduler::{ActorScheduler, ActorType, DeregisterActor};
+use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
 
@@ -120,13 +120,24 @@ where
         }
 
         while let Some(mut msg) = self.receiver.recv().await {
-            trace!(
-                target:"Actor",
-                "[{}] recv {}",
-                &actor_id, msg.name()
-            );
+            {
+                let span = tracing::info_span!(
+                    "Actor::handle",
+                    actor_id = ctx.id().as_str(),
+                    actor_type_name = A::type_name(),
+                    message_type = msg.name()
+                );
 
-            msg.handle(&mut self.actor, &mut ctx).await;
+                let _enter = span.enter();
+
+                trace!(
+                    target:"Actor",
+                    "[{}] recv {}",
+                    &actor_id, msg.name()
+                );
+
+                msg.handle(&mut self.actor, &mut ctx).await;
+            }
 
             match ctx.get_status() {
                 Stopping => break,

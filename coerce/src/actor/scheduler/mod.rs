@@ -34,7 +34,7 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {}
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ActorType {
     Tracked,
     Anonymous,
@@ -174,6 +174,11 @@ pub fn start_actor<A: Actor>(
 where
     A: 'static + Send + Sync,
 {
+    let actor_id_clone = id.clone();
+    let actor_id = actor_id_clone.as_str();
+    let actor_type_name = A::type_name();
+    tracing::trace_span!("ActorScheduler::start_actor", actor_id = actor_id, actor_type_name = actor_type_name);
+
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     let system_id = system.as_ref().map(|s| *s.system_id());
@@ -188,7 +193,10 @@ where
     tokio::spawn(async move {
         ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, system)
             .run()
-            .await
+            .await;
+
+        let actor_id = actor_id_clone.as_str();
+        tracing::trace!(message = "started actor", actor_id, actor_type_name);
     });
 
     actor_ref

@@ -7,6 +7,7 @@ use log::error;
 
 use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
+use tracing::Instrument;
 use uuid::Uuid;
 
 pub mod context;
@@ -23,6 +24,10 @@ pub trait Actor: 'static + Send + Sync {
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
+
+    fn type_name() -> &'static str {
+        std::any::type_name::<Self>()
+    }
 }
 
 #[async_trait]
@@ -264,10 +269,18 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
+        let message_type = msg.name();
+        let actor_type = A::type_name();
+        let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
+        let _enter = span.enter();
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
             Ok(_) => match rx.await {
-                Ok(res) => Ok(res),
+                Ok(res) => {
+                    tracing::trace!("recv result");
+                    Ok(res)
+                }
                 Err(_e) => {
                     error!(target: "ActorRef", "error receiving result");
                     Err(ActorRefErr::ActorUnavailable)
@@ -284,6 +297,15 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
+        let message_type = msg.name();
+        let span = tracing::span!(
+            tracing::Level::TRACE,
+            "LocalActorRef::notify",
+            message_type = message_type
+        );
+
+        let _enter = span.enter();
+
         match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
             Ok(_) => Ok(()),
             Err(_e) => Err(ActorRefErr::ActorUnavailable),

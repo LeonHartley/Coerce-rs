@@ -2,7 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorRecipe, ActorRefErr, LocalActorRef};
+use crate::actor::{Actor, ActorRefErr, LocalActorRef};
 use std::collections::VecDeque;
 
 pub type WorkerRef<W> = LocalActorRef<Worker<W>>;

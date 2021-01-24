@@ -1,5 +1,5 @@
 use coerce::actor::system::ActorSystem;
-use coerce::remote::net::client::{RemoteClient, ClientType};
+use coerce::remote::net::client::{ClientType, RemoteClient};
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;

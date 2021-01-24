@@ -2,6 +2,7 @@ use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, 
 use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 use std::sync::Arc;
+use tracing::Instrument;
 use uuid::Uuid;
 
 lazy_static! {
@@ -88,6 +89,19 @@ impl ActorSystem {
     where
         A: 'static + Sync + Send,
     {
+        let actor_type_name = A::type_name();
+        let span = tracing::trace_span!(
+            "ActorSystem::new_actor",
+            actor_type = match actor_type {
+                ActorType::Anonymous => "Anonymous",
+                _ => "Tracked",
+            },
+            actor_type_name = actor_type_name,
+            actor_id = id.as_str(),
+        );
+
+        let _enter = span.enter();
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         let actor_ref = start_actor(actor, id.clone(), actor_type, Some(tx), Some(self.clone()));
 
@@ -95,7 +109,7 @@ impl ActorSystem {
             let _ = self
                 .scheduler
                 .send(RegisterActor {
-                    id,
+                    id: id.clone(),
                     actor_ref: actor_ref.clone(),
                 })
                 .await;
