@@ -207,6 +207,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce-cluster-example"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "coerce",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "serde",
+ "serde_json",
+ "tokio 1.0.1",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "coerce-macros"
 version = "0.1.0"
 dependencies = [

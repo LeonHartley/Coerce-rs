@@ -82,7 +82,6 @@ where
 
     pub async fn run(&mut self) {
         let actor_id = self.actor_ref.id.clone();
-
         let mut ctx = ActorContext::new(
             self.system.clone(),
             Starting,

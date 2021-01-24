@@ -2,6 +2,7 @@
 members = [
     "coerce",
     "coerce/macros",
+    "examples/coerce-cluster-example",
     "coerce/tools/proto-build",
 #    "providers/coerce-redis",
     "examples/coerce-chat-common",

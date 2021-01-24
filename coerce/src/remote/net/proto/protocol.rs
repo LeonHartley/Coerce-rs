@@ -230,6 +230,7 @@ pub struct ClientHandshake {
     pub node_id: ::std::string::String,
     pub nodes: ::protobuf::RepeatedField<RemoteNode>,
     pub node_tag: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -322,6 +323,32 @@ impl ClientHandshake {
     pub fn take_node_tag(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.node_tag, ::std::string::String::new())
     }
+
+    // string trace_id = 4;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for ClientHandshake {
@@ -347,6 +374,9 @@ impl ::protobuf::Message for ClientHandshake {
                 3 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_tag)?;
                 },
+                4 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -369,6 +399,9 @@ impl ::protobuf::Message for ClientHandshake {
         if !self.node_tag.is_empty() {
             my_size += ::protobuf::rt::string_size(3, &self.node_tag);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(4, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -385,6 +418,9 @@ impl ::protobuf::Message for ClientHandshake {
         };
         if !self.node_tag.is_empty() {
             os.write_string(3, &self.node_tag)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(4, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -439,6 +475,11 @@ impl ::protobuf::Message for ClientHandshake {
                 |m: &ClientHandshake| { &m.node_tag },
                 |m: &mut ClientHandshake| { &mut m.node_tag },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &ClientHandshake| { &m.trace_id },
+                |m: &mut ClientHandshake| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ClientHandshake>(
                 "ClientHandshake",
                 fields,
@@ -458,6 +499,7 @@ impl ::protobuf::Clear for ClientHandshake {
         self.node_id.clear();
         self.nodes.clear();
         self.node_tag.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -479,6 +521,7 @@ pub struct ClientResult {
     // message fields
     pub message_id: ::std::string::String,
     pub result: ::std::vec::Vec<u8>,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -546,6 +589,32 @@ impl ClientResult {
     pub fn take_result(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.result, ::std::vec::Vec::new())
     }
+
+    // string trace_id = 3;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for ClientResult {
@@ -562,6 +631,9 @@ impl ::protobuf::Message for ClientResult {
                 },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.result)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -581,6 +653,9 @@ impl ::protobuf::Message for ClientResult {
         if !self.result.is_empty() {
             my_size += ::protobuf::rt::bytes_size(2, &self.result);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -592,6 +667,9 @@ impl ::protobuf::Message for ClientResult {
         }
         if !self.result.is_empty() {
             os.write_bytes(2, &self.result)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(3, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -641,6 +719,11 @@ impl ::protobuf::Message for ClientResult {
                 |m: &ClientResult| { &m.result },
                 |m: &mut ClientResult| { &mut m.result },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &ClientResult| { &m.trace_id },
+                |m: &mut ClientResult| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ClientResult>(
                 "ClientResult",
                 fields,
@@ -659,6 +742,7 @@ impl ::protobuf::Clear for ClientResult {
     fn clear(&mut self) {
         self.message_id.clear();
         self.result.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -680,6 +764,7 @@ pub struct ClientErr {
     // message fields
     pub message_id: ::std::string::String,
     pub code: ClientErrorCode,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -736,6 +821,32 @@ impl ClientErr {
     pub fn set_code(&mut self, v: ClientErrorCode) {
         self.code = v;
     }
+
+    // string trace_id = 3;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for ClientErr {
@@ -752,6 +863,9 @@ impl ::protobuf::Message for ClientErr {
                 },
                 2 => {
                     ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.code, 2, &mut self.unknown_fields)?
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -771,6 +885,9 @@ impl ::protobuf::Message for ClientErr {
         if self.code != ClientErrorCode::ActorUnavailable {
             my_size += ::protobuf::rt::enum_size(2, self.code);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -782,6 +899,9 @@ impl ::protobuf::Message for ClientErr {
         }
         if self.code != ClientErrorCode::ActorUnavailable {
             os.write_enum(2, ::protobuf::ProtobufEnum::value(&self.code))?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(3, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -831,6 +951,11 @@ impl ::protobuf::Message for ClientErr {
                 |m: &ClientErr| { &m.code },
                 |m: &mut ClientErr| { &mut m.code },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &ClientErr| { &m.trace_id },
+                |m: &mut ClientErr| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ClientErr>(
                 "ClientErr",
                 fields,
@@ -849,6 +974,7 @@ impl ::protobuf::Clear for ClientErr {
     fn clear(&mut self) {
         self.message_id.clear();
         self.code = ClientErrorCode::ActorUnavailable;
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -869,6 +995,7 @@ impl ::protobuf::reflect::ProtobufValue for ClientErr {
 pub struct Ping {
     // message fields
     pub message_id: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -910,6 +1037,32 @@ impl Ping {
     pub fn take_message_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.message_id, ::std::string::String::new())
     }
+
+    // string trace_id = 2;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for Ping {
@@ -923,6 +1076,9 @@ impl ::protobuf::Message for Ping {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.message_id)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -939,6 +1095,9 @@ impl ::protobuf::Message for Ping {
         if !self.message_id.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.message_id);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -947,6 +1106,9 @@ impl ::protobuf::Message for Ping {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if !self.message_id.is_empty() {
             os.write_string(1, &self.message_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(2, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -991,6 +1153,11 @@ impl ::protobuf::Message for Ping {
                 |m: &Ping| { &m.message_id },
                 |m: &mut Ping| { &mut m.message_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &Ping| { &m.trace_id },
+                |m: &mut Ping| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<Ping>(
                 "Ping",
                 fields,
@@ -1008,6 +1175,7 @@ impl ::protobuf::Message for Ping {
 impl ::protobuf::Clear for Ping {
     fn clear(&mut self) {
         self.message_id.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -1028,6 +1196,7 @@ impl ::protobuf::reflect::ProtobufValue for Ping {
 pub struct Pong {
     // message fields
     pub message_id: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -1069,6 +1238,32 @@ impl Pong {
     pub fn take_message_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.message_id, ::std::string::String::new())
     }
+
+    // string trace_id = 2;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for Pong {
@@ -1082,6 +1277,9 @@ impl ::protobuf::Message for Pong {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.message_id)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -1098,6 +1296,9 @@ impl ::protobuf::Message for Pong {
         if !self.message_id.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.message_id);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -1106,6 +1307,9 @@ impl ::protobuf::Message for Pong {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if !self.message_id.is_empty() {
             os.write_string(1, &self.message_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(2, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1150,6 +1354,11 @@ impl ::protobuf::Message for Pong {
                 |m: &Pong| { &m.message_id },
                 |m: &mut Pong| { &mut m.message_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &Pong| { &m.trace_id },
+                |m: &mut Pong| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<Pong>(
                 "Pong",
                 fields,
@@ -1167,6 +1376,7 @@ impl ::protobuf::Message for Pong {
 impl ::protobuf::Clear for Pong {
     fn clear(&mut self) {
         self.message_id.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -1190,6 +1400,7 @@ pub struct CreateActor {
     pub actor_id: ::std::string::String,
     pub actor_type: ::std::string::String,
     pub recipe: ::std::vec::Vec<u8>,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -1309,6 +1520,32 @@ impl CreateActor {
     pub fn take_recipe(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.recipe, ::std::vec::Vec::new())
     }
+
+    // string trace_id = 5;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for CreateActor {
@@ -1331,6 +1568,9 @@ impl ::protobuf::Message for CreateActor {
                 },
                 4 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.recipe)?;
+                },
+                5 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -1356,6 +1596,9 @@ impl ::protobuf::Message for CreateActor {
         if !self.recipe.is_empty() {
             my_size += ::protobuf::rt::bytes_size(4, &self.recipe);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(5, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -1373,6 +1616,9 @@ impl ::protobuf::Message for CreateActor {
         }
         if !self.recipe.is_empty() {
             os.write_bytes(4, &self.recipe)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(5, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1432,6 +1678,11 @@ impl ::protobuf::Message for CreateActor {
                 |m: &CreateActor| { &m.recipe },
                 |m: &mut CreateActor| { &mut m.recipe },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &CreateActor| { &m.trace_id },
+                |m: &mut CreateActor| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<CreateActor>(
                 "CreateActor",
                 fields,
@@ -1452,6 +1703,7 @@ impl ::protobuf::Clear for CreateActor {
         self.actor_id.clear();
         self.actor_type.clear();
         self.recipe.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -1473,6 +1725,7 @@ pub struct FindActor {
     // message fields
     pub message_id: ::std::string::String,
     pub actor_id: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -1540,6 +1793,32 @@ impl FindActor {
     pub fn take_actor_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.actor_id, ::std::string::String::new())
     }
+
+    // string trace_id = 3;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for FindActor {
@@ -1556,6 +1835,9 @@ impl ::protobuf::Message for FindActor {
                 },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_id)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -1575,6 +1857,9 @@ impl ::protobuf::Message for FindActor {
         if !self.actor_id.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.actor_id);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -1586,6 +1871,9 @@ impl ::protobuf::Message for FindActor {
         }
         if !self.actor_id.is_empty() {
             os.write_string(2, &self.actor_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(3, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1635,6 +1923,11 @@ impl ::protobuf::Message for FindActor {
                 |m: &FindActor| { &m.actor_id },
                 |m: &mut FindActor| { &mut m.actor_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &FindActor| { &m.trace_id },
+                |m: &mut FindActor| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<FindActor>(
                 "FindActor",
                 fields,
@@ -1653,6 +1946,7 @@ impl ::protobuf::Clear for FindActor {
     fn clear(&mut self) {
         self.message_id.clear();
         self.actor_id.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -1674,6 +1968,7 @@ pub struct ActorAddress {
     // message fields
     pub actor_id: ::std::string::String,
     pub node_id: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -1741,6 +2036,32 @@ impl ActorAddress {
     pub fn take_node_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.node_id, ::std::string::String::new())
     }
+
+    // string trace_id = 3;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for ActorAddress {
@@ -1757,6 +2078,9 @@ impl ::protobuf::Message for ActorAddress {
                 },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_id)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -1776,6 +2100,9 @@ impl ::protobuf::Message for ActorAddress {
         if !self.node_id.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.node_id);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -1787,6 +2114,9 @@ impl ::protobuf::Message for ActorAddress {
         }
         if !self.node_id.is_empty() {
             os.write_string(2, &self.node_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(3, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1836,6 +2166,11 @@ impl ::protobuf::Message for ActorAddress {
                 |m: &ActorAddress| { &m.node_id },
                 |m: &mut ActorAddress| { &mut m.node_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &ActorAddress| { &m.trace_id },
+                |m: &mut ActorAddress| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ActorAddress>(
                 "ActorAddress",
                 fields,
@@ -1854,6 +2189,7 @@ impl ::protobuf::Clear for ActorAddress {
     fn clear(&mut self) {
         self.actor_id.clear();
         self.node_id.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -1877,6 +2213,7 @@ pub struct MessageRequest {
     pub handler_type: ::std::string::String,
     pub actor_id: ::std::string::String,
     pub message: ::std::vec::Vec<u8>,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -1996,6 +2333,32 @@ impl MessageRequest {
     pub fn take_message(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.message, ::std::vec::Vec::new())
     }
+
+    // string trace_id = 5;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for MessageRequest {
@@ -2018,6 +2381,9 @@ impl ::protobuf::Message for MessageRequest {
                 },
                 4 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.message)?;
+                },
+                5 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -2043,6 +2409,9 @@ impl ::protobuf::Message for MessageRequest {
         if !self.message.is_empty() {
             my_size += ::protobuf::rt::bytes_size(4, &self.message);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(5, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2060,6 +2429,9 @@ impl ::protobuf::Message for MessageRequest {
         }
         if !self.message.is_empty() {
             os.write_bytes(4, &self.message)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(5, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2119,6 +2491,11 @@ impl ::protobuf::Message for MessageRequest {
                 |m: &MessageRequest| { &m.message },
                 |m: &mut MessageRequest| { &mut m.message },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &MessageRequest| { &m.trace_id },
+                |m: &mut MessageRequest| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<MessageRequest>(
                 "MessageRequest",
                 fields,
@@ -2139,6 +2516,7 @@ impl ::protobuf::Clear for MessageRequest {
         self.handler_type.clear();
         self.actor_id.clear();
         self.message.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -2163,6 +2541,7 @@ pub struct SessionHandshake {
     pub token: ::std::vec::Vec<u8>,
     pub node_tag: ::std::string::String,
     pub client_type: ClientType,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2296,6 +2675,32 @@ impl SessionHandshake {
     pub fn set_client_type(&mut self, v: ClientType) {
         self.client_type = v;
     }
+
+    // string trace_id = 6;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for SessionHandshake {
@@ -2327,6 +2732,9 @@ impl ::protobuf::Message for SessionHandshake {
                 5 => {
                     ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.client_type, 5, &mut self.unknown_fields)?
                 },
+                6 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -2355,6 +2763,9 @@ impl ::protobuf::Message for SessionHandshake {
         if self.client_type != ClientType::Client {
             my_size += ::protobuf::rt::enum_size(5, self.client_type);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(6, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2377,6 +2788,9 @@ impl ::protobuf::Message for SessionHandshake {
         }
         if self.client_type != ClientType::Client {
             os.write_enum(5, ::protobuf::ProtobufEnum::value(&self.client_type))?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(6, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2441,6 +2855,11 @@ impl ::protobuf::Message for SessionHandshake {
                 |m: &SessionHandshake| { &m.client_type },
                 |m: &mut SessionHandshake| { &mut m.client_type },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &SessionHandshake| { &m.trace_id },
+                |m: &mut SessionHandshake| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<SessionHandshake>(
                 "SessionHandshake",
                 fields,
@@ -2462,6 +2881,7 @@ impl ::protobuf::Clear for SessionHandshake {
         self.token.clear();
         self.node_tag.clear();
         self.client_type = ClientType::Client;
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -2484,6 +2904,7 @@ pub struct StreamPublish {
     pub topic: ::std::string::String,
     pub key: ::std::string::String,
     pub message: ::std::vec::Vec<u8>,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2577,6 +2998,32 @@ impl StreamPublish {
     pub fn take_message(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.message, ::std::vec::Vec::new())
     }
+
+    // string trace_id = 4;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for StreamPublish {
@@ -2596,6 +3043,9 @@ impl ::protobuf::Message for StreamPublish {
                 },
                 3 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.message)?;
+                },
+                4 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -2618,6 +3068,9 @@ impl ::protobuf::Message for StreamPublish {
         if !self.message.is_empty() {
             my_size += ::protobuf::rt::bytes_size(3, &self.message);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(4, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2632,6 +3085,9 @@ impl ::protobuf::Message for StreamPublish {
         }
         if !self.message.is_empty() {
             os.write_bytes(3, &self.message)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(4, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2686,6 +3142,11 @@ impl ::protobuf::Message for StreamPublish {
                 |m: &StreamPublish| { &m.message },
                 |m: &mut StreamPublish| { &mut m.message },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &StreamPublish| { &m.trace_id },
+                |m: &mut StreamPublish| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<StreamPublish>(
                 "StreamPublish",
                 fields,
@@ -2705,6 +3166,7 @@ impl ::protobuf::Clear for StreamPublish {
         self.topic.clear();
         self.key.clear();
         self.message.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -2725,6 +3187,7 @@ impl ::protobuf::reflect::ProtobufValue for StreamPublish {
 pub struct NewNodeEvent {
     // message fields
     pub node_id: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2766,6 +3229,32 @@ impl NewNodeEvent {
     pub fn take_node_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.node_id, ::std::string::String::new())
     }
+
+    // string trace_id = 2;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for NewNodeEvent {
@@ -2779,6 +3268,9 @@ impl ::protobuf::Message for NewNodeEvent {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_id)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -2795,6 +3287,9 @@ impl ::protobuf::Message for NewNodeEvent {
         if !self.node_id.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.node_id);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2803,6 +3298,9 @@ impl ::protobuf::Message for NewNodeEvent {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if !self.node_id.is_empty() {
             os.write_string(1, &self.node_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(2, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2847,6 +3345,11 @@ impl ::protobuf::Message for NewNodeEvent {
                 |m: &NewNodeEvent| { &m.node_id },
                 |m: &mut NewNodeEvent| { &mut m.node_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &NewNodeEvent| { &m.trace_id },
+                |m: &mut NewNodeEvent| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<NewNodeEvent>(
                 "NewNodeEvent",
                 fields,
@@ -2864,6 +3367,7 @@ impl ::protobuf::Message for NewNodeEvent {
 impl ::protobuf::Clear for NewNodeEvent {
     fn clear(&mut self) {
         self.node_id.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -2884,6 +3388,7 @@ impl ::protobuf::reflect::ProtobufValue for NewNodeEvent {
 pub struct NodeRemovedEvent {
     // message fields
     pub node_id: ::std::string::String,
+    pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2925,6 +3430,32 @@ impl NodeRemovedEvent {
     pub fn take_node_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.node_id, ::std::string::String::new())
     }
+
+    // string trace_id = 2;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for NodeRemovedEvent {
@@ -2938,6 +3469,9 @@ impl ::protobuf::Message for NodeRemovedEvent {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_id)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -2954,6 +3488,9 @@ impl ::protobuf::Message for NodeRemovedEvent {
         if !self.node_id.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.node_id);
         }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.trace_id);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2962,6 +3499,9 @@ impl ::protobuf::Message for NodeRemovedEvent {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if !self.node_id.is_empty() {
             os.write_string(1, &self.node_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(2, &self.trace_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -3006,6 +3546,11 @@ impl ::protobuf::Message for NodeRemovedEvent {
                 |m: &NodeRemovedEvent| { &m.node_id },
                 |m: &mut NodeRemovedEvent| { &mut m.node_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &NodeRemovedEvent| { &m.trace_id },
+                |m: &mut NodeRemovedEvent| { &mut m.trace_id },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<NodeRemovedEvent>(
                 "NodeRemovedEvent",
                 fields,
@@ -3023,6 +3568,7 @@ impl ::protobuf::Message for NodeRemovedEvent {
 impl ::protobuf::Clear for NodeRemovedEvent {
     fn clear(&mut self) {
         self.node_id.clear();
+        self.trace_id.clear();
         self.unknown_fields.clear();
     }
 }
@@ -3269,45 +3815,56 @@ impl ::protobuf::reflect::ProtobufValue for SystemEvent {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0eprotocol.proto\x12\x08protocol\"?\n\nRemoteNode\x12\x19\n\x07node_\
     id\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12\x14\n\x04addr\x18\x02\x20\x01(\t\
-    R\x04addrB\0:\0\"y\n\x0fClientHandshake\x12\x19\n\x07node_id\x18\x01\x20\
-    \x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\x14.protocol\
-    .RemoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\x18\x03\x20\x01(\tR\x07no\
-    deTagB\0:\0\"K\n\x0cClientResult\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\
-    \tR\tmessageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01(\x0cR\x06resultB\0\
-    :\0\"_\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\
-    B\0\x12/\n\x04code\x18\x02\x20\x01(\x0e2\x19.protocol.ClientErrorCodeR\
-    \x04codeB\0:\0\")\n\x04Ping\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tm\
-    essageIdB\0:\0\")\n\x04Pong\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tm\
-    essageIdB\0:\0\"\x88\x01\n\x0bCreateActor\x12\x1f\n\nmessage_id\x18\x01\
-    \x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07\
-    actorIdB\0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\tactorTypeB\0\x12\
-    \x18\n\x06recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0:\0\"K\n\tFindActor\
-    \x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08ac\
-    tor_id\x18\x02\x20\x01(\tR\x07actorIdB\0:\0\"H\n\x0cActorAddress\x12\x1b\
-    \n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x19\n\x07node_id\
-    \x18\x02\x20\x01(\tR\x06nodeIdB\0:\0\"\x91\x01\n\x0eMessageRequest\x12\
-    \x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0chandler_t\
-    ype\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08actor_id\x18\x03\
-    \x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\
-    \x07messageB\0:\0\"\xcb\x01\n\x10SessionHandshake\x12\x19\n\x07node_id\
-    \x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\
-    \x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01\
-    (\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07nodeTagB\
-    \0\x127\n\x0bclient_type\x18\x05\x20\x01(\x0e2\x14.protocol.ClientTypeR\
-    \nclientTypeB\0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
-    \x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\
-    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0:\0\"+\n\x0cNewNode\
-    Event\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\"/\n\x10N\
-    odeRemovedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\
-    *\xa2\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\
-    \x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\
-    \x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\
-    \r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNo\
-    tifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x1a\0*&\n\nClientType\x12\
-    \n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01\x1a\0*?\n\x0fClientErrorC\
-    ode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\
-    \x10\x01\x1a\0*;\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\
-    \x16\n\x12ClusterNodeRemoved\x10\x01\x1a\0B\0b\x06proto3\
+    R\x04addrB\0:\0\"\x96\x01\n\x0fClientHandshake\x12\x19\n\x07node_id\x18\
+    \x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\x14.\
+    protocol.RemoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\x18\x03\x20\x01(\
+    \tR\x07nodeTagB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceIdB\
+    \0:\0\"h\n\x0cClientResult\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tme\
+    ssageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01(\x0cR\x06resultB\0\x12\
+    \x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"|\n\tClientErr\
+    \x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12/\n\x04code\
+    \x18\x02\x20\x01(\x0e2\x19.protocol.ClientErrorCodeR\x04codeB\0\x12\x1b\
+    \n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Ping\x12\x1f\
+    \n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\
+    \x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Pong\x12\x1f\n\nmessage_id\
+    \x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01\
+    (\tR\x07traceIdB\0:\0\"\xa5\x01\n\x0bCreateActor\x12\x1f\n\nmessage_id\
+    \x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01\
+    (\tR\x07actorIdB\0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\tactorTypeB\
+    \0\x12\x18\n\x06recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0\x12\x1b\n\x08t\
+    race_id\x18\x05\x20\x01(\tR\x07traceIdB\0:\0\"h\n\tFindActor\x12\x1f\n\n\
+    message_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\
+    \x02\x20\x01(\tR\x07actorIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\
+    \x07traceIdB\0:\0\"e\n\x0cActorAddress\x12\x1b\n\x08actor_id\x18\x01\x20\
+    \x01(\tR\x07actorIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\tR\x06nodeI\
+    dB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\xae\
+    \x01\n\x0eMessageRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmess\
+    ageIdB\0\x12#\n\x0chandler_type\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\
+    \x12\x1b\n\x08actor_id\x18\x03\x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07me\
+    ssage\x18\x04\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x05\
+    \x20\x01(\tR\x07traceIdB\0:\0\"\xe8\x01\n\x10SessionHandshake\x12\x19\n\
+    \x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\
+    \x03(\x0b2\x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\
+    \x03\x20\x01(\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\
+    \x07nodeTagB\0\x127\n\x0bclient_type\x18\x05\x20\x01(\x0e2\x14.protocol.\
+    ClientTypeR\nclientTypeB\0\x12\x1b\n\x08trace_id\x18\x06\x20\x01(\tR\x07\
+    traceIdB\0:\0\"v\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\x01(\tR\
+    \x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\n\
+    \x07message\x18\x03\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\
+    \x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"H\n\x0cNewNodeEvent\x12\x19\n\x07\
+    node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\
+    \x20\x01(\tR\x07traceIdB\0:\0\"L\n\x10NodeRemovedEvent\x12\x19\n\x07node\
+    _id\x18\x01\x20\x01(\tR\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\
+    \x01(\tR\x07traceIdB\0:\0*\xa2\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\
+    \x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\
+    \x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\
+    \x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterAc\
+    tor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\
+    \n\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\
+    \x01\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUnavailable\x10\0\
+    \x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*;\n\x0bSystemEvent\x12\x12\
+    \n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\x10\x01\x1a\0\
+    B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

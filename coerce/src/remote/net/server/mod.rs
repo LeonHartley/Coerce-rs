@@ -14,9 +14,12 @@ use crate::remote::net::proto::protocol::{
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
+use opentelemetry::{global, Context};
 use protobuf::Message;
+use std::collections::HashMap;
 use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
 pub mod session;
@@ -247,6 +250,15 @@ async fn session_handle_message(
     mut ctx: RemoteActorSystem,
     mut sessions: LocalActorRef<RemoteSessionStore>,
 ) {
+    let mut headers = HashMap::<String, String>::new();
+    headers.insert("traceparent".to_owned(), msg.trace_id);
+    let span = tracing::trace_span!("RemoteServer::MessageRequest");
+    span.set_parent(global::get_text_map_propagator(|propagator| {
+        propagator.extract(&mut headers)
+    }));
+
+    let _enter = span.enter();
+
     match ctx
         .handle_message(msg.handler_type, msg.actor_id, msg.message.as_slice())
         .await

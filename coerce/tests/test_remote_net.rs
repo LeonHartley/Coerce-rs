@@ -6,6 +6,8 @@ use coerce::remote::system::RemoteActorSystem;
 use coerce::remote::RemoteActorRef;
 
 use coerce::actor::ActorRef;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use util::*;
 use uuid::Uuid;
 
@@ -19,7 +21,15 @@ extern crate async_trait;
 
 #[tokio::test]
 pub async fn test_remote_server_client_connection() {
-    util::create_trace_logger();
+    let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("coerce")
+        .install()
+        .expect("jaeger");
+    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    tracing_subscriber::registry()
+        .with(opentelemetry)
+        .try_init()
+        .expect("tracing init");
 
     let mut system = ActorSystem::new();
     let actor = system.new_tracked_actor(TestActor::new()).await.unwrap();

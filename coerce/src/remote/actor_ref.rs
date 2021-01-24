@@ -6,7 +6,11 @@ use crate::remote::net::message::SessionEvent;
 use crate::remote::system::RemoteActorSystem;
 
 use crate::remote::net::proto::protocol::MessageRequest;
+use opentelemetry::global;
+use opentelemetry::trace::TraceContextExt;
+use std::collections::HashMap;
 use std::marker::PhantomData;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
 pub struct RemoteActorRef<A: Actor>
@@ -46,19 +50,32 @@ where
         Msg: 'static + Send + Sync,
         <Msg as Message>::Result: 'static + Send + Sync,
     {
+        let message_type = Msg::type_name();
+        let actor_type = A::type_name();
+        let span = tracing::trace_span!("RemoteActorRef::send", actor_type, message_type);
+        let enter = span.enter();
+
         let id = Uuid::new_v4();
         let (res_tx, res_rx) = tokio::sync::oneshot::channel();
-
         let message_bytes = match msg {
             Envelope::Remote(b) => b,
             _ => return Err(ActorRefErr::ActorUnavailable),
         };
 
+        let mut headers = HashMap::<String, String>::new();
+        global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&span.context(), &mut headers)
+        });
+
+        let trace_id = headers
+            .get("traceparent")
+            .map_or_else(|| String::default(), |t| t.to_owned());
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
             SessionEvent::NotifyActor(MessageRequest {
                 message_id: id.to_string(),
                 handler_type: header.handler_type,
                 actor_id: header.actor_id,
+                trace_id,
                 message: message_bytes,
                 ..MessageRequest::default()
             })

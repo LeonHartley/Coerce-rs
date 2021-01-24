@@ -14,6 +14,7 @@ pub enum ClientEvent {
     Pong(Pong),
 }
 
+#[derive(Debug)]
 pub enum SessionEvent {
     Ping(Ping),
     Pong(Pong),

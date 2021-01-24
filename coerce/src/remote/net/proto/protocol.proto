@@ -23,8 +23,8 @@ enum Event {
 }
 
 enum ClientType {
-    Client = 0;
-    Worker = 1;
+  Client = 0;
+  Worker = 1;
 }
 
 message ClientHandshake {
@@ -33,12 +33,16 @@ message ClientHandshake {
   repeated RemoteNode nodes = 2;
 
   string node_tag = 3;
+
+  string trace_id = 4;
 }
 
 message ClientResult {
   string message_id = 1;
 
   bytes result = 2;
+
+  string trace_id = 3;
 }
 
 enum ClientErrorCode {
@@ -47,18 +51,23 @@ enum ClientErrorCode {
 }
 
 message ClientErr {
-
   string message_id = 1;
 
   ClientErrorCode code = 2;
+
+  string trace_id = 3;
 }
 
 message Ping {
   string message_id = 1;
+
+  string trace_id = 2;
 }
 
 message Pong {
   string message_id = 1;
+
+  string trace_id = 2;
 }
 
 message CreateActor {
@@ -69,18 +78,24 @@ message CreateActor {
   string actor_type = 3;
 
   bytes recipe = 4;
+
+  string trace_id = 5;
 }
 
 message FindActor {
   string message_id = 1;
 
   string actor_id = 2;
+
+  string trace_id = 3;
 }
 
 message ActorAddress {
   string actor_id = 1;
 
   string node_id = 2;
+
+  string trace_id = 3;
 }
 
 message MessageRequest {
@@ -91,6 +106,8 @@ message MessageRequest {
   string actor_id = 3;
 
   bytes message = 4;
+
+  string trace_id = 5;
 }
 
 message SessionHandshake {
@@ -103,6 +120,8 @@ message SessionHandshake {
   string node_tag = 4;
 
   ClientType client_type = 5;
+
+  string trace_id = 6;
 }
 
 message StreamPublish {
@@ -111,6 +130,8 @@ message StreamPublish {
   string key = 2;
 
   bytes message = 3;
+
+  string trace_id = 4;
 }
 
 enum SystemEvent {
@@ -119,9 +140,13 @@ enum SystemEvent {
 }
 
 message NewNodeEvent {
-    string node_id = 1;
+  string node_id = 1;
+
+  string trace_id = 2;
 }
 
 message NodeRemovedEvent {
-    string node_id = 1;
+  string node_id = 1;
+
+  string trace_id = 2;
 }

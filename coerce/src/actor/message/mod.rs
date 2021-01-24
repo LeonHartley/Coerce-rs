@@ -62,6 +62,10 @@ pub trait Message: 'static + Sync + Send + Sized {
     fn name(&self) -> &str {
         std::any::type_name::<Self>()
     }
+
+    fn type_name() -> &'static str {
+        std::any::type_name::<Self>()
+    }
 }
 
 pub(crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
