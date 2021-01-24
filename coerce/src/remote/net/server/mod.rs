@@ -214,6 +214,15 @@ async fn session_handshake(
     session_id: Uuid,
     mut sessions: LocalActorRef<RemoteSessionStore>,
 ) {
+    let mut headers = HashMap::<String, String>::new();
+    headers.insert("traceparent".to_owned(), handshake.trace_id);
+    let span = tracing::trace_span!("RemoteServer::Handshake");
+    span.set_parent(global::get_text_map_propagator(|propagator| {
+        propagator.extract(&mut headers)
+    }));
+
+    let _enter = span.enter();
+
     let nodes = ctx.get_nodes().await;
     let mut response = ClientHandshake {
         node_id: ctx.node_id().to_string(),

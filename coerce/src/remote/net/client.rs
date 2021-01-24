@@ -5,6 +5,7 @@ use crate::remote::net::message::{ClientEvent, SessionEvent};
 use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
 use crate::remote::net::{receive_loop, StreamMessage, StreamReceiver};
 use crate::remote::system::RemoteActorSystem;
+use crate::remote::tracing::extract_trace_identifier;
 use futures::SinkExt;
 use std::str::FromStr;
 use tokio::io::WriteHalf;
@@ -152,11 +153,13 @@ impl RemoteClient {
 
         trace!("writing handshake");
 
+        let trace_id = extract_trace_identifier(&span);
         let mut msg = SessionHandshake {
             node_id,
             node_tag,
             token: vec![],
             client_type: client_type.into(),
+            trace_id,
             ..SessionHandshake::default()
         };
 

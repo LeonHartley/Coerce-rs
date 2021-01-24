@@ -49,6 +49,14 @@ impl ClusterWorkerBuilder {
     }
 
     pub async fn start(mut self) {
+        let span = tracing::trace_span!(
+            "ClusterWorkerBuilder::start",
+            listen_addr = self.server_listen_addr.as_str(),
+            node_tag = self.system.node_tag()
+        );
+
+        let enter = span.enter();
+
         self.system
             .register_node(RemoteNode::new(
                 self.system.node_id(),
@@ -84,6 +92,7 @@ impl ClusterWorkerBuilder {
             self.system.register_client(client.node_id, client).await;
 
             drop(enter);
+            drop(span);
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }
