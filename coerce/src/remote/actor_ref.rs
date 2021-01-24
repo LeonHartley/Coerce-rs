@@ -3,13 +3,14 @@ use crate::actor::ActorRefErr::ActorUnavailable;
 use crate::actor::{Actor, ActorId, ActorRefErr};
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::system::RemoteActorSystem;
-
 use crate::remote::net::proto::protocol::MessageRequest;
+use crate::remote::system::RemoteActorSystem;
+use crate::remote::tracing::extract_trace_identifier;
 use opentelemetry::global;
 use opentelemetry::trace::TraceContextExt;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
@@ -62,14 +63,7 @@ where
             _ => return Err(ActorRefErr::ActorUnavailable),
         };
 
-        let mut headers = HashMap::<String, String>::new();
-        global::get_text_map_propagator(|propagator| {
-            propagator.inject_context(&span.context(), &mut headers)
-        });
-
-        let trace_id = headers
-            .get("traceparent")
-            .map_or_else(|| String::default(), |t| t.to_owned());
+        let trace_id = extract_trace_identifier(&span);
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
             SessionEvent::NotifyActor(MessageRequest {
                 message_id: id.to_string(),

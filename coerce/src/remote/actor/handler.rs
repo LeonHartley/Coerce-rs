@@ -21,6 +21,7 @@ use std::str::FromStr;
 use crate::actor::ActorId;
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
+use crate::remote::tracing::extract_trace_identifier;
 use std::alloc::System;
 use std::borrow::{Borrow, BorrowMut};
 use uuid::Uuid;
@@ -151,6 +152,12 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
 #[async_trait]
 impl Handler<GetActorNode> for RemoteRegistry {
     async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) {
+        let span = tracing::trace_span!(
+            "RemoteRegistry::GetActorNode",
+            actor_id = message.actor_id.as_str()
+        );
+        let _enter = span.enter();
+
         let id = message.actor_id;
         let current_system = self.system.as_ref().unwrap().node_id();
         let assigned_registry_node = self.nodes.get_by_key(&id).map(|n| n.id);
@@ -177,6 +184,9 @@ impl Handler<GetActorNode> for RemoteRegistry {
 
             trace!(target: "RemoteRegistry::GetActorNode", "asking remotely, current_sys={}, target_sys={}", current_system, assigned_registry_node);
             tokio::spawn(async move {
+                let span = tracing::trace_span!("RemoteRegistry::GetActorNode::Remote");
+                let _enter = span.enter();
+
                 let message_id = Uuid::new_v4();
                 let mut system = system;
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
@@ -185,12 +195,14 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 system.push_request(message_id, res_tx).await;
 
                 trace!(target: "RemoteRegistry::GetActorNode", "sending actor lookup request to={}", assigned_registry_node);
+                let trace_id = extract_trace_identifier(&span);
                 system
                     .send_message(
                         assigned_registry_node,
                         SessionEvent::FindActor(FindActor {
                             message_id: message_id.to_string(),
                             actor_id: id,
+                            trace_id,
                             ..FindActor::default()
                         }),
                     )

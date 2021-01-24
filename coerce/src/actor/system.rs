@@ -61,10 +61,7 @@ impl ActorSystem {
     pub async fn new_tracked_actor<A: Actor>(
         &mut self,
         actor: A,
-    ) -> Result<LocalActorRef<A>, ActorRefErr>
-    where
-        A: 'static + Sync + Send,
-    {
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let id = new_actor_id();
         self.new_actor(id, actor, ActorType::Tracked).await
     }
@@ -72,10 +69,7 @@ impl ActorSystem {
     pub async fn new_anon_actor<A: Actor>(
         &mut self,
         actor: A,
-    ) -> Result<LocalActorRef<A>, ActorRefErr>
-    where
-        A: 'static + Sync + Send,
-    {
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let id = new_actor_id();
         self.new_actor(id, actor, ActorType::Anonymous).await
     }
@@ -85,10 +79,7 @@ impl ActorSystem {
         id: ActorId,
         actor: A,
         actor_type: ActorType,
-    ) -> Result<LocalActorRef<A>, ActorRefErr>
-    where
-        A: 'static + Sync + Send,
-    {
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let actor_type_name = A::type_name();
         let span = tracing::trace_span!(
             "ActorSystem::new_actor",
@@ -121,10 +112,15 @@ impl ActorSystem {
         }
     }
 
-    pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<LocalActorRef<A>>
-    where
-        A: 'static + Sync + Send,
-    {
+    pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<LocalActorRef<A>> {
+        let actor_type_name = A::type_name();
+        let span = tracing::trace_span!(
+            "ActorSystem::get_tracked_actor",
+            actor_id = id.as_str(),
+            actor_type_name
+        );
+        let _enter = span.enter();
+
         match self.scheduler.send(GetActor::new(id)).await {
             Ok(a) => a,
             Err(_) => None,

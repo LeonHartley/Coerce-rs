@@ -6,5 +6,6 @@ pub mod net;
 pub mod storage;
 pub mod stream;
 pub mod system;
+pub mod tracing;
 
 pub use actor_ref::*;

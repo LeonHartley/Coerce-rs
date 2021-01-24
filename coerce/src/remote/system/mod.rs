@@ -205,6 +205,14 @@ impl RemoteActorSystem {
         &mut self,
         actor_id: ActorId,
     ) -> Option<ActorRef<A>> {
+        let actor_type_name = A::type_name();
+        let span = tracing::trace_span!(
+            "RemoteActorSystem::actor_ref",
+            actor_id = actor_id.as_str(),
+            actor_type_name
+        );
+        let _enter = span.enter();
+
         match self.locate_actor_node(actor_id.clone()).await {
             Some(node_id) => {
                 if node_id == self.node_id {
@@ -225,6 +233,12 @@ impl RemoteActorSystem {
     }
 
     pub async fn locate_actor_node(&mut self, actor_id: ActorId) -> Option<Uuid> {
+        let span = tracing::trace_span!(
+            "RemoteActorSystem::locate_actor_node",
+            actor_id = actor_id.as_str()
+        );
+        let _enter = span.enter();
+
         let (tx, rx) = oneshot::channel();
         match self
             .registry_ref

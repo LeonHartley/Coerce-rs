@@ -69,6 +69,9 @@ impl ClusterWorkerBuilder {
 
     async fn discover_peers(&mut self) {
         if let Some(seed_addr) = self.seed_addr.take() {
+            let span = tracing::trace_span!("ClusterWorkerBuilder::discover_peers");
+            let enter = span.enter();
+
             let client_ctx = self.system.clone();
             let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None, Worker)
                 .await
@@ -79,6 +82,8 @@ impl ClusterWorkerBuilder {
                 .await;
 
             self.system.register_client(client.node_id, client).await;
+
+            drop(enter);
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }

@@ -121,6 +121,8 @@ impl RemoteClient {
         nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
         client_type: ClientType,
     ) -> Result<RemoteClient, tokio::io::Error> {
+        let span = tracing::trace_span!("RemoteClient::connect", address = addr.as_str());
+        let _enter = span.enter();
         let stream = TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
 

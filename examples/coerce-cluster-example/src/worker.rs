@@ -45,13 +45,18 @@ pub async fn main() {
         .start()
         .await;
 
-    let mut actor = remote
-        .actor_ref::<EchoActor>("echo-actor".to_string())
-        .await
-        .expect("unable to get echo actor");
+    {
+        let span = tracing::info_span!("CreateAndSend");
+        let _enter = span.enter();
 
-    let result = actor.send(Echo("hello".to_string())).await;
-    assert_eq!(result.unwrap(), "hello".to_string());
+        let mut actor = remote
+            .actor_ref::<EchoActor>("echo-actor".to_string())
+            .await
+            .expect("unable to get echo actor");
+
+        let result = actor.send(Echo("hello".to_string())).await;
+        assert_eq!(result.unwrap(), "hello".to_string());
+    }
 
     tokio::signal::ctrl_c()
         .await

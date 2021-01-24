@@ -217,6 +217,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio 1.0.1",
+ "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
 ]
