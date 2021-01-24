@@ -177,7 +177,11 @@ where
     let actor_id_clone = id.clone();
     let actor_id = actor_id_clone.as_str();
     let actor_type_name = A::type_name();
-    tracing::trace_span!("ActorScheduler::start_actor", actor_id = actor_id, actor_type_name = actor_type_name);
+    tracing::trace_span!(
+        "ActorScheduler::start_actor",
+        actor_id = actor_id,
+        actor_type_name = actor_type_name
+    );
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 

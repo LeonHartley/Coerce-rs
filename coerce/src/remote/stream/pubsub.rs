@@ -102,6 +102,14 @@ impl<T: Topic> TopicSubscriberStore<T> {
 #[async_trait]
 impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
     async fn emit(&mut self, key: &str, bytes: Vec<u8>) {
+        let topic_data = format!("{}-{}", T::topic_name(), &key);
+        let span = tracing::debug_span!(
+            "PubSub::emit",
+            topic = topic_data.as_str(),
+            message_length = bytes.len()
+        );
+        let _enter = span.enter();
+
         if let Some(message) = T::Message::read_from_bytes(bytes) {
             let message = Arc::new(message);
             self.broadcast(key, message);
@@ -163,6 +171,14 @@ impl PubSub {
     where
         A: Handler<StreamEvent<T>>,
     {
+        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
+        let span = tracing::debug_span!(
+            "PubSub::subscribe",
+            actor_type_name = A::type_name(),
+            topic = topic_data.as_str()
+        );
+        let _enter = span.enter();
+
         let system = ctx.system().remote_owned();
         if let Some(mut mediator) = system.mediator_ref {
             mediator
@@ -175,6 +191,10 @@ impl PubSub {
     }
 
     pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &mut ActorSystem) {
+        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
+        let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
+        let _enter = span.enter();
+
         let system = system.remote_owned();
         if let Some(mut mediator) = system.mediator_ref {
             mediator
