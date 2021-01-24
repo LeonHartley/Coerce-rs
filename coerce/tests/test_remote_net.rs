@@ -1,9 +1,8 @@
 use coerce::actor::system::ActorSystem;
-use coerce::remote::net::client::RemoteClient;
+use coerce::remote::net::client::{RemoteClient, ClientType};
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
-
 use coerce::remote::RemoteActorRef;
 
 use coerce::actor::ActorRef;
@@ -47,9 +46,14 @@ pub async fn test_remote_server_client_connection() {
     remote_2
         .register_client(
             node_id,
-            RemoteClient::connect("localhost:30101".to_string(), remote_2.clone(), None)
-                .await
-                .unwrap(),
+            RemoteClient::connect(
+                "localhost:30101".to_string(),
+                remote_2.clone(),
+                None,
+                ClientType::Worker,
+            )
+            .await
+            .unwrap(),
         )
         .await;
 

@@ -175,7 +175,7 @@ impl RemoteRegistry {
                 system: None,
                 system_event_subscription: None,
             },
-            Anonymous,
+            Tracked,
         )
         .await
         .expect("RemoteRegistry")

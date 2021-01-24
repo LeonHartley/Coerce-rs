@@ -128,7 +128,7 @@ impl StreamReceiver for SessionMessageReceiver {
     async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorSystem) {
         match msg {
             SessionEvent::Handshake(msg) => {
-                trace!(target: "RemoteServer", "handshake {}, {:?}", &msg.node_id, &msg.nodes);
+                trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
                 tokio::spawn(session_handshake(
                     ctx.clone(),
                     msg,

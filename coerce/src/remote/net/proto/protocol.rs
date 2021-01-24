@@ -2162,6 +2162,7 @@ pub struct SessionHandshake {
     pub nodes: ::protobuf::RepeatedField<RemoteNode>,
     pub token: ::std::vec::Vec<u8>,
     pub node_tag: ::std::string::String,
+    pub client_type: ClientType,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2280,6 +2281,21 @@ impl SessionHandshake {
     pub fn take_node_tag(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.node_tag, ::std::string::String::new())
     }
+
+    // .protocol.ClientType client_type = 5;
+
+
+    pub fn get_client_type(&self) -> ClientType {
+        self.client_type
+    }
+    pub fn clear_client_type(&mut self) {
+        self.client_type = ClientType::Client;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_client_type(&mut self, v: ClientType) {
+        self.client_type = v;
+    }
 }
 
 impl ::protobuf::Message for SessionHandshake {
@@ -2308,6 +2324,9 @@ impl ::protobuf::Message for SessionHandshake {
                 4 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.node_tag)?;
                 },
+                5 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.client_type, 5, &mut self.unknown_fields)?
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -2333,6 +2352,9 @@ impl ::protobuf::Message for SessionHandshake {
         if !self.node_tag.is_empty() {
             my_size += ::protobuf::rt::string_size(4, &self.node_tag);
         }
+        if self.client_type != ClientType::Client {
+            my_size += ::protobuf::rt::enum_size(5, self.client_type);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2352,6 +2374,9 @@ impl ::protobuf::Message for SessionHandshake {
         }
         if !self.node_tag.is_empty() {
             os.write_string(4, &self.node_tag)?;
+        }
+        if self.client_type != ClientType::Client {
+            os.write_enum(5, ::protobuf::ProtobufEnum::value(&self.client_type))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2411,6 +2436,11 @@ impl ::protobuf::Message for SessionHandshake {
                 |m: &SessionHandshake| { &m.node_tag },
                 |m: &mut SessionHandshake| { &mut m.node_tag },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<ClientType>>(
+                "client_type",
+                |m: &SessionHandshake| { &m.client_type },
+                |m: &mut SessionHandshake| { &mut m.client_type },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<SessionHandshake>(
                 "SessionHandshake",
                 fields,
@@ -2431,6 +2461,7 @@ impl ::protobuf::Clear for SessionHandshake {
         self.nodes.clear();
         self.token.clear();
         self.node_tag.clear();
+        self.client_type = ClientType::Client;
         self.unknown_fields.clear();
     }
 }
@@ -3086,6 +3117,56 @@ impl ::protobuf::reflect::ProtobufValue for Event {
 }
 
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum ClientType {
+    Client = 0,
+    Worker = 1,
+}
+
+impl ::protobuf::ProtobufEnum for ClientType {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<ClientType> {
+        match value {
+            0 => ::std::option::Option::Some(ClientType::Client),
+            1 => ::std::option::Option::Some(ClientType::Worker),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [ClientType] = &[
+            ClientType::Client,
+            ClientType::Worker,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<ClientType>("ClientType", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for ClientType {
+}
+
+impl ::std::default::Default for ClientType {
+    fn default() -> Self {
+        ClientType::Client
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ClientType {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum ClientErrorCode {
     ActorUnavailable = 0,
     ProcessingFailed = 1,
@@ -3208,23 +3289,25 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0chandler_t\
     ype\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08actor_id\x18\x03\
     \x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\
-    \x07messageB\0:\0\"\x92\x01\n\x10SessionHandshake\x12\x19\n\x07node_id\
+    \x07messageB\0:\0\"\xcb\x01\n\x10SessionHandshake\x12\x19\n\x07node_id\
     \x18\x01\x20\x01(\tR\x06nodeIdB\0\x12,\n\x05nodes\x18\x02\x20\x03(\x0b2\
     \x14.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01\
     (\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07nodeTagB\
-    \0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\x01(\tR\x05topi\
-    cB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\n\x07message\
-    \x18\x03\x20\x01(\x0cR\x07messageB\0:\0\"+\n\x0cNewNodeEvent\x12\x19\n\
-    \x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\"/\n\x10NodeRemovedEvent\
-    \x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0*\xa2\x01\n\x05\
-    Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Resu\
-    lt\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
-    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
-    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
-    \x11\n\rStreamPublish\x10\n\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10Ac\
-    torUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*;\n\x0b\
-    SystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRe\
-    moved\x10\x01\x1a\0B\0b\x06proto3\
+    \0\x127\n\x0bclient_type\x18\x05\x20\x01(\x0e2\x14.protocol.ClientTypeR\
+    \nclientTypeB\0:\0\"Y\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
+    \x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\
+    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0:\0\"+\n\x0cNewNode\
+    Event\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\"/\n\x10N\
+    odeRemovedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\0:\0\
+    *\xa2\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\
+    \x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\
+    \x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\
+    \r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNo\
+    tifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x1a\0*&\n\nClientType\x12\
+    \n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01\x1a\0*?\n\x0fClientErrorC\
+    ode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFailed\
+    \x10\x01\x1a\0*;\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\
+    \x16\n\x12ClusterNodeRemoved\x10\x01\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

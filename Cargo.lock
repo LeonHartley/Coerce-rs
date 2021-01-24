@@ -151,7 +151,6 @@ dependencies = [
  "lazy_static",
  "log",
  "protobuf",
- "protobuf-codegen-pure",
  "serde",
  "serde_json",
  "tokio 1.0.1",
@@ -652,6 +651,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid",
+]
+
+[[package]]
+name = "proto-build"
+version = "0.1.0"
+dependencies = [
+ "protobuf",
+ "protobuf-codegen-pure",
 ]
 
 [[package]]

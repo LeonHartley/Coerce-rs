@@ -22,6 +22,11 @@ enum Event {
   StreamPublish = 10;
 }
 
+enum ClientType {
+    Client = 0;
+    Worker = 1;
+}
+
 message ClientHandshake {
   string node_id = 1;
 
@@ -96,6 +101,8 @@ message SessionHandshake {
   bytes token = 3;
 
   string node_tag = 4;
+
+  ClientType client_type = 5;
 }
 
 message StreamPublish {

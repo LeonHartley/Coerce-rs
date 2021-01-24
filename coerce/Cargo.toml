@@ -27,8 +27,6 @@ byteorder = "1.3.4"
 chrono = "0.4"
 bincode = "1.3"
 protobuf = "2.18.1"
-protobuf-codegen-pure = "2.18.1"
-
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }
 #trust-dns-client = { version = "0.19" }
@@ -36,7 +34,3 @@ protobuf-codegen-pure = "2.18.1"
 [dev-dependencies]
 env_logger = "0.7.1"
 coerce-macros = { path = "./macros" }
-
-[[bin]]
-name = "proto-build"
-path = "proto-build.rs"

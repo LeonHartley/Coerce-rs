@@ -1,10 +1,11 @@
+use super::proto::protocol;
+use crate::remote::actor::RemoteResponse;
 use crate::remote::net::codec::NetworkCodec;
+use crate::remote::net::message::{ClientEvent, SessionEvent};
+use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
 use crate::remote::net::{receive_loop, StreamMessage, StreamReceiver};
 use crate::remote::system::RemoteActorSystem;
-use crate::remote::actor::RemoteResponse;
-use crate::remote::net::message::{ClientEvent, SessionEvent};
 use futures::SinkExt;
-use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
 use std::str::FromStr;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
@@ -107,11 +108,18 @@ pub enum RemoteClientErr {
     StreamErr(tokio::io::Error),
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum ClientType {
+    Client,
+    Worker,
+}
+
 impl RemoteClient {
     pub async fn connect(
         addr: String,
         mut system: RemoteActorSystem,
         nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
+        client_type: ClientType,
     ) -> Result<RemoteClient, tokio::io::Error> {
         let stream = TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
@@ -146,6 +154,7 @@ impl RemoteClient {
             node_id,
             node_tag,
             token: vec![],
+            client_type: client_type.into(),
             ..SessionHandshake::default()
         };
 
@@ -216,5 +225,23 @@ where
             Err(e) => Err(RemoteClientErr::StreamErr(e)),
         },
         None => Err(RemoteClientErr::Encoding),
+    }
+}
+
+impl From<protocol::ClientType> for ClientType {
+    fn from(client_type: protocol::ClientType) -> Self {
+        match client_type {
+            protocol::ClientType::Client => Self::Client,
+            protocol::ClientType::Worker => Self::Worker,
+        }
+    }
+}
+
+impl From<ClientType> for protocol::ClientType {
+    fn from(client_type: ClientType) -> Self {
+        match client_type {
+            ClientType::Client => Self::Client,
+            ClientType::Worker => Self::Worker,
+        }
     }
 }

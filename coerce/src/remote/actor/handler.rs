@@ -8,7 +8,7 @@ use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::client::{RemoteClient, RemoteClientStream};
+use crate::remote::net::client::{ClientType, RemoteClient, RemoteClientStream};
 use crate::remote::system::RemoteActorSystem;
 
 use std::collections::HashMap;
@@ -298,7 +298,14 @@ async fn connect_all(
     let mut clients = HashMap::new();
     for node in nodes {
         let addr = node.addr.to_string();
-        match RemoteClient::connect(addr, ctx.clone(), Some(current_nodes.clone())).await {
+        match RemoteClient::connect(
+            addr,
+            ctx.clone(),
+            Some(current_nodes.clone()),
+            ClientType::Worker,
+        )
+        .await
+        {
             Ok(client) => {
                 trace!(target: "RemoteRegistry", "connected to node");
                 clients.insert(node.id, Some(client));

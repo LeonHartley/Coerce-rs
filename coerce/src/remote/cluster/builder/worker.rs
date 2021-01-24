@@ -1,5 +1,6 @@
 use crate::remote::cluster::discovery::ClusterSeed;
 use crate::remote::cluster::node::RemoteNode;
+use crate::remote::net::client::ClientType::Worker;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::server::RemoteServer;
 use crate::remote::system::RemoteActorSystem;
@@ -69,7 +70,7 @@ impl ClusterWorkerBuilder {
     async fn discover_peers(&mut self) {
         if let Some(seed_addr) = self.seed_addr.take() {
             let client_ctx = self.system.clone();
-            let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None)
+            let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None, Worker)
                 .await
                 .expect("failed to connect to seed server");
 
