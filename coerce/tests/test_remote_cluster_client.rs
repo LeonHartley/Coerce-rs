@@ -58,7 +58,7 @@ pub async fn test_remote_cluster_client_get_actor() {
         .await;
 
     let _actor = remote
-        .inner()
+        .actor_system()
         .new_tracked_actor(TestActor::new())
         .await
         .unwrap();

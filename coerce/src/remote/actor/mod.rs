@@ -15,6 +15,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::stream::pubsub::{PubSub, Subscription};
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub mod handler;
@@ -145,7 +146,7 @@ impl Actor for RemoteHandler {}
 impl Actor for RemoteClientRegistry {}
 
 impl RemoteClientRegistry {
-    pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteClientRegistry> {
+    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteClientRegistry> {
         ctx.new_actor(
             "RemoteClientRegistry".to_string(),
             RemoteClientRegistry {
@@ -166,7 +167,7 @@ impl RemoteClientRegistry {
 }
 
 impl RemoteRegistry {
-    pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteRegistry> {
+    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteRegistry> {
         ctx.new_actor(
             format!("RemoteRegistry-0"),
             RemoteRegistry {
@@ -183,7 +184,7 @@ impl RemoteRegistry {
 }
 
 impl RemoteHandler {
-    pub async fn new(ctx: &mut ActorSystem) -> LocalActorRef<RemoteHandler> {
+    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteHandler> {
         ctx.new_anon_actor(RemoteHandler {
             requests: HashMap::new(),
         })

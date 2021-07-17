@@ -45,7 +45,7 @@ pub async fn main() {
         .await;
 
     let _ = EchoActor
-        .into_actor(Some("echo-actor".to_string()), remote.inner())
+        .into_actor(Some("echo-actor".to_string()), remote.actor_system())
         .await
         .expect("unable to start echo actor");
 

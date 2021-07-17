@@ -13,7 +13,7 @@ lazy_static! {
 pub struct ActorSystem {
     system_id: Uuid,
     scheduler: LocalActorRef<ActorScheduler>,
-    remote: Option<Arc<RemoteActorSystem>>,
+    remote: Option<RemoteActorSystem>,
 }
 
 impl ActorSystem {
@@ -29,8 +29,8 @@ impl ActorSystem {
         &self.system_id
     }
 
-    pub fn scheduler_mut(&mut self) -> &mut LocalActorRef<ActorScheduler> {
-        &mut self.scheduler
+    pub fn scheduler(&self) -> &LocalActorRef<ActorScheduler> {
+        &self.scheduler
     }
 
     pub fn current_system() -> ActorSystem {
@@ -38,7 +38,7 @@ impl ActorSystem {
     }
 
     pub fn set_remote(&mut self, remote: RemoteActorSystem) {
-        self.remote = Some(Arc::new(remote))
+        self.remote = Some(remote);
     }
 
     pub fn remote(&self) -> &RemoteActorSystem {
@@ -50,7 +50,7 @@ impl ActorSystem {
     pub fn remote_owned(&self) -> RemoteActorSystem {
         self.remote
             .as_ref()
-            .map(|s| s.as_ref().clone())
+            .map(|s| s.clone())
             .expect("this ActorSystem is not setup for remoting")
     }
 
@@ -59,7 +59,7 @@ impl ActorSystem {
     }
 
     pub async fn new_tracked_actor<A: Actor>(
-        &mut self,
+        &self,
         actor: A,
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let id = new_actor_id();
@@ -67,7 +67,7 @@ impl ActorSystem {
     }
 
     pub async fn new_anon_actor<A: Actor>(
-        &mut self,
+        &self,
         actor: A,
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let id = new_actor_id();
@@ -75,7 +75,7 @@ impl ActorSystem {
     }
 
     pub async fn new_actor<A: Actor>(
-        &mut self,
+        &self,
         id: ActorId,
         actor: A,
         actor_type: ActorType,
@@ -94,7 +94,14 @@ impl ActorSystem {
         let _enter = span.enter();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let actor_ref = start_actor(actor, id.clone(), actor_type, Some(tx), Some(self.clone()));
+        let actor_ref = start_actor(
+            actor,
+            id.clone(),
+            actor_type,
+            Some(tx),
+            Some(self.clone()),
+            None,
+        );
 
         if actor_type.is_tracked() {
             let _ = self
@@ -112,7 +119,7 @@ impl ActorSystem {
         }
     }
 
-    pub async fn get_tracked_actor<A: Actor>(&mut self, id: ActorId) -> Option<LocalActorRef<A>> {
+    pub async fn get_tracked_actor<A: Actor>(&self, id: ActorId) -> Option<LocalActorRef<A>> {
         let actor_type_name = A::type_name();
         let span = tracing::trace_span!(
             "ActorSystem::get_tracked_actor",

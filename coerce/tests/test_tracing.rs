@@ -16,7 +16,7 @@ async fn app() {
         tracing::info!(message = "starting actor", actor_id = actor_id.as_str());
 
         TracingActor
-            .into_actor(Some(format!("actor-id-{}", i)), &mut sys)
+            .into_actor(Some(format!("actor-id-{}", i)), &sys)
             .await;
     }
 }

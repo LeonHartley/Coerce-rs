@@ -1,6 +1,7 @@
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
 
+use crate::actor::children::Children;
 use std::any::Any;
 use std::collections::HashMap;
 
@@ -16,9 +17,10 @@ type BoxedAttachment = Box<dyn Any + 'static + Sync + Send>;
 
 pub struct ActorContext {
     boxed_ref: BoxedActorRef,
+    boxed_parent_ref: Option<BoxedActorRef>,
     status: ActorStatus,
     core: Option<ActorSystem>,
-    children: Vec<BoxedActorRef>,
+    children: Option<Children>,
     attachments: HashMap<&'static str, BoxedAttachment>,
 }
 
@@ -34,12 +36,13 @@ impl ActorContext {
             status,
             core,
             attachments,
-            children: vec![],
+            children: None,
+            boxed_parent_ref: None,
         }
     }
 
     pub fn id(&self) -> &ActorId {
-        &self.boxed_ref.id
+        &self.boxed_ref.0
     }
 
     pub fn system(&self) -> &ActorSystem {
@@ -74,7 +77,11 @@ impl ActorContext {
     where
         A: 'static + Sync + Send,
     {
-        LocalActorRef::from(self.boxed_ref.clone())
+        self.boxed_ref
+            .1
+            .downcast_ref::<LocalActorRef<A>>()
+            .expect("actor_ref")
+            .clone()
     }
 
     pub fn add_attachment<T: Any>(&mut self, key: &'static str, attachment: T)
@@ -99,4 +106,6 @@ impl ActorContext {
             None
         }
     }
+
+    pub fn new_child<A: Actor>(id: &ActorId, actor: A) {}
 }

@@ -10,6 +10,7 @@ use std::any::Any;
 use tracing::Instrument;
 use uuid::Uuid;
 
+pub mod children;
 pub mod context;
 pub mod lifecycle;
 pub mod message;
@@ -35,7 +36,7 @@ pub trait IntoActor: Actor + Sized {
     async fn into_actor(
         self,
         id: Option<ActorId>,
-        sys: &mut ActorSystem,
+        sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 }
 
@@ -115,7 +116,7 @@ where
 
 #[async_trait]
 trait MessageReceiver<M: Message>: 'static + Send + Sync {
-    async fn send(&mut self, msg: M) -> Result<M::Result, ActorRefErr>;
+    async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
 }
 
 #[async_trait]
@@ -123,7 +124,7 @@ impl<A: Actor, M: Message> MessageReceiver<M> for LocalActorRef<A>
 where
     A: Handler<M>,
 {
-    async fn send(&mut self, msg: M) -> Result<M::Result, ActorRefErr> {
+    async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.send(msg).await
     }
 }
@@ -140,17 +141,17 @@ where
 pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
 
 impl<M: Message> Receiver<M> {
-    pub async fn send(&mut self, msg: M) -> Result<M::Result, ActorRefErr> {
+    pub async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.0.send(msg).await
     }
 }
 
 impl<A: Actor> ActorRef<A> {
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
+    pub async fn send<Msg: Message>(&self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
     {
-        match &mut self.inner_ref {
+        match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.send(msg).await,
             Ref::Remote(remote_ref) => {
                 remote_ref
@@ -180,7 +181,7 @@ impl<A: Actor> IntoActor for A {
     async fn into_actor(
         self,
         id: Option<ActorId>,
-        sys: &mut ActorSystem,
+        sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
         if let Some(id) = id {
             sys.new_actor(id, self, Tracked).await
@@ -206,12 +207,7 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
     }
 }
 
-#[derive(Clone)]
-pub struct BoxedActorRef {
-    id: ActorId,
-    system_id: Option<Uuid>,
-    sender: tokio::sync::mpsc::UnboundedSender<Box<dyn Any + Sync + Send>>,
-}
+pub struct BoxedActorRef(ActorId, Box<dyn Any + Send + Sync>);
 
 pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,
@@ -219,23 +215,10 @@ pub struct LocalActorRef<A: Actor> {
     sender: tokio::sync::mpsc::UnboundedSender<MessageHandler<A>>,
 }
 
-impl<A: Actor> From<BoxedActorRef> for LocalActorRef<A> {
-    fn from(b: BoxedActorRef) -> Self {
-        LocalActorRef {
-            id: b.id,
-            system_id: b.system_id,
-            sender: unsafe { std::mem::transmute(b.sender) },
-        }
-    }
-}
-
 impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef {
     fn from(r: LocalActorRef<A>) -> Self {
-        BoxedActorRef {
-            system_id: r.system_id,
-            id: r.id,
-            sender: unsafe { std::mem::transmute(r.sender) },
-        }
+        let id = r.id.clone();
+        BoxedActorRef(id, Box::new(r))
     }
 }
 
@@ -265,7 +248,7 @@ impl std::fmt::Display for ActorRefErr {
 impl std::error::Error for ActorRefErr {}
 
 impl<A: Actor> LocalActorRef<A> {
-    pub async fn send<Msg: Message>(&mut self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
+    pub async fn send<Msg: Message>(&self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
     {
@@ -293,7 +276,7 @@ impl<A: Actor> LocalActorRef<A> {
         }
     }
 
-    pub fn notify<Msg: Message>(&mut self, msg: Msg) -> Result<(), ActorRefErr>
+    pub fn notify<Msg: Message>(&self, msg: Msg) -> Result<(), ActorRefErr>
     where
         A: Handler<Msg>,
     {
@@ -312,7 +295,7 @@ impl<A: Actor> LocalActorRef<A> {
         }
     }
 
-    pub async fn exec<F, R>(&mut self, f: F) -> Result<R, ActorRefErr>
+    pub async fn exec<F, R>(&self, f: F) -> Result<R, ActorRefErr>
     where
         F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
         R: 'static + Send + Sync,
@@ -320,18 +303,18 @@ impl<A: Actor> LocalActorRef<A> {
         self.send(Exec::new(f)).await
     }
 
-    pub fn notify_exec<F>(&mut self, f: F) -> Result<(), ActorRefErr>
+    pub fn notify_exec<F>(&self, f: F) -> Result<(), ActorRefErr>
     where
         F: (FnMut(&mut A) -> ()) + 'static + Send + Sync,
     {
         self.notify(Exec::new(f))
     }
 
-    pub async fn status(&mut self) -> Result<ActorStatus, ActorRefErr> {
+    pub async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Status {}).await
     }
 
-    pub async fn stop(&mut self) -> Result<ActorStatus, ActorRefErr> {
+    pub async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Stop {}).await
     }
 }

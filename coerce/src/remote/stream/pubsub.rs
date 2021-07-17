@@ -166,7 +166,7 @@ impl Subscription {
 impl PubSub {
     pub async fn subscribe<A: Actor, T: Topic>(
         topic: T,
-        ctx: &mut ActorContext,
+        ctx: &ActorContext,
     ) -> Result<Subscription, SubscribeErr>
     where
         A: Handler<StreamEvent<T>>,
@@ -179,8 +179,8 @@ impl PubSub {
         );
         let _enter = span.enter();
 
-        let system = ctx.system().remote_owned();
-        if let Some(mut mediator) = system.mediator_ref {
+        let system = ctx.system().remote();
+        if let Some(mut mediator) = system.stream_mediator() {
             mediator
                 .send(Subscribe::<A, T>::new(topic, ctx.actor_ref()))
                 .await
@@ -190,13 +190,12 @@ impl PubSub {
         }
     }
 
-    pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &mut ActorSystem) {
+    pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &ActorSystem) {
         let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
         let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
         let _enter = span.enter();
 
-        let system = system.remote_owned();
-        if let Some(mut mediator) = system.mediator_ref {
+        if let Some(mediator) = system.remote().stream_mediator() {
             mediator
                 .send(Publish::<T> { topic, message })
                 .await
@@ -206,13 +205,8 @@ impl PubSub {
         }
     }
 
-    pub async fn publish_locally<T: Topic>(
-        topic: T,
-        message: T::Message,
-        system: &mut ActorSystem,
-    ) {
-        let system = system.remote_owned();
-        if let Some(mut mediator) = system.mediator_ref {
+    pub async fn publish_locally<T: Topic>(topic: T, message: T::Message, system: &ActorSystem) {
+        if let Some(mediator) = system.remote().stream_mediator() {
             let key = topic.key();
             let topic = T::topic_name().to_string();
             let message = message.write_to_bytes().unwrap();

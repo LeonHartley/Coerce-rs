@@ -11,7 +11,7 @@ use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
 use crate::remote::storage::state::ActorStore;
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::stream::system::SystemTopic;
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{RemoteActorSystem, RemoteSystemCore};
 use futures::TryFutureExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -115,8 +115,8 @@ impl RemoteActorSystemBuilder {
 
         let types = handlers.build(self.node_tag);
         let node_id = *inner.system_id();
-        let handler_ref = RemoteHandler::new(&mut inner).await;
-        let registry_ref = RemoteRegistry::new(&mut inner).await;
+        let handler_ref = RemoteHandler::new(&inner).await;
+        let registry_ref = RemoteRegistry::new(&inner).await;
 
         let clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let mut registry_ref_clone = registry_ref.clone();
@@ -124,23 +124,10 @@ impl RemoteActorSystemBuilder {
         let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
         let activator = ActorActivator::new(store);
 
-        let mut system = RemoteActorSystem {
-            node_id,
-            inner,
-            handler_ref,
-            registry_ref,
-            clients_ref,
-            activator,
-            types,
-            mediator_ref: None,
-        };
-
-        system.inner.set_remote(system.clone());
-        system.mediator_ref = if let Some(mediator) = self.mediator {
+        let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
             Some(
-                system
-                    .inner
+                inner
                     .new_tracked_actor(mediator)
                     .await
                     .expect("unable to start mediator actor"),
@@ -150,17 +137,40 @@ impl RemoteActorSystemBuilder {
             None
         };
 
-        system.inner.set_remote(system.clone());
+        let mut core = RemoteSystemCore {
+            node_id,
+            inner,
+            handler_ref,
+            registry_ref,
+            clients_ref,
+            mediator_ref,
+            activator,
+            types,
+        };
+
+        let inner = Arc::new(core.clone());
+        let system = RemoteActorSystem { inner };
+        core.inner.set_remote(system.clone());
+
+        let system = RemoteActorSystem {
+            inner: Arc::new(core),
+        };
+
         registry_ref_clone
             .send(SetRemote(system.clone()))
             .await
             .expect("no system set");
 
-        let cloned_system = system.clone();
+        if let Some(stream_mediator) = system.stream_mediator() {
+            stream_mediator.send(SetRemote(system.clone()))
+                .await
+                .expect("no system set");
+        }
+
         system
-            .inner
-            .scheduler_mut()
-            .send(SetRemote(cloned_system))
+            .actor_system()
+            .scheduler()
+            .send(SetRemote(system.clone()))
             .await
             .expect("no system set");
 

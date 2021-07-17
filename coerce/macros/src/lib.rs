@@ -1,4 +1,4 @@
-use syn::export::TokenStream;
+use proc_macro::TokenStream;
 
 #[macro_use]
 extern crate quote;

@@ -88,7 +88,7 @@ pub async fn test_pubsub_local() {
     let (mut sender_b, mut receiver_b) = channel::<u32>();
 
     let mut actor = remote
-        .inner()
+        .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
             expected_stream_messages: 10,
@@ -99,7 +99,7 @@ pub async fn test_pubsub_local() {
         .unwrap();
 
     let mut actor_2 = remote
-        .inner()
+        .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
             expected_stream_messages: 10,
@@ -110,7 +110,7 @@ pub async fn test_pubsub_local() {
         .unwrap();
 
     for _ in 0..10 {
-        PubSub::publish(StatusStream, StatusEvent::Online, remote.inner()).await;
+        PubSub::publish(StatusStream, StatusEvent::Online, remote.actor_system()).await;
     }
 
     let received_stream_messages = receiver_a.await.unwrap();
@@ -157,7 +157,7 @@ pub async fn test_pubsub_distributed() {
     let (mut sender_b, mut receiver_b) = channel::<u32>();
 
     let mut actor = remote
-        .inner()
+        .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
             expected_stream_messages: 10,
@@ -168,7 +168,7 @@ pub async fn test_pubsub_distributed() {
         .unwrap();
 
     let mut actor_2 = remote_b
-        .inner()
+        .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
             expected_stream_messages: 10,
@@ -180,12 +180,12 @@ pub async fn test_pubsub_distributed() {
 
     // Publish 5 messages on the first server
     for _ in 0..5 {
-        PubSub::publish(StatusStream, StatusEvent::Online, remote.inner()).await;
+        PubSub::publish(StatusStream, StatusEvent::Online, remote.actor_system()).await;
     }
 
     // Publish 5 messages on the second server
     for _ in 0..5 {
-        PubSub::publish(StatusStream, StatusEvent::Online, remote_b.inner()).await;
+        PubSub::publish(StatusStream, StatusEvent::Online, remote_b.actor_system()).await;
     }
 
     // ensure both actors (one on each system) receives all stream messages from both servers within 2 seconds

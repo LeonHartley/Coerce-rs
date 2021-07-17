@@ -58,6 +58,8 @@ pub async fn test_context_get_actor_not_found() {
 
 #[tokio::test]
 pub async fn test_context_stop_tracked_actor_get_not_found() {
+    util::create_trace_logger();
+
     let mut ctx = ActorSystem::new();
 
     let mut actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();

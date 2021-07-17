@@ -10,6 +10,7 @@ use opentelemetry::global;
 use opentelemetry::trace::TraceContextExt;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::sync::Arc;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
@@ -42,10 +43,7 @@ where
         }
     }
 
-    pub async fn send<Msg: Message>(
-        &mut self,
-        msg: Envelope<Msg>,
-    ) -> Result<Msg::Result, ActorRefErr>
+    pub async fn send<Msg: Message>(&self, msg: Envelope<Msg>) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
         Msg: 'static + Send + Sync,

@@ -30,7 +30,7 @@ use uuid::Uuid;
 impl Handler<SetRemote> for RemoteRegistry {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         let mut sys = message.0;
-        ctx.set_system(sys.inner().clone());
+        ctx.set_system(sys.actor_system().clone());
         self.system = Some(sys);
 
         let subscription = PubSub::subscribe::<Self, SystemTopic>(SystemTopic, ctx).await;
@@ -108,7 +108,7 @@ impl Handler<RegisterNodes> for RemoteRegistry {
                 PubSub::publish_locally(
                     SystemTopic,
                     SystemEvent::Cluster(ClusterEvent::NodeAdded(node_id)),
-                    sys.inner(),
+                    sys.actor_system(),
                 )
                 .await;
             });
@@ -281,8 +281,8 @@ impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
                     tokio::spawn(async move {
                         let mut sys = system;
                         let actor_ids = sys
-                            .inner()
-                            .scheduler_mut()
+                            .actor_system()
+                            .scheduler()
                             .exec::<_, Vec<ActorId>>(|s| {
                                 s.actors.keys().map(|k| k.clone()).collect()
                             })

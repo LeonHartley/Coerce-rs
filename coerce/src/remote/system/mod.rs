@@ -1,6 +1,6 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRef, Factory, LocalActorRef};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRecipe, ActorRef, Factory, LocalActorRef};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes,
@@ -15,7 +15,7 @@ use crate::remote::cluster::node::RemoteNode;
 use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::CreateActor;
+use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use crate::remote::storage::activator::ActorActivator;
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
@@ -31,13 +31,18 @@ pub mod builder;
 
 #[derive(Clone)]
 pub struct RemoteActorSystem {
+    inner: Arc<RemoteSystemCore>,
+}
+
+#[derive(Clone)]
+pub struct RemoteSystemCore {
     node_id: Uuid,
     inner: ActorSystem,
     activator: ActorActivator,
     handler_ref: LocalActorRef<RemoteHandler>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
-    pub mediator_ref: Option<LocalActorRef<StreamMediator>>,
+    mediator_ref: Option<LocalActorRef<StreamMediator>>,
     types: Arc<RemoteHandlerTypes>,
 }
 
@@ -59,33 +64,69 @@ impl RemoteActorSystem {
 pub enum RemoteActorErr {
     ActorUnavailable,
     ActorExists,
+    RecipeSerializationErr,
 }
 
 impl RemoteActorSystem {
     pub fn node_tag(&self) -> &str {
-        self.types.node_tag()
+        self.inner.types.node_tag()
     }
 
     pub async fn deploy_actor<F: Factory>(
-        &mut self,
+        &self,
         id: Option<ActorId>,
         recipe: F::Recipe,
         node: Option<Uuid>,
-    ) -> Option<ActorRef<F::Actor>> {
+    ) -> Result<ActorRef<F::Actor>, RemoteActorErr> {
+        let self_id = self.node_id();
         let id = id.map_or_else(new_actor_id, |id| id);
-        let node = node.map_or_else(|| self.node_id, |n| n);
+        let node = node.map_or_else(|| self_id, |n| n);
+        let actor_type = F::Actor::type_name().into();
 
-        None
+        let actor_recipe = recipe.write_to_bytes();
+        if actor_recipe.is_none() {
+            return Err(RemoteActorErr::RecipeSerializationErr);
+        }
+
+        let message = CreateActor {
+            actor_type,
+            message_id: Uuid::new_v4().to_string(),
+            actor_id: id.clone(),
+            recipe: actor_recipe.unwrap(),
+            ..CreateActor::default()
+        };
+
+        if node == self_id {
+            let create_result = self.handle_create_actor(message).await;
+            if create_result.is_ok() {
+                let actor_address =
+                    protobuf::parse_from_bytes::<ActorAddress>(&create_result.unwrap()).unwrap();
+
+                let actor_ref = RemoteActorRef::<F::Actor>::new(
+                    actor_address.actor_id,
+                    Uuid::parse_str(actor_address.node_id.as_str()).unwrap(),
+                    self.clone(),
+                );
+
+                Ok(ActorRef::from(actor_ref))
+            } else {
+                Err(create_result.unwrap_err())
+            }
+        } else {
+            // TODO: send the message and parse the reply then create the remote actor ref
+
+            Err(RemoteActorErr::ActorUnavailable)
+        }
     }
 
     pub async fn handle_message(
-        &mut self,
+        &self,
         identifier: String,
         actor_id: ActorId,
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = oneshot::channel();
-        let handler = self.types.message_handler(&identifier);
+        let handler = self.inner.types.message_handler(&identifier);
 
         if let Some(handler) = handler {
             handler.handle(actor_id, buffer, tx).await;
@@ -98,7 +139,7 @@ impl RemoteActorSystem {
     }
 
     pub async fn handle_create_actor(
-        &mut self,
+        &self,
         mut args: CreateActor,
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = oneshot::channel();
@@ -119,7 +160,7 @@ impl RemoteActorSystem {
         let actor_id = actor_id.map_or_else(|| new_actor_id(), |id| id);
         args.actor_id = actor_id.clone();
 
-        let handler = self.types.actor_handler(&args.actor_type);
+        let handler = self.inner.types.actor_handler(&args.actor_type);
 
         if let Some(handler) = handler {
             handler.create(args, self.clone(), tx).await;
@@ -132,23 +173,20 @@ impl RemoteActorSystem {
     }
 
     pub fn node_id(&self) -> Uuid {
-        self.node_id
+        self.inner.node_id
     }
 
-    pub fn handler_name<A: Actor, M: Message>(&mut self) -> Option<String>
+    pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String>
     where
         A: 'static + Send + Sync,
         M: 'static + Send + Sync,
         M::Result: Send + Sync,
     {
         let marker = RemoteActorMessageMarker::<A, M>::new();
-        self.types.handler_name(marker)
+        self.inner.types.handler_name(marker)
     }
 
-    pub fn create_header<A: Actor, M: Message>(
-        &mut self,
-        id: &ActorId,
-    ) -> Option<RemoteMessageHeader>
+    pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader>
     where
         A: 'static + Send + Sync,
         M: 'static + Send + Sync,
@@ -163,46 +201,60 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn register_client<T: RemoteClientStream>(&mut self, node_id: Uuid, client: T)
+    pub async fn register_client<T: RemoteClientStream>(&self, node_id: Uuid, client: T)
     where
         T: 'static + Sync + Send,
     {
-        self.clients_ref
+        self.inner
+            .clients_ref
             .send(RegisterClient(node_id, client))
             .await
             .unwrap()
     }
 
-    pub async fn register_nodes(&mut self, nodes: Vec<RemoteNode>) {
-        self.registry_ref.send(RegisterNodes(nodes)).await.unwrap()
+    pub async fn register_nodes(&self, nodes: Vec<RemoteNode>) {
+        self.inner
+            .registry_ref
+            .send(RegisterNodes(nodes))
+            .await
+            .unwrap()
     }
 
-    pub fn notify_register_nodes(&mut self, nodes: Vec<RemoteNode>) {
-        self.registry_ref.notify(RegisterNodes(nodes)).unwrap()
+    pub fn notify_register_nodes(&self, nodes: Vec<RemoteNode>) {
+        self.inner
+            .registry_ref
+            .notify(RegisterNodes(nodes))
+            .unwrap()
     }
 
-    pub fn register_actor(&mut self, actor_id: ActorId, node_id: Option<Uuid>) {
-        self.registry_ref
+    pub fn register_actor(&self, actor_id: ActorId, node_id: Option<Uuid>) {
+        self.inner
+            .registry_ref
             .notify(RegisterActor::new(actor_id, node_id));
     }
 
-    pub async fn register_node(&mut self, node: RemoteNode) {
-        self.registry_ref.send(RegisterNode(node)).await.unwrap()
+    pub async fn register_node(&self, node: RemoteNode) {
+        self.inner
+            .registry_ref
+            .send(RegisterNode(node))
+            .await
+            .unwrap()
     }
 
-    pub async fn get_nodes(&mut self) -> Vec<RemoteNode> {
-        self.registry_ref.send(GetNodes).await.unwrap()
+    pub async fn get_nodes(&self) -> Vec<RemoteNode> {
+        self.inner.registry_ref.send(GetNodes).await.unwrap()
     }
 
-    pub async fn send_message(&mut self, node_id: Uuid, message: SessionEvent) {
-        self.clients_ref
+    pub async fn send_message(&self, node_id: Uuid, message: SessionEvent) {
+        self.inner
+            .clients_ref
             .send(ClientWrite(node_id, message))
             .await
             .unwrap()
     }
 
     pub async fn actor_ref<A: Actor + 'static + Sync + Send>(
-        &mut self,
+        &self,
         actor_id: ActorId,
     ) -> Option<ActorRef<A>> {
         let actor_type_name = A::type_name();
@@ -215,8 +267,9 @@ impl RemoteActorSystem {
 
         match self.locate_actor_node(actor_id.clone()).await {
             Some(node_id) => {
-                if node_id == self.node_id {
-                    self.inner()
+                if node_id == self.inner.node_id {
+                    self.inner
+                        .inner
                         .get_tracked_actor(actor_id)
                         .await
                         .map(|actor_ref| ActorRef::from(actor_ref))
@@ -232,7 +285,7 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn locate_actor_node(&mut self, actor_id: ActorId) -> Option<Uuid> {
+    pub async fn locate_actor_node(&self, actor_id: ActorId) -> Option<Uuid> {
         let span = tracing::trace_span!(
             "RemoteActorSystem::locate_actor_node",
             actor_id = actor_id.as_str()
@@ -241,6 +294,7 @@ impl RemoteActorSystem {
 
         let (tx, rx) = oneshot::channel();
         match self
+            .inner
             .registry_ref
             .send(GetActorNode {
                 actor_id,
@@ -265,31 +319,32 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn push_request(&mut self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
-        self.handler_ref
+    pub async fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
+        self.inner
+            .handler_ref
             .send(PushRequest(id, RemoteRequest { res_tx }))
             .await
             .expect("push request send");
     }
 
-    pub async fn pop_request(&mut self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
-        match self.handler_ref.send(PopRequest(id)).await {
+    pub async fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
+        match self.inner.handler_ref.send(PopRequest(id)).await {
             Ok(s) => s.map(|s| s.res_tx),
             Err(_) => None,
         }
     }
 
-    pub fn activator_mut(&mut self) -> &mut ActorActivator {
-        &mut self.activator
+    pub fn stream_mediator(&self) -> Option<&LocalActorRef<StreamMediator>> {
+        self.inner.mediator_ref.as_ref()
     }
 
-    pub fn activator(&self) -> &ActorActivator {
-        &self.activator
-    }
-
-    pub fn inner(&mut self) -> &mut ActorSystem {
-        &mut self.inner
+    pub fn actor_system(&self) -> &ActorSystem {
+        &self.inner.actor_system()
     }
 }
 
-pub(crate) trait RemoteActorSystemInternal {}
+impl RemoteSystemCore {
+    pub fn actor_system(&self) -> &ActorSystem {
+        &self.inner
+    }
+}

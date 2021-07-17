@@ -8,6 +8,7 @@ use crate::remote::actor::message::SetRemote;
 use crate::remote::system::RemoteActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 pub mod timer;
 
@@ -25,6 +26,7 @@ impl ActorScheduler {
             },
             "ActorScheduler-0".to_string(),
             ActorType::Anonymous,
+            None,
             None,
             None,
         )
@@ -157,10 +159,12 @@ where
         message: GetActor<A>,
         _ctx: &mut ActorContext,
     ) -> Option<LocalActorRef<A>> {
-        match self.actors.get(&message.id) {
-            Some(actor) => Some(LocalActorRef::<A>::from(actor.clone())),
-            None => None,
-        }
+        self.actors.get(&message.id).map_or(None, |actor| {
+            actor
+                .1
+                .downcast_ref::<LocalActorRef<A>>()
+                .map(|s| s.clone())
+        })
     }
 }
 
@@ -170,6 +174,7 @@ pub fn start_actor<A: Actor>(
     actor_type: ActorType,
     on_start: Option<tokio::sync::oneshot::Sender<bool>>,
     system: Option<ActorSystem>,
+    parent_ref: Option<BoxedActorRef>,
 ) -> LocalActorRef<A>
 where
     A: 'static + Send + Sync,
@@ -195,13 +200,13 @@ where
 
     let cloned_ref = actor_ref.clone();
     tokio::spawn(async move {
-        ActorLoop::new(actor, actor_type, rx, on_start, cloned_ref, system)
-            .run()
-            .await;
-
-        let actor_id = actor_id_clone.as_str();
-        tracing::trace!(message = "started actor", actor_id, actor_type_name);
+        ActorLoop::run(
+            actor, actor_type, rx, on_start, cloned_ref, parent_ref, system,
+        )
+        .await;
     });
 
+    let actor_id = actor_id_clone.as_str();
+    tracing::trace!(message = "started actor", actor_id, actor_type_name);
     actor_ref
 }

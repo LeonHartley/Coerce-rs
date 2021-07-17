@@ -8,6 +8,7 @@ use crate::remote::net::message::SessionEvent;
 
 use crate::actor::ActorId;
 
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct SetRemote(pub RemoteActorSystem);

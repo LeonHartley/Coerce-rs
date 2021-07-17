@@ -31,7 +31,7 @@ pub async fn test_remote_create_message() {
     };
 
     let actor = remote
-        .inner()
+        .actor_system()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();

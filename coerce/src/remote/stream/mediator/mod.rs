@@ -1,12 +1,15 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, BoxedActorRef, LocalActorRef, ActorRefErr};
+use crate::remote::actor::message::SetRemote;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::StreamPublish;
 use crate::remote::net::StreamMessage;
 use crate::remote::stream::pubsub::{
     StreamEvent, Subscription, Topic, TopicEmitter, TopicSubscriberStore,
 };
+use crate::remote::system::RemoteActorSystem;
+use futures::Stream;
 use std::any::Any;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -14,14 +17,23 @@ use std::marker::PhantomData;
 pub struct MediatorTopic(Box<dyn TopicEmitter>);
 
 pub struct StreamMediator {
+    remote: Option<RemoteActorSystem>,
     topics: HashMap<String, MediatorTopic>,
 }
 
 impl StreamMediator {
     pub fn new() -> StreamMediator {
         StreamMediator {
+            remote: None,
             topics: HashMap::new(),
         }
+    }
+
+    fn remote(&self) -> &RemoteActorSystem {
+        &self
+            .remote
+            .as_ref()
+            .expect("StreamMediator remote actor system not set")
     }
 }
 
@@ -87,6 +99,17 @@ impl StreamMediator {
 }
 
 #[async_trait]
+impl Handler<SetRemote> for StreamMediator {
+    async fn handle(
+        &mut self,
+        message: SetRemote,
+        _ctx: &mut ActorContext,
+    ) {
+        self.remote = Some(message.0);
+    }
+}
+
+#[async_trait]
 impl<T: Topic> Handler<Publish<T>> for StreamMediator {
     async fn handle(
         &mut self,
@@ -95,7 +118,7 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
     ) -> Result<(), PublishErr> {
         match message.message.write_to_bytes() {
             Some(bytes) => {
-                let mut remote = ctx.system_mut().remote_owned();
+                let remote = self.remote().clone();
                 let nodes = remote.get_nodes().await;
 
                 if !nodes.is_empty() {

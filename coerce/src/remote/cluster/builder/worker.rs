@@ -93,6 +93,7 @@ impl ClusterWorkerBuilder {
 
             drop(enter);
             drop(span);
+
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }

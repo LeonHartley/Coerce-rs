@@ -3,7 +3,7 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, LocalActorRef};
+use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
 
 use crate::actor::message::encoding::json::RemoteMessage;
 use std::collections::HashMap;
@@ -46,60 +46,39 @@ where
     }
 }
 
-pub struct ActorLoop<A>
-where
-    A: 'static + Actor + Sync + Send,
-{
-    actor: A,
-    actor_type: ActorType,
-    actor_ref: LocalActorRef<A>,
-    receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
-    on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-    system: Option<ActorSystem>,
-}
+pub struct ActorLoop {}
 
-impl<A: Actor> ActorLoop<A>
-where
-    A: 'static + Sync + Send,
-{
-    pub fn new(
-        actor: A,
+impl ActorLoop {
+    pub async fn run<A: Actor>(
+        mut actor: A,
         actor_type: ActorType,
-        receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
-        on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-        actor_ref: LocalActorRef<A>,
-        system: Option<ActorSystem>,
-    ) -> Self {
-        ActorLoop {
-            actor,
-            actor_type,
-            actor_ref,
-            receiver,
-            on_start,
-            system,
-        }
-    }
-
-    pub async fn run(&mut self) {
-        let actor_id = self.actor_ref.id.clone();
+        mut receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
+        mut on_start: Option<tokio::sync::oneshot::Sender<bool>>,
+        mut actor_ref: LocalActorRef<A>,
+        parent_ref: Option<BoxedActorRef>,
+        mut system: Option<ActorSystem>,
+    ) where
+        A: 'static + Sync + Send,
+    {
+        let actor_id = actor_ref.id.clone();
         let mut ctx = ActorContext::new(
-            self.system.clone(),
+            system.clone(),
             Starting,
-            self.actor_ref.clone().into(),
+            actor_ref.clone().into(),
             HashMap::new(),
         );
-        let system_id = self
-            .actor_ref
+
+        let system_id = actor_ref
             .system_id
             .map_or("system-creation".to_string(), |s| s.to_string());
 
         trace!(
-            target:"Actor",
+            target: "Actor",
             "[{}] starting on system: {}",
             ctx.id(), system_id
         );
 
-        self.actor.started(&mut ctx).await;
+        actor.started(&mut ctx).await;
 
         match ctx.get_status() {
             Stopping => return,
@@ -109,16 +88,16 @@ where
         ctx.set_status(Started);
 
         trace!(
-            target:"Actor",
+            target: "Actor",
             "[{}] ready",
             ctx.id(),
         );
 
-        if let Some(on_start) = self.on_start.take() {
+        if let Some(on_start) = on_start.take() {
             let _ = on_start.send(true);
         }
 
-        while let Some(mut msg) = self.receiver.recv().await {
+        while let Some(mut msg) = receiver.recv().await {
             {
                 let span = tracing::info_span!(
                     "Actor::handle",
@@ -130,12 +109,12 @@ where
                 let _enter = span.enter();
 
                 trace!(
-                    target:"Actor",
+                    target: "Actor",
                     "[{}] recv {}",
                     &actor_id, msg.name()
                 );
 
-                msg.handle(&mut self.actor, &mut ctx).await;
+                msg.handle(&mut actor, &mut ctx).await;
             }
 
             match ctx.get_status() {
@@ -145,21 +124,21 @@ where
         }
 
         trace!(
-            target:"Actor",
+            target: "Actor",
             "[{}] stopping",
             &actor_id
         );
 
         ctx.set_status(Stopping);
 
-        self.actor.stopped(&mut ctx).await;
+        actor.stopped(&mut ctx).await;
 
         ctx.set_status(Stopped);
 
-        if self.actor_type.is_tracked() {
-            if let Some(mut system) = self.system.take() {
+        if actor_type.is_tracked() {
+            if let Some(mut system) = system.take() {
                 system
-                    .scheduler_mut()
+                    .scheduler()
                     .send(DeregisterActor(actor_id))
                     .await
                     .expect("de-register actor");

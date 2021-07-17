@@ -71,7 +71,7 @@ impl RemoteServer {
         let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
 
         let session_store = system
-            .inner()
+            .actor_system()
             .new_anon_actor(RemoteSessionStore::new())
             .await
             .unwrap();
@@ -93,7 +93,7 @@ impl RemoteServer {
 pub async fn server_loop(
     listener: tokio::net::TcpListener,
     system: RemoteActorSystem,
-    mut session_store: LocalActorRef<RemoteSessionStore>,
+    session_store: LocalActorRef<RemoteSessionStore>,
 ) {
     loop {
         match listener.accept().await {
@@ -315,22 +315,22 @@ async fn session_create_actor(
     msg: CreateActor,
     session_id: Uuid,
     mut ctx: RemoteActorSystem,
-    mut sessions: LocalActorRef<RemoteSessionStore>,
+    sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let msg_id = msg.message_id.clone();
     match ctx.handle_create_actor(msg).await {
-        Ok(buf) => send_result(msg_id.parse().unwrap(), buf, session_id, &mut sessions).await,
+        Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, &sessions).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }
     }
 }
 
-async fn session_stream_publish(msg: StreamPublish, mut ctx: RemoteActorSystem) {
+async fn session_stream_publish(msg: StreamPublish, sys: RemoteActorSystem) {
     info!("stream publish");
 
     // TODO: node should acknowledge the message
-    if let Some(mediator) = ctx.mediator_ref.as_mut() {
+    if let Some(mediator) = sys.stream_mediator() {
         mediator.notify::<PublishRaw>(msg.into()).unwrap()
     }
 }
@@ -339,7 +339,7 @@ async fn send_result(
     msg_id: Uuid,
     res: Vec<u8>,
     session_id: Uuid,
-    sessions: &mut LocalActorRef<RemoteSessionStore>,
+    sessions: &LocalActorRef<RemoteSessionStore>,
 ) {
     trace!(target: "RemoteSession", "sending result");
     let event = ClientEvent::Result(ClientResult {

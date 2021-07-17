@@ -93,7 +93,7 @@ pub async fn test_remote_actor_create_new() {
     let create_actor_res = protobuf::parse_from_bytes::<ActorAddress>(&result.unwrap()).unwrap();
 
     let mut actor = remote
-        .inner()
+        .actor_system()
         .get_tracked_actor::<TestActor>(actor_id.clone())
         .await
         .unwrap();
