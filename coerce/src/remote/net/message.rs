@@ -4,7 +4,7 @@ use crate::remote::net::proto::protocol::{
 };
 use crate::remote::net::StreamMessage;
 
-use protobuf::{parse_from_bytes, Message, ProtobufEnum, ProtobufError};
+use protobuf::{Message, ProtobufEnum, ProtobufError};
 
 pub enum ClientEvent {
     Handshake(ClientHandshake),
@@ -31,14 +31,14 @@ impl StreamMessage for ClientEvent {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
                 Some(Event::Handshake) => {
-                    Some(ClientEvent::Handshake(parse_from_bytes(message).unwrap()))
+                    Some(ClientEvent::Handshake(ClientHandshake::parse_from_bytes(message).unwrap()))
                 }
                 Some(Event::Result) => {
-                    Some(ClientEvent::Result(parse_from_bytes(message).unwrap()))
+                    Some(ClientEvent::Result(ClientResult::parse_from_bytes(message).unwrap()))
                 }
-                Some(Event::Err) => Some(ClientEvent::Err(parse_from_bytes(message).unwrap())),
-                Some(Event::Ping) => Some(ClientEvent::Ping(parse_from_bytes(message).unwrap())),
-                Some(Event::Pong) => Some(ClientEvent::Pong(parse_from_bytes(message).unwrap())),
+                Some(Event::Err) => Some(ClientEvent::Err(ClientErr::parse_from_bytes(message).unwrap())),
+                Some(Event::Ping) => Some(ClientEvent::Ping(Ping::parse_from_bytes(message).unwrap())),
+                Some(Event::Pong) => Some(ClientEvent::Pong(Pong::parse_from_bytes(message).unwrap())),
                 _ => None,
             },
             None => None,
@@ -63,24 +63,24 @@ impl StreamMessage for SessionEvent {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
                 Some(Event::Handshake) => {
-                    Some(SessionEvent::Handshake(parse_from_bytes(message).unwrap()))
+                    Some(SessionEvent::Handshake(SessionHandshake::parse_from_bytes(message).unwrap()))
                 }
-                Some(Event::Ping) => Some(SessionEvent::Ping(parse_from_bytes(message).unwrap())),
-                Some(Event::Pong) => Some(SessionEvent::Pong(parse_from_bytes(message).unwrap())),
+                Some(Event::Ping) => Some(SessionEvent::Ping(Ping::parse_from_bytes(message).unwrap())),
+                Some(Event::Pong) => Some(SessionEvent::Pong(Pong::parse_from_bytes(message).unwrap())),
                 Some(Event::CreateActor) => Some(SessionEvent::CreateActor(
-                    parse_from_bytes(message).unwrap(),
+                    CreateActor::parse_from_bytes(message).unwrap(),
                 )),
                 Some(Event::FindActor) => {
-                    Some(SessionEvent::FindActor(parse_from_bytes(message).unwrap()))
+                    Some(SessionEvent::FindActor(FindActor::parse_from_bytes(message).unwrap()))
                 }
                 Some(Event::NotifyActor) => Some(SessionEvent::NotifyActor(
-                    parse_from_bytes(message).unwrap(),
+                    MessageRequest::parse_from_bytes(message).unwrap(),
                 )),
                 Some(Event::RegisterActor) => Some(SessionEvent::RegisterActor(
-                    parse_from_bytes(message).unwrap(),
+                    ActorAddress::parse_from_bytes(message).unwrap(),
                 )),
                 Some(Event::StreamPublish) => Some(SessionEvent::StreamPublish(
-                    parse_from_bytes(message).unwrap(),
+                    StreamPublish::parse_from_bytes(message).unwrap(),
                 )),
                 _ => None,
             },
