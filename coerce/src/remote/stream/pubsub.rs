@@ -1,20 +1,16 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, LocalActorRef};
 use crate::remote::net::StreamMessage;
 use crate::remote::stream::mediator::{Publish, PublishRaw, Subscribe, SubscribeErr};
-use futures::future::{BoxFuture, LocalBoxFuture};
-use futures::task::{Context, Poll};
-use futures::{Future, FutureExt, Stream};
+
 use std::any::Any;
-use std::collections::hash_map::RandomState;
+
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::macros::support::Pin;
-use tokio::sync::broadcast::Sender;
-use tokio::sync::oneshot::error::RecvError;
-use tokio::sync::{broadcast, oneshot};
+
+use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 pub struct PubSub;
@@ -150,7 +146,7 @@ impl Subscription {
         A: Handler<StreamEvent<T>>,
     {
         let task_handle = Some(tokio::spawn(async move {
-            let mut receiver_ref = receiver_ref;
+            let receiver_ref = receiver_ref;
             let mut stream_receiver = topic_receiver;
             while let Ok(message) = stream_receiver.recv().await {
                 receiver_ref
@@ -180,7 +176,7 @@ impl PubSub {
         let _enter = span.enter();
 
         let system = ctx.system().remote();
-        if let Some(mut mediator) = system.stream_mediator() {
+        if let Some(mediator) = system.stream_mediator() {
             mediator
                 .send(Subscribe::<A, T>::new(topic, ctx.actor_ref()))
                 .await

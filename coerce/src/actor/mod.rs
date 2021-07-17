@@ -7,7 +7,7 @@ use log::error;
 
 use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
-use tracing::Instrument;
+
 use uuid::Uuid;
 
 pub mod children;

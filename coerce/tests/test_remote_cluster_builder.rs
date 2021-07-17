@@ -82,7 +82,7 @@ impl Factory for EchoActorFactory {
 pub async fn test_remote_cluster_worker_builder() {
     util::create_trace_logger();
 
-    let mut system = ActorSystem::new();
+    let system = ActorSystem::new();
     let _actor = system.new_tracked_actor(TestActor::new()).await.unwrap();
     let remote = RemoteActorSystem::builder()
         .with_tag("remote-1")
@@ -91,7 +91,7 @@ pub async fn test_remote_cluster_worker_builder() {
         .build()
         .await;
 
-    let mut remote_c = remote.clone();
+    let remote_c = remote.clone();
 
     let remote_2 = RemoteActorSystem::builder()
         .with_tag("remote-2")
@@ -100,7 +100,7 @@ pub async fn test_remote_cluster_worker_builder() {
         .build()
         .await;
 
-    let mut remote_2_c = remote_2.clone();
+    let remote_2_c = remote_2.clone();
 
     let remote_3 = RemoteActorSystem::builder()
         .with_tag("remote-3")
@@ -109,7 +109,7 @@ pub async fn test_remote_cluster_worker_builder() {
         .build()
         .await;
 
-    let mut remote_3_c = remote_3.clone();
+    let remote_3_c = remote_3.clone();
 
     remote
         .cluster_worker()

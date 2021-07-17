@@ -17,7 +17,7 @@ impl Children {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::actor::system::ActorSystem;
     use crate::actor::{Actor, IntoActor, LocalActorRef};
     use std::any::Any;

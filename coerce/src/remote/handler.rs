@@ -148,7 +148,7 @@ where
         remote_ctx: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let mut system = self.system.clone();
+        let system = self.system.clone();
         let actor_id = if !args.actor_id.is_empty() {
             args.actor_id
         } else {
@@ -199,10 +199,10 @@ where
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
-        let mut system = self.system.clone();
+        let system = self.system.clone();
         let actor = system.get_tracked_actor::<A>(actor_id.clone()).await;
 
-        if let Some(mut actor) = actor {
+        if let Some(actor) = actor {
             let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
             match envelope {
                 Ok(m) => {

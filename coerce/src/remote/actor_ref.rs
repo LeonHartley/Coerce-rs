@@ -6,13 +6,9 @@ use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::MessageRequest;
 use crate::remote::system::RemoteActorSystem;
 use crate::remote::tracing::extract_trace_identifier;
-use opentelemetry::global;
-use opentelemetry::trace::TraceContextExt;
-use std::collections::HashMap;
+
 use std::marker::PhantomData;
-use std::sync::Arc;
-use tracing::Span;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
+
 use uuid::Uuid;
 
 pub struct RemoteActorRef<A: Actor>
@@ -52,7 +48,7 @@ where
         let message_type = Msg::type_name();
         let actor_type = A::type_name();
         let span = tracing::trace_span!("RemoteActorRef::send", actor_type, message_type);
-        let enter = span.enter();
+        let _enter = span.enter();
 
         let id = Uuid::new_v4();
         let (res_tx, res_rx) = tokio::sync::oneshot::channel();

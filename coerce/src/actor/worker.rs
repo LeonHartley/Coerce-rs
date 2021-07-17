@@ -151,7 +151,7 @@ where
 {
     async fn handle(&mut self, message: WorkerMessage<M>, _ctx: &mut ActorContext) {
         if let Some(worker) = self.workers.pop_front() {
-            let mut worker_ref = worker.clone();
+            let worker_ref = worker.clone();
 
             self.workers.push_back(worker);
 

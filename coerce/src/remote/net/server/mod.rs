@@ -14,7 +14,7 @@ use crate::remote::net::proto::protocol::{
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
-use opentelemetry::{global, Context};
+use opentelemetry::global;
 use protobuf::Message;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -65,7 +65,7 @@ impl RemoteServer {
     pub async fn start(
         &mut self,
         addr: String,
-        mut system: RemoteActorSystem,
+        system: RemoteActorSystem,
     ) -> Result<(), tokio::io::Error> {
         let listener = tokio::net::TcpListener::bind(addr).await?;
         let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
@@ -209,10 +209,10 @@ impl StreamReceiver for SessionMessageReceiver {
 }
 
 async fn session_handshake(
-    mut ctx: RemoteActorSystem,
+    ctx: RemoteActorSystem,
     handshake: SessionHandshake,
     session_id: Uuid,
-    mut sessions: LocalActorRef<RemoteSessionStore>,
+    sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let mut headers = HashMap::<String, String>::new();
     headers.insert("traceparent".to_owned(), handshake.trace_id);
@@ -256,7 +256,7 @@ async fn session_handshake(
 async fn session_handle_message(
     msg: MessageRequest,
     session_id: Uuid,
-    mut ctx: RemoteActorSystem,
+    ctx: RemoteActorSystem,
     mut sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let mut headers = HashMap::<String, String>::new();
@@ -291,7 +291,7 @@ async fn session_handle_lookup(
     msg_id: Uuid,
     id: ActorId,
     session_id: Uuid,
-    mut ctx: RemoteActorSystem,
+    ctx: RemoteActorSystem,
     mut sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let node_id = ctx.locate_actor_node(id.clone()).await;
@@ -314,7 +314,7 @@ async fn session_handle_lookup(
 async fn session_create_actor(
     msg: CreateActor,
     session_id: Uuid,
-    mut ctx: RemoteActorSystem,
+    ctx: RemoteActorSystem,
     sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let msg_id = msg.message_id.clone();

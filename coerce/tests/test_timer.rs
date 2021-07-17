@@ -33,7 +33,7 @@ impl Handler<TestTimer> for TestActor {
 #[tokio::test]
 pub async fn test_timer() {
     util::create_trace_logger();
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_tracked_actor(TestActor::new())
         .await
         .unwrap();

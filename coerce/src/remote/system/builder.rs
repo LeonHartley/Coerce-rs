@@ -86,10 +86,10 @@ impl RemoteActorSystemBuilder {
     where
         F: 'static + (FnOnce(&mut StreamMediator) -> &mut StreamMediator),
     {
-        let mut mediator = if let Some(mediator) = &mut self.mediator {
+        let mediator = if let Some(mediator) = &mut self.mediator {
             mediator
         } else {
-            let mut mediator = StreamMediator::new();
+            let mediator = StreamMediator::new();
             self.mediator = Some(mediator);
             self.mediator.as_mut().unwrap()
         };
@@ -119,7 +119,7 @@ impl RemoteActorSystemBuilder {
         let registry_ref = RemoteRegistry::new(&inner).await;
 
         let clients_ref = RemoteClientRegistry::new(&mut inner).await;
-        let mut registry_ref_clone = registry_ref.clone();
+        let registry_ref_clone = registry_ref.clone();
 
         let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
         let activator = ActorActivator::new(store);
@@ -162,7 +162,8 @@ impl RemoteActorSystemBuilder {
             .expect("no system set");
 
         if let Some(stream_mediator) = system.stream_mediator() {
-            stream_mediator.send(SetRemote(system.clone()))
+            stream_mediator
+                .send(SetRemote(system.clone()))
                 .await
                 .expect("no system set");
         }

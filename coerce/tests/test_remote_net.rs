@@ -6,9 +6,7 @@ use coerce::remote::system::RemoteActorSystem;
 use coerce::remote::RemoteActorRef;
 
 use coerce::actor::ActorRef;
-use std::sync::Arc;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+
 use util::*;
 use uuid::Uuid;
 
@@ -32,7 +30,7 @@ pub async fn test_remote_server_client_connection() {
     //     .try_init()
     //     .expect("tracing init");
 
-    let mut system = ActorSystem::new();
+    let system = ActorSystem::new();
     let actor = system.new_tracked_actor(TestActor::new()).await.unwrap();
 
     let remote = RemoteActorSystem::builder()
@@ -41,7 +39,7 @@ pub async fn test_remote_server_client_connection() {
         .build()
         .await;
 
-    let mut remote_2 = RemoteActorSystem::builder()
+    let remote_2 = RemoteActorSystem::builder()
         .with_actor_system(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
@@ -68,7 +66,7 @@ pub async fn test_remote_server_client_connection() {
         )
         .await;
 
-    let mut remote_actor: ActorRef<TestActor> =
+    let remote_actor: ActorRef<TestActor> =
         RemoteActorRef::<TestActor>::new(actor.id.clone(), node_id, remote_2).into();
 
     for _i in 1..=10 as i32 {

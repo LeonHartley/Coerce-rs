@@ -1,9 +1,8 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::lifecycle::Status;
-use coerce::actor::message::encoding::json::RemoteMessage;
-use coerce::actor::message::{Handler, Message};
+
+use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor, Actor};
+use coerce::actor::Actor;
 use coerce::remote::net::StreamMessage;
 use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;
@@ -54,7 +53,7 @@ impl Actor for TestStreamConsumer {
 
 #[async_trait]
 impl Handler<StreamEvent<StatusStream>> for TestStreamConsumer {
-    async fn handle(&mut self, message: StreamEvent<StatusStream>, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: StreamEvent<StatusStream>, _ctx: &mut ActorContext) {
         match message {
             StreamEvent::Receive(msg) => {
                 log::info!("received msg: {:?}", &msg);
@@ -77,17 +76,17 @@ impl Handler<StreamEvent<StatusStream>> for TestStreamConsumer {
 pub async fn test_pubsub_local() {
     util::create_trace_logger();
 
-    let mut sys = ActorSystem::new();
-    let mut remote = RemoteActorSystem::builder()
+    let sys = ActorSystem::new();
+    let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;
 
-    let (mut sender_a, mut receiver_a) = channel::<u32>();
-    let (mut sender_b, mut receiver_b) = channel::<u32>();
+    let (sender_a, receiver_a) = channel::<u32>();
+    let (sender_b, receiver_b) = channel::<u32>();
 
-    let mut actor = remote
+    let _actor = remote
         .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
@@ -98,7 +97,7 @@ pub async fn test_pubsub_local() {
         .await
         .unwrap();
 
-    let mut actor_2 = remote
+    let _actor_2 = remote
         .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
@@ -124,15 +123,15 @@ pub async fn test_pubsub_local() {
 pub async fn test_pubsub_distributed() {
     // util::create_trace_logger();
 
-    let mut sys = ActorSystem::new();
-    let mut remote = RemoteActorSystem::builder()
+    let sys = ActorSystem::new();
+    let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;
 
-    let mut sys = ActorSystem::new();
-    let mut remote_b = RemoteActorSystem::builder()
+    let sys = ActorSystem::new();
+    let remote_b = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
@@ -153,10 +152,10 @@ pub async fn test_pubsub_distributed() {
         .start()
         .await;
 
-    let (mut sender_a, mut receiver_a) = channel::<u32>();
-    let (mut sender_b, mut receiver_b) = channel::<u32>();
+    let (sender_a, receiver_a) = channel::<u32>();
+    let (sender_b, receiver_b) = channel::<u32>();
 
-    let mut actor = remote
+    let actor = remote
         .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,
@@ -167,7 +166,7 @@ pub async fn test_pubsub_distributed() {
         .await
         .unwrap();
 
-    let mut actor_2 = remote_b
+    let actor_2 = remote_b
         .actor_system()
         .new_anon_actor(TestStreamConsumer {
             subscription: None,

@@ -36,7 +36,7 @@ impl Timer {
 pub async fn timer_loop<A: Actor, T: TimerTick>(
     tick: Duration,
     msg: T,
-    mut actor: LocalActorRef<A>,
+    actor: LocalActorRef<A>,
     mut stop_rx: tokio::sync::oneshot::Receiver<bool>,
 ) where
     A: 'static + Handler<T> + Sync + Send,

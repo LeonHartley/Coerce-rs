@@ -1,7 +1,7 @@
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, IntoActor};
 use std::error::Error;
-use tracing::Instrument;
+
 use tracing_subscriber::prelude::*;
 
 struct TracingActor;

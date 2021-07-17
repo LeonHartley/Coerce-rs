@@ -49,7 +49,7 @@ pub async fn test_remote_cluster_client_get_actor() {
     util::create_trace_logger();
 
     let system = ActorSystem::new();
-    let mut remote = RemoteActorSystem::builder()
+    let remote = RemoteActorSystem::builder()
         .with_actor_system(system)
         .with_handlers(|builder| {
             builder.with_actor::<TestActorFactory>("TestActor", TestActorFactory {})

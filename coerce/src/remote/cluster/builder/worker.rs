@@ -55,7 +55,7 @@ impl ClusterWorkerBuilder {
             node_tag = self.system.node_tag()
         );
 
-        let enter = span.enter();
+        let _enter = span.enter();
 
         self.system
             .register_node(RemoteNode::new(

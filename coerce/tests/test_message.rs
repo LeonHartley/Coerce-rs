@@ -1,9 +1,9 @@
-use coerce::actor::context::{ActorContext, ActorStatus};
+use coerce::actor::context::ActorContext;
 use coerce::actor::message::encoding::json::RemoteMessage;
 use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWrapErr};
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, ActorState, IntoActor, Receiver};
-use futures::{FutureExt, TryFutureExt};
+use coerce::actor::{Actor, IntoActor, Receiver};
+use futures::FutureExt;
 use util::*;
 
 pub mod util;
@@ -16,7 +16,7 @@ extern crate async_trait;
 
 #[tokio::test]
 pub async fn test_actor_req_res() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -28,10 +28,10 @@ pub async fn test_actor_req_res() {
 
 #[tokio::test]
 pub async fn test_actor_req_res_multiple_actors() {
-    let mut ctx = ActorSystem::new();
+    let ctx = ActorSystem::new();
 
-    let mut test_ref = ctx.new_anon_actor(TestActor::new()).await.unwrap();
-    let mut echo_ref = ctx.new_anon_actor(EchoActor::new()).await.unwrap();
+    let test_ref = ctx.new_anon_actor(TestActor::new()).await.unwrap();
+    let echo_ref = ctx.new_anon_actor(EchoActor::new()).await.unwrap();
 
     let test_res = test_ref.send(GetCounterRequest()).await;
     let echo_res = echo_ref.send(GetCounterRequest()).await;
@@ -42,7 +42,7 @@ pub async fn test_actor_req_res_multiple_actors() {
 
 #[tokio::test]
 pub async fn test_actor_req_res_mutation() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -79,7 +79,7 @@ pub async fn test_actor_req_res_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_mutation() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -103,7 +103,7 @@ pub async fn test_actor_exec_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_exec_chain_mutation() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -122,7 +122,7 @@ pub async fn test_actor_exec_chain_mutation() {
 
 #[tokio::test]
 pub async fn test_actor_notify() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -145,8 +145,8 @@ impl Actor for OtherActor {}
 impl Handler<GetStatusRequest> for NewActor {
     async fn handle(
         &mut self,
-        message: GetStatusRequest,
-        ctx: &mut ActorContext,
+        _message: GetStatusRequest,
+        _ctx: &mut ActorContext,
     ) -> <GetStatusRequest as Message>::Result {
         GetStatusResponse::Ok(TestActorStatus::Active)
     }
@@ -156,8 +156,8 @@ impl Handler<GetStatusRequest> for NewActor {
 impl Handler<GetStatusRequest> for OtherActor {
     async fn handle(
         &mut self,
-        message: GetStatusRequest,
-        ctx: &mut ActorContext,
+        _message: GetStatusRequest,
+        _ctx: &mut ActorContext,
     ) -> <GetStatusRequest as Message>::Result {
         GetStatusResponse::Ok(TestActorStatus::Active)
     }

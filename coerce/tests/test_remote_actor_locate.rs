@@ -18,8 +18,8 @@ use tokio::time::Duration;
 pub async fn test_remote_actor_locate_node_locally() {
     util::create_trace_logger();
 
-    let mut system = ActorSystem::new();
-    let mut remote = RemoteActorSystem::builder()
+    let system = ActorSystem::new();
+    let remote = RemoteActorSystem::builder()
         .with_actor_system(system.clone())
         .build()
         .await;
@@ -44,15 +44,15 @@ pub async fn test_remote_actor_locate_node_locally() {
 
 #[tokio::test]
 pub async fn test_remote_actor_locate_remotely() {
-    let mut system_a = ActorSystem::new();
+    let system_a = ActorSystem::new();
     let system_b = ActorSystem::new();
 
-    let mut remote_a = RemoteActorSystem::builder()
+    let remote_a = RemoteActorSystem::builder()
         .with_actor_system(system_a.clone())
         .build()
         .await;
 
-    let mut remote_b = RemoteActorSystem::builder()
+    let remote_b = RemoteActorSystem::builder()
         .with_actor_system(system_b.clone())
         .build()
         .await;

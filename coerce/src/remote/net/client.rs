@@ -118,7 +118,7 @@ pub enum ClientType {
 impl RemoteClient {
     pub async fn connect(
         addr: String,
-        mut system: RemoteActorSystem,
+        system: RemoteActorSystem,
         nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
         client_type: ClientType,
     ) -> Result<RemoteClient, tokio::io::Error> {

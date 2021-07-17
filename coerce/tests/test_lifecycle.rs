@@ -13,7 +13,7 @@ extern crate async_trait;
 
 #[tokio::test]
 pub async fn test_actor_lifecycle_started() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();
@@ -26,7 +26,7 @@ pub async fn test_actor_lifecycle_started() {
 
 #[tokio::test]
 pub async fn test_actor_lifecycle_stopping() {
-    let mut actor_ref = ActorSystem::new()
+    let actor_ref = ActorSystem::new()
         .new_anon_actor(TestActor::new())
         .await
         .unwrap();

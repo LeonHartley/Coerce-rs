@@ -16,9 +16,7 @@ extern crate async_trait;
 pub async fn test_remote_create_message() {
     util::create_trace_logger();
 
-    let _createActor = CreateActor::new();
-
-    let mut remote = RemoteActorSystem::builder()
+    let remote = RemoteActorSystem::builder()
         .with_actor_system(ActorSystem::new())
         .with_handlers(move |handlers| {
             handlers.with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")

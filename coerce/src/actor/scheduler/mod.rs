@@ -8,7 +8,6 @@ use crate::remote::actor::message::SetRemote;
 use crate::remote::system::RemoteActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 pub mod timer;
 

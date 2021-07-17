@@ -54,8 +54,8 @@ impl ActorLoop {
         actor_type: ActorType,
         mut receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
         mut on_start: Option<tokio::sync::oneshot::Sender<bool>>,
-        mut actor_ref: LocalActorRef<A>,
-        parent_ref: Option<BoxedActorRef>,
+        actor_ref: LocalActorRef<A>,
+        _parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,
     ) where
         A: 'static + Sync + Send,
@@ -136,7 +136,7 @@ impl ActorLoop {
         ctx.set_status(Stopped);
 
         if actor_type.is_tracked() {
-            if let Some(mut system) = system.take() {
+            if let Some(system) = system.take() {
                 system
                     .scheduler()
                     .send(DeregisterActor(actor_id))

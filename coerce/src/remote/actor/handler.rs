@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Handler;
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes, SetRemote,
@@ -22,14 +22,13 @@ use crate::actor::ActorId;
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
-use std::alloc::System;
-use std::borrow::{Borrow, BorrowMut};
+
 use uuid::Uuid;
 
 #[async_trait]
 impl Handler<SetRemote> for RemoteRegistry {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
-        let mut sys = message.0;
+        let sys = message.0;
         ctx.set_system(sys.actor_system().clone());
         self.system = Some(sys);
 
@@ -80,8 +79,8 @@ where
 
 #[async_trait]
 impl Handler<RegisterNodes> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterNodes, ctx: &mut ActorContext) {
-        let mut remote_ctx = self.system.as_ref().unwrap().clone();
+    async fn handle(&mut self, message: RegisterNodes, _ctx: &mut ActorContext) {
+        let remote_ctx = self.system.as_ref().unwrap().clone();
         let nodes = message.0;
 
         let unregistered_nodes = nodes
@@ -104,7 +103,7 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             let sys = remote_ctx.clone();
             let node_id = node.id;
             tokio::spawn(async move {
-                let mut sys = sys;
+                let sys = sys;
                 PubSub::publish_locally(
                     SystemTopic,
                     SystemEvent::Cluster(ClusterEvent::NodeAdded(node_id)),
@@ -188,7 +187,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 let _enter = span.enter();
 
                 let message_id = Uuid::new_v4();
-                let mut system = system;
+                let system = system;
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
 
                 trace!(target: "RemoteRegistry::GetActorNode", "remote request={}", message_id);
@@ -276,10 +275,10 @@ impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
                 SystemEvent::Cluster(_) => {
                     trace!(target: "RemoteRegistry", "cluster event");
                     let system = self.system.as_ref().unwrap().clone();
-                    let mut registry_ref = ctx.actor_ref::<Self>();
+                    let registry_ref = ctx.actor_ref::<Self>();
 
                     tokio::spawn(async move {
-                        let mut sys = system;
+                        let sys = system;
                         let actor_ids = sys
                             .actor_system()
                             .scheduler()

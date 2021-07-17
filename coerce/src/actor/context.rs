@@ -107,5 +107,5 @@ impl ActorContext {
         }
     }
 
-    pub fn new_child<A: Actor>(id: &ActorId, actor: A) {}
+    pub fn new_child<A: Actor>(_id: &ActorId, _actor: A) {}
 }

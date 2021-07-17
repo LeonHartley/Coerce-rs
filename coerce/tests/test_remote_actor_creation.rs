@@ -65,7 +65,7 @@ pub async fn test_remote_actor_create_new() {
     let system = ActorSystem::new();
 
     let factory = TestActorFactory {};
-    let mut remote = RemoteActorSystem::builder()
+    let remote = RemoteActorSystem::builder()
         .with_actor_system(system)
         .with_actors(|builder| builder.with_actor::<TestActorFactory>("TestActor", factory))
         .build()
@@ -92,7 +92,7 @@ pub async fn test_remote_actor_create_new() {
 
     let create_actor_res = protobuf::parse_from_bytes::<ActorAddress>(&result.unwrap()).unwrap();
 
-    let mut actor = remote
+    let actor = remote
         .actor_system()
         .get_tracked_actor::<TestActor>(actor_id.clone())
         .await
