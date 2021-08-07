@@ -90,20 +90,12 @@ where
 }
 
 pub struct RemoteActorMessageHandler<A: Actor, M: Message>
-where
-    A: Send + Sync,
-    M: DeserializeOwned + Send + Sync,
-    M::Result: Serialize + Send + Sync,
 {
     system: ActorSystem,
     _marker: RemoteActorMessageMarker<A, M>,
 }
 
 impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M>
-where
-    A: 'static + Send + Sync,
-    M: DeserializeOwned + 'static + Send + Sync,
-    M::Result: Serialize + Send + Sync,
 {
     pub fn new(system: ActorSystem) -> Box<RemoteActorMessageHandler<A, M>> {
         let _marker = RemoteActorMessageMarker::new();

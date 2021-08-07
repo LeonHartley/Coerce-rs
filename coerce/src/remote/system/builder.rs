@@ -16,10 +16,10 @@ use crate::remote::system::{RemoteActorSystem, RemoteSystemCore};
 use futures::TryFutureExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
-use std::any::TypeId;
 
 pub struct RemoteActorSystemBuilder {
     node_id: Option<Uuid>,
@@ -222,7 +222,8 @@ impl RemoteActorHandlerBuilder {
             factory,
         ));
 
-        self.actors.insert(String::from(F::Actor::type_name()), handler);
+        self.actors
+            .insert(String::from(F::Actor::type_name()), handler);
         self
     }
 

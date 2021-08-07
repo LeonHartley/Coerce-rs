@@ -13,8 +13,8 @@ use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use coerce::remote::storage::state::ActorStore;
 use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
 use protobuf::Message;
-use uuid::Uuid;
 use std::time::Duration;
+use uuid::Uuid;
 
 pub struct TestActorStore {
     state: Option<ActorState>,
@@ -115,7 +115,7 @@ pub async fn test_remote_actor_create_new_locally() {
     let factory = TestActorFactory {};
     let remote = RemoteActorSystem::builder()
         .with_actor_system(system)
-        .with_actors(|builder| builder.with_actor::<TestActorFactory>( factory))
+        .with_actors(|builder| builder.with_actor::<TestActorFactory>(factory))
         .build()
         .await;
 

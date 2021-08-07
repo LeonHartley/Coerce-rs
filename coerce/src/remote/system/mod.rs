@@ -158,10 +158,10 @@ impl RemoteActorSystem {
         trace!(target: "NodeEvent", "message_id={}, waiting for result", &message_id);
         match res_rx.await {
             Ok(RemoteResponse::Ok(res)) => match T::parse_from_bytes(&res) {
-                Ok(res) =>
-                    {
-                        trace!(target: "NodeEvent", "message_id={}, received result", &message_id);
-                    Ok(res) },
+                Ok(res) => {
+                    trace!(target: "NodeEvent", "message_id={}, received result", &message_id);
+                    Ok(res)
+                }
                 Err(_) => {
                     error!(target: "NodeEvent", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
                     Err(NodeEventErr::Serialisation)
@@ -232,7 +232,7 @@ impl RemoteActorSystem {
                 trace!(target: "ActorDeploy", "actor started (actor_id={})", &actor_id);
 
                 Ok(res)
-            },
+            }
             Err(_e) => Err(RemoteActorErr::ActorUnavailable),
         }
     }
@@ -374,7 +374,7 @@ impl RemoteActorSystem {
                     Ok(Ok(res)) => {
                         trace!(target: "LocateActorNode", "received actor node (current_node={}, actor_id={}, actor_node={:?})", self.node_tag(), &actor_id, &res);
                         res
-                    },
+                    }
                     Ok(Err(e)) => {
                         error!(target: "LocateActorNode", "error receiving result, {}", e);
                         None

@@ -51,9 +51,7 @@ pub async fn test_remote_cluster_client_get_actor() {
     let system = ActorSystem::new();
     let remote = RemoteActorSystem::builder()
         .with_actor_system(system)
-        .with_handlers(|builder| {
-            builder.with_actor::<TestActorFactory>(TestActorFactory {})
-        })
+        .with_handlers(|builder| builder.with_actor::<TestActorFactory>(TestActorFactory {}))
         .build()
         .await;
 
