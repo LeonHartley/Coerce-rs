@@ -3,7 +3,7 @@ use crate::remote::net::proto::protocol::{
 };
 use crate::remote::net::StreamMessage;
 use crate::remote::stream::pubsub::Topic;
-use protobuf::{parse_from_bytes, Message, ProtobufEnum, ProtobufError};
+use protobuf::{Message, ProtobufEnum, ProtobufError};
 use uuid::Uuid;
 
 pub struct SystemTopic;
@@ -45,13 +45,11 @@ impl StreamMessage for SystemEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match SysEvent::from_i32(*event as i32) {
-                Some(SysEvent::ClusterNodeRemoved) => Some(
-                    parse_from_bytes::<NodeRemovedEvent>(message)
-                        .unwrap()
-                        .into(),
-                ),
+                Some(SysEvent::ClusterNodeRemoved) => {
+                    Some(NodeRemovedEvent::parse_from_bytes(message).unwrap().into())
+                }
                 Some(SysEvent::ClusterNewNode) => {
-                    Some(parse_from_bytes::<NewNodeEvent>(message).unwrap().into())
+                    Some(NodeRemovedEvent::parse_from_bytes(message).unwrap().into())
                 }
                 None => None,
             },

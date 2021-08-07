@@ -8,6 +8,7 @@ use crate::remote::net::server::session::{
 };
 use crate::remote::net::{receive_loop, StreamReceiver};
 
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::protocol::{
     ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
@@ -72,7 +73,11 @@ impl RemoteServer {
 
         let session_store = system
             .actor_system()
-            .new_anon_actor(RemoteSessionStore::new())
+            .new_actor(
+                format!("RemoteSessionStore-{}", system.node_tag()),
+                RemoteSessionStore::new(),
+                Anonymous,
+            )
             .await
             .unwrap();
 
@@ -304,7 +309,7 @@ async fn session_handle_lookup(
     };
 
     match response.write_to_bytes() {
-        Ok(buf) => send_result(msg_id, buf, session_id, &mut sessions).await,
+        Ok(buf) => send_result(msg_id, buf, session_id, &sessions).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }
@@ -318,6 +323,8 @@ async fn session_create_actor(
     sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let msg_id = msg.message_id.clone();
+
+    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor", ctx.node_tag(), ctx.node_id(), &msg.message_id);
     match ctx.handle_create_actor(msg).await {
         Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, &sessions).await,
         Err(_) => {

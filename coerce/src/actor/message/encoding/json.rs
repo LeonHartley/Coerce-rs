@@ -2,17 +2,17 @@ use crate::actor::message::{Envelope, Message, MessageUnwrapErr, MessageWrapErr}
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub trait RemoteMessage {
+pub trait JsonMessage {
     type Result;
 }
 
-impl<M: RemoteMessage> Message for M
+impl<M: JsonMessage> Message for M
 where
     Self: 'static + Sized,
-    M: 'static + RemoteMessage + Sync + Send + Serialize + DeserializeOwned,
-    <Self as RemoteMessage>::Result: 'static + Sync + Send + Serialize + DeserializeOwned,
+    M: 'static + JsonMessage + Sync + Send + Serialize + DeserializeOwned,
+    <Self as JsonMessage>::Result: 'static + Sync + Send + Serialize + DeserializeOwned,
 {
-    type Result = <Self as RemoteMessage>::Result;
+    type Result = <Self as JsonMessage>::Result;
 
     fn into_remote_envelope(self) -> Result<Envelope<Self>, MessageWrapErr> {
         serde_json::to_vec(&self)

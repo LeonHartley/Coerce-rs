@@ -60,7 +60,7 @@ pub trait ActorRecipe: Sized {
 }
 
 #[async_trait]
-pub trait Factory: Clone {
+pub trait ActorFactory: Clone {
     type Actor: Actor + 'static + Sync + Send;
     type Recipe: ActorRecipe + 'static + Sync + Send;
 

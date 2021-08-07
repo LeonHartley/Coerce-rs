@@ -1,6 +1,7 @@
 use crate::actor::message::{Handler, Message};
+use crate::actor::scheduler::ActorType::Anonymous;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, Factory};
+use crate::actor::{Actor, ActorFactory};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
@@ -18,6 +19,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
+use std::any::TypeId;
 
 pub struct RemoteActorSystemBuilder {
     node_id: Option<Uuid>,
@@ -113,12 +115,14 @@ impl RemoteActorSystemBuilder {
             h(&mut handlers);
         });
 
-        let types = handlers.build(self.node_tag);
         let node_id = *inner.system_id();
-        let handler_ref = RemoteHandler::new(&inner).await;
-        let registry_ref = RemoteRegistry::new(&inner).await;
+        let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
 
-        let clients_ref = RemoteClientRegistry::new(&mut inner).await;
+        let types = handlers.build(self.node_tag);
+        let handler_ref = RemoteHandler::new(&inner, &system_tag).await;
+        let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
+
+        let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
         let registry_ref_clone = registry_ref.clone();
 
         let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
@@ -128,7 +132,7 @@ impl RemoteActorSystemBuilder {
             trace!("mediator set");
             Some(
                 inner
-                    .new_tracked_actor(mediator)
+                    .new_actor("PubSubMediator-0".to_string(), mediator, Anonymous)
                     .await
                     .expect("unable to start mediator actor"),
             )
@@ -209,16 +213,16 @@ impl RemoteActorHandlerBuilder {
         self
     }
 
-    pub fn with_actor<F: Factory>(&mut self, identifier: &'static str, factory: F) -> &mut Self
+    pub fn with_actor<F: ActorFactory>(&mut self, factory: F) -> &mut Self
     where
-        F: 'static + Factory + Send + Sync,
+        F: 'static + ActorFactory + Send + Sync,
     {
         let handler = Box::new(RemoteActorHandler::<F::Actor, F>::new(
             self.system.clone(),
             factory,
         ));
 
-        self.actors.insert(String::from(identifier), handler);
+        self.actors.insert(String::from(F::Actor::type_name()), handler);
         self
     }
 

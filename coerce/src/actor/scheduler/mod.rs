@@ -8,18 +8,21 @@ use crate::remote::actor::message::SetRemote;
 use crate::remote::system::RemoteActorSystem;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use uuid::Uuid;
 
 pub mod timer;
 
 pub struct ActorScheduler {
     pub(crate) actors: HashMap<ActorId, BoxedActorRef>,
+    system_id: Uuid,
     remote: Option<RemoteActorSystem>,
 }
 
 impl ActorScheduler {
-    pub fn new() -> LocalActorRef<ActorScheduler> {
+    pub fn new(system_id: Uuid) -> LocalActorRef<ActorScheduler> {
         start_actor(
             ActorScheduler {
+                system_id,
                 actors: HashMap::new(),
                 remote: None,
             },
@@ -33,7 +36,11 @@ impl ActorScheduler {
 }
 
 #[async_trait]
-impl Actor for ActorScheduler {}
+impl Actor for ActorScheduler {
+    async fn started(&mut self, _ctx: &mut ActorContext) {
+        log::trace!(target: "ActorScheduler", "started on system {}", self.system_id);
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ActorType {

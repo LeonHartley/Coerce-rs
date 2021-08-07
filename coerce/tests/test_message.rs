@@ -1,5 +1,5 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::encoding::json::RemoteMessage;
+use coerce::actor::message::encoding::json::JsonMessage;
 use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWrapErr};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, IntoActor, Receiver};
@@ -168,10 +168,7 @@ pub async fn test_actor_receiver() {
     let sys = ActorSystem::new();
 
     let actor_a = NewActor.into_actor(None, &sys).await.expect("NewActor");
-    let actor_b = OtherActor
-        .into_actor(None, &sys)
-        .await
-        .expect("OtherActor");
+    let actor_b = OtherActor.into_actor(None, &sys).await.expect("OtherActor");
 
     let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
 
@@ -200,7 +197,7 @@ impl Message for NonSerializableMessage {
     type Result = ();
 }
 
-impl RemoteMessage for MessageOne {
+impl JsonMessage for MessageOne {
     type Result = ();
 }
 

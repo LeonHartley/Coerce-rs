@@ -7,12 +7,14 @@ extern crate serde;
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorRecipe, ActorState, Factory};
+use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorState};
 
 use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use coerce::remote::storage::state::ActorStore;
 use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
+use protobuf::Message;
 use uuid::Uuid;
+use std::time::Duration;
 
 pub struct TestActorStore {
     state: Option<ActorState>,
@@ -41,7 +43,7 @@ impl ActorRecipe for TestActorRecipe {
 pub struct TestActorFactory;
 
 #[async_trait]
-impl Factory for TestActorFactory {
+impl ActorFactory for TestActorFactory {
     type Actor = TestActor;
     type Recipe = TestActorRecipe;
 
@@ -55,9 +57,55 @@ impl Factory for TestActorFactory {
 impl Actor for TestActor {}
 
 #[tokio::test]
-pub async fn test_remote_actor_create_new() {
+pub async fn test_remote_actor_deploy_remotely() {
     util::create_trace_logger();
 
+    let expected_actor_name = "test-actor-123".to_string();
+    let actor_id = expected_actor_name.clone();
+
+    let sys = ActorSystem::new();
+    let remote = RemoteActorSystem::builder()
+        .with_actor_system(sys)
+        .with_actors(|builder| builder.with_actor::<TestActorFactory>(TestActorFactory {}))
+        .with_tag("system-a")
+        .build()
+        .await;
+
+    let sys = ActorSystem::new();
+    let remote_b = RemoteActorSystem::builder()
+        .with_actor_system(sys)
+        .with_tag("system-b")
+        .build()
+        .await;
+
+    remote
+        .clone()
+        .cluster_worker()
+        .listen_addr("localhost:30101")
+        .start()
+        .await;
+
+    remote_b
+        .clone()
+        .cluster_worker()
+        .listen_addr("localhost:30102")
+        .with_seed_addr("localhost:30101")
+        .start()
+        .await;
+
+    let recipe = TestActorRecipe {
+        name: expected_actor_name,
+    };
+
+    let deployment_result = remote_b
+        .deploy_actor::<TestActorFactory>(Some(actor_id.clone()), recipe, Some(remote.node_id()))
+        .await;
+
+    assert_eq!(deployment_result.is_ok(), true)
+}
+
+#[tokio::test]
+pub async fn test_remote_actor_create_new_locally() {
     let actor_id = new_actor_id();
     let expected_actor_name = "test-actor-123".to_string();
     let recipe = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
@@ -67,14 +115,14 @@ pub async fn test_remote_actor_create_new() {
     let factory = TestActorFactory {};
     let remote = RemoteActorSystem::builder()
         .with_actor_system(system)
-        .with_actors(|builder| builder.with_actor::<TestActorFactory>("TestActor", factory))
+        .with_actors(|builder| builder.with_actor::<TestActorFactory>( factory))
         .build()
         .await;
 
     let message = CreateActor {
         message_id: Uuid::new_v4().to_string(),
         actor_id: actor_id.clone(),
-        actor_type: "TestActor".to_string(),
+        actor_type: TestActor::type_name().to_string(),
         recipe: recipe.clone(),
         ..CreateActor::default()
     };
@@ -82,7 +130,7 @@ pub async fn test_remote_actor_create_new() {
     let message_duplicate = CreateActor {
         message_id: Uuid::new_v4().to_string(),
         actor_id: actor_id.clone(),
-        actor_type: "TestActor".to_string(),
+        actor_type: TestActor::type_name().to_string(),
         recipe: recipe.clone(),
         ..CreateActor::default()
     };
@@ -90,13 +138,14 @@ pub async fn test_remote_actor_create_new() {
     let result = remote.handle_create_actor(message).await;
     let duplicate = remote.handle_create_actor(message_duplicate).await;
 
-    let create_actor_res = protobuf::parse_from_bytes::<ActorAddress>(&result.unwrap()).unwrap();
+    let create_actor_res = ActorAddress::parse_from_bytes(&result.unwrap()).unwrap();
 
     let actor = remote
         .actor_system()
         .get_tracked_actor::<TestActor>(actor_id.clone())
         .await
         .unwrap();
+
     let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
 
     let node = remote.locate_actor_node(actor_id.clone()).await;

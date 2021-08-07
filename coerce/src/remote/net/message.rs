@@ -30,15 +30,21 @@ impl StreamMessage for ClientEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
-                Some(Event::Handshake) => {
-                    Some(ClientEvent::Handshake(ClientHandshake::parse_from_bytes(message).unwrap()))
+                Some(Event::Handshake) => Some(ClientEvent::Handshake(
+                    ClientHandshake::parse_from_bytes(message).unwrap(),
+                )),
+                Some(Event::Result) => Some(ClientEvent::Result(
+                    ClientResult::parse_from_bytes(message).unwrap(),
+                )),
+                Some(Event::Err) => Some(ClientEvent::Err(
+                    ClientErr::parse_from_bytes(message).unwrap(),
+                )),
+                Some(Event::Ping) => {
+                    Some(ClientEvent::Ping(Ping::parse_from_bytes(message).unwrap()))
                 }
-                Some(Event::Result) => {
-                    Some(ClientEvent::Result(ClientResult::parse_from_bytes(message).unwrap()))
+                Some(Event::Pong) => {
+                    Some(ClientEvent::Pong(Pong::parse_from_bytes(message).unwrap()))
                 }
-                Some(Event::Err) => Some(ClientEvent::Err(ClientErr::parse_from_bytes(message).unwrap())),
-                Some(Event::Ping) => Some(ClientEvent::Ping(Ping::parse_from_bytes(message).unwrap())),
-                Some(Event::Pong) => Some(ClientEvent::Pong(Pong::parse_from_bytes(message).unwrap())),
                 _ => None,
             },
             None => None,
@@ -62,17 +68,21 @@ impl StreamMessage for SessionEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
-                Some(Event::Handshake) => {
-                    Some(SessionEvent::Handshake(SessionHandshake::parse_from_bytes(message).unwrap()))
+                Some(Event::Handshake) => Some(SessionEvent::Handshake(
+                    SessionHandshake::parse_from_bytes(message).unwrap(),
+                )),
+                Some(Event::Ping) => {
+                    Some(SessionEvent::Ping(Ping::parse_from_bytes(message).unwrap()))
                 }
-                Some(Event::Ping) => Some(SessionEvent::Ping(Ping::parse_from_bytes(message).unwrap())),
-                Some(Event::Pong) => Some(SessionEvent::Pong(Pong::parse_from_bytes(message).unwrap())),
+                Some(Event::Pong) => {
+                    Some(SessionEvent::Pong(Pong::parse_from_bytes(message).unwrap()))
+                }
                 Some(Event::CreateActor) => Some(SessionEvent::CreateActor(
                     CreateActor::parse_from_bytes(message).unwrap(),
                 )),
-                Some(Event::FindActor) => {
-                    Some(SessionEvent::FindActor(FindActor::parse_from_bytes(message).unwrap()))
-                }
+                Some(Event::FindActor) => Some(SessionEvent::FindActor(
+                    FindActor::parse_from_bytes(message).unwrap(),
+                )),
                 Some(Event::NotifyActor) => Some(SessionEvent::NotifyActor(
                     MessageRequest::parse_from_bytes(message).unwrap(),
                 )),

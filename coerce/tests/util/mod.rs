@@ -1,6 +1,6 @@
 use chrono::Local;
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::encoding::json::RemoteMessage;
+use coerce::actor::message::encoding::json::JsonMessage;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 use env_logger::Builder;
@@ -22,7 +22,7 @@ pub enum GetStatusResponse {
     None,
 }
 
-impl RemoteMessage for GetStatusRequest {
+impl JsonMessage for GetStatusRequest {
     type Result = GetStatusResponse;
 }
 
@@ -37,7 +37,7 @@ pub enum SetStatusResponse {
     Unsuccessful,
 }
 
-impl RemoteMessage for SetStatusRequest {
+impl JsonMessage for SetStatusRequest {
     type Result = SetStatusResponse;
 }
 

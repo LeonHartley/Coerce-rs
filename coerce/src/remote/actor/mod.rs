@@ -11,7 +11,7 @@ use crate::remote::system::RemoteActorSystem;
 use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::actor::scheduler::ActorType::Tracked;
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::stream::pubsub::Subscription;
 
 use uuid::Uuid;
@@ -144,9 +144,9 @@ impl Actor for RemoteHandler {}
 impl Actor for RemoteClientRegistry {}
 
 impl RemoteClientRegistry {
-    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteClientRegistry> {
+    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteClientRegistry> {
         ctx.new_actor(
-            "RemoteClientRegistry".to_string(),
+            format!("RemoteClientRegistry-{}", system_tag),
             RemoteClientRegistry {
                 clients: HashMap::new(),
             },
@@ -165,16 +165,16 @@ impl RemoteClientRegistry {
 }
 
 impl RemoteRegistry {
-    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteRegistry> {
+    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteRegistry> {
         ctx.new_actor(
-            format!("RemoteRegistry-0"),
+            format!("RemoteRegistry-{}", &system_tag),
             RemoteRegistry {
                 actors: HashMap::new(),
                 nodes: RemoteNodeStore::new(vec![]),
                 system: None,
                 system_event_subscription: None,
             },
-            Tracked,
+            Anonymous,
         )
         .await
         .expect("RemoteRegistry")
@@ -182,10 +182,14 @@ impl RemoteRegistry {
 }
 
 impl RemoteHandler {
-    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteHandler> {
-        ctx.new_anon_actor(RemoteHandler {
-            requests: HashMap::new(),
-        })
+    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteHandler> {
+        ctx.new_actor(
+            format!("RemoteHandler-{}", system_tag),
+            RemoteHandler {
+                requests: HashMap::new(),
+            },
+            Anonymous,
+        )
         .await
         .expect("RemoteHandler")
     }

@@ -13,7 +13,7 @@ use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
-use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
+use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
 use tokio::time::Duration;
 use util::*;
 
@@ -36,7 +36,7 @@ impl ActorRecipe for TestActorRecipe {
 pub struct TestActorFactory;
 
 #[async_trait]
-impl Factory for TestActorFactory {
+impl ActorFactory for TestActorFactory {
     type Actor = TestActor;
     type Recipe = TestActorRecipe;
 
@@ -67,7 +67,7 @@ impl ActorRecipe for EchoActorRecipe {
 pub struct EchoActorFactory;
 
 #[async_trait]
-impl Factory for EchoActorFactory {
+impl ActorFactory for EchoActorFactory {
     type Actor = EchoActor;
     type Recipe = EchoActorRecipe;
 
@@ -158,8 +158,8 @@ pub async fn test_remote_cluster_worker_builder() {
 
 fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
     handlers
-        .with_actor::<TestActorFactory>("TestActor", TestActorFactory {})
-        .with_actor::<EchoActorFactory>("EchoActor", EchoActorFactory {})
+        .with_actor::<TestActorFactory>(TestActorFactory {})
+        .with_actor::<EchoActorFactory>(EchoActorFactory {})
         .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
         .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
         .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")

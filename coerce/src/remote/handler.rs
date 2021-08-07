@@ -1,7 +1,7 @@
 use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRecipe, Factory};
+use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use crate::remote::system::RemoteActorSystem;
@@ -111,7 +111,7 @@ where
     }
 }
 
-pub struct RemoteActorHandler<A: Actor, F: Factory>
+pub struct RemoteActorHandler<A: Actor, F: ActorFactory>
 where
     F: Send + Sync,
     A: Send + Sync,
@@ -121,7 +121,7 @@ where
     marker: RemoteActorMarker<A>,
 }
 
-impl<A: Actor, F: Factory> RemoteActorHandler<A, F>
+impl<A: Actor, F: ActorFactory> RemoteActorHandler<A, F>
 where
     A: 'static + Send + Sync,
     F: 'static + Send + Sync,
@@ -137,7 +137,7 @@ where
 }
 
 #[async_trait]
-impl<A: Actor, F: Factory<Actor = A>> ActorHandler for RemoteActorHandler<A, F>
+impl<A: Actor, F: ActorFactory<Actor = A>> ActorHandler for RemoteActorHandler<A, F>
 where
     A: 'static + Sync + Send,
     F: 'static + Send + Sync,

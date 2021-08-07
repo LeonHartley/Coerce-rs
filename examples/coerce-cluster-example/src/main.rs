@@ -1,6 +1,6 @@
 use actor::{Echo, EchoActor};
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Factory, IntoActor};
+use coerce::actor::{ActorFactory, IntoActor};
 use coerce::remote::system::RemoteActorSystem;
 use opentelemetry::global;
 use opentelemetry::sdk::propagation::TraceContextPropagator;

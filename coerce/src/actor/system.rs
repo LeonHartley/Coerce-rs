@@ -17,9 +17,10 @@ pub struct ActorSystem {
 
 impl ActorSystem {
     pub fn new() -> ActorSystem {
+        let system_id = Uuid::new_v4();
         ActorSystem {
-            system_id: Uuid::new_v4(),
-            scheduler: ActorScheduler::new(),
+            system_id,
+            scheduler: ActorScheduler::new(system_id),
             remote: None,
         }
     }
@@ -50,7 +51,7 @@ impl ActorSystem {
         self.remote
             .as_ref()
             .map(|s| s.clone())
-            .expect("this ActorSystem is not setup for remoting")
+            .expect("this ActorSytem is not setup for remoting")
     }
 
     pub fn is_remote(&self) -> bool {

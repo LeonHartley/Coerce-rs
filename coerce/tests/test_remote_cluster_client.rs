@@ -10,7 +10,7 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorCreationErr, ActorRecipe, Factory};
+use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
 
 use coerce::remote::system::RemoteActorSystem;
 use util::*;
@@ -32,7 +32,7 @@ impl ActorRecipe for TestActorRecipe {
 }
 
 #[async_trait]
-impl Factory for TestActorFactory {
+impl ActorFactory for TestActorFactory {
     type Actor = TestActor;
     type Recipe = TestActorRecipe;
 
@@ -52,7 +52,7 @@ pub async fn test_remote_cluster_client_get_actor() {
     let remote = RemoteActorSystem::builder()
         .with_actor_system(system)
         .with_handlers(|builder| {
-            builder.with_actor::<TestActorFactory>("TestActor", TestActorFactory {})
+            builder.with_actor::<TestActorFactory>(TestActorFactory {})
         })
         .build()
         .await;

@@ -5,14 +5,14 @@ use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
 
-use crate::actor::message::encoding::json::RemoteMessage;
+use crate::actor::message::encoding::json::JsonMessage;
 use std::collections::HashMap;
 
 pub struct Status();
 
 pub struct Stop();
 
-impl RemoteMessage for Stop {
+impl JsonMessage for Stop {
     type Result = ();
 }
 
@@ -61,12 +61,7 @@ impl ActorLoop {
         A: 'static + Sync + Send,
     {
         let actor_id = actor_ref.id.clone();
-        let mut ctx = ActorContext::new(
-            system.clone(),
-            Starting,
-            actor_ref.clone().into(),
-            HashMap::new(),
-        );
+        let mut ctx = ActorContext::new(system.clone(), Starting, actor_ref.clone().into());
 
         let system_id = actor_ref
             .system_id

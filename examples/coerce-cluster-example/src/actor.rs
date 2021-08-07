@@ -1,5 +1,5 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::encoding::json::RemoteMessage;
+use coerce::actor::message::encoding::json::JsonMessage;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 
@@ -10,7 +10,7 @@ impl Actor for EchoActor {}
 #[derive(Serialize, Deserialize)]
 pub struct Echo(pub String);
 
-impl RemoteMessage for Echo {
+impl JsonMessage for Echo {
     type Result = String;
 }
 

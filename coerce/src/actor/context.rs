@@ -13,15 +13,12 @@ pub enum ActorStatus {
     Stopped,
 }
 
-type BoxedAttachment = Box<dyn Any + 'static + Sync + Send>;
-
 pub struct ActorContext {
     boxed_ref: BoxedActorRef,
     boxed_parent_ref: Option<BoxedActorRef>,
     status: ActorStatus,
     core: Option<ActorSystem>,
     children: Option<Children>,
-    attachments: HashMap<&'static str, BoxedAttachment>,
 }
 
 impl ActorContext {
@@ -29,13 +26,11 @@ impl ActorContext {
         core: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
-        attachments: HashMap<&'static str, BoxedAttachment>,
     ) -> ActorContext {
         ActorContext {
             boxed_ref,
             status,
             core,
-            attachments,
             children: None,
             boxed_parent_ref: None,
         }
@@ -82,29 +77,6 @@ impl ActorContext {
             .downcast_ref::<LocalActorRef<A>>()
             .expect("actor_ref")
             .clone()
-    }
-
-    pub fn add_attachment<T: Any>(&mut self, key: &'static str, attachment: T)
-    where
-        T: 'static + Send + Sync,
-    {
-        self.attachments.insert(key, Box::new(attachment));
-    }
-
-    pub fn attachment<T: Any>(&self, key: &str) -> Option<&T> {
-        if let Some(attachment) = self.attachments.get(key) {
-            attachment.downcast_ref()
-        } else {
-            None
-        }
-    }
-
-    pub fn attachment_mut<T: Any>(&mut self, key: &str) -> Option<&mut T> {
-        if let Some(attachment) = self.attachments.get_mut(key) {
-            attachment.downcast_mut()
-        } else {
-            None
-        }
     }
 
     pub fn new_child<A: Actor>(_id: &ActorId, _actor: A) {}

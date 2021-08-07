@@ -1,6 +1,8 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRecipe, ActorRef, Factory, LocalActorRef};
+use crate::actor::{
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, LocalActorRef,
+};
 use crate::remote::actor::message::{
     ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
     RegisterNode, RegisterNodes,
@@ -14,7 +16,7 @@ use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
-use crate::remote::net::message::SessionEvent;
+use crate::remote::net::message::{ClientEvent, SessionEvent};
 use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use crate::remote::storage::activator::ActorActivator;
 use crate::remote::stream::mediator::StreamMediator;
@@ -24,6 +26,8 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
+use crate::remote::net::StreamMessage;
+use protobuf::Message as ProtoMessage;
 use uuid::Uuid;
 
 pub mod builder;
@@ -64,6 +68,15 @@ pub enum RemoteActorErr {
     ActorUnavailable,
     ActorExists,
     RecipeSerializationErr,
+    ActorNotSupported,
+    NodeErr(NodeEventErr),
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub enum NodeEventErr {
+    NodeUnreachable,
+    Serialisation,
+    ReceiveFailed,
 }
 
 impl RemoteActorSystem {
@@ -71,7 +84,7 @@ impl RemoteActorSystem {
         self.inner.types.node_tag()
     }
 
-    pub async fn deploy_actor<F: Factory>(
+    pub async fn deploy_actor<F: ActorFactory>(
         &self,
         id: Option<ActorId>,
         recipe: F::Recipe,
@@ -87,20 +100,35 @@ impl RemoteActorSystem {
             return Err(RemoteActorErr::RecipeSerializationErr);
         }
 
+        let message_id = Uuid::new_v4();
         let message = CreateActor {
             actor_type,
-            message_id: Uuid::new_v4().to_string(),
+            message_id: message_id.to_string(),
             actor_id: id.clone(),
             recipe: actor_recipe.unwrap(),
             ..CreateActor::default()
         };
 
+        let mut actor_addr = None;
         if node == self_id {
-            let create_result = self.handle_create_actor(message).await;
-            if create_result.is_ok() {
-                let actor_address =
-                    protobuf::parse_from_bytes::<ActorAddress>(&create_result.unwrap()).unwrap();
+            let local_create = self.handle_create_actor(message).await;
+            if local_create.is_ok() {
+                actor_addr = Some(ActorAddress::parse_from_bytes(&local_create.unwrap()).unwrap());
+            } else {
+                return Err(local_create.unwrap_err());
+            }
+        } else {
+            let remote_create = self
+                .node_event::<ActorAddress>(message_id, SessionEvent::CreateActor(message), node)
+                .await;
+            match remote_create {
+                Ok(address) => actor_addr = Some(address),
+                Err(e) => return Err(RemoteActorErr::NodeErr(e)),
+            }
+        }
 
+        match actor_addr {
+            Some(actor_address) => {
                 let actor_ref = RemoteActorRef::<F::Actor>::new(
                     actor_address.actor_id,
                     Uuid::parse_str(actor_address.node_id.as_str()).unwrap(),
@@ -108,13 +136,41 @@ impl RemoteActorSystem {
                 );
 
                 Ok(ActorRef::from(actor_ref))
-            } else {
-                Err(create_result.unwrap_err())
             }
-        } else {
-            // TODO: send the message and parse the reply then create the remote actor ref
+            None => Err(RemoteActorErr::ActorUnavailable),
+        }
+    }
 
-            Err(RemoteActorErr::ActorUnavailable)
+    pub async fn node_event<T: ProtoMessage>(
+        &self,
+        message_id: Uuid,
+        event: SessionEvent,
+        node_id: Uuid,
+    ) -> Result<T, NodeEventErr> {
+        let (res_tx, res_rx) = oneshot::channel();
+
+        trace!(target: "NodeEvent", "message_id={}, created channel, storing request", &message_id);
+        self.push_request(message_id, res_tx).await;
+
+        trace!(target: "NodeEvent", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
+        self.send_message(node_id, event).await;
+
+        trace!(target: "NodeEvent", "message_id={}, waiting for result", &message_id);
+        match res_rx.await {
+            Ok(RemoteResponse::Ok(res)) => match T::parse_from_bytes(&res) {
+                Ok(res) =>
+                    {
+                        trace!(target: "NodeEvent", "message_id={}, received result", &message_id);
+                    Ok(res) },
+                Err(_) => {
+                    error!(target: "NodeEvent", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
+                    Err(NodeEventErr::Serialisation)
+                }
+            },
+            _ => {
+                error!(target: "NodeEvent", "failed to receive result");
+                Err(NodeEventErr::ReceiveFailed)
+            }
         }
     }
 
@@ -151,7 +207,7 @@ impl RemoteActorSystem {
 
         if let Some(actor_id) = &actor_id {
             if let Some(node_id) = self.locate_actor_node(actor_id.clone()).await {
-                log::warn!("actor {} already exists on node: {}", &actor_id, &node_id);
+                warn!(target: "ActorDeploy", "actor {} already exists on node: {}", &actor_id, &node_id);
                 return Err(RemoteActorErr::ActorExists);
             }
         }
@@ -159,14 +215,24 @@ impl RemoteActorSystem {
         let actor_id = actor_id.map_or_else(|| new_actor_id(), |id| id);
         args.actor_id = actor_id.clone();
 
+        trace!(target: "ActorDeploy", "creating actor (actor_id={})", &actor_id);
         let handler = self.inner.types.actor_handler(&args.actor_type);
 
         if let Some(handler) = handler {
             handler.create(args, self.clone(), tx).await;
+        } else {
+            trace!(target: "ActorDeploy", "No handler found with the type: {}", &args.actor_type);
+            return Err(RemoteActorErr::ActorNotSupported);
         }
 
+        trace!(target: "ActorDeploy", "waiting for actor to start");
+
         match rx.await {
-            Ok(res) => Ok(res),
+            Ok(res) => {
+                trace!(target: "ActorDeploy", "actor started (actor_id={})", &actor_id);
+
+                Ok(res)
+            },
             Err(_e) => Err(RemoteActorErr::ActorUnavailable),
         }
     }
@@ -291,28 +357,36 @@ impl RemoteActorSystem {
         );
         let _enter = span.enter();
 
+        trace!(target: "LocateActorNode", "locating actor node (current_node={}, actor_id={})", self.node_tag(), &actor_id);
         let (tx, rx) = oneshot::channel();
         match self
             .inner
             .registry_ref
             .send(GetActorNode {
-                actor_id,
+                actor_id: actor_id.clone(),
                 sender: tx,
             })
             .await
         {
             Ok(_) => {
                 // TODO: configurable timeouts (?)
-                match tokio::time::timeout(tokio::time::Duration::from_millis(250), rx).await {
-                    Ok(Ok(res)) => res,
-                    Err(_) | Ok(Err(_)) => {
-                        error!(target: "ActorRef", "error receiving result");
+                match tokio::time::timeout(tokio::time::Duration::from_secs(30), rx).await {
+                    Ok(Ok(res)) => {
+                        trace!(target: "LocateActorNode", "received actor node (current_node={}, actor_id={}, actor_node={:?})", self.node_tag(), &actor_id, &res);
+                        res
+                    },
+                    Ok(Err(e)) => {
+                        error!(target: "LocateActorNode", "error receiving result, {}", e);
+                        None
+                    }
+                    Err(e) => {
+                        error!(target: "LocateActorNode", "error receiving result, {}", e);
                         None
                     }
                 }
             }
             Err(_e) => {
-                error!(target: "ActorRef", "error sending message");
+                error!(target: "LocateActorNode", "error sending message");
                 None
             }
         }
