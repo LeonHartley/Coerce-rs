@@ -39,9 +39,8 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
     actor: LocalActorRef<A>,
     mut stop_rx: tokio::sync::oneshot::Receiver<bool>,
 ) where
-    A: 'static + Handler<T> + Sync + Send,
+    A: Handler<T>,
     T: 'static + Clone + Sync + Send,
-    T::Result: 'static + Sync + Send,
 {
     let mut interval = tokio::time::interval_at(tokio::time::Instant::now(), tick);
     let timer_id = Uuid::new_v4();

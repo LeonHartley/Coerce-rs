@@ -89,14 +89,12 @@ where
     }
 }
 
-pub struct RemoteActorMessageHandler<A: Actor, M: Message>
-{
+pub struct RemoteActorMessageHandler<A: Actor, M: Message> {
     system: ActorSystem,
     _marker: RemoteActorMessageMarker<A, M>,
 }
 
-impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M>
-{
+impl<A: Actor, M: Message> RemoteActorMessageHandler<A, M> {
     pub fn new(system: ActorSystem) -> Box<RemoteActorMessageHandler<A, M>> {
         let _marker = RemoteActorMessageMarker::new();
         Box::new(RemoteActorMessageHandler { system, _marker })
@@ -181,9 +179,7 @@ where
 #[async_trait]
 impl<A: Actor, M: Message> ActorMessageHandler for RemoteActorMessageHandler<A, M>
 where
-    A: 'static + Handler<M> + Send + Sync,
-    M: 'static + DeserializeOwned + Send + Sync,
-    M::Result: Serialize + Send + Sync,
+    A: Handler<M>,
 {
     async fn handle(
         &self,

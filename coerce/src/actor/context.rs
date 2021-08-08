@@ -68,10 +68,7 @@ impl ActorContext {
         &self.status
     }
 
-    pub(crate) fn actor_ref<A: Actor>(&self) -> LocalActorRef<A>
-    where
-        A: 'static + Sync + Send,
-    {
+    pub(crate) fn actor_ref<A: Actor>(&self) -> LocalActorRef<A> {
         self.boxed_ref
             .1
             .downcast_ref::<LocalActorRef<A>>()

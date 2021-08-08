@@ -55,18 +55,17 @@ pub async fn test_remote_cluster_client_get_actor() {
         .build()
         .await;
 
-    let _actor = remote
+    let created_actor = remote
         .actor_system()
         .new_tracked_actor(TestActor::new())
         .await
         .unwrap();
 
-    let mut client = remote.cluster_client().build();
-    let actor = client.get_actor::<TestActor>(format!("leon")).await;
-
-    assert_eq!(actor.is_some(), false);
+    let actor_id = created_actor.id;
+    let actor = remote.actor_ref::<TestActor>(actor_id).await;
+    assert_eq!(actor.is_some(), true);
 }
-
+//
 // #[coerce_test]
 // pub async fn test_remote_cluster_client_create_actor() {
 //     let mut system = ActorSystem::new();

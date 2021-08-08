@@ -71,11 +71,8 @@ pub trait Message: 'static + Sync + Send + Sized {
 pub(crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 #[async_trait]
-pub trait Handler<Msg: Message + Send + Sync>
-where
-    Msg::Result: Send + Sync,
-{
-    async fn handle(&mut self, message: Msg, ctx: &mut ActorContext) -> Msg::Result;
+pub trait Handler<M: Message> {
+    async fn handle(&mut self, message: M, ctx: &mut ActorContext) -> M::Result;
 }
 
 #[derive(Debug)]
@@ -86,9 +83,7 @@ pub enum MessageResult<T> {
 
 pub struct ActorMessage<A: Actor, M: Message>
 where
-    A: Handler<M> + Send + Sync,
-    M: Send + Sync,
-    M::Result: 'static + Send + Sync,
+    A: Handler<M>,
 {
     msg: Option<M>,
     sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
@@ -96,21 +91,16 @@ where
 }
 
 #[async_trait]
-pub trait ActorMessageHandler<A>: Sync + Send
-where
-    A: Actor + Sync + Send,
-{
+pub trait ActorMessageHandler<A: Actor>: Sync + Send {
     async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext);
 
     fn name(&self) -> &str;
 }
 
 #[async_trait]
-impl<A: 'static + Actor, M: 'static + Message> ActorMessageHandler<A> for ActorMessage<A, M>
+impl<A: Actor, M: Message> ActorMessageHandler<A> for ActorMessage<A, M>
 where
-    A: Handler<M> + Send + Sync,
-    M: Send + Sync,
-    M::Result: Send + Sync,
+    A: Handler<M>,
 {
     async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext) -> () {
         self.handle_msg(actor, ctx).await;
@@ -121,11 +111,9 @@ where
     }
 }
 
-impl<A: 'static + Actor, M: 'static + Message> ActorMessage<A, M>
+impl<A: Actor, M: Message> ActorMessage<A, M>
 where
-    A: Handler<M> + Send + Sync,
-    M: Send + Sync,
-    M::Result: Send + Sync,
+    A: Handler<M>,
 {
     pub fn new(
         msg: M,
@@ -187,7 +175,7 @@ where
 #[async_trait]
 impl<F, A, R> Handler<Exec<F, A, R>> for A
 where
-    A: 'static + Actor + Sync + Send,
+    A: Actor,
     F: (FnMut(&mut A) -> R) + 'static + Send + Sync,
     R: 'static + Send + Sync,
 {

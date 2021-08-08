@@ -27,7 +27,7 @@ impl Message for Stop {
 #[async_trait]
 impl<A> Handler<Status> for A
 where
-    A: 'static + Actor + Sync + Send,
+    A: Actor,
 {
     async fn handle(&mut self, _message: Status, ctx: &mut ActorContext) -> ActorStatus {
         ctx.get_status().clone()
@@ -35,10 +35,7 @@ where
 }
 
 #[async_trait]
-impl<A: Actor> Handler<Stop> for A
-where
-    A: 'static + Sync + Send,
-{
+impl<A: Actor> Handler<Stop> for A {
     async fn handle(&mut self, _message: Stop, ctx: &mut ActorContext) -> ActorStatus {
         ctx.set_status(Stopping);
 
@@ -57,9 +54,7 @@ impl ActorLoop {
         actor_ref: LocalActorRef<A>,
         _parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,
-    ) where
-        A: 'static + Sync + Send,
-    {
+    ) {
         let actor_id = actor_ref.id.clone();
         let mut ctx = ActorContext::new(system.clone(), Starting, actor_ref.clone().into());
 

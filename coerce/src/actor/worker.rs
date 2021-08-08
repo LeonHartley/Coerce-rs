@@ -7,17 +7,11 @@ use std::collections::VecDeque;
 
 pub type WorkerRef<W> = LocalActorRef<Worker<W>>;
 
-pub struct Worker<W: Actor>
-where
-    W: 'static + Sync + Send,
-{
+pub struct Worker<W: Actor> {
     workers: VecDeque<LocalActorRef<W>>,
 }
 
-impl<W: Actor> Worker<W>
-where
-    W: 'static + Clone + Sync + Send,
-{
+impl<W: Actor + Clone> Worker<W> {
     pub async fn new(
         state: W,
         count: usize,
@@ -49,10 +43,7 @@ where
 }
 
 #[async_trait]
-pub trait IntoWorker<W: Actor>
-where
-    W: 'static + Clone + Sync + Send,
-{
+pub trait IntoWorker<W: Actor + Clone> {
     async fn into_worker(
         self,
         count: usize,
@@ -62,10 +53,7 @@ where
 }
 
 #[async_trait]
-impl<W: Actor> IntoWorker<W> for W
-where
-    W: 'static + Clone + Sync + Send,
-{
+impl<W: Actor + Clone> IntoWorker<W> for W {
     async fn into_worker(
         self,
         count: usize,
@@ -76,52 +64,34 @@ where
     }
 }
 
-impl<W: Actor> Actor for Worker<W> where W: 'static + Clone + Sync + Send {}
+impl<W: Actor + Clone> Actor for Worker<W> {}
 
 #[async_trait]
-pub trait WorkerRefExt<W: Actor> {
+pub trait WorkerRefExt<W: Actor + Clone> {
     async fn dispatch<M: Message>(&mut self, message: M) -> Result<M::Result, ActorRefErr>
     where
-        M: 'static + Send + Sync,
-        M::Result: 'static + Send + Sync,
         W: Handler<M>;
 }
 
-pub struct WorkerMessage<M: Message>
-where
-    M: 'static + Sync + Send,
-{
+pub struct WorkerMessage<M: Message> {
     message: M,
     res_tx: tokio::sync::oneshot::Sender<M::Result>,
 }
 
-impl<M: Message> WorkerMessage<M>
-where
-    M: 'static + Sync + Send,
-    M::Result: 'static + Sync + Send,
-{
+impl<M: Message> WorkerMessage<M> {
     pub fn new(message: M, res_tx: tokio::sync::oneshot::Sender<M::Result>) -> WorkerMessage<M> {
         WorkerMessage { message, res_tx }
     }
 }
 
-impl<M: Message> Message for WorkerMessage<M>
-where
-    M: 'static + Sync + Send,
-    M::Result: 'static + Sync + Send,
-{
+impl<M: Message> Message for WorkerMessage<M> {
     type Result = ();
 }
 
 #[async_trait]
-impl<W: Actor> WorkerRefExt<W> for LocalActorRef<Worker<W>>
-where
-    W: 'static + Clone + Sync + Send,
-{
+impl<W: Actor + Clone> WorkerRefExt<W> for LocalActorRef<Worker<W>> {
     async fn dispatch<M: Message>(&mut self, message: M) -> Result<M::Result, ActorRefErr>
     where
-        M: 'static + Send + Sync,
-        M::Result: 'static + Send + Sync,
         W: Handler<M>,
     {
         let (res_tx, res) = tokio::sync::oneshot::channel();
@@ -142,12 +112,9 @@ where
 }
 
 #[async_trait]
-impl<W: Actor, M: Message> Handler<WorkerMessage<M>> for Worker<W>
+impl<W: Actor + Clone, M: Message> Handler<WorkerMessage<M>> for Worker<W>
 where
-    W: 'static + Sync + Send,
-    M: 'static + Sync + Send,
     W: Handler<M>,
-    M::Result: 'static + Sync + Send,
 {
     async fn handle(&mut self, message: WorkerMessage<M>, _ctx: &mut ActorContext) {
         if let Some(worker) = self.workers.pop_front() {

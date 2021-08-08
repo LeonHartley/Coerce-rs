@@ -203,9 +203,7 @@ impl RemoteActorHandlerBuilder {
 
     pub fn with_handler<A: Actor, M: Message>(&mut self, identifier: &'static str) -> &mut Self
     where
-        A: 'static + Handler<M> + Send + Sync,
-        M: 'static + DeserializeOwned + Send + Sync,
-        M::Result: Serialize + Send + Sync,
+        A: Handler<M>,
     {
         let handler = RemoteActorMessageHandler::<A, M>::new(self.system.clone());
         self.handlers.insert(String::from(identifier), handler);

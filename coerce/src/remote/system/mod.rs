@@ -118,10 +118,10 @@ impl RemoteActorSystem {
                 return Err(local_create.unwrap_err());
             }
         } else {
-            let remote_create = self
+            match self
                 .node_event::<ActorAddress>(message_id, SessionEvent::CreateActor(message), node)
-                .await;
-            match remote_create {
+                .await
+            {
                 Ok(address) => actor_addr = Some(address),
                 Err(e) => return Err(RemoteActorErr::NodeErr(e)),
             }
@@ -241,22 +241,12 @@ impl RemoteActorSystem {
         self.inner.node_id
     }
 
-    pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String>
-    where
-        A: 'static + Send + Sync,
-        M: 'static + Send + Sync,
-        M::Result: Send + Sync,
-    {
+    pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String> {
         let marker = RemoteActorMessageMarker::<A, M>::new();
         self.inner.types.handler_name(marker)
     }
 
-    pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader>
-    where
-        A: 'static + Send + Sync,
-        M: 'static + Send + Sync,
-        M::Result: Send + Sync,
-    {
+    pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader> {
         match self.handler_name::<A, M>() {
             Some(handler_type) => Some(RemoteMessageHeader {
                 actor_id: id.clone(),
@@ -318,10 +308,7 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub async fn actor_ref<A: Actor + 'static + Sync + Send>(
-        &self,
-        actor_id: ActorId,
-    ) -> Option<ActorRef<A>> {
+    pub async fn actor_ref<A: Actor>(&self, actor_id: ActorId) -> Option<ActorRef<A>> {
         let actor_type_name = A::type_name();
         let span = tracing::trace_span!(
             "RemoteActorSystem::actor_ref",
