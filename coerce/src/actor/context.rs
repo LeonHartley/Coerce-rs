@@ -1,8 +1,8 @@
-use crate::actor::children::Children;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use crate::persistent::context::ActorPersistence;
 
+use crate::actor::supervised::Supervised;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -19,37 +19,36 @@ pub struct ActorContext {
     persistence: Option<ActorPersistence>,
     boxed_ref: BoxedActorRef,
     boxed_parent_ref: Option<BoxedActorRef>,
-    children: Option<Children>,
+    supervised: Option<Supervised>,
     system: Option<ActorSystem>,
 }
 
 impl Drop for ActorContext {
     fn drop(&mut self) {
+        if let Some(boxed_parent_ref) = &self.boxed_parent_ref {
+            boxed_parent_ref.notify_child_terminated(self.id().into());
+            info!("notify child terminated");
+        }
+
         match self.status {
             ActorStatus::Starting => {
                 error!("actor panicked while starting");
             }
             ActorStatus::Started => {
-                if self.system.is_none() || self.system().is_terminated() {
+                if self.system.is_some() && self.system().is_terminated() {
                     trace!(
                         "actor (id={}) has stopped due to system shutdown",
-                        &self.boxed_ref.actor_id()
+                        &self.id()
                     );
                 } else {
-                    warn!(
-                        "actor (id={}) has stopped unexpectedly",
-                        &self.boxed_ref.actor_id()
-                    );
+                    warn!("actor (id={}) has stopped unexpectedly", &self.id());
                 }
             }
             ActorStatus::Stopping => {
                 error!("actor panicked while stopping");
             }
             ActorStatus::Stopped => {
-                trace!(
-                    "actor (id={}) stopped, context dropped",
-                    &self.boxed_ref.actor_id()
-                );
+                trace!("actor (id={}) stopped, context dropped", &self.id());
             }
         }
     }
@@ -65,7 +64,7 @@ impl ActorContext {
             boxed_ref,
             status,
             system,
-            children: None,
+            supervised: None,
             persistence: None,
             boxed_parent_ref: None,
         }
@@ -107,12 +106,16 @@ impl ActorContext {
         self.status == ActorStatus::Starting
     }
 
-    pub(crate) fn actor_ref<A: Actor>(&self) -> LocalActorRef<A> {
+    pub fn actor_ref<A: Actor>(&self) -> LocalActorRef<A> {
         (&self.boxed_ref.0)
             .as_any()
             .downcast_ref::<LocalActorRef<A>>()
             .expect("actor_ref")
             .clone()
+    }
+
+    pub fn boxed_actor_ref(&self) -> BoxedActorRef {
+        self.boxed_ref.clone()
     }
 
     pub fn persistence(&self) -> &ActorPersistence {
@@ -131,7 +134,32 @@ impl ActorContext {
         self.persistence = Some(persistence);
     }
 
-    pub fn new_child<A: Actor>(_id: &ActorId, _actor: A) {}
+    pub fn supervised_mut(&mut self) -> Option<&mut Supervised> {
+        self.supervised.as_mut()
+    }
+
+    pub async fn spawn<A: Actor>(
+        &mut self,
+        id: ActorId,
+        actor: A,
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
+        let supervised = {
+            if self.supervised.is_none() {
+                self.supervised = Some(Supervised::new());
+            }
+
+            self.supervised.as_mut().unwrap()
+        };
+
+        let system = self.system.as_ref().unwrap().clone();
+        let parent_ref = self.boxed_ref.clone();
+        supervised.spawn(id, actor, system, parent_ref).await
+    }
+
+    pub fn with_parent(mut self, boxed_parent_ref: Option<BoxedActorRef>) -> Self {
+        self.boxed_parent_ref = boxed_parent_ref;
+        self
+    }
 }
 
 impl ActorContext {

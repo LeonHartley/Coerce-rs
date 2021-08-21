@@ -8,14 +8,16 @@ use log::error;
 use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
 
+use crate::actor::supervised::Terminated;
 use futures::SinkExt;
+use std::sync::Arc;
 use uuid::Uuid;
 
-pub mod children;
 pub mod context;
 pub mod lifecycle;
 pub mod message;
 pub mod scheduler;
+pub mod supervised;
 pub mod system;
 pub mod worker;
 
@@ -37,6 +39,8 @@ pub trait Actor: 'static + Send + Sync {
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
+
+    async fn on_child_terminated(&mut self, id: &ActorId, ctx: &mut ActorContext) {}
 
     fn type_name() -> &'static str
     where
@@ -226,10 +230,13 @@ pub trait CoreActorRef: Any {
 
     fn notify_stop(&self) -> Result<(), ActorRefErr>;
 
+    fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr>;
+
     fn as_any(&self) -> &dyn Any;
 }
 
-pub struct BoxedActorRef(Box<dyn CoreActorRef + Send + Sync>);
+#[derive(Clone)]
+pub struct BoxedActorRef(Arc<dyn CoreActorRef + Send + Sync>);
 
 pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,
@@ -239,7 +246,7 @@ pub struct LocalActorRef<A: Actor> {
 
 impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef {
     fn from(r: LocalActorRef<A>) -> Self {
-        BoxedActorRef(Box::new(r))
+        BoxedActorRef(Arc::new(r))
     }
 }
 
@@ -256,12 +263,14 @@ impl<A: Actor> Clone for LocalActorRef<A> {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ActorRefErr {
     ActorUnavailable,
+    AlreadyExists(ActorId),
 }
 
 impl std::fmt::Display for ActorRefErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ActorRefErr::ActorUnavailable => write!(f, "actor unavailable"),
+            ActorRefErr::AlreadyExists(id) => write!(f, "actor {} already exists", &id),
         }
     }
 }
@@ -366,6 +375,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.notify_stop()
     }
 
+    fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
+        self.notify(Terminated(id))
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -387,6 +400,10 @@ impl CoreActorRef for BoxedActorRef {
 
     fn notify_stop(&self) -> Result<(), ActorRefErr> {
         self.0.notify_stop()
+    }
+
+    fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
+        self.0.notify_child_terminated(id)
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -47,11 +47,12 @@ impl ActorLoop {
         mut receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
         mut on_start: Option<tokio::sync::oneshot::Sender<()>>,
         actor_ref: LocalActorRef<A>,
-        _parent_ref: Option<BoxedActorRef>,
+        parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,
     ) {
         let actor_id = actor_ref.id.clone();
-        let mut ctx = A::new_context(system.clone(), Starting, actor_ref.clone().into());
+        let mut ctx = A::new_context(system.clone(), Starting, actor_ref.clone().into())
+            .with_parent(parent_ref);
 
         let system_id = actor_ref
             .system_id
