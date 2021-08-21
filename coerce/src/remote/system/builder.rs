@@ -1,5 +1,5 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::scheduler::ActorType::Anonymous;
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorFactory};
 use crate::remote::actor::message::SetRemote;
@@ -8,8 +8,6 @@ use crate::remote::actor::{
     RemoteHandlerTypes, RemoteRegistry,
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
-use crate::remote::storage::activator::{ActorActivator, DefaultActorStore};
-use crate::remote::storage::state::ActorStore;
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::stream::system::SystemTopic;
 use crate::remote::system::{RemoteActorSystem, RemoteSystemCore};
@@ -26,7 +24,6 @@ pub struct RemoteActorSystemBuilder {
     node_tag: Option<String>,
     inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
-    store: Option<Box<dyn ActorStore + Sync + Send>>,
     mediator: Option<StreamMediator>,
 }
 
@@ -41,7 +38,6 @@ impl RemoteActorSystemBuilder {
             inner: None,
             handlers: vec![],
             mediator: Some(mediator),
-            store: None,
         }
     }
 
@@ -71,15 +67,6 @@ impl RemoteActorSystemBuilder {
 
     pub fn with_actor_system(mut self, sys: ActorSystem) -> Self {
         self.inner = Some(sys);
-
-        self
-    }
-
-    pub fn with_actor_store<S: ActorStore>(mut self, store: S) -> Self
-    where
-        S: 'static + Sync + Send,
-    {
-        self.store = Some(Box::new(store));
 
         self
     }
@@ -125,14 +112,11 @@ impl RemoteActorSystemBuilder {
         let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
         let registry_ref_clone = registry_ref.clone();
 
-        let store = self.store.unwrap_or_else(|| Box::new(DefaultActorStore));
-        let activator = ActorActivator::new(store);
-
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
             Some(
                 inner
-                    .new_actor("PubSubMediator-0".to_string(), mediator, Anonymous)
+                    .new_actor(format!("PubSubMediator-{}", &system_tag), mediator, Tracked)
                     .await
                     .expect("unable to start mediator actor"),
             )
@@ -148,7 +132,6 @@ impl RemoteActorSystemBuilder {
             registry_ref,
             clients_ref,
             mediator_ref,
-            activator,
             types,
         };
 

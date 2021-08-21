@@ -117,11 +117,8 @@ impl StreamMessage for SessionEvent {
 fn write_event(event_id: Event, message: Result<Vec<u8>, ProtobufError>) -> Option<Vec<u8>> {
     match message {
         Ok(mut message) => {
-            let mut bytes = vec![];
-            bytes.push(event_id as u8);
-            bytes.append(&mut message);
-
-            Some(bytes)
+            message.insert(0, event_id as u8);
+            Some(message)
         }
         Err(_) => None,
     }

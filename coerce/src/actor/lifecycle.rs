@@ -5,16 +5,11 @@ use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
 
-use crate::actor::message::encoding::json::JsonMessage;
 use std::collections::HashMap;
 
 pub struct Status();
 
 pub struct Stop();
-
-impl JsonMessage for Stop {
-    type Result = ();
-}
 
 impl Message for Status {
     type Result = ActorStatus;
@@ -50,13 +45,13 @@ impl ActorLoop {
         mut actor: A,
         actor_type: ActorType,
         mut receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
-        mut on_start: Option<tokio::sync::oneshot::Sender<bool>>,
+        mut on_start: Option<tokio::sync::oneshot::Sender<()>>,
         actor_ref: LocalActorRef<A>,
         _parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,
     ) {
         let actor_id = actor_ref.id.clone();
-        let mut ctx = ActorContext::new(system.clone(), Starting, actor_ref.clone().into());
+        let mut ctx = A::new_context(system.clone(), Starting, actor_ref.clone().into());
 
         let system_id = actor_ref
             .system_id
@@ -84,7 +79,7 @@ impl ActorLoop {
         );
 
         if let Some(on_start) = on_start.take() {
-            let _ = on_start.send(true);
+            let _ = on_start.send(());
         }
 
         while let Some(mut msg) = receiver.recv().await {
@@ -127,11 +122,15 @@ impl ActorLoop {
 
         if actor_type.is_tracked() {
             if let Some(system) = system.take() {
-                system
-                    .scheduler()
-                    .send(DeregisterActor(actor_id))
-                    .await
-                    .expect("de-register actor");
+                if !system.is_terminated() {
+                    trace!("de-registering actor {}", &actor_id);
+
+                    system
+                        .scheduler()
+                        .send(DeregisterActor(actor_id))
+                        .await
+                        .expect("de-register actor");
+                }
             }
         }
     }

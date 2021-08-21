@@ -3,7 +3,6 @@ pub mod actor_ref;
 pub mod cluster;
 pub mod handler;
 pub mod net;
-pub mod storage;
 pub mod stream;
 pub mod system;
 pub mod tracing;

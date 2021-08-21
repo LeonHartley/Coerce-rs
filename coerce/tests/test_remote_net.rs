@@ -57,6 +57,7 @@ pub async fn test_remote_server_client_connection() {
             node_id,
             RemoteClient::connect(
                 "localhost:30101".to_string(),
+                Some(node_id),
                 remote_2.clone(),
                 None,
                 ClientType::Worker,

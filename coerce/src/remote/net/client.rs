@@ -27,13 +27,19 @@ pub struct HandshakeAcknowledge {
 }
 
 pub struct ClientMessageReceiver {
+    node_id: Option<Uuid>,
     handshake_tx: Option<oneshot::Sender<HandshakeAcknowledge>>,
 }
 
 impl ClientMessageReceiver {
-    pub fn new(handshake_tx: oneshot::Sender<HandshakeAcknowledge>) -> ClientMessageReceiver {
+    pub fn new(
+        node_id: Option<Uuid>,
+        handshake_tx: oneshot::Sender<HandshakeAcknowledge>,
+    ) -> ClientMessageReceiver {
+        let handshake_tx = Some(handshake_tx);
         Self {
-            handshake_tx: Some(handshake_tx),
+            node_id,
+            handshake_tx,
         }
     }
 }
@@ -42,30 +48,30 @@ impl ClientMessageReceiver {
 impl StreamReceiver for ClientMessageReceiver {
     type Message = ClientEvent;
 
-    async fn on_recv(&mut self, msg: ClientEvent, ctx: &mut RemoteActorSystem) {
+    async fn on_receive(&mut self, msg: ClientEvent, ctx: &RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
-                trace!("{}", ctx.node_id());
+                let node_id = Uuid::from_str(&msg.node_id).unwrap();
+                let node_id_str = msg.node_id;
 
-                let node_id = msg.node_id;
                 let nodes = msg
                     .nodes
                     .into_iter()
-                    .filter(|n| n.node_id != node_id)
+                    .filter(|n| n.node_id != node_id_str)
                     .map(|n| crate::remote::cluster::node::RemoteNode {
-                        id: Uuid::from_str(n.get_node_id()).unwrap(),
+                        id: Uuid::from_str(n.get_node_id()).expect("parse inbound node_id"),
                         addr: n.addr,
                     })
                     .collect();
 
                 ctx.notify_register_nodes(nodes);
 
+                self.node_id = Some(node_id);
+
                 if let Some(handshake_tx) = self.handshake_tx.take() {
+                    let node_tag = msg.node_tag;
                     if !handshake_tx
-                        .send(HandshakeAcknowledge {
-                            node_id: Uuid::from_str(&node_id).unwrap(),
-                            node_tag: msg.node_tag,
-                        })
+                        .send(HandshakeAcknowledge { node_id, node_tag })
                         .is_ok()
                     {
                         warn!(target: "RemoteClient", "error sending handshake_tx");
@@ -100,7 +106,11 @@ impl StreamReceiver for ClientMessageReceiver {
         }
     }
 
-    async fn on_close(&mut self, _ctx: &mut RemoteActorSystem) {}
+    async fn on_close(&mut self, ctx: &RemoteActorSystem) {
+        if let Some(node_id) = self.node_id.take() {
+            ctx.deregister_client(node_id).await;
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -118,6 +128,7 @@ pub enum ClientType {
 impl RemoteClient {
     pub async fn connect(
         addr: String,
+        remote_node_id: Option<Uuid>,
         system: RemoteActorSystem,
         nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
         client_type: ClientType,
@@ -148,7 +159,7 @@ impl RemoteClient {
             system,
             read,
             stop_rx,
-            ClientMessageReceiver::new(handshake_tx),
+            ClientMessageReceiver::new(remote_node_id, handshake_tx),
         ));
 
         trace!("writing handshake");

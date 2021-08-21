@@ -11,4 +11,5 @@ extern crate lazy_static;
 extern crate log;
 
 pub mod actor;
+pub mod persistent;
 pub mod remote;

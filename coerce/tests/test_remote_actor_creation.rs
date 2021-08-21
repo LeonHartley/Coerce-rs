@@ -7,18 +7,12 @@ extern crate serde;
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorState};
-
+use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorFactory, ActorRecipe};
 use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
-use coerce::remote::storage::state::ActorStore;
 use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
 use protobuf::Message;
 use std::time::Duration;
 use uuid::Uuid;
-
-pub struct TestActorStore {
-    state: Option<ActorState>,
-}
 
 pub struct TestActor {
     name: String,

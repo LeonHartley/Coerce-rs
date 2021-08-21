@@ -84,11 +84,9 @@ impl StreamMessage for SystemEvent {
 fn write_event(system_event: SysEvent, message: Result<Vec<u8>, ProtobufError>) -> Option<Vec<u8>> {
     let o = match message {
         Ok(mut message) => {
-            let mut bytes = vec![];
-            bytes.push(system_event as u8);
-            bytes.append(&mut message);
+            message.insert(0, system_event as u8);
 
-            Some(bytes)
+            Some(message)
         }
         Err(_) => None,
     };

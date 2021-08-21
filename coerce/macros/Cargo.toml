@@ -10,4 +10,6 @@ proc-macro = true
 
 [dependencies]
 quote = "1"
-syn = "1"
+syn = { version = "1.0", features = ["full"] }
+proc-macro2 = "1.0"
+

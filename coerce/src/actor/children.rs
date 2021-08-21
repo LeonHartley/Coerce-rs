@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use std::any::Any;
 
 pub struct Children {
     store: HashMap<ActorId, BoxedActorRef>,
@@ -10,14 +11,13 @@ impl Children {
     pub fn child<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
         self.store
             .get(id)
-            .map_or(None, |a| a.1.downcast_ref::<LocalActorRef<A>>())
+            .map_or(None, |a| (&a.0.as_any()).downcast_ref::<LocalActorRef<A>>())
             .map(|a| a.clone())
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use crate::actor::system::ActorSystem;
     use crate::actor::{Actor, IntoActor, LocalActorRef};
     use std::any::Any;

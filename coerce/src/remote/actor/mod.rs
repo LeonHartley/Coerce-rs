@@ -67,12 +67,7 @@ impl RemoteHandlerTypes {
     pub fn handler_name<A: Actor, M: Message>(
         &self,
         marker: RemoteActorMessageMarker<A, M>,
-    ) -> Option<String>
-    where
-        A: 'static + Send + Sync,
-        M: 'static + Send + Sync,
-        M::Result: 'static + Sync + Send,
-    {
+    ) -> Option<String> {
         self.handler_types
             .get(&marker.id())
             .map(|name| name.clone())
@@ -161,6 +156,10 @@ impl RemoteClientRegistry {
         C: 'static + Sync + Send,
     {
         self.clients.insert(node_id, Box::new(client));
+    }
+
+    pub fn remove_client(&mut self, node_id: Uuid) {
+        self.clients.remove(&node_id);
     }
 }
 

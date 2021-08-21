@@ -43,6 +43,12 @@ where
     type Result = ();
 }
 
+pub struct DeregisterClient(pub Uuid);
+
+impl Message for DeregisterClient {
+    type Result = ();
+}
+
 pub struct RegisterNodes(pub Vec<RemoteNode>);
 
 impl Message for RegisterNodes {

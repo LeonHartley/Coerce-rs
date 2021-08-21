@@ -1,6 +1,7 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::encoding::json::JsonMessage;
-use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWrapErr};
+use coerce::actor::message::{
+    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
+};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, IntoActor, Receiver};
 use futures::FutureExt;
@@ -188,16 +189,13 @@ pub async fn test_actor_receiver() {
     )
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(coerce_macros::JsonMessage, Serialize, Deserialize)]
+#[result("()")]
 struct MessageOne {}
 
 struct NonSerializableMessage {}
 
 impl Message for NonSerializableMessage {
-    type Result = ();
-}
-
-impl JsonMessage for MessageOne {
     type Result = ();
 }
 

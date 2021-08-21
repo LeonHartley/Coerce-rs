@@ -3,9 +3,7 @@ use crate::actor::Actor;
 
 use std::marker::PhantomData;
 
-pub mod encoding;
-
-pub enum Envelope<M: Message> {
+pub enum Envelope<M> {
     Local(M),
     Remote(Vec<u8>),
 }
@@ -32,11 +30,11 @@ pub trait Message: 'static + Sync + Send + Sized {
     fn into_envelope(self, envelope_type: EnvelopeType) -> Result<Envelope<Self>, MessageWrapErr> {
         match envelope_type {
             EnvelopeType::Local => Ok(Envelope::Local(self)),
-            EnvelopeType::Remote => self.into_remote_envelope(),
+            EnvelopeType::Remote => self.as_remote_envelope(),
         }
     }
 
-    fn into_remote_envelope(self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
         Err(MessageWrapErr::NotTransmittable)
     }
 
@@ -63,15 +61,30 @@ pub trait Message: 'static + Sync + Send + Sized {
         std::any::type_name::<Self>()
     }
 
-    fn type_name() -> &'static str {
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
         std::any::type_name::<Self>()
+    }
+}
+
+impl<M> Envelope<M> {
+    pub fn into_bytes(self) -> Vec<u8> {
+        match self {
+            Envelope::Remote(bytes) => bytes,
+            _ => panic!("only remote envelopes can yield bytes"),
+        }
     }
 }
 
 pub(crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 #[async_trait]
-pub trait Handler<M: Message> {
+pub trait Handler<M: Message>
+where
+    Self: Actor,
+{
     async fn handle(&mut self, message: M, ctx: &mut ActorContext) -> M::Result;
 }
 

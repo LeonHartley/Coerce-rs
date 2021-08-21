@@ -1,7 +1,12 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, LocalActorRef};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 
+use crate::persistent::Persistence;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
 
 lazy_static! {
@@ -13,6 +18,8 @@ pub struct ActorSystem {
     system_id: Uuid,
     scheduler: LocalActorRef<ActorScheduler>,
     remote: Option<RemoteActorSystem>,
+    persistence: Option<Persistence>,
+    is_terminated: Arc<AtomicBool>,
 }
 
 impl ActorSystem {
@@ -22,6 +29,8 @@ impl ActorSystem {
             system_id,
             scheduler: ActorScheduler::new(system_id),
             remote: None,
+            persistence: None,
+            is_terminated: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -114,9 +123,27 @@ impl ActorSystem {
         }
 
         match rx.await {
-            Ok(true) => Ok(actor_ref),
-            _ => Err(ActorRefErr::ActorUnavailable),
+            Ok(_) => Ok(actor_ref),
+            Err(e) => {
+                error!(
+                    "actor not started, actor_id={}, type={}",
+                    &id,
+                    A::type_name()
+                );
+                Err(ActorRefErr::ActorUnavailable)
+            }
         }
+    }
+
+    pub fn is_terminated(&self) -> bool {
+        self.is_terminated.load(Relaxed)
+    }
+
+    pub async fn shutdown(&self) {
+        info!("shutting down");
+
+        self.is_terminated.store(true, Relaxed);
+        self.scheduler.stop().await;
     }
 
     pub async fn get_tracked_actor<A: Actor>(&self, id: ActorId) -> Option<LocalActorRef<A>> {
@@ -132,5 +159,13 @@ impl ActorSystem {
             Ok(a) => a,
             Err(_) => None,
         }
+    }
+
+    pub fn set_persistence(&mut self, persistence: Option<Persistence>) {
+        self.persistence = persistence;
+    }
+
+    pub fn persistence(&self) -> Option<&Persistence> {
+        self.persistence.as_ref()
     }
 }

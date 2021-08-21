@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
 use crate::remote::actor::message::{
-    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
-    RegisterNode, RegisterNodes, SetRemote,
+    ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
+    RegisterClient, RegisterNode, RegisterNodes, SetRemote,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -15,7 +15,6 @@ use std::collections::HashMap;
 
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::{ActorAddress, FindActor};
-use protobuf::parse_from_bytes;
 use std::str::FromStr;
 
 use crate::actor::ActorId;
@@ -23,6 +22,7 @@ use crate::remote::stream::pubsub::{PubSub, StreamEvent};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
 
+use protobuf::Message;
 use uuid::Uuid;
 
 #[async_trait]
@@ -149,6 +149,15 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
 }
 
 #[async_trait]
+impl Handler<DeregisterClient> for RemoteClientRegistry {
+    async fn handle(&mut self, message: DeregisterClient, _ctx: &mut ActorContext) {
+        let node_id = message.0;
+        self.remove_client(node_id);
+        trace!(target: "RemoteRegistry", "removing client {}", &node_id);
+    }
+}
+
+#[async_trait]
 impl Handler<GetActorNode> for RemoteRegistry {
     async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) {
         let span = tracing::trace_span!(
@@ -210,7 +219,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 trace!(target: "RemoteRegistry::GetActorNode", "lookup sent, waiting for result");
                 match res_rx.await {
                     Ok(RemoteResponse::Ok(res)) => {
-                        let res = parse_from_bytes::<ActorAddress>(&res);
+                        let res = ActorAddress::parse_from_bytes(&res);
                         match res {
                             Ok(res) => {
                                 sender.send(if res.get_node_id().is_empty() {
@@ -311,6 +320,7 @@ async fn connect_all(
         let addr = node.addr.to_string();
         match RemoteClient::connect(
             addr,
+            Some(node.id),
             ctx.clone(),
             Some(current_nodes.clone()),
             ClientType::Worker,

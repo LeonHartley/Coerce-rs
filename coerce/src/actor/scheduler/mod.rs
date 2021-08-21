@@ -1,11 +1,12 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, LocalActorRef};
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
 use crate::remote::actor::message::SetRemote;
 use crate::remote::system::RemoteActorSystem;
+use std::any::Any;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use uuid::Uuid;
@@ -39,6 +40,15 @@ impl ActorScheduler {
 impl Actor for ActorScheduler {
     async fn started(&mut self, _ctx: &mut ActorContext) {
         log::trace!(target: "ActorScheduler", "started on system {}", self.system_id);
+    }
+
+    async fn stopped(&mut self, _ctx: &mut ActorContext) {
+        trace!("scheduler stopping, total actors={}", self.actors.len());
+
+        for actor in self.actors.values() {
+            actor.stop().await;
+            trace!(target: "ActorScheduler", "stopping actor (id={})", &actor.actor_id());
+        }
     }
 }
 
@@ -166,8 +176,7 @@ where
         _ctx: &mut ActorContext,
     ) -> Option<LocalActorRef<A>> {
         self.actors.get(&message.id).map_or(None, |actor| {
-            actor
-                .1
+            (&actor.0.as_any())
                 .downcast_ref::<LocalActorRef<A>>()
                 .map(|s| s.clone())
         })
@@ -178,7 +187,7 @@ pub fn start_actor<A: Actor>(
     actor: A,
     id: ActorId,
     actor_type: ActorType,
-    on_start: Option<tokio::sync::oneshot::Sender<bool>>,
+    on_start: Option<tokio::sync::oneshot::Sender<()>>,
     system: Option<ActorSystem>,
     parent_ref: Option<BoxedActorRef>,
 ) -> LocalActorRef<A>

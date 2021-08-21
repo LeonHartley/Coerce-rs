@@ -11,7 +11,7 @@ use crate::remote::net::{receive_loop, StreamReceiver};
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::protocol::{
-    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
+    ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
@@ -133,7 +133,7 @@ pub async fn server_loop(
 impl StreamReceiver for SessionMessageReceiver {
     type Message = SessionEvent;
 
-    async fn on_recv(&mut self, msg: SessionEvent, ctx: &mut RemoteActorSystem) {
+    async fn on_receive(&mut self, msg: SessionEvent, ctx: &RemoteActorSystem) {
         match msg {
             SessionEvent::Handshake(msg) => {
                 trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
@@ -205,7 +205,7 @@ impl StreamReceiver for SessionMessageReceiver {
         }
     }
 
-    async fn on_close(&mut self, _ctx: &mut RemoteActorSystem) {
+    async fn on_close(&mut self, _ctx: &RemoteActorSystem) {
         self.sessions
             .send(SessionClosed(self.session_id))
             .await
@@ -349,6 +349,7 @@ async fn send_result(
     sessions: &LocalActorRef<RemoteSessionStore>,
 ) {
     trace!(target: "RemoteSession", "sending result");
+
     let event = ClientEvent::Result(ClientResult {
         message_id: msg_id.to_string(),
         result: res,

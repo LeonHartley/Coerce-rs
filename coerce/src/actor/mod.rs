@@ -8,6 +8,7 @@ use log::error;
 use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
 
+use futures::SinkExt;
 use uuid::Uuid;
 
 pub mod children;
@@ -22,11 +23,25 @@ pub type ActorId = String;
 
 #[async_trait]
 pub trait Actor: 'static + Send + Sync {
+    fn new_context(
+        system: Option<ActorSystem>,
+        status: ActorStatus,
+        boxed_ref: BoxedActorRef,
+    ) -> ActorContext
+    where
+        Self: Sized,
+    {
+        ActorContext::new(system, status, boxed_ref)
+    }
+
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
 
-    fn type_name() -> &'static str {
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
         std::any::type_name::<Self>()
     }
 }
@@ -65,12 +80,6 @@ pub trait ActorFactory: Clone {
     type Recipe: ActorRecipe + 'static + Sync + Send;
 
     async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr>;
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub struct ActorState {
-    pub actor_id: ActorId,
-    pub state: Vec<u8>,
 }
 
 pub trait GetActorRef {
@@ -207,7 +216,20 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
     }
 }
 
-pub struct BoxedActorRef(ActorId, Box<dyn Any + Send + Sync>);
+#[async_trait]
+pub trait CoreActorRef: Any {
+    fn actor_id(&self) -> &ActorId;
+
+    async fn status(&self) -> Result<ActorStatus, ActorRefErr>;
+
+    async fn stop(&self) -> Result<ActorStatus, ActorRefErr>;
+
+    fn notify_stop(&self) -> Result<(), ActorRefErr>;
+
+    fn as_any(&self) -> &dyn Any;
+}
+
+pub struct BoxedActorRef(Box<dyn CoreActorRef + Send + Sync>);
 
 pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,
@@ -217,8 +239,7 @@ pub struct LocalActorRef<A: Actor> {
 
 impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef {
     fn from(r: LocalActorRef<A>) -> Self {
-        let id = r.id.clone();
-        BoxedActorRef(id, Box::new(r))
+        BoxedActorRef(Box::new(r))
     }
 }
 
@@ -264,8 +285,8 @@ impl<A: Actor> LocalActorRef<A> {
                     tracing::trace!("recv result");
                     Ok(res)
                 }
-                Err(_e) => {
-                    error!(target: "ActorRef", "error receiving result");
+                Err(e) => {
+                    error!(target: "ActorRef", "error receiving result, e={}", e);
                     Err(ActorRefErr::ActorUnavailable)
                 }
             },
@@ -310,12 +331,66 @@ impl<A: Actor> LocalActorRef<A> {
         self.notify(Exec::new(f))
     }
 
+    pub fn actor_id(&self) -> &ActorId {
+        &self.id
+    }
+
     pub async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Status {}).await
     }
 
     pub async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
         self.send(Stop {}).await
+    }
+
+    pub fn notify_stop(&self) -> Result<(), ActorRefErr> {
+        self.notify(Stop {})
+    }
+}
+
+#[async_trait]
+impl<A: Actor> CoreActorRef for LocalActorRef<A> {
+    fn actor_id(&self) -> &ActorId {
+        self.actor_id()
+    }
+
+    async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
+        self.status().await
+    }
+
+    async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
+        self.stop().await
+    }
+
+    fn notify_stop(&self) -> Result<(), ActorRefErr> {
+        self.notify_stop()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+#[async_trait]
+impl CoreActorRef for BoxedActorRef {
+    fn actor_id(&self) -> &ActorId {
+        self.0.actor_id()
+    }
+
+    async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
+        self.0.status().await
+    }
+
+    async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
+        self.0.stop().await
+    }
+
+    fn notify_stop(&self) -> Result<(), ActorRefErr> {
+        self.0.notify_stop()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

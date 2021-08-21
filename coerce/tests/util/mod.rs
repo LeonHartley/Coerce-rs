@@ -1,10 +1,11 @@
 use chrono::Local;
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::encoding::json::JsonMessage;
-use coerce::actor::message::{Handler, Message};
+use coerce::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use coerce::actor::Actor;
+use coerce_macros::JsonMessage;
 use env_logger::Builder;
 use log::LevelFilter;
+use serde::Serialize;
 use std::io::Write;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -13,7 +14,8 @@ pub enum TestActorStatus {
     Active,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[derive(JsonMessage, Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[result("GetStatusResponse")]
 pub struct GetStatusRequest();
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -22,11 +24,8 @@ pub enum GetStatusResponse {
     None,
 }
 
-impl JsonMessage for GetStatusRequest {
-    type Result = GetStatusResponse;
-}
-
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[derive(JsonMessage, Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[result("SetStatusResponse")]
 pub struct SetStatusRequest {
     pub status: TestActorStatus,
 }
@@ -35,10 +34,6 @@ pub struct SetStatusRequest {
 pub enum SetStatusResponse {
     Ok,
     Unsuccessful,
-}
-
-impl JsonMessage for SetStatusRequest {
-    type Result = SetStatusResponse;
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]

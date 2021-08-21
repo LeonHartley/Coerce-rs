@@ -81,7 +81,7 @@ impl ClusterWorkerBuilder {
             let enter = span.enter();
 
             let client_ctx = self.system.clone();
-            let client = RemoteClient::connect(seed_addr.clone(), client_ctx, None, Worker)
+            let client = RemoteClient::connect(seed_addr.clone(), None, client_ctx, None, Worker)
                 .await
                 .expect("failed to connect to seed server");
 

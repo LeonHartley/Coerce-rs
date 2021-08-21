@@ -4,8 +4,8 @@ use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, LocalActorRef,
 };
 use crate::remote::actor::message::{
-    ClientWrite, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor, RegisterClient,
-    RegisterNode, RegisterNodes,
+    ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
+    RegisterClient, RegisterNode, RegisterNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteHandlerTypes, RemoteRegistry, RemoteRequest,
@@ -18,7 +18,6 @@ use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
-use crate::remote::storage::activator::ActorActivator;
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
@@ -41,7 +40,6 @@ pub struct RemoteActorSystem {
 pub struct RemoteSystemCore {
     node_id: Uuid,
     inner: ActorSystem,
-    activator: ActorActivator,
     handler_ref: LocalActorRef<RemoteHandler>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
@@ -263,6 +261,14 @@ impl RemoteActorSystem {
         self.inner
             .clients_ref
             .send(RegisterClient(node_id, client))
+            .await
+            .unwrap()
+    }
+
+    pub async fn deregister_client(&self, node_id: Uuid) {
+        self.inner
+            .clients_ref
+            .send(DeregisterClient(node_id))
             .await
             .unwrap()
     }

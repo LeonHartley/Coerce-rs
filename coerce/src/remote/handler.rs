@@ -60,23 +60,12 @@ where
     }
 }
 
-pub struct RemoteActorMessageMarker<A: Actor, M: Message>
-where
-    A: Send + Sync,
-    M: Send + Sync,
-    M::Result: Send + Sync,
-{
+pub struct RemoteActorMessageMarker<A: Actor, M: Message> {
     _m: PhantomData<M>,
     _a: PhantomData<A>,
 }
 
-impl<A: Actor, M: Message> RemoteActorMessageMarker<A, M>
-where
-    Self: Any,
-    A: Send + Sync,
-    M: Send + Sync,
-    M::Result: Send + Sync,
-{
+impl<A: Actor, M: Message> RemoteActorMessageMarker<A, M> {
     pub fn new() -> RemoteActorMessageMarker<A, M> {
         RemoteActorMessageMarker {
             _a: PhantomData,
