@@ -7,6 +7,7 @@ use crate::remote::net::{receive_loop, StreamMessage, StreamReceiver};
 use crate::remote::system::RemoteActorSystem;
 use crate::remote::tracing::extract_trace_identifier;
 use futures::SinkExt;
+use slog::Logger;
 use std::str::FromStr;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
@@ -29,17 +30,20 @@ pub struct HandshakeAcknowledge {
 pub struct ClientMessageReceiver {
     node_id: Option<Uuid>,
     handshake_tx: Option<oneshot::Sender<HandshakeAcknowledge>>,
+    log: Logger,
 }
 
 impl ClientMessageReceiver {
     pub fn new(
         node_id: Option<Uuid>,
         handshake_tx: oneshot::Sender<HandshakeAcknowledge>,
+        log: Logger,
     ) -> ClientMessageReceiver {
         let handshake_tx = Some(handshake_tx);
         Self {
             node_id,
             handshake_tx,
+            log,
         }
     }
 }
@@ -74,7 +78,7 @@ impl StreamReceiver for ClientMessageReceiver {
                         .send(HandshakeAcknowledge { node_id, node_tag })
                         .is_ok()
                     {
-                        warn!(target: "RemoteClient", "error sending handshake_tx");
+                        warn!(&self.log, "error sending handshake_tx");
                     }
                 }
             }
@@ -86,7 +90,13 @@ impl StreamReceiver for ClientMessageReceiver {
                     let _ = res_tx.send(RemoteResponse::Ok(res.result));
                 }
                 None => {
-                    warn!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", ctx.node_tag(), ctx.node_id(), res.message_id);
+                    warn!(
+                        &self.log,
+                        "node_tag={}, node_id={}, received unknown request result (id={})",
+                        ctx.node_tag(),
+                        ctx.node_id(),
+                        res.message_id
+                    );
                 }
             },
             ClientEvent::Err(_e) => {}
@@ -100,7 +110,7 @@ impl StreamReceiver for ClientMessageReceiver {
                 }
                 None => {
                     //                                          :P
-                    warn!(target: "RemoteClient", "received unsolicited pong");
+                    warn!(&self.log, "received unsolicited pong");
                 }
             },
         }
@@ -135,6 +145,11 @@ impl RemoteClient {
     ) -> Result<RemoteClient, tokio::io::Error> {
         let span = tracing::trace_span!("RemoteClient::connect", address = addr.as_str());
         let _enter = span.enter();
+        let log = system.actor_system().log().new(o!(
+            "context" => "RemoteClient",
+            "remote-node-id" => remote_node_id.map_or("None".to_string(), |n| n.clone().to_string())
+        ));
+
         let stream = TcpStream::connect(addr).await?;
         let (read, write) = tokio::io::split(stream);
 
@@ -146,23 +161,24 @@ impl RemoteClient {
         let node_id = system.node_id().to_string();
         let node_tag = system.node_tag().to_string();
 
-        trace!("requesting nodes");
+        trace!(&log, "requesting nodes");
 
         let nodes = match nodes {
             Some(n) => n,
             None => system.get_nodes().await,
         };
 
-        trace!("got nodes {:?}", &nodes);
+        trace!(&log, "got nodes {:?}", &nodes);
 
         tokio::spawn(receive_loop(
             system,
             read,
             stop_rx,
-            ClientMessageReceiver::new(remote_node_id, handshake_tx),
+            ClientMessageReceiver::new(remote_node_id, handshake_tx, log.clone()),
+            log.clone(),
         ));
 
-        trace!("writing handshake");
+        trace!(&log, "writing handshake");
 
         let trace_id = extract_trace_identifier(&span);
         let mut msg = SessionHandshake {
@@ -186,12 +202,17 @@ impl RemoteClient {
             .await
             .expect("write handshake");
 
-        trace!("waiting for handshake ack");
+        trace!(&log, "waiting for handshake ack");
         let handshake_ack = handshake_rx.await.expect("handshake ack");
         let node_id = handshake_ack.node_id;
         let node_tag = handshake_ack.node_tag;
 
-        trace!("handshake ack (node_id={}, node_tag={})", node_id, node_tag);
+        trace!(
+            &log,
+            "handshake ack (node_id={}, node_tag={})",
+            node_id,
+            node_tag
+        );
         Ok(RemoteClient {
             write,
             node_id,

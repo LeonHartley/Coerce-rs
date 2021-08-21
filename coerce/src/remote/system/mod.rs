@@ -27,6 +27,7 @@ use tokio::sync::oneshot;
 
 use crate::remote::net::StreamMessage;
 use protobuf::Message as ProtoMessage;
+use slog::Logger;
 use uuid::Uuid;
 
 pub mod builder;
@@ -147,26 +148,48 @@ impl RemoteActorSystem {
     ) -> Result<T, NodeEventErr> {
         let (res_tx, res_rx) = oneshot::channel();
 
-        trace!(target: "NodeEvent", "message_id={}, created channel, storing request", &message_id);
+        trace!(
+            &self.actor_system().log(),
+            "message_id={}, created channel, storing request",
+            &message_id
+        );
         self.push_request(message_id, res_tx).await;
 
-        trace!(target: "NodeEvent", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
+        trace!(
+            &self.actor_system().log(),
+            "message_id={}, emitting event to node_id={}",
+            &message_id,
+            &node_id
+        );
         self.send_message(node_id, event).await;
 
-        trace!(target: "NodeEvent", "message_id={}, waiting for result", &message_id);
+        trace!(
+            &self.actor_system().log(),
+            "message_id={}, waiting for result",
+            &message_id
+        );
         match res_rx.await {
             Ok(RemoteResponse::Ok(res)) => match T::parse_from_bytes(&res) {
                 Ok(res) => {
-                    trace!(target: "NodeEvent", "message_id={}, received result", &message_id);
+                    trace!(
+                        &self.actor_system().log(),
+                        "message_id={}, received result",
+                        &message_id
+                    );
                     Ok(res)
                 }
                 Err(_) => {
-                    error!(target: "NodeEvent", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
+                    error!(
+                        &self.actor_system().log(),
+                        "message_id={}, failed to decode result from node_id={}",
+                        &message_id,
+                        &node_id
+                    );
                     Err(NodeEventErr::Serialisation)
                 }
             },
             _ => {
-                error!(target: "NodeEvent", "failed to receive result");
+                error!(&self.actor_system().log(), "failed to receive result");
                 Err(NodeEventErr::ReceiveFailed)
             }
         }
@@ -205,7 +228,10 @@ impl RemoteActorSystem {
 
         if let Some(actor_id) = &actor_id {
             if let Some(node_id) = self.locate_actor_node(actor_id.clone()).await {
-                warn!(target: "ActorDeploy", "actor {} already exists on node: {}", &actor_id, &node_id);
+                warn!(
+                    &self.actor_system().log(),
+                    "actor {} already exists on node: {}", &actor_id, &node_id
+                );
                 return Err(RemoteActorErr::ActorExists);
             }
         }
@@ -213,21 +239,33 @@ impl RemoteActorSystem {
         let actor_id = actor_id.map_or_else(|| new_actor_id(), |id| id);
         args.actor_id = actor_id.clone();
 
-        trace!(target: "ActorDeploy", "creating actor (actor_id={})", &actor_id);
+        trace!(
+            &self.actor_system().log(),
+            "creating actor (actor_id={})",
+            &actor_id
+        );
         let handler = self.inner.types.actor_handler(&args.actor_type);
 
         if let Some(handler) = handler {
             handler.create(args, self.clone(), tx).await;
         } else {
-            trace!(target: "ActorDeploy", "No handler found with the type: {}", &args.actor_type);
+            trace!(
+                &self.actor_system().log(),
+                "No handler found with the type: {}",
+                &args.actor_type
+            );
             return Err(RemoteActorErr::ActorNotSupported);
         }
 
-        trace!(target: "ActorDeploy", "waiting for actor to start");
+        trace!(&self.actor_system().log(), "waiting for actor to start");
 
         match rx.await {
             Ok(res) => {
-                trace!(target: "ActorDeploy", "actor started (actor_id={})", &actor_id);
+                trace!(
+                    &self.actor_system().log(),
+                    "actor started (actor_id={})",
+                    &actor_id
+                );
 
                 Ok(res)
             }
@@ -350,7 +388,12 @@ impl RemoteActorSystem {
         );
         let _enter = span.enter();
 
-        trace!(target: "LocateActorNode", "locating actor node (current_node={}, actor_id={})", self.node_tag(), &actor_id);
+        trace!(
+            &self.actor_system().log(),
+            "locating actor node (current_node={}, actor_id={})",
+            self.node_tag(),
+            &actor_id
+        );
         let (tx, rx) = oneshot::channel();
         match self
             .inner
@@ -365,21 +408,27 @@ impl RemoteActorSystem {
                 // TODO: configurable timeouts (?)
                 match tokio::time::timeout(tokio::time::Duration::from_secs(30), rx).await {
                     Ok(Ok(res)) => {
-                        trace!(target: "LocateActorNode", "received actor node (current_node={}, actor_id={}, actor_node={:?})", self.node_tag(), &actor_id, &res);
+                        trace!(
+                            &self.actor_system().log(),
+                            "received actor node (current_node={}, actor_id={}, actor_node={:?})",
+                            self.node_tag(),
+                            &actor_id,
+                            &res
+                        );
                         res
                     }
                     Ok(Err(e)) => {
-                        error!(target: "LocateActorNode", "error receiving result, {}", e);
+                        error!(&self.actor_system().log(), "error receiving result, {}", e);
                         None
                     }
                     Err(e) => {
-                        error!(target: "LocateActorNode", "error receiving result, {}", e);
+                        error!(&self.actor_system().log(), "error receiving result, {}", e);
                         None
                     }
                 }
             }
             Err(_e) => {
-                error!(target: "LocateActorNode", "error sending message");
+                error!(&self.actor_system().log(), "error sending message");
                 None
             }
         }

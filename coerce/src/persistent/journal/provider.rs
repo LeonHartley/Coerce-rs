@@ -10,6 +10,7 @@ pub type StorageProviderRef = Arc<dyn StorageProvider>;
 pub mod inmemory {
     use crate::persistent::journal::provider::{StorageProvider, StorageProviderRef};
     use crate::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
+    use slog::Logger;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -38,6 +39,7 @@ pub mod inmemory {
 
     pub struct InMemoryJournalStorage {
         store: RwLock<HashMap<String, ActorJournal>>,
+        log: Logger,
     }
 
     pub struct InMemoryStorageProvider {
@@ -45,10 +47,11 @@ pub mod inmemory {
     }
 
     impl InMemoryStorageProvider {
-        pub fn new() -> InMemoryStorageProvider {
+        pub fn new(log: Logger) -> InMemoryStorageProvider {
             InMemoryStorageProvider {
                 store: Arc::new(InMemoryJournalStorage {
                     store: RwLock::new(HashMap::new()),
+                    log,
                 }),
             }
         }
@@ -119,6 +122,7 @@ pub mod inmemory {
                 };
 
                 trace!(
+                    &self.log,
                     "storage found {} messages for persistence_id={}, from_sequence={}",
                     messages.len(),
                     persistence_id,

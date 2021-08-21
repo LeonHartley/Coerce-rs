@@ -9,10 +9,8 @@ use crate::persistent::journal::snapshot::{JournalPayload, Snapshot};
 use crate::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};
 use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
-use crate::remote::actor::BoxedMessageHandler;
-use crate::remote::handler::RemoteActorMessageHandler;
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
+
+use slog::Logger;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
@@ -23,10 +21,11 @@ pub struct Journal<A: PersistentActor> {
     last_sequence_id: i64,
     storage: JournalStorageRef,
     types: Arc<JournalTypes<A>>,
+    log: Logger,
 }
 
 impl<A: PersistentActor> Journal<A> {
-    pub async fn new(persistence_id: String, storage: JournalStorageRef) -> Self {
+    pub async fn new(persistence_id: String, storage: JournalStorageRef, log: Logger) -> Self {
         let last_sequence_id = 0;
         let types = init_journal_types::<A>().await;
         Self {
@@ -34,6 +33,7 @@ impl<A: PersistentActor> Journal<A> {
             last_sequence_id,
             storage,
             types,
+            log,
         }
     }
 }
@@ -92,8 +92,8 @@ impl<A: PersistentActor> Journal<A> {
         A: Recover<M>,
     {
         info!(
-            "persisting message, persistence_id={}",
-            &self.persistence_id
+            &self.log,
+            "persisting message, persistence_id={}", &self.persistence_id
         );
 
         let payload_type = self
@@ -125,8 +125,8 @@ impl<A: PersistentActor> Journal<A> {
 
     pub async fn persist_snapshot<S: Snapshot>(&mut self, snapshot: S) -> Result<(), PersistErr> {
         info!(
-            "persisting snapshot, persistence_id={}",
-            &self.persistence_id
+            &self.log,
+            "persisting snapshot, persistence_id={}", &self.persistence_id
         );
 
         Ok(())
@@ -149,6 +149,7 @@ impl<A: PersistentActor> Journal<A> {
             self.last_sequence_id = sequence;
 
             trace!(
+                &self.log,
                 "snapshot recovered (persistence_id={}), last sequence={}, type={}",
                 &self.persistence_id,
                 &self.last_sequence_id,
@@ -178,6 +179,7 @@ impl<A: PersistentActor> Journal<A> {
 
                 if let Some(handler) = self.types.recoverable_messages().get(&entry.payload_type) {
                     trace!(
+                        &self.log,
                         "message recovered (persistence_id={}), sequence={}, starting_sequence={} type={}",
                         &self.persistence_id,
                         &self.last_sequence_id,
@@ -191,11 +193,12 @@ impl<A: PersistentActor> Journal<A> {
                         handler: handler.clone(),
                     })
                 } else {
-                    warn!("persistence_id={} recovered message (type={}) but actor is not configured to process it", &entry.payload_type, &self.persistence_id);
+                    warn!(&self.log, "persistence_id={} recovered message (type={}) but actor is not configured to process it", &entry.payload_type, &self.persistence_id);
                 }
             }
 
             trace!(
+                &self.log,
                 "recovery complete, last_sequence_id={}",
                 &self.last_sequence_id
             );

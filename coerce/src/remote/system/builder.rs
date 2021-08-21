@@ -113,7 +113,6 @@ impl RemoteActorSystemBuilder {
         let registry_ref_clone = registry_ref.clone();
 
         let mediator_ref = if let Some(mediator) = self.mediator {
-            trace!("mediator set");
             Some(
                 inner
                     .new_actor(format!("PubSubMediator-{}", &system_tag), mediator, Tracked)
@@ -121,7 +120,6 @@ impl RemoteActorSystemBuilder {
                     .expect("unable to start mediator actor"),
             )
         } else {
-            trace!("no mediator");
             None
         };
 

@@ -6,6 +6,10 @@ extern crate serde;
 #[macro_use]
 extern crate async_trait;
 
+#[macro_use]
+extern crate slog;
+
+
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorFactory, ActorRecipe};
 use coerce::remote::net::proto::protocol::{ActorAddress, CreateActor};
@@ -42,7 +46,6 @@ impl ActorFactory for TestActorFactory {
     type Recipe = TestActorRecipe;
 
     async fn create(&self, recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
-        log::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(TestActor { name: recipe.name })
     }

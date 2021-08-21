@@ -25,7 +25,11 @@ impl Actor for TestActor {
         child.notify_stop();
     }
 
+<<<<<<< Updated upstream
     async fn on_child_terminated(&mut self, id: &ActorId, ctx: &mut ActorContext) {
+=======
+    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {
+>>>>>>> Stashed changes
         info!("child terminated (id={})", &id);
         self.child_terminated_cb.take().unwrap().send(id.into());
     }

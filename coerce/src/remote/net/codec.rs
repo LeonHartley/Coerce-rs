@@ -10,8 +10,6 @@ impl Encoder<Vec<u8>> for NetworkCodec {
     type Error = Error;
 
     fn encode(&mut self, item: Vec<u8>, dst: &mut BytesMut) -> Result<(), Error> {
-        trace!(target: "NetworkCodec", "encoding msg");
-
         dst.reserve(4 + item.len());
         dst.put_i32_le(item.len() as i32);
         dst.put_slice(item.as_slice());
@@ -28,8 +26,6 @@ impl Decoder for NetworkCodec {
         if src.is_empty() || src.remaining() <= 4 {
             return Ok(None);
         }
-
-        trace!(target: "NetworkCodec", "decoding message");
 
         let len = LittleEndian::read_i32(src.as_ref()) as usize;
         if (src.remaining() - 4) < len {

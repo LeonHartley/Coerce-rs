@@ -10,6 +10,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use uuid::Uuid;
+use slog::Logger;
 
 pub mod timer;
 
@@ -20,7 +21,7 @@ pub struct ActorScheduler {
 }
 
 impl ActorScheduler {
-    pub fn new(system_id: Uuid) -> LocalActorRef<ActorScheduler> {
+    pub fn new(system_id: Uuid, log: Logger) -> LocalActorRef<ActorScheduler> {
         start_actor(
             ActorScheduler {
                 system_id,
@@ -32,22 +33,27 @@ impl ActorScheduler {
             None,
             None,
             None,
+            Some(log),
         )
     }
 }
 
 #[async_trait]
 impl Actor for ActorScheduler {
-    async fn started(&mut self, _ctx: &mut ActorContext) {
-        log::trace!(target: "ActorScheduler", "started on system {}", self.system_id);
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        trace!(ctx.log(), "started on system {}", self.system_id);
     }
 
-    async fn stopped(&mut self, _ctx: &mut ActorContext) {
-        trace!("scheduler stopping, total actors={}", self.actors.len());
+    async fn stopped(&mut self, ctx: &mut ActorContext) {
+        trace!(
+            ctx.log(),
+            "scheduler stopping, total actors={}",
+            self.actors.len()
+        );
 
         for actor in self.actors.values() {
             actor.stop().await;
-            trace!(target: "ActorScheduler", "stopping actor (id={})", &actor.actor_id());
+            trace!(ctx.log(), "stopping actor (id={})", &actor.actor_id());
         }
     }
 }
@@ -56,6 +62,7 @@ impl Actor for ActorScheduler {
 pub enum ActorType {
     Tracked,
     Anonymous,
+    Supervised,
 }
 
 impl ActorType {
@@ -69,6 +76,13 @@ impl ActorType {
     pub fn is_anon(&self) -> bool {
         match &self {
             &ActorType::Anonymous => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_supervised(&self) -> bool {
+        match &self {
+            &ActorType::Supervised => true,
             _ => false,
         }
     }
@@ -130,9 +144,9 @@ where
 
 #[async_trait]
 impl Handler<SetRemote> for ActorScheduler {
-    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         self.remote = Some(message.0);
-        trace!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
+        trace!(ctx.log(), "actor scheduler is now configured for remoting");
     }
 }
 
@@ -141,7 +155,7 @@ impl<A: Actor> Handler<RegisterActor<A>> for ActorScheduler
 where
     A: 'static + Sync + Send,
 {
-    async fn handle(&mut self, message: RegisterActor<A>, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: RegisterActor<A>, ctx: &mut ActorContext) {
         let _ = self
             .actors
             .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));
@@ -150,17 +164,17 @@ where
             remote.register_actor(message.id.clone(), None);
         }
 
-        trace!(target: "ActorScheduler", "actor {} registered", message.id);
+        trace!(ctx.log(), "actor {} registered", message.id);
     }
 }
 
 #[async_trait]
 impl Handler<DeregisterActor> for ActorScheduler {
-    async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorContext) -> () {
+    async fn handle(&mut self, msg: DeregisterActor, ctx: &mut ActorContext) -> () {
         if let Some(_a) = self.actors.remove(&msg.0) {
-            trace!(target: "ActorScheduler", "de-registered actor {}", msg.0);
+            trace!(ctx.log(), "de-registered actor {}", msg.0);
         } else {
-            warn!(target: "ActorScheduler", "actor {} not found to de-register", msg.0);
+            warn!(ctx.log(), "actor {} not found to de-register", msg.0);
         }
     }
 }
@@ -190,6 +204,7 @@ pub fn start_actor<A: Actor>(
     on_start: Option<tokio::sync::oneshot::Sender<()>>,
     system: Option<ActorSystem>,
     parent_ref: Option<BoxedActorRef>,
+    fallback_logger: Option<Logger>,
 ) -> LocalActorRef<A>
 where
     A: 'static + Send + Sync,
@@ -216,7 +231,7 @@ where
     let cloned_ref = actor_ref.clone();
     tokio::spawn(async move {
         ActorLoop::run(
-            actor, actor_type, rx, on_start, cloned_ref, parent_ref, system,
+            actor, actor_type, rx, on_start, cloned_ref, parent_ref, system, fallback_logger
         )
         .await;
     });

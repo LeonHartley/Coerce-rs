@@ -3,6 +3,7 @@ use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, Loc
 use crate::persistent::context::ActorPersistence;
 
 use crate::actor::supervised::Supervised;
+use slog::Logger;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -21,34 +22,45 @@ pub struct ActorContext {
     boxed_parent_ref: Option<BoxedActorRef>,
     supervised: Option<Supervised>,
     system: Option<ActorSystem>,
+    pub(crate) log: Option<Logger>,
 }
 
 impl Drop for ActorContext {
     fn drop(&mut self) {
         if let Some(boxed_parent_ref) = &self.boxed_parent_ref {
             boxed_parent_ref.notify_child_terminated(self.id().into());
-            info!("notify child terminated");
+            info!(self.log(), "notify child terminated");
         }
 
         match self.status {
             ActorStatus::Starting => {
-                error!("actor panicked while starting");
+                error!(self.log(), "actor panicked while starting");
             }
+
             ActorStatus::Started => {
                 if self.system.is_some() && self.system().is_terminated() {
                     trace!(
+                        self.log(),
                         "actor (id={}) has stopped due to system shutdown",
                         &self.id()
                     );
                 } else {
-                    warn!("actor (id={}) has stopped unexpectedly", &self.id());
+                    warn!(
+                        self.log(),
+                        "actor (id={}) has stopped unexpectedly",
+                        &self.id()
+                    );
                 }
             }
             ActorStatus::Stopping => {
-                error!("actor panicked while stopping");
+                error!(self.log(), "actor panicked while stopping");
             }
             ActorStatus::Stopped => {
-                trace!("actor (id={}) stopped, context dropped", &self.id());
+                trace!(
+                    self.log(),
+                    "actor (id={}) stopped, context dropped",
+                    &self.id()
+                );
             }
         }
     }
@@ -67,6 +79,7 @@ impl ActorContext {
             supervised: None,
             persistence: None,
             boxed_parent_ref: None,
+            log: None,
         }
     }
 
@@ -145,7 +158,7 @@ impl ActorContext {
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let supervised = {
             if self.supervised.is_none() {
-                self.supervised = Some(Supervised::new());
+                self.supervised = Some(Supervised::new(self.log().clone()));
             }
 
             self.supervised.as_mut().unwrap()
@@ -160,6 +173,15 @@ impl ActorContext {
         self.boxed_parent_ref = boxed_parent_ref;
         self
     }
+
+    pub fn log(&self) -> &Logger {
+        self.log.as_ref().expect("no logger configured")
+    }
+
+    pub fn with_logger(mut self, logger: Option<Logger>) -> Self {
+        self.log = logger;
+        self
+    }
 }
 
 impl ActorContext {
@@ -170,7 +192,10 @@ impl ActorContext {
             .persistence()
             .expect("persistence not configured");
 
-        ctx.persistence = Some(ActorPersistence::new(persistence.provider()));
+        ctx.persistence = Some(ActorPersistence::new(
+            persistence.provider(),
+            ctx.log().clone(),
+        ));
 
         ctx
     }

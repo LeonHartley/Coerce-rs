@@ -25,12 +25,14 @@ extern crate serde;
 extern crate async_trait;
 
 #[macro_use]
-extern crate log;
+extern crate slog;
+
+
 
 #[async_trait]
 impl RecoverSnapshot<TestActorSnapshot> for TestActor {
-    async fn recover(&mut self, snapshot: TestActorSnapshot, ctx: &mut ActorContext) {
-        info!("recovered a snapshot");
+    async fn recover(&mut self, _snapshot: TestActorSnapshot, ctx: &mut ActorContext) {
+        info!(ctx.log(), "recovered a snapshot");
     }
 }
 
@@ -65,7 +67,7 @@ impl PersistentActor for TestActor {
 impl Handler<Msg> for TestActor {
     async fn handle(&mut self, message: Msg, ctx: &mut ActorContext) {
         if self.persist(&message, ctx).await.is_ok() {
-            info!("persist ok, number: {}", message.0);
+            info!(ctx.log(), "persist ok, number: {}", message.0);
             self.received_numbers.push(message.0);
         } else {
             // NACK
@@ -76,7 +78,11 @@ impl Handler<Msg> for TestActor {
 #[async_trait]
 impl Recover<Msg> for TestActor {
     async fn recover(&mut self, message: Msg, ctx: &mut ActorContext) {
+<<<<<<< Updated upstream
         info!("recovered a number: {}", message.0);
+=======
+        info!(ctx.log(), "recovered a number: {}", message.0);
+>>>>>>> Stashed changes
         self.received_numbers.push(message.0);
     }
 }
@@ -85,8 +91,14 @@ impl Recover<Msg> for TestActor {
 pub async fn test_persistent_actor_message_recovery() {
     util::create_trace_logger();
 
+<<<<<<< Updated upstream
     let mut system =
         ActorSystem::new().add_persistence(Persistence::from(InMemoryStorageProvider::new()));
+=======
+    let system = ActorSystem::new();
+    let log = system.log().clone();
+    let system = system.add_persistence(Persistence::from(InMemoryStorageProvider::new(log)));
+>>>>>>> Stashed changes
 
     let id = 1;
     let create_empty_actor = || TestActor {
@@ -105,7 +117,6 @@ pub async fn test_persistent_actor_message_recovery() {
 
     assert!(actor
         .exec(|a| {
-            info!("{:?}", &a.received_numbers);
             a.received_numbers == vec![1, 2, 3, 4]
         })
         .await
@@ -120,7 +131,6 @@ pub async fn test_persistent_actor_message_recovery() {
     assert!(actor
         .unwrap()
         .exec(|a| {
-            info!("{:?}", &a.received_numbers);
             a.received_numbers == vec![1, 2, 3, 4]
         })
         .await

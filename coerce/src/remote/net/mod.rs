@@ -8,6 +8,7 @@ use std::task::{Context, Poll};
 
 use crate::remote::net::codec::NetworkCodec;
 use futures::StreamExt;
+use slog::Logger;
 use tokio_util::codec::FramedRead;
 
 pub mod client;
@@ -34,14 +35,20 @@ pub trait StreamReceiver {
 pub struct StreamReceiverFuture<S: tokio::io::AsyncRead> {
     stream: FramedRead<S, NetworkCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
+    log: Logger,
 }
 
 impl<S: tokio::io::AsyncRead> StreamReceiverFuture<S> {
     pub fn new(
         stream: FramedRead<S, NetworkCodec>,
         stop_rx: tokio::sync::oneshot::Receiver<bool>,
+        log: Logger,
     ) -> StreamReceiverFuture<S> {
-        StreamReceiverFuture { stream, stop_rx }
+        StreamReceiverFuture {
+            stream,
+            stop_rx,
+            log,
+        }
     }
 }
 
@@ -62,7 +69,7 @@ where
         Poll::Ready(match result {
             Some(Ok(message)) => Some(Some(message)),
             Some(Err(e)) => {
-                error!(target: "RemoteStream", "{:?}", e);
+                error!(&self.log, "error reading from stream - {:?}", e);
                 Some(None)
             }
             None => None,
@@ -75,23 +82,24 @@ pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
     read: FramedRead<S, NetworkCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
     mut receiver: R,
+    log: Logger,
 ) where
     R: Send,
 {
-    let mut fut = StreamReceiverFuture::new(read, stop_rx);
+    let mut fut = StreamReceiverFuture::new(read, stop_rx, log);
     while let Some(res) = fut.next().await {
         match res {
             Some(res) => match R::Message::read_from_bytes(res) {
                 Some(msg) => receiver.on_receive(msg, &system).await,
-                None => warn!(target: "RemoteReceive", "error decoding msg"),
+                None => warn!(&fut.log, "error decoding msg"),
             },
             None => {
-                error!(target: "RemoteReceive", "error receiving msg");
+                error!(&fut.log, "error receiving msg");
                 break;
             }
         }
     }
 
-    trace!(target: "RemoteReceive", "closed");
+    trace!(&fut.log, "closed");
     receiver.on_close(&mut system).await;
 }

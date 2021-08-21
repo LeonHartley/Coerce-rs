@@ -3,9 +3,11 @@ use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use coerce::actor::Actor;
 use coerce_macros::JsonMessage;
-use env_logger::Builder;
-use log::LevelFilter;
 use serde::Serialize;
+use slog::Logger;
+use sloggers::terminal::{Destination, TerminalLoggerBuilder};
+use sloggers::types::Severity;
+use sloggers::Build;
 use std::io::Write;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -116,17 +118,5 @@ impl Handler<GetCounterRequest> for EchoActor {
 }
 
 pub fn create_trace_logger() {
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] {} - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"),
-                record.level(),
-                record.target(),
-                record.args(),
-            )
-        })
-        .filter(None, LevelFilter::Trace)
-        .init();
+
 }

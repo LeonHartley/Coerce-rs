@@ -4,6 +4,7 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
+use slog::Logger;
 
 use std::collections::HashMap;
 
@@ -49,19 +50,28 @@ impl ActorLoop {
         actor_ref: LocalActorRef<A>,
         parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,
+        fallback_logger: Option<Logger>
     ) {
         let actor_id = actor_ref.id.clone();
         let mut ctx = A::new_context(system.clone(), Starting, actor_ref.clone().into())
-            .with_parent(parent_ref);
+            .with_parent(parent_ref)
+            .with_logger(system.as_ref().map_or(fallback_logger, |s| {
+                Some(s.log().new(o!(
+                "context" => "Actor",
+                "actor-id" => actor_id.clone(),
+                "actor-type" => A::type_name()
+                )))
+            }));
 
         let system_id = actor_ref
             .system_id
             .map_or("system-creation".to_string(), |s| s.to_string());
 
         trace!(
-            target: "Actor",
+            ctx.log(),
             "[{}] starting on system: {}",
-            ctx.id(), system_id
+            ctx.id(),
+            system_id
         );
 
         actor.started(&mut ctx).await;
@@ -73,11 +83,7 @@ impl ActorLoop {
 
         ctx.set_status(Started);
 
-        trace!(
-            target: "Actor",
-            "[{}] ready",
-            ctx.id(),
-        );
+        trace!(ctx.log(), "[{}] ready", ctx.id(),);
 
         if let Some(on_start) = on_start.take() {
             let _ = on_start.send(());
@@ -94,11 +100,7 @@ impl ActorLoop {
 
                 let _enter = span.enter();
 
-                trace!(
-                    target: "Actor",
-                    "[{}] recv {}",
-                    &actor_id, msg.name()
-                );
+                trace!(ctx.log(), "[{}] recv {}", &actor_id, msg.name());
 
                 msg.handle(&mut actor, &mut ctx).await;
             }
@@ -109,11 +111,7 @@ impl ActorLoop {
             }
         }
 
-        trace!(
-            target: "Actor",
-            "[{}] stopping",
-            &actor_id
-        );
+        trace!(ctx.log(), "[{}] stopping", &actor_id);
 
         ctx.set_status(Stopping);
 
@@ -124,7 +122,7 @@ impl ActorLoop {
         if actor_type.is_tracked() {
             if let Some(system) = system.take() {
                 if !system.is_terminated() {
-                    trace!("de-registering actor {}", &actor_id);
+                    trace!(ctx.log(), "de-registering actor {}", &actor_id);
 
                     system
                         .scheduler()

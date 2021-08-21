@@ -1,22 +1,25 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Message;
 use crate::persistent::journal::provider::StorageProviderRef;
-use crate::persistent::journal::{Journal, PersistErr};
-use crate::persistent::{PersistentActor, Recover};
+use crate::persistent::journal::Journal;
+use crate::persistent::PersistentActor;
+use slog::Logger;
 use std::any::Any;
 
 pub struct ActorPersistence {
     storage_provider: StorageProviderRef,
     journal: Option<BoxedJournal>,
+    log: Logger,
 }
 
 type BoxedJournal = Box<dyn Any + Sync + Send>;
 
 impl ActorPersistence {
-    pub fn new(storage_provider: &StorageProviderRef) -> Self {
+    pub fn new(storage_provider: &StorageProviderRef, log: Logger) -> Self {
         let storage_provider = storage_provider.clone();
         Self {
             storage_provider,
+            log,
             journal: None,
         }
     }
@@ -30,7 +33,7 @@ impl ActorPersistence {
             .journal_storage()
             .expect("journal storage not configured");
 
-        let journal = Journal::<A>::new(persistence_id, storage).await;
+        let journal = Journal::<A>::new(persistence_id, storage, self.log.clone()).await;
         self.journal = Some(Box::new(journal));
         self.journal.as_mut().unwrap().downcast_mut().unwrap()
     }

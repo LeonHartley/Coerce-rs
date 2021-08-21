@@ -3,7 +3,6 @@ use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler};
 use crate::actor::system::ActorSystem;
 use crate::remote::RemoteActorRef;
-use log::error;
 
 use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
@@ -40,7 +39,7 @@ pub trait Actor: 'static + Send + Sync {
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
 
-    async fn on_child_terminated(&mut self, id: &ActorId, ctx: &mut ActorContext) {}
+    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {}
 
     fn type_name() -> &'static str
     where
@@ -294,15 +293,9 @@ impl<A: Actor> LocalActorRef<A> {
                     tracing::trace!("recv result");
                     Ok(res)
                 }
-                Err(e) => {
-                    error!(target: "ActorRef", "error receiving result, e={}", e);
-                    Err(ActorRefErr::ActorUnavailable)
-                }
+                Err(e) => Err(ActorRefErr::ActorUnavailable),
             },
-            Err(_e) => {
-                error!(target: "ActorRef", "error sending message");
-                Err(ActorRefErr::ActorUnavailable)
-            }
+            Err(_e) => Err(ActorRefErr::ActorUnavailable),
         }
     }
 

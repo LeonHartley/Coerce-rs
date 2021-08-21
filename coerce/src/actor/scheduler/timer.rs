@@ -1,6 +1,5 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, LocalActorRef};
-use log::trace;
 
 use std::time::{Duration, Instant};
 use uuid::Uuid;
@@ -43,28 +42,17 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
     T: 'static + Clone + Sync + Send,
 {
     let mut interval = tokio::time::interval_at(tokio::time::Instant::now(), tick);
-    let timer_id = Uuid::new_v4();
-
     interval.tick().await;
-
-    trace!(target: "Timer", "{} - timer starting", &timer_id);
 
     loop {
         if stop_rx.try_recv().is_ok() {
             break;
         }
 
-        trace!(target: "Timer", "{} - timer tick", &timer_id);
-
-        let now = Instant::now();
-
         if actor.send(msg.clone()).await.is_err() {
             break;
         }
 
-        trace!(target: "Timer", "{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());
         interval.tick().await;
     }
-
-    trace!(target: "Timer", "{} - timer finished", timer_id);
 }

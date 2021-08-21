@@ -17,6 +17,7 @@ use crate::remote::net::proto::protocol::{
 use crate::remote::stream::mediator::PublishRaw;
 use opentelemetry::global;
 use protobuf::Message;
+use slog::Logger;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -32,6 +33,7 @@ pub struct RemoteServer {
 pub struct SessionMessageReceiver {
     session_id: Uuid,
     sessions: LocalActorRef<RemoteSessionStore>,
+    log: Logger,
 }
 
 #[derive(Debug)]
@@ -50,10 +52,12 @@ impl SessionMessageReceiver {
     pub fn new(
         session_id: Uuid,
         sessions: LocalActorRef<RemoteSessionStore>,
+        log: Logger,
     ) -> SessionMessageReceiver {
         SessionMessageReceiver {
             session_id,
             sessions,
+            log,
         }
     }
 }
@@ -100,10 +104,15 @@ pub async fn server_loop(
     system: RemoteActorSystem,
     session_store: LocalActorRef<RemoteSessionStore>,
 ) {
+    let log = system.actor_system().log().new(o!(
+        "context" => "RemoteServer"
+    ));
+
     loop {
         match listener.accept().await {
             Ok((socket, addr)) => {
-                trace!(target: "RemoteServer", "client accepted {}", addr);
+                trace!(&log, "client accepted {}", addr);
+
                 let (read, write) = tokio::io::split(socket);
 
                 let read = FramedRead::new(read, NetworkCodec);
@@ -117,14 +126,20 @@ pub async fn server_loop(
                     .await
                     .expect("new session registered");
 
+                let log = log.new(o!(
+                    "context" => "ServerSession",
+                    "session-id" => session_id.to_string()
+                ));
+
                 let _session = tokio::spawn(receive_loop(
                     system.clone(),
                     read,
                     stop_rx,
-                    SessionMessageReceiver::new(session_id, session_store.clone()),
+                    SessionMessageReceiver::new(session_id, session_store.clone(), log.clone()),
+                    log,
                 ));
             }
-            Err(e) => error!(target: "RemoteServer", "error accepting client: {:?}", e),
+            Err(e) => error!(&log, "error accepting client: {:?}", e),
         }
     }
 }
@@ -136,7 +151,13 @@ impl StreamReceiver for SessionMessageReceiver {
     async fn on_receive(&mut self, msg: SessionEvent, ctx: &RemoteActorSystem) {
         match msg {
             SessionEvent::Handshake(msg) => {
-                trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
+                trace!(
+                    &self.log,
+                    "handshake {}, {:?}, type: {:?}",
+                    &msg.node_id,
+                    &msg.nodes,
+                    &msg.client_type
+                );
                 tokio::spawn(session_handshake(
                     ctx.clone(),
                     msg,
@@ -146,20 +167,31 @@ impl StreamReceiver for SessionMessageReceiver {
             }
 
             SessionEvent::FindActor(find_actor) => {
-                trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, &find_actor.actor_id);
+                trace!(
+                    &self.log,
+                    "actor lookup {}, {}",
+                    &self.session_id,
+                    &find_actor.actor_id
+                );
                 tokio::spawn(session_handle_lookup(
                     Uuid::from_str(&find_actor.message_id).unwrap(),
                     find_actor.actor_id,
                     self.session_id,
                     ctx.clone(),
                     self.sessions.clone(),
+                    self.log.clone(),
                 ));
             }
 
             SessionEvent::RegisterActor(actor) => {
                 let node_id = Uuid::from_str(actor.get_node_id()).unwrap();
 
-                trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
+                trace!(
+                    &self.log,
+                    "register actor {}, {}",
+                    &actor.actor_id,
+                    &actor.node_id
+                );
                 ctx.register_actor(actor.actor_id, Some(node_id));
             }
 
@@ -169,11 +201,12 @@ impl StreamReceiver for SessionMessageReceiver {
                     self.session_id,
                     ctx.clone(),
                     self.sessions.clone(),
+                    self.log.clone(),
                 ));
             }
 
             SessionEvent::Ping(ping) => {
-                trace!(target: "RemoteServer", "ping received, sending pong");
+                trace!(&self.log, "ping received, sending pong");
                 self.sessions
                     .send(SessionWrite(
                         self.session_id,
@@ -189,18 +222,24 @@ impl StreamReceiver for SessionMessageReceiver {
             SessionEvent::Pong(_id) => {}
 
             SessionEvent::CreateActor(msg) => {
-                trace!(target: "RemoteServer", "create actor {}, {:?}", self.session_id, &msg.actor_id);
+                trace!(
+                    &self.log,
+                    "create actor {}, {:?}",
+                    self.session_id,
+                    &msg.actor_id
+                );
                 tokio::spawn(session_create_actor(
                     msg,
                     self.session_id,
                     ctx.clone(),
                     self.sessions.clone(),
+                    self.log.clone(),
                 ));
             }
 
             SessionEvent::StreamPublish(msg) => {
-                trace!(target: "RemoteServer", "stream publish {}, {:?}", self.session_id, &msg);
-                tokio::spawn(session_stream_publish(msg, ctx.clone()));
+                trace!(&self.log, "stream publish {}, {:?}", self.session_id, &msg);
+                tokio::spawn(session_stream_publish(msg, ctx.clone(), self.log.clone()));
             }
         }
     }
@@ -263,6 +302,7 @@ async fn session_handle_message(
     session_id: Uuid,
     ctx: RemoteActorSystem,
     mut sessions: LocalActorRef<RemoteSessionStore>,
+    log: Logger,
 ) {
     let mut headers = HashMap::<String, String>::new();
     headers.insert("traceparent".to_owned(), msg.trace_id);
@@ -283,11 +323,12 @@ async fn session_handle_message(
                 buf,
                 session_id,
                 &mut sessions,
+                &log,
             )
             .await
         }
         Err(_) => {
-            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+            error!(&log, "failed to handle message, todo: send err");
         }
     }
 }
@@ -297,10 +338,11 @@ async fn session_handle_lookup(
     id: ActorId,
     session_id: Uuid,
     ctx: RemoteActorSystem,
-    mut sessions: LocalActorRef<RemoteSessionStore>,
+    sessions: LocalActorRef<RemoteSessionStore>,
+    log: Logger,
 ) {
     let node_id = ctx.locate_actor_node(id.clone()).await;
-    trace!(target: "RemoteSession", "sending actor lookup result: {:?}", node_id);
+    trace!(&log, "sending actor lookup result: {:?}", node_id);
 
     let response = ActorAddress {
         actor_id: id,
@@ -309,9 +351,9 @@ async fn session_handle_lookup(
     };
 
     match response.write_to_bytes() {
-        Ok(buf) => send_result(msg_id, buf, session_id, &sessions).await,
+        Ok(buf) => send_result(msg_id, buf, session_id, &sessions, &log).await,
         Err(_) => {
-            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+            error!(&log, "failed to handle message, todo: send err");
         }
     }
 }
@@ -321,20 +363,36 @@ async fn session_create_actor(
     session_id: Uuid,
     ctx: RemoteActorSystem,
     sessions: LocalActorRef<RemoteSessionStore>,
+    log: Logger,
 ) {
     let msg_id = msg.message_id.clone();
 
-    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor", ctx.node_tag(), ctx.node_id(), &msg.message_id);
+    trace!(
+        &log,
+        "node_tag={}, node_id={}, message_id={}, received request to create actor",
+        ctx.node_tag(),
+        ctx.node_id(),
+        &msg.message_id
+    );
     match ctx.handle_create_actor(msg).await {
-        Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, &sessions).await,
+        Ok(buf) => {
+            send_result(
+                msg_id.parse().unwrap(),
+                buf.to_vec(),
+                session_id,
+                &sessions,
+                &log,
+            )
+            .await
+        }
         Err(_) => {
-            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+            error!(&log, "failed to handle message, todo: send err");
         }
     }
 }
 
-async fn session_stream_publish(msg: StreamPublish, sys: RemoteActorSystem) {
-    info!("stream publish");
+async fn session_stream_publish(msg: StreamPublish, sys: RemoteActorSystem, log: Logger) {
+    info!(&log, "stream publish");
 
     // TODO: node should acknowledge the message
     if let Some(mediator) = sys.stream_mediator() {
@@ -347,8 +405,9 @@ async fn send_result(
     res: Vec<u8>,
     session_id: Uuid,
     sessions: &LocalActorRef<RemoteSessionStore>,
+    log: &Logger,
 ) {
-    trace!(target: "RemoteSession", "sending result");
+    trace!(&log, "sending result");
 
     let event = ClientEvent::Result(ClientResult {
         message_id: msg_id.to_string(),
@@ -357,8 +416,8 @@ async fn send_result(
     });
 
     if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
-        trace!(target: "RemoteSession", "sent result successfully");
+        trace!(&log, "sent result successfully");
     } else {
-        error!(target: "RemoteSession", "failed to send result");
+        error!(&log, "failed to send result");
     }
 }

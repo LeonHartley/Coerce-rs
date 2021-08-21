@@ -144,14 +144,14 @@ where
         let result = actor.handle(msg.unwrap(), ctx).await;
 
         if let &None = &self.sender {
-            trace!(target: "ActorMessage", "no result consumer, message handling complete");
+            trace!(ctx.log(), "no result consumer, message handling complete");
             return;
         }
 
         let sender = self.sender.take();
         match sender.unwrap().send(result) {
-            Ok(_) => trace!(target: "ActorMessage", "sent result successfully"),
-            Err(_e) => warn!(target: "ActorMessage", "failed to send result"),
+            Ok(_) => trace!(ctx.log(), "sent result successfully"),
+            Err(_e) => warn!(ctx.log(), "failed to send result"),
         }
     }
 }

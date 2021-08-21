@@ -145,7 +145,7 @@ where
                         ..ActorAddress::default()
                     };
 
-                    info!(target: "RemoteHandler", "sending created actor ref");
+                    trace!(self.system.log(), "sending created actor ref");
                     send_proto_result(result, res)
                 }
             }
@@ -188,17 +188,17 @@ where
                         match M::write_remote_result(result) {
                             Ok(buffer) => {
                                 if res.send(buffer).is_err() {
-                                    error!(target: "RemoteHandler", "failed to send message")
+                                    error!(self.system.log(), "failed to send message")
                                 }
                             }
 
                             Err(_) => {
-                                error!(target: "RemoteHandler", "failed to encode message result")
+                                error!(self.system.log(), "failed to encode message result")
                             }
                         }
                     }
                 }
-                Err(_) => error!(target: "RemoteHandler", "failed to decode message"),
+                Err(_) => error!(self.system.log(), "failed to decode message"),
             };
         }
     }
@@ -221,10 +221,8 @@ where
 {
     match msg.write_to_bytes() {
         Ok(buffer) => {
-            if res.send(buffer).is_err() {
-                error!(target: "RemoteHandler", "failed to send message")
-            }
+            res.send(buffer);
         }
-        Err(e) => error!(target: "RemoteHandler", "failed to encode message result - {}", e),
+        _ => {} // Err(e) => error!(self.system.actor_system().log(), "failed to encode message result - {}", e),
     }
 }

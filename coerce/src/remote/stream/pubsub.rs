@@ -78,10 +78,7 @@ impl<T: Topic> TopicSubscriberStore<T> {
             Some(sender) => {
                 sender.send(StreamEvent::Receive(msg));
             }
-            None => trace!(
-                target: &format!("PubSub-topic-{}-{}", T::topic_name(), key),
-                "no subscribers, message will not be sent"
-            ),
+            None => {}
         }
     }
 

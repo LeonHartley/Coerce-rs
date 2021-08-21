@@ -8,7 +8,7 @@ extern crate serde;
 extern crate lazy_static;
 
 #[macro_use]
-extern crate log;
+extern crate slog;
 
 pub mod actor;
 pub mod persistent;

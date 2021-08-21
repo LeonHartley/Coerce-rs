@@ -102,10 +102,7 @@ impl<W: Actor + Clone> WorkerRefExt<W> for LocalActorRef<Worker<W>> {
         } else {
             match res.await {
                 Ok(res) => Ok(res),
-                Err(_e) => {
-                    error!(target: "WorkerRef", "error receiving result");
-                    Err(ActorRefErr::ActorUnavailable)
-                }
+                Err(_e) => Err(ActorRefErr::ActorUnavailable),
             }
         }
     }
@@ -116,23 +113,24 @@ impl<W: Actor + Clone, M: Message> Handler<WorkerMessage<M>> for Worker<W>
 where
     W: Handler<M>,
 {
-    async fn handle(&mut self, message: WorkerMessage<M>, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: WorkerMessage<M>, ctx: &mut ActorContext) {
         if let Some(worker) = self.workers.pop_front() {
             let worker_ref = worker.clone();
 
             self.workers.push_back(worker);
 
+            let log = ctx.log().clone();
             // main worker acts as a scheduler, don't block it by handling the task, dispatch it off
             tokio::spawn(async move {
                 match worker_ref.send(message.message).await {
                     Ok(res) => {
                         if message.res_tx.send(res).is_ok() {
-                            trace!(target: "Worker", "sent result successfully");
+                            trace!(&log, "sent result successfully");
                         } else {
-                            error!(target: "Worker", "failed to send result, receiver dropped?");
+                            error!(&log, "failed to send result, receiver dropped?");
                         }
                     }
-                    Err(_e) => error!(target: "Worker", "error sending msg"),
+                    Err(_e) => error!(&log, "error sending msg"),
                 }
             });
         }

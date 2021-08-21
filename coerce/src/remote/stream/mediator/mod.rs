@@ -90,7 +90,6 @@ impl StreamMediator {
         let topic = MediatorTopic(Box::new(subscriber_store));
 
         let topic_name = T::topic_name().to_string();
-        trace!("adding topic: {}", &topic_name);
         self.topics.insert(topic_name, topic);
         self
     }
@@ -108,7 +107,7 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
     async fn handle(
         &mut self,
         message: Publish<T>,
-        _ctx: &mut ActorContext,
+        ctx: &mut ActorContext,
     ) -> Result<(), PublishErr> {
         match message.message.write_to_bytes() {
             Some(bytes) => {
@@ -119,7 +118,8 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                     let topic = T::topic_name().to_string();
                     let message = bytes.clone();
 
-                    trace!("notifying {} nodes", nodes.len());
+                    trace!(ctx.log(), "notifying {} nodes", nodes.len());
+                    let log = ctx.log().clone();
                     tokio::spawn(async move {
                         let publish = StreamPublish {
                             topic,
@@ -139,10 +139,10 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                             }
                         }
 
-                        trace!("notified {} nodes", node_count);
+                        trace!(&log, "notified {} nodes", node_count);
                     });
                 } else {
-                    trace!("no nodes to notify");
+                    trace!(ctx.log(), "no nodes to notify");
                 }
 
                 if let Some(topic) = self.topics.get_mut(T::topic_name()) {
@@ -173,11 +173,11 @@ impl From<StreamPublish> for PublishRaw {
 
 #[async_trait]
 impl Handler<PublishRaw> for StreamMediator {
-    async fn handle(&mut self, message: PublishRaw, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: PublishRaw, ctx: &mut ActorContext) {
         if let Some(topic) = self.topics.get_mut(&message.topic) {
             topic.0.emit(&message.key, message.message).await;
         } else {
-            trace!("no topic: {}", &message.topic)
+            trace!(ctx.log(), "no topic: {}", &message.topic)
         }
     }
 }
@@ -190,7 +190,7 @@ where
     async fn handle(
         &mut self,
         message: Subscribe<A, T>,
-        _ctx: &mut ActorContext,
+        ctx: &mut ActorContext,
     ) -> Result<Subscription, SubscribeErr> {
         let subscription = if let Some(topic) = self.topics.remove(T::topic_name()) {
             let topic = topic.0.into_any().downcast::<TopicSubscriberStore<T>>();
@@ -204,7 +204,10 @@ where
 
                 Some(subscription)
             } else {
-                error!("incorrect topic subscriber store type, unable to add back");
+                error!(
+                    ctx.log(),
+                    "incorrect topic subscriber store type, unable to add back"
+                );
                 None
             }
         } else {

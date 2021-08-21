@@ -3,11 +3,17 @@ use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, Loca
 use crate::remote::system::RemoteActorSystem;
 
 use crate::persistent::Persistence;
+use slog::Logger;
+use std::iter::Fuse;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
+use sloggers::terminal::{TerminalLoggerBuilder, Destination};
+use sloggers::types::{Severity, Format};
+use sloggers::Build;
 
 lazy_static! {
     static ref CURRENT_SYSTEM: ActorSystem = ActorSystem::new();
@@ -20,17 +26,24 @@ pub struct ActorSystem {
     remote: Option<RemoteActorSystem>,
     persistence: Option<Persistence>,
     is_terminated: Arc<AtomicBool>,
+    log: Logger,
 }
 
 impl ActorSystem {
     pub fn new() -> ActorSystem {
+        ActorSystem::new_with_logger(|_| create_default_logger())
+    }
+
+    pub fn new_with_logger<F: Fn(Uuid) -> Logger>(logger_provider: F) -> ActorSystem {
         let system_id = Uuid::new_v4();
+        let logger = logger_provider(system_id);
         ActorSystem {
             system_id,
-            scheduler: ActorScheduler::new(system_id),
+            scheduler: ActorScheduler::new(system_id, logger.clone()),
             remote: None,
             persistence: None,
             is_terminated: Arc::new(AtomicBool::new(false)),
+            log: logger,
         }
     }
 
@@ -40,6 +53,10 @@ impl ActorSystem {
 
     pub fn scheduler(&self) -> &LocalActorRef<ActorScheduler> {
         &self.scheduler
+    }
+
+    pub fn log(&self) -> &Logger {
+        &self.log
     }
 
     pub fn current_system() -> ActorSystem {
@@ -60,7 +77,7 @@ impl ActorSystem {
         self.remote
             .as_ref()
             .map(|s| s.clone())
-            .expect("this ActorSytem is not setup for remoting")
+            .expect("this ActorSystem is not setup for remoting")
     }
 
     pub fn is_remote(&self) -> bool {
@@ -110,6 +127,7 @@ impl ActorSystem {
             Some(tx),
             Some(self.clone()),
             None,
+            None,
         );
 
         if actor_type.is_tracked() {
@@ -126,6 +144,7 @@ impl ActorSystem {
             Ok(_) => Ok(actor_ref),
             Err(e) => {
                 error!(
+                    &self.log,
                     "actor not started, actor_id={}, type={}",
                     &id,
                     A::type_name()
@@ -140,7 +159,7 @@ impl ActorSystem {
     }
 
     pub async fn shutdown(&self) {
-        info!("shutting down");
+        info!(&self.log, "shutting down");
 
         self.is_terminated.store(true, Relaxed);
         self.scheduler.stop().await;
@@ -168,4 +187,12 @@ impl ActorSystem {
     pub fn persistence(&self) -> Option<&Persistence> {
         self.persistence.as_ref()
     }
+}
+
+fn create_default_logger() -> Logger {
+    let mut builder = TerminalLoggerBuilder::new();
+    builder.level(Severity::Trace);
+    builder.destination(Destination::Stdout);
+    builder.format(Format::Compact);
+    builder.build().unwrap()
 }

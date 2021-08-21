@@ -68,7 +68,7 @@ where
     }
 
     async fn started(&mut self, ctx: &mut ActorContext) {
-        trace!("persistent actor starting, loading journal");
+        trace!(ctx.log(), "persistent actor starting, loading journal");
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
@@ -81,6 +81,7 @@ where
         let messages = journal.recover_messages().await;
 
         trace!(
+            ctx.log(),
             "actor recovered {} messages",
             messages.as_ref().map_or(0, |m| m.len())
         );
@@ -100,7 +101,7 @@ where
 
     async fn stopped(&mut self, ctx: &mut ActorContext) {
         // Try to persist a snapshot.
-        trace!("persistent actor stopped");
+        trace!(ctx.log(), "persistent actor stopped");
         self.stopped(ctx).await
     }
 }

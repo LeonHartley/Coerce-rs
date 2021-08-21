@@ -58,43 +58,46 @@ impl Message for SessionWrite {
 
 #[async_trait]
 impl Handler<NewSession> for RemoteSessionStore {
-    async fn handle(&mut self, message: NewSession, _ctx: &mut ActorContext) {
-        trace!(target: "SessionStore", "new session {}", &message.0.id);
+    async fn handle(&mut self, message: NewSession, ctx: &mut ActorContext) {
+        trace!(ctx.log(), "new session {}", &message.0.id);
         self.sessions.insert(message.0.id, message.0);
     }
 }
 
 #[async_trait]
 impl Handler<SessionClosed> for RemoteSessionStore {
-    async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SessionClosed, ctx: &mut ActorContext) {
         self.sessions.remove(&message.0);
-        trace!(target: "SessionStore", "disposed session {}", &message.0);
+        trace!(ctx.log(), "disposed session {}", &message.0);
     }
 }
 
 #[async_trait]
 impl Handler<SessionWrite> for RemoteSessionStore {
-    async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SessionWrite, ctx: &mut ActorContext) {
         match self.sessions.get_mut(&message.0) {
             Some(session) => {
-                trace!(target: "RemoteSession", "writing to session {}", &message.0);
+                trace!(ctx.log(), "writing to session {}", &message.0);
 
                 match message.1.write_to_bytes() {
                     Some(msg) => {
-                        trace!(target: "RemoteSession", "message encoded");
+                        trace!(ctx.log(), "message encoded");
                         if session.write.send(msg).await.is_ok() {
-                            trace!(target: "RemoteSession", "message sent");
+                            trace!(ctx.log(), "message sent");
                         } else {
-                            error!(target: "RemoteSession", "failed to send message");
+                            error!(ctx.log(), "failed to send message");
                         }
                     }
                     None => {
-                        warn!(target: "RemoteSession", "failed to encode message");
+                        warn!(ctx.log(), "failed to encode message");
                     }
                 }
             }
             None => {
-                warn!(target: "RemoteSession", "attempted to write to session that couldn't be found");
+                warn!(
+                    ctx.log(),
+                    "attempted to write to session that couldn't be found"
+                );
             }
         }
     }

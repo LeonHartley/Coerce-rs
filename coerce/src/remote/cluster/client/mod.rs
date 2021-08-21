@@ -12,4 +12,8 @@ impl RemoteClusterClient {
     }
 }
 
-impl RemoteClusterClient {}
+impl RemoteClusterClient {
+    pub fn actor_system(&self) -> &RemoteActorSystem {
+        &self.system
+    }
+}

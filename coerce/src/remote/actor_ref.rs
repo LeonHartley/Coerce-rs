@@ -79,12 +79,15 @@ where
                     Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
                         Ok(res) => Ok(res),
                         Err(_) => {
-                            error!(target: "RemoteActorRef", "failed to decode result");
+                            error!(self.system.actor_system().log(), "failed to decode result");
                             Err(ActorUnavailable)
                         }
                     },
                     Err(e) => {
-                        error!(target: "RemoteActorRef", "failed to receive result, e={}", e);
+                        error!(
+                            self.system.actor_system().log(),
+                            "failed to receive result, e={}", e
+                        );
                         Err(ActorUnavailable)
                     }
                     Ok(RemoteResponse::Err(e)) => {
@@ -95,7 +98,7 @@ where
                 }
             }
             None => {
-                error!(target: "RemoteActorRef", "no handler returned");
+                error!(self.system.actor_system().log(), "no handler returned");
                 // TODO: add more errors
                 Err(ActorUnavailable)
             }
