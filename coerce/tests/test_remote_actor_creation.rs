@@ -28,7 +28,7 @@ impl ActorRecipe for TestActorRecipe {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |b| Some(b))
     }
 }
@@ -62,6 +62,7 @@ pub async fn test_remote_actor_deploy_remotely() {
         .with_actor_system(sys)
         .with_actors(|builder| builder.with_actor::<TestActorFactory>(TestActorFactory {}))
         .with_tag("system-a")
+        .with_id(1)
         .build()
         .await;
 
@@ -69,6 +70,7 @@ pub async fn test_remote_actor_deploy_remotely() {
     let remote_b = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_tag("system-b")
+        .with_id(2)
         .build()
         .await;
 
@@ -146,7 +148,7 @@ pub async fn test_remote_actor_create_new_locally() {
 
     assert_eq!(Err(RemoteActorErr::ActorExists), duplicate);
     assert_eq!(&create_actor_res.actor_id, &actor_id);
-    assert_eq!(create_actor_res.node_id, remote.node_id().to_string());
+    assert_eq!(create_actor_res.node_id, remote.node_id());
     assert_eq!(node.unwrap(), remote.node_id());
     assert_eq!(actor_name, expected_actor_name);
 }

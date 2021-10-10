@@ -16,7 +16,7 @@ pub trait ActorHandler: Any {
     async fn create(
         &self,
         args: CreateActor,
-        mut remote_ctx: RemoteActorSystem,
+        mut system: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
 
@@ -124,7 +124,7 @@ where
     async fn create(
         &self,
         args: CreateActor,
-        remote_ctx: RemoteActorSystem,
+        remote_system: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {
         let system = self.system.clone();
@@ -141,11 +141,11 @@ where
                 if let Ok(actor_ref) = actor_ref {
                     let result = ActorAddress {
                         actor_id: actor_ref.id,
-                        node_id: remote_ctx.node_id().to_string(),
+                        node_id: remote_system.node_id(),
                         ..ActorAddress::default()
                     };
 
-                    info!(target: "RemoteHandler", "sending created actor ref");
+                    trace!(target: "RemoteHandler", "sending created actor ref");
                     send_proto_result(result, res)
                 }
             }

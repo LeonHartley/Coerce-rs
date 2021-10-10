@@ -5,6 +5,7 @@ use crate::remote::cluster::node::RemoteNode;
 use chrono::{DateTime, Utc};
 
 use crate::actor::system::ActorSystem;
+use crate::remote::system::NodeId;
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -78,7 +79,7 @@ impl Handler<UpdateWorker> for ClusterWorkers {
 pub struct ClusterWorker {}
 
 impl ClusterWorker {
-    pub fn new(_id: Uuid, _node: RemoteNode, _last_ping: Option<DateTime<Utc>>) -> ClusterWorker {
+    pub fn new(_id: NodeId, _node: RemoteNode, _last_ping: Option<DateTime<Utc>>) -> ClusterWorker {
         ClusterWorker {}
     }
 }

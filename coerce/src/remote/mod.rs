@@ -3,6 +3,7 @@ pub mod actor_ref;
 pub mod cluster;
 pub mod handler;
 pub mod net;
+pub mod raft;
 pub mod stream;
 pub mod system;
 pub mod tracing;

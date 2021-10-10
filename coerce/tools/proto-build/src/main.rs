@@ -18,7 +18,18 @@ fn main() -> std::io::Result<()> {
         .input("coerce/src/remote/net/proto/protocol.proto")
         .include("coerce/src/remote/net/proto")
         .run()
-        .expect("protoc");
+        .expect("protoc coerce.remote.net");
+
+    protobuf_codegen_pure::Codegen::new()
+        .customize(Customize {
+            gen_mod_rs: Some(true),
+            ..Default::default()
+        })
+        .out_dir("coerce/src/persistent/journal/proto/")
+        .input("coerce/src/persistent/journal/proto/journal.proto")
+        .include("coerce/src/persistent/journal/proto/")
+        .run()
+        .expect("protoc coerce.persistent.journal");
 
     Ok(())
 }

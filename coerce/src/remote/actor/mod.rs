@@ -7,7 +7,7 @@ use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
 use crate::remote::net::client::RemoteClientStream;
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::any::TypeId;
 use std::collections::HashMap;
 
@@ -21,12 +21,12 @@ pub mod heartbeat;
 pub mod message;
 
 pub struct RemoteClientRegistry {
-    clients: HashMap<Uuid, Box<dyn RemoteClientStream + Sync + Send>>,
+    clients: HashMap<NodeId, Box<dyn RemoteClientStream + Sync + Send>>,
 }
 
 pub struct RemoteRegistry {
     nodes: RemoteNodeStore,
-    actors: HashMap<ActorId, Uuid>,
+    actors: HashMap<ActorId, NodeId>,
     system: Option<RemoteActorSystem>,
     system_event_subscription: Option<Subscription>,
 }
@@ -151,14 +151,14 @@ impl RemoteClientRegistry {
         .expect("RemoteClientRegistry")
     }
 
-    pub fn add_client<C: RemoteClientStream>(&mut self, node_id: Uuid, client: C)
+    pub fn add_client<C: RemoteClientStream>(&mut self, node_id: NodeId, client: C)
     where
         C: 'static + Sync + Send,
     {
         self.clients.insert(node_id, Box::new(client));
     }
 
-    pub fn remove_client(&mut self, node_id: Uuid) {
+    pub fn remove_client(&mut self, node_id: NodeId) {
         self.clients.remove(&node_id);
     }
 }

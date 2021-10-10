@@ -30,6 +30,8 @@ impl Drop for ActorContext {
             info!("notify child terminated");
         }
 
+        if let Some(supervised) = &self.supervised {}
+
         match self.status {
             ActorStatus::Starting => {
                 error!("actor panicked while starting");

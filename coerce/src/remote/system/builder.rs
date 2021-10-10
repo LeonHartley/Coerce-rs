@@ -8,19 +8,22 @@ use crate::remote::actor::{
     RemoteHandlerTypes, RemoteRegistry,
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
+use crate::remote::raft::{RaftRouter, RaftSystem};
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::stream::system::SystemTopic;
-use crate::remote::system::{RemoteActorSystem, RemoteSystemCore};
+use crate::remote::system::{NodeId, RemoteActorSystem, RemoteSystemCore};
 use futures::TryFutureExt;
+use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Instant, SystemTime};
 use uuid::Uuid;
 
 pub struct RemoteActorSystemBuilder {
-    node_id: Option<Uuid>,
+    node_id: Option<NodeId>,
     node_tag: Option<String>,
     inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
@@ -43,6 +46,12 @@ impl RemoteActorSystemBuilder {
 
     pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
         self.node_tag = Some(tag.into());
+
+        self
+    }
+
+    pub fn with_id(mut self, id: NodeId) -> Self {
+        self.node_id = Some(id);
 
         self
     }
@@ -102,7 +111,14 @@ impl RemoteActorSystemBuilder {
             h(&mut handlers);
         });
 
-        let node_id = *inner.system_id();
+        let node_id = self.node_id.unwrap_or_else(|| {
+            let mut rand = rand::thread_rng();
+            let now = Instant::now();
+            let i: u64 = now.elapsed().as_secs();
+
+            i / 100 + rand.next_u64()
+        });
+
         let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
 
         let types = handlers.build(self.node_tag);
@@ -116,7 +132,11 @@ impl RemoteActorSystemBuilder {
             trace!("mediator set");
             Some(
                 inner
-                    .new_actor(format!("PubSubMediator-{}", &system_tag), mediator, Tracked)
+                    .new_actor(
+                        format!("PubSubMediator-{}", &system_tag),
+                        mediator,
+                        Anonymous,
+                    )
                     .await
                     .expect("unable to start mediator actor"),
             )
@@ -125,6 +145,8 @@ impl RemoteActorSystemBuilder {
             None
         };
 
+        // TODO: raft config in builder
+
         let mut core = RemoteSystemCore {
             node_id,
             inner,
@@ -132,11 +154,14 @@ impl RemoteActorSystemBuilder {
             registry_ref,
             clients_ref,
             mediator_ref,
+            raft: None,
             types,
         };
 
         let inner = Arc::new(core.clone());
         let system = RemoteActorSystem { inner };
+
+        core.raft = Some(RaftSystem::new(system.clone()));
         core.inner.set_remote(system.clone());
 
         let system = RemoteActorSystem {

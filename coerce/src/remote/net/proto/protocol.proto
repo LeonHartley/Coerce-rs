@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package protocol;
+package coerce.remote.net.protocol;
 
 message RemoteNode {
-  string node_id = 1;
+  uint64 node_id = 1;
 
   string addr = 2;
 }
@@ -20,6 +20,7 @@ enum Event {
   RegisterActor = 8;
   NotifyActor = 9;
   StreamPublish = 10;
+  Raft = 11;
 }
 
 enum ClientType {
@@ -28,7 +29,7 @@ enum ClientType {
 }
 
 message ClientHandshake {
-  string node_id = 1;
+  uint64 node_id = 1;
 
   repeated RemoteNode nodes = 2;
 
@@ -93,7 +94,7 @@ message FindActor {
 message ActorAddress {
   string actor_id = 1;
 
-  string node_id = 2;
+  uint64 node_id = 2;
 
   string trace_id = 3;
 }
@@ -111,7 +112,7 @@ message MessageRequest {
 }
 
 message SessionHandshake {
-  string node_id = 1;
+  uint64 node_id = 1;
 
   repeated RemoteNode nodes = 2;
 
@@ -140,13 +141,21 @@ enum SystemEvent {
 }
 
 message NewNodeEvent {
-  string node_id = 1;
+  uint64 node_id = 1;
 
   string trace_id = 2;
 }
 
 message NodeRemovedEvent {
-  string node_id = 1;
+  uint64 node_id = 1;
 
   string trace_id = 2;
+}
+
+message RaftRequest {
+  string message_id = 1;
+
+  uint32 request_type = 2;
+
+  bytes payload = 3;
 }

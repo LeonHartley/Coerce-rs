@@ -12,7 +12,7 @@ use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::protocol::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
-    RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
+    RaftRequest, RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
 use opentelemetry::global;
@@ -157,9 +157,8 @@ impl StreamReceiver for SessionMessageReceiver {
             }
 
             SessionEvent::RegisterActor(actor) => {
-                let node_id = Uuid::from_str(actor.get_node_id()).unwrap();
-
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
+                let node_id = actor.get_node_id();
                 ctx.register_actor(actor.actor_id, Some(node_id));
             }
 
@@ -202,6 +201,13 @@ impl StreamReceiver for SessionMessageReceiver {
                 trace!(target: "RemoteServer", "stream publish {}, {:?}", self.session_id, &msg);
                 tokio::spawn(session_stream_publish(msg, ctx.clone()));
             }
+
+            SessionEvent::Raft(req) => {
+                if let Some(raft) = ctx.raft() {
+                    raft.inbound_request(req, self.session_id, &self.sessions)
+                        .await
+                }
+            }
         }
     }
 
@@ -230,14 +236,14 @@ async fn session_handshake(
 
     let nodes = ctx.get_nodes().await;
     let mut response = ClientHandshake {
-        node_id: ctx.node_id().to_string(),
+        node_id: ctx.node_id(),
         node_tag: ctx.node_tag().to_string(),
         ..ClientHandshake::default()
     };
 
     for node in nodes {
         response.nodes.push(RemoteNodeProto {
-            node_id: node.id.to_string(),
+            node_id: node.id,
             addr: node.addr,
             ..RemoteNodeProto::default()
         });
@@ -252,7 +258,7 @@ async fn session_handshake(
         handshake
             .nodes
             .into_iter()
-            .map(|n| RemoteNode::new(n.node_id.parse().unwrap(), n.addr))
+            .map(|n| RemoteNode::new(n.node_id, n.addr))
             .collect(),
     )
     .await;
@@ -304,7 +310,7 @@ async fn session_handle_lookup(
 
     let response = ActorAddress {
         actor_id: id,
-        node_id: node_id.map_or_else(|| String::default(), |n| n.to_string()),
+        node_id: node_id.unwrap_or(0),
         ..ActorAddress::default()
     };
 

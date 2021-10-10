@@ -3,7 +3,7 @@ use coerce::actor::context::ActorContext;
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::Actor;
-use coerce::remote::net::StreamMessage;
+use coerce::remote::net::StreamData;
 use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;
 use tokio::sync::oneshot::{channel, Sender};
@@ -206,7 +206,7 @@ pub async fn test_pubsub_distributed() {
     }
 }
 
-impl StreamMessage for StatusEvent {
+impl StreamData for StatusEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.first() {
             Some(0) => Some(StatusEvent::Offline),
@@ -215,7 +215,7 @@ impl StreamMessage for StatusEvent {
         }
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
         match &self {
             StatusEvent::Offline => Some(vec![0]),
             StatusEvent::Online => Some(vec![1]),

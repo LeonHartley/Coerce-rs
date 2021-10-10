@@ -9,7 +9,7 @@ use crate::remote::actor::{
 };
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::client::{ClientType, RemoteClient, RemoteClientStream};
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use std::collections::HashMap;
 
@@ -222,10 +222,10 @@ impl Handler<GetActorNode> for RemoteRegistry {
                         let res = ActorAddress::parse_from_bytes(&res);
                         match res {
                             Ok(res) => {
-                                sender.send(if res.get_node_id().is_empty() {
+                                sender.send(if res.get_node_id() == 0 {
                                     None
                                 } else {
-                                    Some(Uuid::from_str(res.get_node_id()).unwrap())
+                                    Some(res.get_node_id())
                                 });
                             }
                             Err(e) => {
@@ -243,7 +243,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
 #[async_trait]
 impl Handler<RegisterActor> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterActor, _ctx: &mut ActorContext) {
-        trace!(target: "RemoteRegistry::RegisterActor", "Registering actor: {:?}", &message);
+        trace!(target: "RemoteRegistry::RegisterActor", "Registering actor: {:?}, node={}", &message, self.system.as_ref().unwrap().node_id());
 
         match message.node_id {
             Some(node_id) => {
@@ -264,7 +264,7 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         self.actors.insert(id, node_id);
                     } else {
                         let event = SessionEvent::RegisterActor(ActorAddress {
-                            node_id: node_id.to_string(),
+                            node_id,
                             actor_id: id,
                             ..ActorAddress::default()
                         });
@@ -314,7 +314,7 @@ async fn connect_all(
     nodes: Vec<RemoteNode>,
     current_nodes: Vec<RemoteNode>,
     ctx: &RemoteActorSystem,
-) -> HashMap<Uuid, Option<RemoteClient>> {
+) -> HashMap<NodeId, Option<RemoteClient>> {
     let mut clients = HashMap::new();
     for node in nodes {
         let addr = node.addr.to_string();
@@ -329,6 +329,11 @@ async fn connect_all(
         {
             Ok(client) => {
                 trace!(target: "RemoteRegistry", "connected to node");
+
+                if let Some(raft) = ctx.raft() {
+                    let res = raft.core().add_non_voter(node.id).await;
+                    info!("register new node, add_none_voter res={:?}", &res)
+                }
                 clients.insert(node.id, Some(client));
             }
             Err(_) => {

@@ -1,6 +1,6 @@
 use crate::remote::actor::RemoteRequest;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::message::Message;
 use crate::remote::net::client::RemoteClientStream;
@@ -34,7 +34,7 @@ impl Message for PopRequest {
     type Result = Option<RemoteRequest>;
 }
 
-pub struct RegisterClient<T: RemoteClientStream>(pub Uuid, pub T);
+pub struct RegisterClient<T: RemoteClientStream>(pub NodeId, pub T);
 
 impl<T: RemoteClientStream> Message for RegisterClient<T>
 where
@@ -43,7 +43,7 @@ where
     type Result = ();
 }
 
-pub struct DeregisterClient(pub Uuid);
+pub struct DeregisterClient(pub NodeId);
 
 impl Message for DeregisterClient {
     type Result = ();
@@ -61,7 +61,7 @@ impl Message for RegisterNode {
     type Result = ();
 }
 
-pub struct ClientWrite(pub Uuid, pub SessionEvent);
+pub struct ClientWrite(pub NodeId, pub SessionEvent);
 
 impl Message for ClientWrite {
     type Result = ();
@@ -70,11 +70,11 @@ impl Message for ClientWrite {
 #[derive(Debug)]
 pub struct RegisterActor {
     pub actor_id: ActorId,
-    pub node_id: Option<Uuid>,
+    pub node_id: Option<NodeId>,
 }
 
 impl RegisterActor {
-    pub fn new(actor_id: ActorId, node_id: Option<Uuid>) -> RegisterActor {
+    pub fn new(actor_id: ActorId, node_id: Option<NodeId>) -> RegisterActor {
         RegisterActor { actor_id, node_id }
     }
 }
@@ -85,7 +85,7 @@ impl Message for RegisterActor {
 
 pub struct GetActorNode {
     pub actor_id: ActorId,
-    pub sender: tokio::sync::oneshot::Sender<Option<Uuid>>,
+    pub sender: tokio::sync::oneshot::Sender<Option<NodeId>>,
 }
 
 impl Message for GetActorNode {

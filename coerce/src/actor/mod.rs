@@ -40,7 +40,7 @@ pub trait Actor: 'static + Send + Sync {
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
 
-    async fn on_child_terminated(&mut self, id: &ActorId, ctx: &mut ActorContext) {}
+    async fn on_child_stopped(&mut self, _id: &ActorId, _ctx: &mut ActorContext) {}
 
     fn type_name() -> &'static str
     where
@@ -75,7 +75,7 @@ pub enum ActorCreationErr {
 pub trait ActorRecipe: Sized {
     fn read_from_bytes(bytes: Vec<u8>) -> Option<Self>;
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>>;
+    fn write_to_bytes(self) -> Option<Vec<u8>>;
 }
 
 #[async_trait]
@@ -232,6 +232,8 @@ pub trait CoreActorRef: Any {
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr>;
 
+    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr>;
+
     fn as_any(&self) -> &dyn Any;
 }
 
@@ -375,6 +377,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.notify_stop()
     }
 
+    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr> {
+        Ok(())
+    }
+
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
         self.notify(Terminated(id))
     }
@@ -404,6 +410,10 @@ impl CoreActorRef for BoxedActorRef {
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
         self.0.notify_child_terminated(id)
+    }
+
+    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr> {
+        Ok(())
     }
 
     fn as_any(&self) -> &dyn Any {

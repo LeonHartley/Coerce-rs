@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package coerce.persistent.journal;
+
+message JournalEntry {
+  int64 sequence = 1;
+
+  string payload_type = 2;
+
+  bytes bytes = 3;
+}

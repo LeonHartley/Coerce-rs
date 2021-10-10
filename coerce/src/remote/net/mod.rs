@@ -8,6 +8,7 @@ use std::task::{Context, Poll};
 
 use crate::remote::net::codec::NetworkCodec;
 use futures::StreamExt;
+use protobuf::Message;
 use tokio_util::codec::FramedRead;
 
 pub mod client;
@@ -16,15 +17,15 @@ pub mod message;
 pub mod proto;
 pub mod server;
 
-pub trait StreamMessage: 'static + Send + Sync + Sized {
+pub trait StreamData: 'static + Send + Sync + Sized {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self>;
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>>;
+    fn write_to_bytes(self) -> Option<Vec<u8>>;
 }
 
 #[async_trait]
 pub trait StreamReceiver {
-    type Message: StreamMessage;
+    type Message: StreamData;
 
     async fn on_receive(&mut self, msg: Self::Message, ctx: &RemoteActorSystem);
 

@@ -21,6 +21,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61604a8f862e1d5c3229fdd78f8b02c68dcf73a4c4b05fd636d12240aaa242c1"
+
+[[package]]
+name = "async-raft"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "777696e73bfd7ab8ca5e94ef712985eee1a342aeaa6f3078d6946cd92ec4acc3"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes 1.0.1",
+ "derive_more",
+ "futures",
+ "log",
+ "rand 0.7.3",
+ "serde",
+ "thiserror",
+ "tokio 1.8.1",
+ "tracing",
+ "tracing-futures",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -116,6 +142,8 @@ dependencies = [
 name = "coerce"
 version = "0.4.0-prerelease1"
 dependencies = [
+ "anyhow",
+ "async-raft",
  "async-trait",
  "bincode",
  "byteorder",
@@ -127,9 +155,11 @@ dependencies = [
  "hashring",
  "lazy_static",
  "log",
+ "memstore",
  "opentelemetry",
  "opentelemetry-jaeger",
  "protobuf",
+ "rand 0.8.4",
  "serde",
  "serde_json",
  "tokio 1.8.1",
@@ -188,6 +218,28 @@ dependencies = [
 [[package]]
 name = "coerce-macros"
 version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "coerce-redis"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "coerce",
+ "redis-async",
+ "tokio 1.8.1",
+]
+
+[[package]]
+name = "derive_more"
+version = "0.99.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40eebddd2156ce1bb37b20bbe5151340a31828b1f2d22ba4141f3531710e38df"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -467,6 +519,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
+name = "memstore"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dc2cd13307c5a22eccba87a86538c5c13474a864294ebcdfe8119c724b11fe5"
+dependencies = [
+ "anyhow",
+ "async-raft",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio 1.8.1",
+ "tracing",
+ "tracing-futures",
+]
+
+[[package]]
 name = "mio"
 version = "0.6.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -609,7 +677,7 @@ dependencies = [
  "lazy_static",
  "percent-encoding",
  "pin-project 0.4.28",
- "rand",
+ "rand 0.7.3",
  "regex",
  "thiserror",
 ]
@@ -808,9 +876,21 @@ checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
 dependencies = [
  "getrandom 0.1.16",
  "libc",
- "rand_chacha",
- "rand_core",
- "rand_hc",
+ "rand_chacha 0.2.2",
+ "rand_core 0.5.1",
+ "rand_hc 0.2.0",
+]
+
+[[package]]
+name = "rand"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
+dependencies = [
+ "libc",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -820,7 +900,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402"
 dependencies = [
  "ppv-lite86",
- "rand_core",
+ "rand_core 0.5.1",
+]
+
+[[package]]
+name = "rand_chacha"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
+dependencies = [
+ "ppv-lite86",
+ "rand_core 0.6.3",
 ]
 
 [[package]]
@@ -833,12 +923,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_core"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
+dependencies = [
+ "getrandom 0.2.3",
+]
+
+[[package]]
 name = "rand_hc"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca3129af7b92a17112d59ad498c6f81eaf463253766b90396d39ea7a39d6613c"
 dependencies = [
- "rand_core",
+ "rand_core 0.5.1",
+]
+
+[[package]]
+name = "rand_hc"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
+dependencies = [
+ "rand_core 0.6.3",
+]
+
+[[package]]
+name = "redis-async"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2da05e1ebd0c5affd2c4a8d74570b3d9df1f9942e42c3e2b8156d69a9304bd42"
+dependencies = [
+ "bytes 1.0.1",
+ "futures-channel",
+ "futures-sink",
+ "futures-util",
+ "log",
+ "tokio 1.8.1",
+ "tokio-util 0.6.7",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use crate::actor::{Actor, ActorId, ActorRefErr};
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::MessageRequest;
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
 
 use std::marker::PhantomData;
@@ -18,7 +18,7 @@ where
 {
     id: ActorId,
     system: RemoteActorSystem,
-    node_id: Uuid,
+    node_id: NodeId,
     _a: PhantomData<A>,
 }
 
@@ -31,7 +31,7 @@ impl<A: Actor> RemoteActorRef<A>
 where
     A: 'static + Sync + Send,
 {
-    pub fn new(id: ActorId, node_id: Uuid, system: RemoteActorSystem) -> RemoteActorRef<A> {
+    pub fn new(id: ActorId, node_id: NodeId, system: RemoteActorSystem) -> RemoteActorRef<A> {
         RemoteActorRef {
             id,
             system,

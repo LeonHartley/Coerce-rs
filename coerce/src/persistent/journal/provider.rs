@@ -62,7 +62,11 @@ pub mod inmemory {
 
     #[async_trait]
     impl JournalStorage for InMemoryJournalStorage {
-        async fn write_snapshot(&self, persistence_id: &str, entry: JournalEntry) {
+        async fn write_snapshot(
+            &self,
+            persistence_id: &str,
+            entry: JournalEntry,
+        ) -> anyhow::Result<()> {
             let mut store = self.store.write().await;
             if let Some(journal) = store.get_mut(persistence_id) {
                 journal.snapshots.push(entry);
@@ -72,9 +76,15 @@ pub mod inmemory {
                     ActorJournal::from_snapshot(entry),
                 );
             }
+
+            Ok(())
         }
 
-        async fn write_message(&self, persistence_id: &str, entry: JournalEntry) {
+        async fn write_message(
+            &self,
+            persistence_id: &str,
+            entry: JournalEntry,
+        ) -> anyhow::Result<()> {
             let mut store = self.store.write().await;
             if let Some(journal) = store.get_mut(persistence_id) {
                 journal.messages.push(entry);
@@ -84,22 +94,28 @@ pub mod inmemory {
                     ActorJournal::from_message(entry),
                 );
             }
+
+            Ok(())
         }
 
-        async fn read_latest_snapshot(&self, persistence_id: &str) -> Option<JournalEntry> {
+        async fn read_latest_snapshot(
+            &self,
+            persistence_id: &str,
+        ) -> anyhow::Result<Option<JournalEntry>> {
             let store = self.store.read().await;
-            store
+
+            Ok(store
                 .get(persistence_id)
-                .and_then(|j| j.snapshots.last().cloned())
+                .and_then(|j| j.snapshots.last().cloned()))
         }
 
         async fn read_latest_messages(
             &self,
             persistence_id: &str,
             from_sequence: i64,
-        ) -> Option<Vec<JournalEntry>> {
+        ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
             let store = self.store.read().await;
-            store.get(persistence_id).map(|journal| {
+            Ok(store.get(persistence_id).map(|journal| {
                 let messages = match from_sequence {
                     0 => journal.messages.clone(),
                     from_sequence => {
@@ -126,7 +142,13 @@ pub mod inmemory {
                 );
 
                 messages
-            })
+            }))
+        }
+
+        async fn delete_all(&self, persistence_id: &str) -> anyhow::Result<()> {
+            let mut store = self.store.write().await;
+            store.remove(persistence_id);
+            Ok(())
         }
     }
 }

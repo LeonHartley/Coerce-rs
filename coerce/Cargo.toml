@@ -31,6 +31,10 @@ tracing = "0.1"
 tracing-futures = "0.2.4"
 tracing-opentelemetry = "0.10.0"
 opentelemetry = { version = "0.11", default-features = false, features = ["trace"] }
+async-raft = "0.6"
+memstore = "0.2"
+anyhow = "1.0"
+rand = "0.8.4"
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }
 #trust-dns-client = { version = "0.19" }

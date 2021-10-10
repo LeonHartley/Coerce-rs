@@ -51,7 +51,7 @@ pub async fn test_remote_server_client_connection() {
         Err(_e) => panic!("failed to start server"),
     }
 
-    let node_id = Uuid::new_v4();
+    let node_id = 1;
     remote_2
         .register_client(
             node_id,

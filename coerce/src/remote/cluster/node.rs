@@ -1,18 +1,18 @@
+use crate::remote::system::NodeId;
+
 use hashring::HashRing;
 
 use std::collections::HashMap;
-
 use std::hash::Hash;
-use uuid::Uuid;
 
 pub struct RemoteNodeStore {
-    nodes: HashMap<Uuid, RemoteNode>,
+    nodes: HashMap<NodeId, RemoteNode>,
     table: HashRing<RemoteNode>,
 }
 
 #[derive(Hash, Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteNode {
-    pub id: Uuid,
+    pub id: NodeId,
     pub addr: String,
 }
 
@@ -31,15 +31,15 @@ impl RemoteNodeStore {
         RemoteNodeStore { table, nodes }
     }
 
-    pub fn get(&self, node_id: &Uuid) -> Option<&RemoteNode> {
+    pub fn get(&self, node_id: &NodeId) -> Option<&RemoteNode> {
         self.nodes.get(node_id)
     }
 
-    pub fn is_registered(&self, node_id: Uuid) -> bool {
+    pub fn is_registered(&self, node_id: NodeId) -> bool {
         self.nodes.contains_key(&node_id)
     }
 
-    pub fn remove(&mut self, node_id: &Uuid) -> Option<RemoteNode> {
+    pub fn remove(&mut self, node_id: &NodeId) -> Option<RemoteNode> {
         self.nodes
             .remove(&node_id)
             .and_then(|node| self.table.remove(&node))
@@ -70,7 +70,7 @@ impl RemoteNodeStore {
 }
 
 impl RemoteNode {
-    pub fn new(id: Uuid, addr: String) -> RemoteNode {
+    pub fn new(id: u64, addr: String) -> RemoteNode {
         RemoteNode { id, addr }
     }
 }

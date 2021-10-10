@@ -18,8 +18,8 @@ pub struct TestWorkerStore;
 #[async_trait]
 impl WorkerStore for TestWorkerStore {
     async fn get_active(&mut self) -> Result<Vec<ClusterWorker>, WorkerStoreErr> {
-        let node_1 = Uuid::new_v4();
-        let node_2 = Uuid::new_v4();
+        let node_1 = 1;
+        let node_2 = 2;
 
         Ok(vec![
             ClusterWorker::new(

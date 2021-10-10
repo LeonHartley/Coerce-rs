@@ -17,7 +17,7 @@ use crate::remote::cluster::node::RemoteNode;
 use crate::remote::handler::RemoteActorMessageMarker;
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
-use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
+use crate::remote::net::proto::protocol::{ActorAddress, ClientResult, CreateActor};
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
@@ -25,8 +25,12 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
-use crate::remote::net::StreamMessage;
+use crate::remote::net::StreamData;
+use crate::remote::raft::RaftSystem;
 use protobuf::Message as ProtoMessage;
+use serde::de::DeserializeOwned;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
 pub mod builder;
@@ -36,15 +40,18 @@ pub struct RemoteActorSystem {
     inner: Arc<RemoteSystemCore>,
 }
 
+pub type NodeId = u64;
+
 #[derive(Clone)]
 pub struct RemoteSystemCore {
-    node_id: Uuid,
+    node_id: NodeId,
     inner: ActorSystem,
     handler_ref: LocalActorRef<RemoteHandler>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
     mediator_ref: Option<LocalActorRef<StreamMediator>>,
     types: Arc<RemoteHandlerTypes>,
+    raft: Option<Arc<RaftSystem>>,
 }
 
 impl RemoteActorSystem {
@@ -59,6 +66,10 @@ impl RemoteActorSystem {
     pub fn cluster_client(self) -> ClusterClientBuilder {
         ClusterClientBuilder::new(self)
     }
+
+    pub fn raft(&self) -> Option<&RaftSystem> {
+        self.inner.raft.as_ref().map(|s| s.as_ref())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -67,15 +78,23 @@ pub enum RemoteActorErr {
     ActorExists,
     RecipeSerializationErr,
     ActorNotSupported,
-    NodeErr(NodeEventErr),
+    NodeErr(NodeRpcErr),
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub enum NodeEventErr {
+pub enum NodeRpcErr {
     NodeUnreachable,
     Serialisation,
     ReceiveFailed,
 }
+
+impl Display for NodeRpcErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Error for NodeRpcErr {}
 
 impl RemoteActorSystem {
     pub fn node_tag(&self) -> &str {
@@ -86,7 +105,7 @@ impl RemoteActorSystem {
         &self,
         id: Option<ActorId>,
         recipe: F::Recipe,
-        node: Option<Uuid>,
+        node: Option<NodeId>,
     ) -> Result<ActorRef<F::Actor>, RemoteActorErr> {
         let self_id = self.node_id();
         let id = id.map_or_else(new_actor_id, |id| id);
@@ -117,7 +136,11 @@ impl RemoteActorSystem {
             }
         } else {
             match self
-                .node_event::<ActorAddress>(message_id, SessionEvent::CreateActor(message), node)
+                .node_rpc_proto::<ActorAddress>(
+                    message_id,
+                    SessionEvent::CreateActor(message),
+                    node,
+                )
                 .await
             {
                 Ok(address) => actor_addr = Some(address),
@@ -129,7 +152,7 @@ impl RemoteActorSystem {
             Some(actor_address) => {
                 let actor_ref = RemoteActorRef::<F::Actor>::new(
                     actor_address.actor_id,
-                    Uuid::parse_str(actor_address.node_id.as_str()).unwrap(),
+                    actor_address.node_id,
                     self.clone(),
                 );
 
@@ -139,35 +162,74 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn node_event<T: ProtoMessage>(
+    pub async fn node_rpc_proto<T: ProtoMessage>(
         &self,
         message_id: Uuid,
         event: SessionEvent,
-        node_id: Uuid,
-    ) -> Result<T, NodeEventErr> {
-        let (res_tx, res_rx) = oneshot::channel();
-
-        trace!(target: "NodeEvent", "message_id={}, created channel, storing request", &message_id);
-        self.push_request(message_id, res_tx).await;
-
-        trace!(target: "NodeEvent", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
-        self.send_message(node_id, event).await;
-
-        trace!(target: "NodeEvent", "message_id={}, waiting for result", &message_id);
-        match res_rx.await {
-            Ok(RemoteResponse::Ok(res)) => match T::parse_from_bytes(&res) {
+        node_id: NodeId,
+    ) -> Result<T, NodeRpcErr> {
+        match self.node_rpc_raw(message_id, event, node_id).await {
+            Ok(res) => match T::parse_from_bytes(&res) {
                 Ok(res) => {
                     trace!(target: "NodeEvent", "message_id={}, received result", &message_id);
                     Ok(res)
                 }
                 Err(_) => {
                     error!(target: "NodeEvent", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
-                    Err(NodeEventErr::Serialisation)
+                    Err(NodeRpcErr::Serialisation)
                 }
             },
             _ => {
                 error!(target: "NodeEvent", "failed to receive result");
-                Err(NodeEventErr::ReceiveFailed)
+                Err(NodeRpcErr::ReceiveFailed)
+            }
+        }
+    }
+
+    pub async fn node_rpc<T: StreamData>(
+        &self,
+        message_id: Uuid,
+        event: SessionEvent,
+        node_id: NodeId,
+    ) -> Result<T, NodeRpcErr> {
+        match self.node_rpc_raw(message_id, event, node_id).await {
+            Ok(res) => match T::read_from_bytes(res) {
+                Some(res) => {
+                    trace!(target: "NodeRpc", "message_id={}, received result", &message_id);
+                    Ok(res)
+                }
+                None => {
+                    error!(target: "NodeRpc", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
+                    Err(NodeRpcErr::Serialisation)
+                }
+            },
+            _ => {
+                error!(target: "NodeRpc", "failed to receive result");
+                Err(NodeRpcErr::ReceiveFailed)
+            }
+        }
+    }
+
+    pub async fn node_rpc_raw(
+        &self,
+        message_id: Uuid,
+        event: SessionEvent,
+        node_id: NodeId,
+    ) -> Result<Vec<u8>, NodeRpcErr> {
+        let (res_tx, res_rx) = oneshot::channel();
+
+        trace!(target: "NodeRpc", "message_id={}, created channel, storing request", &message_id);
+        self.push_request(message_id, res_tx).await;
+
+        trace!(target: "NodeRpc", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
+        self.send_message(node_id, event).await;
+
+        trace!(target: "NodeRpc", "message_id={}, waiting for result", &message_id);
+        match res_rx.await {
+            Ok(RemoteResponse::Ok(res)) => Ok(res),
+            _ => {
+                error!(target: "NodeEvent", "failed to receive result");
+                Err(NodeRpcErr::ReceiveFailed)
             }
         }
     }
@@ -235,7 +297,7 @@ impl RemoteActorSystem {
         }
     }
 
-    pub fn node_id(&self) -> Uuid {
+    pub fn node_id(&self) -> u64 {
         self.inner.node_id
     }
 
@@ -254,7 +316,7 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn register_client<T: RemoteClientStream>(&self, node_id: Uuid, client: T)
+    pub async fn register_client<T: RemoteClientStream>(&self, node_id: NodeId, client: T)
     where
         T: 'static + Sync + Send,
     {
@@ -265,7 +327,7 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub async fn deregister_client(&self, node_id: Uuid) {
+    pub async fn deregister_client(&self, node_id: NodeId) {
         self.inner
             .clients_ref
             .send(DeregisterClient(node_id))
@@ -288,7 +350,7 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub fn register_actor(&self, actor_id: ActorId, node_id: Option<Uuid>) {
+    pub fn register_actor(&self, actor_id: ActorId, node_id: Option<NodeId>) {
         self.inner
             .registry_ref
             .notify(RegisterActor::new(actor_id, node_id));
@@ -306,7 +368,7 @@ impl RemoteActorSystem {
         self.inner.registry_ref.send(GetNodes).await.unwrap()
     }
 
-    pub async fn send_message(&self, node_id: Uuid, message: SessionEvent) {
+    pub async fn send_message(&self, node_id: NodeId, message: SessionEvent) {
         self.inner
             .clients_ref
             .send(ClientWrite(node_id, message))
@@ -343,7 +405,7 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn locate_actor_node(&self, actor_id: ActorId) -> Option<Uuid> {
+    pub async fn locate_actor_node(&self, actor_id: ActorId) -> Option<NodeId> {
         let span = tracing::trace_span!(
             "RemoteActorSystem::locate_actor_node",
             actor_id = actor_id.as_str()

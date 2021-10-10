@@ -2,7 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
-use crate::remote::net::StreamMessage;
+use crate::remote::net::StreamData;
 use crate::remote::stream::mediator::{Publish, PublishRaw, Subscribe, SubscribeErr};
 
 use std::any::Any;
@@ -16,7 +16,7 @@ use tokio::task::JoinHandle;
 pub struct PubSub;
 
 pub trait Topic: 'static + Send + Sync {
-    type Message: StreamMessage;
+    type Message: StreamData;
 
     fn topic_name() -> &'static str;
 

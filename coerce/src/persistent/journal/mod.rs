@@ -18,6 +18,8 @@ use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 
+pub mod proto;
+
 pub struct Journal<A: PersistentActor> {
     persistence_id: String,
     last_sequence_id: i64,
@@ -75,7 +77,7 @@ impl<A: PersistentActor> RecoveredPayload<A> {
 
 #[derive(Debug)]
 pub enum PersistErr {
-    Storage(Box<dyn Error>),
+    Storage(anyhow::Error),
 }
 
 impl Display for PersistErr {
@@ -129,7 +131,37 @@ impl<A: PersistentActor> Journal<A> {
             &self.persistence_id
         );
 
-        Ok(())
+        let payload_type = self
+            .types
+            .snapshot_type_mapping::<S>()
+            .expect("snapshot type not configured");
+
+        let bytes = snapshot
+            .as_remote_envelope()
+            .expect("cannot serialize snapshot")
+            .into_bytes();
+
+        let sequence = self.last_sequence_id + 1;
+
+        let write_snapshot = self
+            .storage
+            .write_snapshot(
+                &self.persistence_id,
+                JournalEntry {
+                    sequence,
+                    payload_type,
+                    bytes,
+                },
+            )
+            .await;
+
+        match write_snapshot {
+            Ok(_) => {
+                self.last_sequence_id = sequence;
+                Ok(())
+            }
+            Err(e) => Err(PersistErr::Storage(e)),
+        }
     }
 
     pub async fn recover_snapshot(&mut self) -> Option<RecoveredPayload<A>> {
@@ -137,6 +169,7 @@ impl<A: PersistentActor> Journal<A> {
             .storage
             .read_latest_snapshot(&self.persistence_id)
             .await
+            .expect("failed to read latest snapshot")
         {
             let handler = self
                 .types
@@ -170,6 +203,7 @@ impl<A: PersistentActor> Journal<A> {
             .storage
             .read_latest_messages(&self.persistence_id, self.last_sequence_id)
             .await
+            .expect("failed to read recover latest messages")
         {
             let starting_sequence = self.last_sequence_id;
             let mut recoverable_messages = vec![];
@@ -205,7 +239,11 @@ impl<A: PersistentActor> Journal<A> {
         }
     }
 
-    pub async fn delete_messages(&mut self) {}
+    pub async fn delete_messages(&mut self) -> bool {
+        let delete_result = self.storage.delete_all(&self.persistence_id).await;
+
+        delete_result.is_ok()
+    }
 }
 
 #[async_trait]

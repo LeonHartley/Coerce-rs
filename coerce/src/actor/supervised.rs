@@ -4,7 +4,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::{start_actor, ActorType};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use std::any::Any;
 
 pub struct Supervised {
@@ -32,7 +32,7 @@ impl<A: Actor> Handler<Terminated> for A {
             supervised.on_child_stopped(&message.0).await;
         }
 
-        self.on_child_terminated(&message.0, ctx).await;
+        self.on_child_stopped(&message.0, ctx).await;
     }
 }
 
@@ -42,6 +42,12 @@ impl Supervised {
             .get(id)
             .map_or(None, |a| (&a.0.as_any()).downcast_ref::<LocalActorRef<A>>())
             .map(|a| a.clone())
+    }
+
+    pub fn notify_parent_stopped(&self) {
+        for child in &self.children {
+            child.1.notify_parent_terminated();
+        }
     }
 
     pub async fn on_child_stopped(&mut self, id: &ActorId) {

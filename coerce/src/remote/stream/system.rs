@@ -1,16 +1,17 @@
 use crate::remote::net::proto::protocol::{
     NewNodeEvent, NodeRemovedEvent, SystemEvent as SysEvent,
 };
-use crate::remote::net::StreamMessage;
+use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::Topic;
+use crate::remote::system::NodeId;
 use protobuf::{Message, ProtobufEnum, ProtobufError};
 use uuid::Uuid;
 
 pub struct SystemTopic;
 
 pub enum ClusterEvent {
-    NodeAdded(Uuid),
-    NodeRemoved(Uuid),
+    NodeAdded(NodeId),
+    NodeRemoved(NodeId),
 }
 
 pub enum SystemEvent {
@@ -27,21 +28,17 @@ impl Topic for SystemTopic {
 
 impl From<NewNodeEvent> for SystemEvent {
     fn from(message: NewNodeEvent) -> Self {
-        SystemEvent::Cluster(ClusterEvent::NodeAdded(
-            Uuid::parse_str(message.get_node_id()).unwrap(),
-        ))
+        SystemEvent::Cluster(ClusterEvent::NodeAdded(message.get_node_id()))
     }
 }
 
 impl From<NodeRemovedEvent> for SystemEvent {
     fn from(message: NodeRemovedEvent) -> Self {
-        SystemEvent::Cluster(ClusterEvent::NodeRemoved(
-            Uuid::parse_str(message.get_node_id()).unwrap(),
-        ))
+        SystemEvent::Cluster(ClusterEvent::NodeRemoved(message.get_node_id()))
     }
 }
 
-impl StreamMessage for SystemEvent {
+impl StreamData for SystemEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match SysEvent::from_i32(*event as i32) {
@@ -57,12 +54,12 @@ impl StreamMessage for SystemEvent {
         }
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
         match self {
             SystemEvent::Cluster(cluster) => match cluster {
                 ClusterEvent::NodeAdded(id) => {
                     let event = NewNodeEvent {
-                        node_id: id.to_string(),
+                        node_id: id,
                         ..NewNodeEvent::default()
                     };
 
@@ -70,7 +67,7 @@ impl StreamMessage for SystemEvent {
                 }
                 ClusterEvent::NodeRemoved(id) => {
                     let event = NodeRemovedEvent {
-                        node_id: id.to_string(),
+                        node_id: id,
                         ..NodeRemovedEvent::default()
                     };
 

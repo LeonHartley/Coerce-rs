@@ -1,9 +1,8 @@
 use crate::remote::net::proto::protocol::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
-    MessageRequest, Ping, Pong, SessionHandshake, StreamPublish,
+    MessageRequest, Ping, Pong, RaftRequest, SessionHandshake, StreamPublish,
 };
-use crate::remote::net::StreamMessage;
-
+use crate::remote::net::StreamData;
 use protobuf::{Message, ProtobufEnum, ProtobufError};
 
 pub enum ClientEvent {
@@ -24,9 +23,10 @@ pub enum SessionEvent {
     RegisterActor(ActorAddress),
     FindActor(FindActor),
     StreamPublish(StreamPublish),
+    Raft(RaftRequest),
 }
 
-impl StreamMessage for ClientEvent {
+impl StreamData for ClientEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
@@ -51,7 +51,7 @@ impl StreamMessage for ClientEvent {
         }
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
         let (event_id, message) = match &self {
             ClientEvent::Handshake(e) => (Event::Handshake, e.write_to_bytes()),
             ClientEvent::Result(e) => (Event::Result, e.write_to_bytes()),
@@ -64,7 +64,7 @@ impl StreamMessage for ClientEvent {
     }
 }
 
-impl StreamMessage for SessionEvent {
+impl StreamData for SessionEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
@@ -92,14 +92,17 @@ impl StreamMessage for SessionEvent {
                 Some(Event::StreamPublish) => Some(SessionEvent::StreamPublish(
                     StreamPublish::parse_from_bytes(message).unwrap(),
                 )),
+                Some(Event::Raft) => Some(SessionEvent::Raft(
+                    RaftRequest::parse_from_bytes(message).unwrap(),
+                )),
                 _ => None,
             },
             None => None,
         }
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
-        let (event_id, message) = match &self {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
+        let (event_id, message) = match self {
             SessionEvent::Handshake(e) => (Event::Handshake, e.write_to_bytes()),
             SessionEvent::Ping(e) => (Event::Ping, e.write_to_bytes()),
             SessionEvent::Pong(e) => (Event::Pong, e.write_to_bytes()),
@@ -108,6 +111,7 @@ impl StreamMessage for SessionEvent {
             SessionEvent::FindActor(e) => (Event::FindActor, e.write_to_bytes()),
             SessionEvent::CreateActor(e) => (Event::CreateActor, e.write_to_bytes()),
             SessionEvent::StreamPublish(e) => (Event::StreamPublish, e.write_to_bytes()),
+            SessionEvent::Raft(e) => (Event::Raft, e.write_to_bytes()),
         };
 
         write_event(event_id, message)

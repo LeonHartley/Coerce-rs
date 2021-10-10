@@ -27,7 +27,7 @@ impl ActorRecipe for TestActorRecipe {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |b| Some(b))
     }
 }
@@ -58,7 +58,7 @@ impl ActorRecipe for EchoActorRecipe {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |b| Some(b))
     }
 }
@@ -86,6 +86,7 @@ pub async fn test_remote_cluster_worker_builder() {
     let _actor = system.new_tracked_actor(TestActor::new()).await.unwrap();
     let remote = RemoteActorSystem::builder()
         .with_tag("remote-1")
+        .with_id(1)
         .with_actor_system(system)
         .with_handlers(build_handlers)
         .build()
@@ -95,6 +96,7 @@ pub async fn test_remote_cluster_worker_builder() {
 
     let remote_2 = RemoteActorSystem::builder()
         .with_tag("remote-2")
+        .with_id(2)
         .with_actor_system(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
@@ -104,6 +106,7 @@ pub async fn test_remote_cluster_worker_builder() {
 
     let remote_3 = RemoteActorSystem::builder()
         .with_tag("remote-3")
+        .with_id(3)
         .with_actor_system(ActorSystem::new())
         .with_handlers(build_handlers)
         .build()
@@ -111,25 +114,27 @@ pub async fn test_remote_cluster_worker_builder() {
 
     let remote_3_c = remote_3.clone();
 
-    remote
+    let handle = remote
         .cluster_worker()
         .listen_addr("localhost:30101")
         .start()
         .await;
 
-    remote_2
+    let handle_2 = remote_2
         .cluster_worker()
         .listen_addr("localhost:30102")
         .with_seed_addr("localhost:30101")
         .start()
         .await;
 
-    remote_3
+    let handle_3 = remote_3
         .cluster_worker()
         .listen_addr("localhost:30103")
         .with_seed_addr("localhost:30101")
         .start()
         .await;
+
+    handle_3.await;
 
     // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
     tokio::time::sleep(Duration::from_millis(10)).await;

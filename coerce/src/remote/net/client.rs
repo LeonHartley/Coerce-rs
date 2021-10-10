@@ -3,8 +3,8 @@ use crate::remote::actor::RemoteResponse;
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
-use crate::remote::net::{receive_loop, StreamMessage, StreamReceiver};
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::net::{receive_loop, StreamData, StreamReceiver};
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
 use futures::SinkExt;
 use std::str::FromStr;
@@ -15,25 +15,25 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
 pub struct RemoteClient {
-    pub node_id: Uuid,
+    pub node_id: NodeId,
     pub node_tag: String,
     write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
     stop: Option<oneshot::Sender<bool>>,
 }
 
 pub struct HandshakeAcknowledge {
-    node_id: Uuid,
+    node_id: NodeId,
     node_tag: String,
 }
 
 pub struct ClientMessageReceiver {
-    node_id: Option<Uuid>,
+    node_id: Option<NodeId>,
     handshake_tx: Option<oneshot::Sender<HandshakeAcknowledge>>,
 }
 
 impl ClientMessageReceiver {
     pub fn new(
-        node_id: Option<Uuid>,
+        node_id: Option<NodeId>,
         handshake_tx: oneshot::Sender<HandshakeAcknowledge>,
     ) -> ClientMessageReceiver {
         let handshake_tx = Some(handshake_tx);
@@ -51,15 +51,14 @@ impl StreamReceiver for ClientMessageReceiver {
     async fn on_receive(&mut self, msg: ClientEvent, ctx: &RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
-                let node_id = Uuid::from_str(&msg.node_id).unwrap();
-                let node_id_str = msg.node_id;
+                let node_id = msg.node_id;
 
                 let nodes = msg
                     .nodes
                     .into_iter()
-                    .filter(|n| n.node_id != node_id_str)
+                    .filter(|n| n.node_id != node_id)
                     .map(|n| crate::remote::cluster::node::RemoteNode {
-                        id: Uuid::from_str(n.get_node_id()).expect("parse inbound node_id"),
+                        id: n.get_node_id(),
                         addr: n.addr,
                     })
                     .collect();
@@ -128,7 +127,7 @@ pub enum ClientType {
 impl RemoteClient {
     pub async fn connect(
         addr: String,
-        remote_node_id: Option<Uuid>,
+        remote_node_id: Option<NodeId>,
         system: RemoteActorSystem,
         nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
         client_type: ClientType,
@@ -143,7 +142,7 @@ impl RemoteClient {
 
         let (stop_tx, stop_rx) = oneshot::channel();
         let (handshake_tx, handshake_rx) = oneshot::channel();
-        let node_id = system.node_id().to_string();
+        let node_id = system.node_id();
         let node_tag = system.node_tag().to_string();
 
         trace!("requesting nodes");
@@ -176,7 +175,7 @@ impl RemoteClient {
 
         for node in nodes {
             msg.nodes.push(RemoteNode {
-                node_id: node.id.to_string(),
+                node_id: node.id,
                 addr: node.addr,
                 ..RemoteNode::default()
             });
@@ -200,7 +199,7 @@ impl RemoteClient {
         })
     }
 
-    pub async fn write<M: StreamMessage>(&mut self, message: M) -> Result<(), RemoteClientErr>
+    pub async fn write<M: StreamData>(&mut self, message: M) -> Result<(), RemoteClientErr>
     where
         M: Sync + Send,
     {
@@ -228,7 +227,7 @@ impl RemoteClientStream for RemoteClient {
     }
 }
 
-async fn write_msg<M: StreamMessage>(
+async fn write_msg<M: StreamData>(
     message: M,
     write: &mut FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
 ) -> Result<(), RemoteClientErr>

@@ -25,7 +25,7 @@ impl Actor for TestActor {
         child.notify_stop();
     }
 
-    async fn on_child_terminated(&mut self, id: &ActorId, ctx: &mut ActorContext) {
+    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {
         info!("child terminated (id={})", &id);
         self.child_terminated_cb.take().unwrap().send(id.into());
     }
@@ -42,15 +42,17 @@ pub async fn test_actor_child_spawn_and_stop() {
     let mut system = ActorSystem::new();
     let actor_id = "actor".to_string();
 
-    let (child_terminated_cb, on_child_terminated) = tokio::sync::oneshot::channel();
+    let (child_terminated_cb, on_child_stopped) = tokio::sync::oneshot::channel();
 
-    let actor: LocalActorRef<TestActor> = TestActor {
+    let _ = TestActor {
         child_terminated_cb: Some(child_terminated_cb),
     }
     .into_actor(Some(actor_id), &system)
     .await
     .expect("create actor");
 
-    on_child_terminated.await.expect("parent didn't receive the child-terminated notification");
+    on_child_stopped
+        .await
+        .expect("parent didn't receive the child-terminated notification");
     system.shutdown().await;
 }
