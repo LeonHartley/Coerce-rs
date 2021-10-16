@@ -120,11 +120,25 @@ pub(crate) enum Ref<A: Actor> {
     Remote(RemoteActorRef<A>),
 }
 
-pub struct ActorRef<A: Actor>
-where
-    A: 'static + Sync + Send,
-{
+impl<A: Actor> Clone for Ref<A> {
+    fn clone(&self) -> Self {
+        match &self {
+            Ref::Local(a) => Ref::Local(a.clone()),
+            Ref::Remote(a) => Ref::Remote(a.clone()),
+        }
+    }
+}
+
+pub struct ActorRef<A: Actor> {
     inner_ref: Ref<A>,
+}
+
+impl<A: Actor> Clone for ActorRef<A> {
+    fn clone(&self) -> Self {
+        Self {
+            inner_ref: self.inner_ref.clone(),
+        }
+    }
 }
 
 #[async_trait]
@@ -377,12 +391,12 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.notify_stop()
     }
 
-    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr> {
-        Ok(())
-    }
-
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
         self.notify(Terminated(id))
+    }
+
+    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr> {
+        Ok(())
     }
 
     fn as_any(&self) -> &dyn Any {

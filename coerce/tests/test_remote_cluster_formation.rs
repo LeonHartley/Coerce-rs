@@ -78,8 +78,8 @@ impl ActorFactory for EchoActorFactory {
     }
 }
 
-#[coerce_test]
-pub async fn test_remote_cluster_worker_builder() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 20)]
+pub async fn test_remote_cluster_workers() {
     util::create_trace_logger();
 
     let system = ActorSystem::new();
@@ -114,27 +114,25 @@ pub async fn test_remote_cluster_worker_builder() {
 
     let remote_3_c = remote_3.clone();
 
-    let handle = remote
+    remote
         .cluster_worker()
         .listen_addr("localhost:30101")
         .start()
         .await;
 
-    let handle_2 = remote_2
+    remote_2
         .cluster_worker()
         .listen_addr("localhost:30102")
         .with_seed_addr("localhost:30101")
         .start()
         .await;
 
-    let handle_3 = remote_3
+    remote_3
         .cluster_worker()
         .listen_addr("localhost:30103")
         .with_seed_addr("localhost:30101")
         .start()
         .await;
-
-    handle_3.await;
 
     // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
     tokio::time::sleep(Duration::from_millis(10)).await;
@@ -159,6 +157,8 @@ pub async fn test_remote_cluster_worker_builder() {
     assert_eq!(nodes_b_in_c, nodes_b.len());
     assert_eq!(nodes_c_in_a, nodes_c.len());
     assert_eq!(nodes_c_in_b, nodes_c.len());
+
+    tokio::signal::ctrl_c().await;
 }
 
 fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {

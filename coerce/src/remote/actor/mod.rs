@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::stream::pubsub::Subscription;
 
+use crate::remote::heartbeat::HeartbeatConfig;
 use uuid::Uuid;
 
 pub mod handler;
@@ -35,28 +36,30 @@ pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
 
 pub(crate) type BoxedMessageHandler = Box<dyn ActorMessageHandler + Send + Sync>;
 
-pub struct RemoteHandlerTypes {
+pub struct RemoteSystemConfig {
     node_tag: String,
     actor_types: HashMap<TypeId, String>,
     handler_types: HashMap<TypeId, String>,
     message_handlers: HashMap<String, BoxedMessageHandler>,
     actor_handlers: HashMap<String, BoxedActorHandler>,
+    heartbeat_config: HeartbeatConfig,
 }
 
-impl RemoteHandlerTypes {
+impl RemoteSystemConfig {
     pub fn new(
         node_tag: String,
         actor_types: HashMap<TypeId, String>,
         handler_types: HashMap<TypeId, String>,
         message_handlers: HashMap<String, BoxedMessageHandler>,
         actor_handlers: HashMap<String, BoxedActorHandler>,
-    ) -> RemoteHandlerTypes {
-        RemoteHandlerTypes {
+    ) -> RemoteSystemConfig {
+        RemoteSystemConfig {
             node_tag,
             actor_types,
             handler_types,
             message_handlers,
             actor_handlers,
+            heartbeat_config: HeartbeatConfig::default(),
         }
     }
 

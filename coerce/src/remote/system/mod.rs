@@ -8,8 +8,8 @@ use crate::remote::actor::message::{
     RegisterClient, RegisterNode, RegisterNodes,
 };
 use crate::remote::actor::{
-    RemoteClientRegistry, RemoteHandler, RemoteHandlerTypes, RemoteRegistry, RemoteRequest,
-    RemoteResponse,
+    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
+    RemoteSystemConfig,
 };
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
@@ -25,6 +25,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
+use crate::remote::heartbeat::Heartbeat;
 use crate::remote::net::StreamData;
 use crate::remote::raft::RaftSystem;
 use protobuf::Message as ProtoMessage;
@@ -49,8 +50,9 @@ pub struct RemoteSystemCore {
     handler_ref: LocalActorRef<RemoteHandler>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
+    heartbeat_ref: Option<LocalActorRef<Heartbeat>>,
     mediator_ref: Option<LocalActorRef<StreamMediator>>,
-    types: Arc<RemoteHandlerTypes>,
+    config: Arc<RemoteSystemConfig>,
     raft: Option<Arc<RaftSystem>>,
 }
 
@@ -98,7 +100,7 @@ impl Error for NodeRpcErr {}
 
 impl RemoteActorSystem {
     pub fn node_tag(&self) -> &str {
-        self.inner.types.node_tag()
+        self.inner.config.node_tag()
     }
 
     pub async fn deploy_actor<F: ActorFactory>(
@@ -241,7 +243,7 @@ impl RemoteActorSystem {
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = oneshot::channel();
-        let handler = self.inner.types.message_handler(&identifier);
+        let handler = self.inner.config.message_handler(&identifier);
 
         if let Some(handler) = handler {
             handler.handle(actor_id, buffer, tx).await;
@@ -255,15 +257,11 @@ impl RemoteActorSystem {
 
     pub async fn handle_create_actor(
         &self,
-        mut args: CreateActor,
+        actor_id: Option<ActorId>,
+        actor_type: String,
+        raw_recipe: Vec<u8>,
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = oneshot::channel();
-
-        let actor_id = if args.actor_id.is_empty() {
-            None
-        } else {
-            Some(args.actor_id)
-        };
 
         if let Some(actor_id) = &actor_id {
             if let Some(node_id) = self.locate_actor_node(actor_id.clone()).await {
@@ -276,10 +274,10 @@ impl RemoteActorSystem {
         args.actor_id = actor_id.clone();
 
         trace!(target: "ActorDeploy", "creating actor (actor_id={})", &actor_id);
-        let handler = self.inner.types.actor_handler(&args.actor_type);
+        let handler = self.inner.config.actor_handler(&args.actor_type);
 
         if let Some(handler) = handler {
-            handler.create(args, self.clone(), tx).await;
+            handler.create(args,  recipe, self.clone(), tx).await;
         } else {
             trace!(target: "ActorDeploy", "No handler found with the type: {}", &args.actor_type);
             return Err(RemoteActorErr::ActorNotSupported);
@@ -303,7 +301,7 @@ impl RemoteActorSystem {
 
     pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String> {
         let marker = RemoteActorMessageMarker::<A, M>::new();
-        self.inner.types.handler_name(marker)
+        self.inner.config.handler_name(marker)
     }
 
     pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader> {

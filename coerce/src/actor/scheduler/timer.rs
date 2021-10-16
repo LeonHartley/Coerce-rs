@@ -62,7 +62,8 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
             break;
         }
 
-        trace!(target: "Timer", "{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());
+        let ms = now.elapsed().as_millis();
+        trace!(target: "Timer", "{} - tick res received in {}ms", &timer_id, ms);
         interval.tick().await;
     }
 

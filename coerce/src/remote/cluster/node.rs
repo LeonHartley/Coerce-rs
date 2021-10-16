@@ -65,7 +65,7 @@ impl RemoteNodeStore {
     }
 
     pub fn get_all(&self) -> Vec<RemoteNode> {
-        self.nodes.values().map(|m| m.clone()).collect()
+        self.nodes.values().cloned().collect()
     }
 }
 

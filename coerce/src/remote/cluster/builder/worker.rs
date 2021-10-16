@@ -50,7 +50,7 @@ impl ClusterWorkerBuilder {
         self
     }
 
-    pub async fn start(mut self) -> JoinHandle<()> {
+    pub async fn start(mut self) {
         let span = tracing::trace_span!(
             "ClusterWorkerBuilder::start",
             listen_addr = self.server_listen_addr.as_str(),
@@ -76,34 +76,34 @@ impl ClusterWorkerBuilder {
 
         self.discover_peers().await;
 
-        let node_id = self.system.node_id();
-        let sys = self.system.clone();
+        // let node_id = self.system.node_id();
+        // let sys = self.system.clone();
 
-        tokio::spawn(async move {
-            let mut metrics = sys.raft().unwrap().core().metrics();
-            tokio::spawn(async move {
-                while metrics.changed().await.is_ok() {
-                    info!("raft changed (node={}): {:?}", node_id, *metrics.borrow());
-                }
-            });
-
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            let nodes = sys.get_nodes().await;
-
-            info!("registering nodes: {:?}, current={}", &nodes, node_id);
-
-            sys.raft()
-                .unwrap()
-                .core()
-                .initialize(
-                    nodes
-                        .iter()
-                        .filter(|n| n.id != node_id)
-                        .map(|n| n.id)
-                        .collect(),
-                )
-                .await;
-        })
+        // tokio::spawn(async move {
+        //     let mut metrics = sys.raft().unwrap().core().metrics();
+        //     tokio::spawn(async move {
+        //         while metrics.changed().await.is_ok() {
+        //             info!("raft changed (node={}): {:?}", node_id, *metrics.borrow());
+        //         }
+        //     });
+        //
+        //     tokio::time::sleep(Duration::from_secs(1)).await;
+        //     let nodes = sys.get_nodes().await;
+        //
+        //     info!("registering nodes: {:?}, current={}", &nodes, node_id);
+        //
+        //     sys.raft()
+        //         .unwrap()
+        //         .core()
+        //         .initialize(
+        //             nodes
+        //                 .iter()
+        //                 .filter(|n| n.id != node_id)
+        //                 .map(|n| n.id)
+        //                 .collect(),
+        //         )
+        //         .await;
+        // })
     }
 
     async fn discover_peers(&mut self) {

@@ -5,7 +5,4 @@ members = [
     "examples/coerce-cluster-example",
     "coerce/tools/proto-build",
     "providers/coerce-redis",
-    "examples/coerce-chat-common",
-    "examples/coerce-chat-worker",
-    "examples/coerce-chat-gateway"
 ]

@@ -4,14 +4,16 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorFactory};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
-    BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler,
-    RemoteHandlerTypes, RemoteRegistry,
+    BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry,
+    RemoteSystemConfig,
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
+use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
 use crate::remote::raft::{RaftRouter, RaftSystem};
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::stream::system::SystemTopic;
 use crate::remote::system::{NodeId, RemoteActorSystem, RemoteSystemCore};
+use chrono::Duration;
 use futures::TryFutureExt;
 use rand::RngCore;
 use serde::de::DeserializeOwned;
@@ -113,15 +115,13 @@ impl RemoteActorSystemBuilder {
 
         let node_id = self.node_id.unwrap_or_else(|| {
             let mut rand = rand::thread_rng();
-            let now = Instant::now();
-            let i: u64 = now.elapsed().as_secs();
 
-            i / 100 + rand.next_u64()
+            rand.next_u64()
         });
 
         let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
 
-        let types = handlers.build(self.node_tag);
+        let config = handlers.build(self.node_tag);
         let handler_ref = RemoteHandler::new(&inner, &system_tag).await;
         let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
 
@@ -155,11 +155,24 @@ impl RemoteActorSystemBuilder {
             clients_ref,
             mediator_ref,
             raft: None,
-            types,
+            heartbeat_ref: None,
+            config,
         };
 
         let inner = Arc::new(core.clone());
         let system = RemoteActorSystem { inner };
+
+        core.heartbeat_ref = Some(
+            Heartbeat::start(
+                HeartbeatConfig {
+                    interval: std::time::Duration::from_secs(1),
+                    inactive_node_heartbeat_timeout: std::time::Duration::from_secs(10),
+                    terminated_node_heartbeat_timeout: std::time::Duration::from_secs(30),
+                },
+                &system,
+            )
+            .await,
+        );
 
         core.raft = Some(RaftSystem::new(system.clone()));
         core.inner.set_remote(system.clone());
@@ -233,7 +246,7 @@ impl RemoteActorHandlerBuilder {
         self
     }
 
-    pub fn build(self, tag: Option<String>) -> Arc<RemoteHandlerTypes> {
+    pub fn build(self, tag: Option<String>) -> Arc<RemoteSystemConfig> {
         let mut handler_types = HashMap::new();
         let mut actor_types = HashMap::new();
 
@@ -246,7 +259,7 @@ impl RemoteActorHandlerBuilder {
         }
 
         let node_tag = tag.map_or_else(|| format!("cluster-node-{}", Uuid::new_v4()), |t| t);
-        Arc::new(RemoteHandlerTypes::new(
+        Arc::new(RemoteSystemConfig::new(
             node_tag,
             actor_types,
             handler_types,

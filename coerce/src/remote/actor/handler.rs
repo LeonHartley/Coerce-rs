@@ -23,6 +23,7 @@ use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
 
 use protobuf::Message;
+use std::time::Instant;
 use uuid::Uuid;
 
 #[async_trait]
@@ -43,7 +44,13 @@ impl Handler<SetRemote> for RemoteRegistry {
 #[async_trait]
 impl Handler<GetNodes> for RemoteRegistry {
     async fn handle(&mut self, _message: GetNodes, _ctx: &mut ActorContext) -> Vec<RemoteNode> {
-        self.nodes.get_all()
+        let now = Instant::now();
+        let nodes = self.nodes.get_all();
+
+        let ms = now.elapsed().as_millis();
+        trace!("it took {}ms", ms);
+
+        nodes
     }
 }
 

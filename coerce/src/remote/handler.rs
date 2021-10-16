@@ -12,10 +12,11 @@ use std::any::{Any, TypeId};
 use std::marker::PhantomData;
 
 #[async_trait]
-pub trait ActorHandler: Any {
+pub trait ActorHandler: 'static + Any + Sync + Send {
     async fn create(
         &self,
-        args: CreateActor,
+        actor_id: Option<String>,
+        raw_recipe: Vec<u8>,
         mut system: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     );
@@ -123,7 +124,8 @@ where
 {
     async fn create(
         &self,
-        args: CreateActor,
+        actor_id: Option<ActorId>,
+        recipe: Vec<u8>,
         remote_system: RemoteActorSystem,
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
     ) {

@@ -294,6 +294,7 @@ async fn session_handle_message(
         }
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
+            // TODO: Send error
         }
     }
 }
