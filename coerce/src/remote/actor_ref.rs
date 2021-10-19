@@ -40,6 +40,10 @@ where
         }
     }
 
+    pub fn actor_id(&self) -> &ActorId {
+        &self.id
+    }
+
     pub async fn send<Msg: Message>(&self, msg: Envelope<Msg>) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,

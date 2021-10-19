@@ -330,9 +330,17 @@ async fn session_create_actor(
     sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let msg_id = msg.message_id.clone();
+    let actor_id = if msg.actor_id.is_empty() {
+        None
+    } else {
+        Some(msg.actor_id)
+    };
 
-    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor", ctx.node_tag(), ctx.node_id(), &msg.message_id);
-    match ctx.handle_create_actor(msg).await {
+    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor (ac", ctx.node_tag(), ctx.node_id(), &msg.message_id);
+    match ctx
+        .handle_create_actor(actor_id, msg.actor_type, msg.recipe, None)
+        .await
+    {
         Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, &sessions).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");

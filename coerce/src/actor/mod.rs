@@ -133,6 +133,16 @@ pub struct ActorRef<A: Actor> {
     inner_ref: Ref<A>,
 }
 
+impl<A: Actor> ActorRef<A> {
+    pub fn actor_id(&self) -> &ActorId {
+        match &self.inner_ref {
+            Ref::Local(a) => &a.id,
+            Ref::Remote(a) => a.actor_id()
+        }
+    }
+}
+
+
 impl<A: Actor> Clone for ActorRef<A> {
     fn clone(&self) -> Self {
         Self {

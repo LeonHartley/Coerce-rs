@@ -1,11 +1,13 @@
 use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe};
+use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, BoxedActorRef, ActorRefErr};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{RemoteActorSystem, NodeId};
 
+use crate::actor::context::ActorContext;
+use crate::actor::supervised::Supervised;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
@@ -17,9 +19,8 @@ pub trait ActorHandler: 'static + Any + Sync + Send {
         &self,
         actor_id: Option<String>,
         raw_recipe: Vec<u8>,
-        mut system: RemoteActorSystem,
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
-    );
+        supervisor_ctx: Option<&mut ActorContext>,
+    ) -> Result<BoxedActorRef, ActorRefErr>;
 
     fn new_boxed(&self) -> BoxedActorHandler;
 
@@ -126,31 +127,26 @@ where
         &self,
         actor_id: Option<ActorId>,
         recipe: Vec<u8>,
-        remote_system: RemoteActorSystem,
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
-    ) {
+        supervisor_ctx: Option<&mut ActorContext>,
+    ) -> Result<BoxedActorRef, ActorRefErr> {
         let system = self.system.clone();
-        let actor_id = if !args.actor_id.is_empty() {
-            args.actor_id
-        } else {
-            new_actor_id()
-        };
+        let actor_id = actor_id.unwrap_or_else(|| new_actor_id());
 
-        let recipe = F::Recipe::read_from_bytes(args.recipe);
+        let recipe = F::Recipe::read_from_bytes(recipe);
         if let Some(recipe) = recipe {
             if let Ok(state) = self.factory.create(recipe).await {
-                let actor_ref = system.new_actor(actor_id, state, Tracked).await;
-                if let Ok(actor_ref) = actor_ref {
-                    let result = ActorAddress {
-                        actor_id: actor_ref.id,
-                        node_id: remote_system.node_id(),
-                        ..ActorAddress::default()
-                    };
+                let actor_ref = if let Some(supervisor_ctx) = supervisor_ctx {
+                    supervisor_ctx.spawn(actor_id, state).await
+                } else {
+                    system.new_actor(actor_id, state, Tracked).await
+                };
 
-                    trace!(target: "RemoteHandler", "sending created actor ref");
-                    send_proto_result(result, res)
-                }
+                actor_ref.map(|a| BoxedActorRef::from(a))
+            } else {
+                Err(ActorRefErr::ActorUnavailable)
             }
+        } else {
+            Err(ActorRefErr::ActorUnavailable)
         }
     }
 
@@ -217,7 +213,7 @@ where
     }
 }
 
-fn send_proto_result<M: protobuf::Message>(msg: M, res: tokio::sync::oneshot::Sender<Vec<u8>>)
+pub fn send_proto_result<M: protobuf::Message>(msg: M, res: tokio::sync::oneshot::Sender<Vec<u8>>)
 where
     M: 'static + Sync + Send,
 {

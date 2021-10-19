@@ -104,7 +104,6 @@ pub async fn test_remote_actor_deploy_remotely() {
 pub async fn test_remote_actor_create_new_locally() {
     let actor_id = new_actor_id();
     let expected_actor_name = "test-actor-123".to_string();
-    let recipe = format!("{{\"name\": \"{}\"}}", &expected_actor_name).into_bytes();
 
     let system = ActorSystem::new();
 
@@ -115,26 +114,10 @@ pub async fn test_remote_actor_create_new_locally() {
         .build()
         .await;
 
-    let message = CreateActor {
-        message_id: Uuid::new_v4().to_string(),
-        actor_id: actor_id.clone(),
-        actor_type: TestActor::type_name().to_string(),
-        recipe: recipe.clone(),
-        ..CreateActor::default()
-    };
+    let result = remote.deploy_actor::<TestActorFactory>(Some(actor_id.clone()), TestActorRecipe { name: expected_actor_name.clone() }, None).await;
+    let duplicate = remote.deploy_actor::<TestActorFactory>(Some(actor_id.clone()), TestActorRecipe { name: expected_actor_name.clone() }, None).await;
 
-    let message_duplicate = CreateActor {
-        message_id: Uuid::new_v4().to_string(),
-        actor_id: actor_id.clone(),
-        actor_type: TestActor::type_name().to_string(),
-        recipe: recipe.clone(),
-        ..CreateActor::default()
-    };
-
-    let result = remote.handle_create_actor(message).await;
-    let duplicate = remote.handle_create_actor(message_duplicate).await;
-
-    let create_actor_res = ActorAddress::parse_from_bytes(&result.unwrap()).unwrap();
+    let create_actor_res = result.unwrap();
 
     let actor = remote
         .actor_system()
@@ -143,12 +126,10 @@ pub async fn test_remote_actor_create_new_locally() {
         .unwrap();
 
     let actor_name = actor.exec(|a| a.name.clone()).await.unwrap();
-
     let node = remote.locate_actor_node(actor_id.clone()).await;
 
-    assert_eq!(Err(RemoteActorErr::ActorExists), duplicate);
-    assert_eq!(&create_actor_res.actor_id, &actor_id);
-    assert_eq!(create_actor_res.node_id, remote.node_id());
+    assert_eq!(Some(RemoteActorErr::ActorExists), duplicate.err());
+    assert_eq!(create_actor_res.actor_id(), &actor_id);
     assert_eq!(node.unwrap(), remote.node_id());
     assert_eq!(actor_name, expected_actor_name);
 }

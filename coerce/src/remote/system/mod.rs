@@ -1,8 +1,6 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{
-    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, LocalActorRef,
-};
+use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, LocalActorRef, BoxedActorRef, ActorRefErr, CoreActorRef};
 use crate::remote::actor::message::{
     ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
     RegisterClient, RegisterNode, RegisterNodes,
@@ -14,7 +12,7 @@ use crate::remote::actor::{
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::handler::RemoteActorMessageMarker;
+use crate::remote::handler::{RemoteActorMessageMarker, send_proto_result};
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use crate::remote::net::proto::protocol::{ActorAddress, ClientResult, CreateActor};
@@ -25,6 +23,8 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
+use crate::actor::context::ActorContext;
+use crate::actor::supervised::Supervised;
 use crate::remote::heartbeat::Heartbeat;
 use crate::remote::net::StreamData;
 use crate::remote::raft::RaftSystem;
@@ -112,31 +112,35 @@ impl RemoteActorSystem {
         let self_id = self.node_id();
         let id = id.map_or_else(new_actor_id, |id| id);
         let node = node.map_or_else(|| self_id, |n| n);
-        let actor_type = F::Actor::type_name().into();
+        let actor_type: String = F::Actor::type_name().into();
 
-        let actor_recipe = recipe.write_to_bytes();
-        if actor_recipe.is_none() {
+        let recipe = recipe.write_to_bytes();
+        if recipe.is_none() {
             return Err(RemoteActorErr::RecipeSerializationErr);
         }
 
+        let recipe = recipe.unwrap();
         let message_id = Uuid::new_v4();
-        let message = CreateActor {
-            actor_type,
-            message_id: message_id.to_string(),
-            actor_id: id.clone(),
-            recipe: actor_recipe.unwrap(),
-            ..CreateActor::default()
-        };
 
         let mut actor_addr = None;
         if node == self_id {
-            let local_create = self.handle_create_actor(message).await;
+            let local_create = self
+                .handle_create_actor(Some(id.clone()), actor_type, recipe, None)
+                .await;
             if local_create.is_ok() {
                 actor_addr = Some(ActorAddress::parse_from_bytes(&local_create.unwrap()).unwrap());
             } else {
                 return Err(local_create.unwrap_err());
             }
         } else {
+            let message = CreateActor {
+                actor_type,
+                message_id: message_id.to_string(),
+                actor_id: id.clone(),
+                recipe,
+                ..CreateActor::default()
+            };
+
             match self
                 .node_rpc_proto::<ActorAddress>(
                     message_id,
@@ -260,6 +264,7 @@ impl RemoteActorSystem {
         actor_id: Option<ActorId>,
         actor_type: String,
         raw_recipe: Vec<u8>,
+        supervisor_ctx: Option<&mut ActorContext>,
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = oneshot::channel();
 
@@ -271,15 +276,34 @@ impl RemoteActorSystem {
         }
 
         let actor_id = actor_id.map_or_else(|| new_actor_id(), |id| id);
-        args.actor_id = actor_id.clone();
 
         trace!(target: "ActorDeploy", "creating actor (actor_id={})", &actor_id);
-        let handler = self.inner.config.actor_handler(&args.actor_type);
+        let handler = self.inner.config.actor_handler(&actor_type);
 
         if let Some(handler) = handler {
-            handler.create(args,  recipe, self.clone(), tx).await;
+            let actor_ref = handler
+                .create(
+                    Some(actor_id.clone()),
+                    raw_recipe,
+                    supervisor_ctx,
+                )
+                .await;
+
+            match actor_ref {
+                Ok(actor_ref) => {
+                    let result = ActorAddress {
+                        actor_id: actor_ref.actor_id().clone(),
+                        node_id: self.node_id(),
+                        ..ActorAddress::default()
+                    };
+
+                    trace!(target: "RemoteHandler", "sending created actor ref");
+                    send_proto_result(result, tx);
+                }
+                Err(_) => return Err(RemoteActorErr::ActorUnavailable)
+            }
         } else {
-            trace!(target: "ActorDeploy", "No handler found with the type: {}", &args.actor_type);
+            trace!(target: "ActorDeploy", "No handler found with the type: {}", &actor_type);
             return Err(RemoteActorErr::ActorNotSupported);
         }
 
