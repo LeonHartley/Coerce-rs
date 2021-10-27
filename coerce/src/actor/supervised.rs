@@ -44,6 +44,10 @@ impl Supervised {
             .map(|a| a.clone())
     }
 
+    pub fn child_boxed(&self, id: &ActorId) -> Option<BoxedActorRef> {
+        self.children.get(id).map(|a| a.clone())
+    }
+
     pub fn notify_parent_stopped(&self) {
         for child in &self.children {
             child.1.notify_parent_terminated();

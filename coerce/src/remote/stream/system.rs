@@ -12,6 +12,7 @@ pub struct SystemTopic;
 pub enum ClusterEvent {
     NodeAdded(NodeId),
     NodeRemoved(NodeId),
+    LeaderChanged(NodeId),
 }
 
 pub enum SystemEvent {

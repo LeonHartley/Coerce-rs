@@ -1,6 +1,7 @@
 use crate::actor::context::ActorContext;
 use crate::actor::Actor;
 
+use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 pub enum Envelope<M> {
@@ -18,6 +19,13 @@ pub enum MessageWrapErr {
     NotTransmittable,
     SerializationErr,
 }
+
+impl Display for MessageWrapErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({:?})", &self)
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum MessageUnwrapErr {
     NotTransmittable,

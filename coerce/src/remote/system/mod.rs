@@ -1,6 +1,9 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, LocalActorRef, BoxedActorRef, ActorRefErr, CoreActorRef};
+use crate::actor::{
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, BoxedActorRef,
+    CoreActorRef, LocalActorRef,
+};
 use crate::remote::actor::message::{
     ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
     RegisterClient, RegisterNode, RegisterNodes,
@@ -12,7 +15,7 @@ use crate::remote::actor::{
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::handler::{RemoteActorMessageMarker, send_proto_result};
+use crate::remote::handler::{send_proto_result, RemoteActorMessageMarker};
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
 use crate::remote::net::proto::protocol::{ActorAddress, ClientResult, CreateActor};
@@ -67,6 +70,10 @@ impl RemoteActorSystem {
 
     pub fn cluster_client(self) -> ClusterClientBuilder {
         ClusterClientBuilder::new(self)
+    }
+
+    pub fn config(&self) -> &RemoteSystemConfig {
+        &self.inner.config
     }
 
     pub fn raft(&self) -> Option<&RaftSystem> {
@@ -282,11 +289,7 @@ impl RemoteActorSystem {
 
         if let Some(handler) = handler {
             let actor_ref = handler
-                .create(
-                    Some(actor_id.clone()),
-                    raw_recipe,
-                    supervisor_ctx,
-                )
+                .create(Some(actor_id.clone()), raw_recipe, supervisor_ctx)
                 .await;
 
             match actor_ref {
@@ -300,7 +303,7 @@ impl RemoteActorSystem {
                     trace!(target: "RemoteHandler", "sending created actor ref");
                     send_proto_result(result, tx);
                 }
-                Err(_) => return Err(RemoteActorErr::ActorUnavailable)
+                Err(_) => return Err(RemoteActorErr::ActorUnavailable),
             }
         } else {
             trace!(target: "ActorDeploy", "No handler found with the type: {}", &actor_type);

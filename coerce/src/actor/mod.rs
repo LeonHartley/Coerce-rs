@@ -78,6 +78,16 @@ pub trait ActorRecipe: Sized {
     fn write_to_bytes(self) -> Option<Vec<u8>>;
 }
 
+impl ActorRecipe for () {
+    fn read_from_bytes(_: Vec<u8>) -> Option<Self> {
+        Some(())
+    }
+
+    fn write_to_bytes(self) -> Option<Vec<u8>> {
+        Some(vec![])
+    }
+}
+
 #[async_trait]
 pub trait ActorFactory: Clone {
     type Actor: Actor + 'static + Sync + Send;
@@ -137,11 +147,10 @@ impl<A: Actor> ActorRef<A> {
     pub fn actor_id(&self) -> &ActorId {
         match &self.inner_ref {
             Ref::Local(a) => &a.id,
-            Ref::Remote(a) => a.actor_id()
+            Ref::Remote(a) => a.actor_id(),
         }
     }
 }
-
 
 impl<A: Actor> Clone for ActorRef<A> {
     fn clone(&self) -> Self {
@@ -228,6 +237,17 @@ impl<A: Actor> IntoActor for A {
     }
 }
 
+#[async_trait]
+impl<A: Actor> IntoChild for A {
+    async fn into_child(
+        self,
+        id: Option<ActorId>,
+        ctx: &mut ActorContext,
+    ) -> Result<LocalActorRef<Self>, ActorRefErr> {
+        ctx.spawn(id.unwrap_or_else(|| new_actor_id()), self).await
+    }
+}
+
 impl<A: Actor> From<LocalActorRef<A>> for ActorRef<A> {
     fn from(r: LocalActorRef<A>) -> Self {
         ActorRef {
@@ -263,6 +283,12 @@ pub trait CoreActorRef: Any {
 
 #[derive(Clone)]
 pub struct BoxedActorRef(Arc<dyn CoreActorRef + Send + Sync>);
+
+impl BoxedActorRef {
+    pub fn as_actor<A: Actor>(&self) -> Option<LocalActorRef<A>> {
+        self.as_any().downcast_ref::<LocalActorRef<A>>().cloned()
+    }
+}
 
 pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,

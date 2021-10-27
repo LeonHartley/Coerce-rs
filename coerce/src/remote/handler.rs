@@ -1,10 +1,12 @@
-use crate::actor::message::{Envelope, Handler, Message};
+use crate::actor::message::{Envelope, Handler, Message, MessageWrapErr};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
-use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, BoxedActorRef, ActorRefErr};
+use crate::actor::{
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, BoxedActorRef,
+};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
-use crate::remote::system::{RemoteActorSystem, NodeId};
+use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::context::ActorContext;
 use crate::actor::supervised::Supervised;
@@ -12,6 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
+use tokio::sync::oneshot::Sender;
 
 #[async_trait]
 pub trait ActorHandler: 'static + Any + Sync + Send {
@@ -34,6 +37,13 @@ pub trait ActorMessageHandler: Any {
         actor: ActorId,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
+    );
+
+    async fn handle_direct(
+        &self,
+        actor: &BoxedActorRef,
+        buffer: &[u8],
+        res: tokio::sync::oneshot::Sender<Result<Vec<u8>, ActorRefErr>>,
     );
 
     fn new_boxed(&self) -> BoxedMessageHandler;
@@ -168,15 +178,8 @@ impl<A: Actor, M: Message> ActorMessageHandler for RemoteActorMessageHandler<A, 
 where
     A: Handler<M>,
 {
-    async fn handle(
-        &self,
-        actor_id: ActorId,
-        buffer: &[u8],
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
-    ) {
-        let system = self.system.clone();
-        let actor = system.get_tracked_actor::<A>(actor_id.clone()).await;
-
+    async fn handle(&self, actor_id: ActorId, buffer: &[u8], res: Sender<Vec<u8>>) {
+        let actor = self.system.get_tracked_actor::<A>(actor_id.clone()).await;
         if let Some(actor) = actor {
             let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
             match envelope {
@@ -191,13 +194,47 @@ where
                             }
 
                             Err(_) => {
+                                // TODO: Notify err
                                 error!(target: "RemoteHandler", "failed to encode message result")
                             }
                         }
                     }
                 }
+
+                // TODO: Notify err
                 Err(_) => error!(target: "RemoteHandler", "failed to decode message"),
             };
+        }
+    }
+
+    async fn handle_direct(&self, actor: &BoxedActorRef, buffer: &[u8], res: Sender<Result<Vec<u8>, ActorRefErr>>) {
+        let actor = actor.as_actor::<A>();
+        let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
+
+        match (actor, envelope) {
+            (Some(actor), Ok(message)) => {
+                let result = actor
+                    .send(message)
+                    .await
+                    .map(|result| M::write_remote_result(result));
+
+                match result {
+                    Ok(Ok(result)) => {
+                        if res.send(Ok(result)).is_err() {
+                            error!(target: "RemoteHandler", "failed to send message")
+                        }
+                    }
+                    Ok(Err(e)) => {
+                        // TODO: Notify err
+                        error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
+                    }
+                    Err(_) => {
+                        // TODO: Notify err
+                        error!(target: "RemoteHandler", "failed to send message");
+                    }
+                }
+            }
+            _ => {}
         }
     }
 

@@ -3963,6 +3963,7 @@ impl ::protobuf::reflect::ProtobufValue for ClientErrorCode {
 pub enum SystemEvent {
     ClusterNewNode = 0,
     ClusterNodeRemoved = 1,
+    ClusterLeaderChanged = 3,
 }
 
 impl ::protobuf::ProtobufEnum for SystemEvent {
@@ -3974,6 +3975,7 @@ impl ::protobuf::ProtobufEnum for SystemEvent {
         match value {
             0 => ::std::option::Option::Some(SystemEvent::ClusterNewNode),
             1 => ::std::option::Option::Some(SystemEvent::ClusterNodeRemoved),
+            3 => ::std::option::Option::Some(SystemEvent::ClusterLeaderChanged),
             _ => ::std::option::Option::None
         }
     }
@@ -3982,6 +3984,7 @@ impl ::protobuf::ProtobufEnum for SystemEvent {
         static values: &'static [SystemEvent] = &[
             SystemEvent::ClusterNewNode,
             SystemEvent::ClusterNodeRemoved,
+            SystemEvent::ClusterLeaderChanged,
         ];
         values
     }
@@ -4063,9 +4066,9 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\x08\n\
     \x04Raft\x10\x0b\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\
     \x06Worker\x10\x01\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUnavai\
-    lable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*;\n\x0bSystemEve\
+    lable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*U\n\x0bSystemEve\
     nt\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\x10\
-    \x01\x1a\0B\0b\x06proto3\
+    \x01\x12\x18\n\x14ClusterLeaderChanged\x10\x03\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

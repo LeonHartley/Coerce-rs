@@ -114,8 +114,24 @@ pub async fn test_remote_actor_create_new_locally() {
         .build()
         .await;
 
-    let result = remote.deploy_actor::<TestActorFactory>(Some(actor_id.clone()), TestActorRecipe { name: expected_actor_name.clone() }, None).await;
-    let duplicate = remote.deploy_actor::<TestActorFactory>(Some(actor_id.clone()), TestActorRecipe { name: expected_actor_name.clone() }, None).await;
+    let result = remote
+        .deploy_actor::<TestActorFactory>(
+            Some(actor_id.clone()),
+            TestActorRecipe {
+                name: expected_actor_name.clone(),
+            },
+            None,
+        )
+        .await;
+    let duplicate = remote
+        .deploy_actor::<TestActorFactory>(
+            Some(actor_id.clone()),
+            TestActorRecipe {
+                name: expected_actor_name.clone(),
+            },
+            None,
+        )
+        .await;
 
     let create_actor_res = result.unwrap();
 

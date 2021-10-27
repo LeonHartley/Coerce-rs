@@ -120,6 +120,14 @@ impl ActorContext {
         self.boxed_ref.clone()
     }
 
+    pub fn child_ref<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
+        self.supervised.as_ref().and_then(|s| s.child(id))
+    }
+
+    pub fn boxed_child_ref(&self, id: &ActorId) -> Option<BoxedActorRef> {
+        self.supervised.as_ref().and_then(|s| s.child_boxed(id))
+    }
+
     pub fn persistence(&self) -> &ActorPersistence {
         self.persistence
             .as_ref()

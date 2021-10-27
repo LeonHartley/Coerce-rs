@@ -138,6 +138,7 @@ message StreamPublish {
 enum SystemEvent {
   ClusterNewNode = 0;
   ClusterNodeRemoved = 1;
+  ClusterLeaderChanged = 3;
 }
 
 message NewNodeEvent {
