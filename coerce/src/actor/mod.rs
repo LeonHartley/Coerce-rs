@@ -75,7 +75,7 @@ pub enum ActorCreationErr {
 pub trait ActorRecipe: Sized {
     fn read_from_bytes(bytes: Vec<u8>) -> Option<Self>;
 
-    fn write_to_bytes(self) -> Option<Vec<u8>>;
+    fn write_to_bytes(&self) -> Option<Vec<u8>>;
 }
 
 impl ActorRecipe for () {
@@ -83,7 +83,7 @@ impl ActorRecipe for () {
         Some(())
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         Some(vec![])
     }
 }
@@ -207,6 +207,20 @@ impl<A: Actor> ActorRef<A> {
         }
     }
 
+    pub async fn notify<Msg: Message>(&self, msg: Msg) -> Result<(), ActorRefErr>
+    where
+        A: Handler<Msg>,
+    {
+        match &self.inner_ref {
+            Ref::Local(local_ref) => local_ref.notify(msg),
+            Ref::Remote(remote_ref) => {
+                remote_ref
+                    .notify(msg.into_envelope(EnvelopeType::Remote).unwrap())
+                    .await
+            }
+        }
+    }
+
     pub fn is_local(&self) -> bool {
         match &self.inner_ref {
             &Ref::Local(_) => true,
@@ -218,6 +232,20 @@ impl<A: Actor> ActorRef<A> {
         match &self.inner_ref {
             &Ref::Remote(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn unwrap_remote(self) -> RemoteActorRef<A> {
+        match self.inner_ref {
+            Ref::Remote(remote_ref) => remote_ref,
+            _ => panic!("ActorRef does not contain a remote ref"),
+        }
+    }
+
+    pub fn unwrap_local(self) -> LocalActorRef<A> {
+        match self.inner_ref {
+            Ref::Local(local_ref) => local_ref,
+            _ => panic!("ActorRef does not contain a local ref"),
         }
     }
 }

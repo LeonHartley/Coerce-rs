@@ -20,16 +20,16 @@ pub mod server;
 pub trait StreamData: 'static + Send + Sync + Sized {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self>;
 
-    fn write_to_bytes(self) -> Option<Vec<u8>>;
+    fn write_to_bytes(&self) -> Option<Vec<u8>>;
 }
 
 #[async_trait]
 pub trait StreamReceiver {
     type Message: StreamData;
 
-    async fn on_receive(&mut self, msg: Self::Message, ctx: &RemoteActorSystem);
+    async fn on_receive(&mut self, msg: Self::Message, sys: &RemoteActorSystem);
 
-    async fn on_close(&mut self, ctx: &RemoteActorSystem);
+    async fn on_close(&mut self, sys: &RemoteActorSystem);
 }
 
 pub struct StreamReceiverFuture<S: tokio::io::AsyncRead> {

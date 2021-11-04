@@ -3,12 +3,14 @@ use crate::actor::{Actor, LocalActorRef};
 use log::trace;
 
 use std::time::{Duration, Instant};
+use tokio::sync::oneshot;
+use tokio::time;
 use uuid::Uuid;
 
 pub trait TimerTick: Message {}
 
 pub struct Timer {
-    stop: tokio::sync::oneshot::Sender<bool>,
+    stop: oneshot::Sender<bool>,
 }
 
 impl Timer {
@@ -18,7 +20,7 @@ impl Timer {
         T: 'static + Clone + Sync + Send,
         T::Result: 'static + Sync + Send,
     {
-        let (stop, stop_rx) = tokio::sync::oneshot::channel();
+        let (stop, stop_rx) = oneshot::channel();
         tokio::spawn(timer_loop(tick, msg, actor, stop_rx));
 
         Timer { stop }
@@ -37,12 +39,12 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
     tick: Duration,
     msg: T,
     actor: LocalActorRef<A>,
-    mut stop_rx: tokio::sync::oneshot::Receiver<bool>,
+    mut stop_rx: oneshot::Receiver<bool>,
 ) where
     A: Handler<T>,
     T: 'static + Clone + Sync + Send,
 {
-    let mut interval = tokio::time::interval_at(tokio::time::Instant::now(), tick);
+    let mut interval = time::interval_at(tokio::time::Instant::now(), tick);
     let timer_id = Uuid::new_v4();
 
     interval.tick().await;

@@ -27,7 +27,7 @@ impl ActorRecipe for TestActorRecipe {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |b| Some(b))
     }
 }
@@ -58,7 +58,7 @@ impl ActorRecipe for EchoActorRecipe {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |b| Some(b))
     }
 }

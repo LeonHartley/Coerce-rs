@@ -22,6 +22,7 @@ use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
+use crate::remote::actor::RemoteResponse;
 
 pub mod session;
 
@@ -133,12 +134,12 @@ pub async fn server_loop(
 impl StreamReceiver for SessionMessageReceiver {
     type Message = SessionEvent;
 
-    async fn on_receive(&mut self, msg: SessionEvent, ctx: &RemoteActorSystem) {
+    async fn on_receive(&mut self, msg: SessionEvent, sys: &RemoteActorSystem) {
         match msg {
             SessionEvent::Handshake(msg) => {
                 trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
                 tokio::spawn(session_handshake(
-                    ctx.clone(),
+                    sys.clone(),
                     msg,
                     self.session_id,
                     self.sessions.clone(),
@@ -151,7 +152,7 @@ impl StreamReceiver for SessionMessageReceiver {
                     Uuid::from_str(&find_actor.message_id).unwrap(),
                     find_actor.actor_id,
                     self.session_id,
-                    ctx.clone(),
+                    sys.clone(),
                     self.sessions.clone(),
                 ));
             }
@@ -159,14 +160,14 @@ impl StreamReceiver for SessionMessageReceiver {
             SessionEvent::RegisterActor(actor) => {
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
                 let node_id = actor.get_node_id();
-                ctx.register_actor(actor.actor_id, Some(node_id));
+                sys.register_actor(actor.actor_id, Some(node_id));
             }
 
             SessionEvent::NotifyActor(msg) => {
                 tokio::spawn(session_handle_message(
                     msg,
                     self.session_id,
-                    ctx.clone(),
+                    sys.clone(),
                     self.sessions.clone(),
                 ));
             }
@@ -192,22 +193,33 @@ impl StreamReceiver for SessionMessageReceiver {
                 tokio::spawn(session_create_actor(
                     msg,
                     self.session_id,
-                    ctx.clone(),
+                    sys.clone(),
                     self.sessions.clone(),
                 ));
             }
 
             SessionEvent::StreamPublish(msg) => {
                 trace!(target: "RemoteServer", "stream publish {}, {:?}", self.session_id, &msg);
-                tokio::spawn(session_stream_publish(msg, ctx.clone()));
+                tokio::spawn(session_stream_publish(msg, sys.clone()));
             }
 
             SessionEvent::Raft(req) => {
-                if let Some(raft) = ctx.raft() {
+                if let Some(raft) = sys.raft() {
                     raft.inbound_request(req, self.session_id, &self.sessions)
                         .await
                 }
             }
+            SessionEvent::Result(res) => match sys
+                .pop_request(Uuid::from_str(&res.message_id).unwrap())
+                .await
+            {
+                Some(res_tx) => {
+                    let _ = res_tx.send(RemoteResponse::Ok(res.result));
+                }
+                None => {
+                    warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
+                }
+            },
         }
     }
 

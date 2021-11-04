@@ -10,7 +10,9 @@ use crate::remote::stream::pubsub::{
 };
 use crate::remote::system::RemoteActorSystem;
 
+use std::any::Any;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct MediatorTopic(Box<dyn TopicEmitter>);
 
@@ -61,9 +63,15 @@ pub enum PublishErr {
     SerializationErr,
 }
 
+pub enum Reach {
+    Local,
+    Cluster,
+}
+
 pub struct Publish<T: Topic> {
     pub topic: T,
     pub message: T::Message,
+    pub reach: Reach,
 }
 
 pub struct PublishRaw {
@@ -82,6 +90,15 @@ impl<T: Topic> Message for Publish<T> {
 
 impl Message for PublishRaw {
     type Result = ();
+}
+
+impl Reach {
+    pub fn remote_publish(&self) -> bool {
+        match &self {
+            Self::Local => false,
+            Self::Cluster => true,
+        }
+    }
 }
 
 impl StreamMediator {
@@ -110,49 +127,53 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
         message: Publish<T>,
         _ctx: &mut ActorContext,
     ) -> Result<(), PublishErr> {
-        match message.message.write_to_bytes() {
-            Some(bytes) => {
-                let remote = self.remote().clone();
-                let nodes = remote.get_nodes().await;
+        let msg = Arc::new(message.message);
+        if let Some(topic) = self.topics.get_mut(T::topic_name()) {
+            topic.0.emit(&message.topic.key(), msg.clone()).await;
+        }
 
-                if !nodes.is_empty() {
-                    let topic = T::topic_name().to_string();
-                    let message = bytes.clone();
+        if message.reach.remote_publish() {
+            match msg.write_to_bytes() {
+                Some(bytes) => {
+                    let remote = self.remote().clone();
+                    let nodes = remote.get_nodes().await;
 
-                    trace!("notifying {} nodes", nodes.len());
-                    tokio::spawn(async move {
-                        let publish = StreamPublish {
-                            topic,
-                            message,
-                            ..StreamPublish::default()
-                        };
+                    if !nodes.is_empty() {
+                        let topic = T::topic_name().to_string();
+                        let message = bytes.clone();
 
-                        let node_count = nodes.len();
-                        for node in nodes {
-                            if node.id != remote.node_id() {
-                                remote
-                                    .send_message(
-                                        node.id,
-                                        SessionEvent::StreamPublish(publish.clone()),
-                                    )
-                                    .await;
+                        trace!("notifying {} nodes", nodes.len());
+                        tokio::spawn(async move {
+                            let publish = StreamPublish {
+                                topic,
+                                message,
+                                ..StreamPublish::default()
+                            };
+
+                            let node_count = nodes.len();
+                            for node in nodes {
+                                if node.id != remote.node_id() {
+                                    remote
+                                        .send_message(
+                                            node.id,
+                                            SessionEvent::StreamPublish(publish.clone()),
+                                        )
+                                        .await;
+                                }
                             }
-                        }
 
-                        trace!("notified {} nodes", node_count);
-                    });
-                } else {
-                    trace!("no nodes to notify");
-                }
+                            trace!("notified {} nodes", node_count);
+                        });
+                    } else {
+                        trace!("no nodes to notify");
+                    }
 
-                if let Some(topic) = self.topics.get_mut(T::topic_name()) {
-                    topic.0.emit(&message.topic.key(), bytes).await;
-                    Ok(())
-                } else {
                     Ok(())
                 }
+                None => Err(PublishErr::SerializationErr),
             }
-            None => Err(PublishErr::SerializationErr),
+        } else {
+            Ok(())
         }
     }
 }
@@ -175,7 +196,7 @@ impl From<StreamPublish> for PublishRaw {
 impl Handler<PublishRaw> for StreamMediator {
     async fn handle(&mut self, message: PublishRaw, _ctx: &mut ActorContext) {
         if let Some(topic) = self.topics.get_mut(&message.topic) {
-            topic.0.emit(&message.key, message.message).await;
+            topic.0.emit_serialised(&message.key, message.message).await;
         } else {
             trace!("no topic: {}", &message.topic)
         }

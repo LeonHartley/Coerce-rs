@@ -109,6 +109,8 @@ message MessageRequest {
   bytes message = 4;
 
   string trace_id = 5;
+
+  bool requires_response = 6;
 }
 
 message SessionHandshake {
@@ -138,7 +140,7 @@ message StreamPublish {
 enum SystemEvent {
   ClusterNewNode = 0;
   ClusterNodeRemoved = 1;
-  ClusterLeaderChanged = 3;
+  ClusterLeaderChanged = 2;
 }
 
 message NewNodeEvent {
@@ -148,6 +150,12 @@ message NewNodeEvent {
 }
 
 message NodeRemovedEvent {
+  uint64 node_id = 1;
+
+  string trace_id = 2;
+}
+
+message LeaderChangedEvent {
   uint64 node_id = 1;
 
   string trace_id = 2;

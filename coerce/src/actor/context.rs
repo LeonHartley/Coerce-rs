@@ -30,7 +30,9 @@ impl Drop for ActorContext {
             info!("notify child terminated");
         }
 
-        if let Some(supervised) = &self.supervised {}
+        if let Some(supervised) = self.supervised.take() {
+            tokio::spawn(async move { supervised.stop_all().await });
+        }
 
         match self.status {
             ActorStatus::Starting => {

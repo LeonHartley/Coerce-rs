@@ -270,12 +270,15 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         trace!("registering actor locally {}", assigned_registry_node);
                         self.actors.insert(id, node_id);
                     } else {
-                        let event = SessionEvent::RegisterActor(ActorAddress {
-                            node_id,
-                            actor_id: id,
-                            ..ActorAddress::default()
+                        let system = system.clone();
+                        tokio::spawn(async move {
+                            let event = SessionEvent::RegisterActor(ActorAddress {
+                                node_id,
+                                actor_id: id,
+                                ..ActorAddress::default()
+                            });
+                            system.send_message(assigned_registry_node, event).await;
                         });
-                        system.send_message(assigned_registry_node, event).await;
                     }
                 }
             }

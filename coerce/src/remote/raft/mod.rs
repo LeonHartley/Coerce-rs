@@ -124,7 +124,7 @@ impl RaftRequest {
         }
     }
 
-    fn write_to_bytes(self) -> Vec<u8> {
+    fn write_to_bytes(&self) -> Vec<u8> {
         // TODO: protobuf for the raft request (json is temporary)
         match self {
             RaftRequest::AppendEntries(append_entries) => {
@@ -206,7 +206,7 @@ impl StreamData for InstallSnapshotResponse {
         serde_json::from_slice(&data).map_or(None, |s| s)
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |s| Some(s))
     }
 }
@@ -216,7 +216,7 @@ impl StreamData for AppendEntriesResponse {
         serde_json::from_slice(&data).map_or(None, |s| s)
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |s| Some(s))
     }
 }
@@ -226,7 +226,7 @@ impl StreamData for VoteResponse {
         serde_json::from_slice(&data).map_or(None, |s| s)
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         serde_json::to_vec(&self).map_or(None, |s| Some(s))
     }
 }

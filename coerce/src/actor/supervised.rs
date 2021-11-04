@@ -37,31 +37,6 @@ impl<A: Actor> Handler<Terminated> for A {
 }
 
 impl Supervised {
-    pub fn child<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
-        self.children
-            .get(id)
-            .map_or(None, |a| (&a.0.as_any()).downcast_ref::<LocalActorRef<A>>())
-            .map(|a| a.clone())
-    }
-
-    pub fn child_boxed(&self, id: &ActorId) -> Option<BoxedActorRef> {
-        self.children.get(id).map(|a| a.clone())
-    }
-
-    pub fn notify_parent_stopped(&self) {
-        for child in &self.children {
-            child.1.notify_parent_terminated();
-        }
-    }
-
-    pub async fn on_child_stopped(&mut self, id: &ActorId) {
-        if let Some(_) = self.children.remove(id) {
-            trace!("child actor (id={}) stopped", id);
-        } else {
-            trace!("unknown child actor (id={}) stopped", id);
-        }
-    }
-
     pub async fn spawn<A: Actor>(
         &mut self,
         id: ActorId,
@@ -91,6 +66,52 @@ impl Supervised {
                 error!("error spawning supervised actor {}", e);
                 Err(ActorRefErr::ActorUnavailable)
             }
+        }
+    }
+
+    pub fn child<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
+        self.children
+            .get(id)
+            .map_or(None, |a| (&a.0.as_any()).downcast_ref::<LocalActorRef<A>>())
+            .map(|a| a.clone())
+    }
+
+    pub fn child_boxed(&self, id: &ActorId) -> Option<BoxedActorRef> {
+        self.children.get(id).map(|a| a.clone())
+    }
+
+    pub async fn stop_all(&self) {
+        let stop_results = futures::future::join_all(
+            self.children
+                .iter()
+                .map(|(id, actor)| async move { (id.clone(), actor.stop().await) }),
+        )
+        .await;
+
+        for (actor_id, stop_result) in stop_results {
+            if let Ok(status) = stop_result {
+                trace!("actor stopped ({}, status={:?})", actor_id, &status);
+            } else {
+                warn!(
+                    "failed to stop child actor_id={}, err={}",
+                    actor_id,
+                    stop_result.unwrap_err()
+                );
+            }
+        }
+    }
+
+    pub fn notify_parent_stopped(&self) {
+        for child in &self.children {
+            child.1.notify_parent_terminated();
+        }
+    }
+
+    pub async fn on_child_stopped(&mut self, id: &ActorId) {
+        if let Some(_) = self.children.remove(id) {
+            trace!("child actor (id={}) stopped", id);
+        } else {
+            trace!("unknown child actor (id={}) stopped", id);
         }
     }
 }

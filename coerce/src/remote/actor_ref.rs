@@ -9,7 +9,9 @@ use crate::remote::tracing::extract_trace_identifier;
 
 use std::marker::PhantomData;
 
+use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
+use tracing::Span;
 use uuid::Uuid;
 
 pub struct RemoteActorRef<A: Actor>
@@ -44,6 +46,29 @@ where
         &self.id
     }
 
+    pub async fn notify<Msg: Message>(&self, msg: Envelope<Msg>) -> Result<(), ActorRefErr>
+    where
+        A: Handler<Msg>,
+        Msg: 'static + Send + Sync,
+    {
+        let message_type = Msg::type_name();
+        let actor_type = A::type_name();
+        let span = tracing::trace_span!("RemoteActorRef::notify", actor_type, message_type);
+        let _enter = span.enter();
+
+        let id = Uuid::new_v4();
+        let request = self.create_request(msg, extract_trace_identifier(&span), id);
+
+        match request {
+            Some(request) => {
+                self.system.send_message(self.node_id, request).await;
+                Ok(())
+            }
+
+            None => Err(ActorRefErr::ActorUnavailable),
+        }
+    }
+
     pub async fn send<Msg: Message>(&self, msg: Envelope<Msg>) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
@@ -56,24 +81,9 @@ where
         let _enter = span.enter();
 
         let id = Uuid::new_v4();
-        let (res_tx, res_rx) = tokio::sync::oneshot::channel();
-        let message_bytes = match msg {
-            Envelope::Remote(b) => b,
-            _ => return Err(ActorRefErr::ActorUnavailable),
-        };
+        let event = self.create_request(msg, extract_trace_identifier(&span), id);
 
-        let trace_id = extract_trace_identifier(&span);
-        let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
-            SessionEvent::NotifyActor(MessageRequest {
-                message_id: id.to_string(),
-                handler_type: header.handler_type,
-                actor_id: header.actor_id,
-                trace_id,
-                message: message_bytes,
-                ..MessageRequest::default()
-            })
-        });
-
+        let (res_tx, res_rx) = oneshot::channel();
         self.system.push_request(id, res_tx).await;
 
         match event {
@@ -104,6 +114,35 @@ where
                 Err(ActorUnavailable)
             }
         }
+    }
+
+    fn create_request<Msg: Message>(
+        &self,
+        msg: Envelope<Msg>,
+        trace_id: String,
+        id: Uuid,
+    ) -> Option<SessionEvent>
+    where
+        Msg: 'static + Send + Sync,
+    {
+        let message_bytes = match msg {
+            Envelope::Remote(b) => b,
+            _ => return None,
+        };
+
+        let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
+            SessionEvent::NotifyActor(MessageRequest {
+                message_id: id.to_string(),
+                handler_type: header.handler_type,
+                actor_id: header.actor_id,
+                trace_id,
+                message: message_bytes,
+                requires_response: false,
+                ..MessageRequest::default()
+            })
+        });
+
+        event
     }
 }
 

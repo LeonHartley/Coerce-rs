@@ -14,6 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
+use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
 #[async_trait]
@@ -43,7 +44,7 @@ pub trait ActorMessageHandler: Any {
         &self,
         actor: &BoxedActorRef,
         buffer: &[u8],
-        res: tokio::sync::oneshot::Sender<Result<Vec<u8>, ActorRefErr>>,
+        res: Option<tokio::sync::oneshot::Sender<Result<Vec<u8>, ActorRefErr>>>,
     );
 
     fn new_boxed(&self) -> BoxedMessageHandler;
@@ -207,30 +208,42 @@ where
         }
     }
 
-    async fn handle_direct(&self, actor: &BoxedActorRef, buffer: &[u8], res: Sender<Result<Vec<u8>, ActorRefErr>>) {
+    async fn handle_direct(
+        &self,
+        actor: &BoxedActorRef,
+        buffer: &[u8],
+        res: Option<oneshot::Sender<Result<Vec<u8>, ActorRefErr>>>,
+    ) {
         let actor = actor.as_actor::<A>();
         let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
 
         match (actor, envelope) {
             (Some(actor), Ok(message)) => {
-                let result = actor
-                    .send(message)
-                    .await
-                    .map(|result| M::write_remote_result(result));
+                match res {
+                    Some(res) => {
+                        let result = actor
+                            .send(message)
+                            .await
+                            .map(|result| M::write_remote_result(result));
 
-                match result {
-                    Ok(Ok(result)) => {
-                        if res.send(Ok(result)).is_err() {
-                            error!(target: "RemoteHandler", "failed to send message")
+                        match result {
+                            Ok(Ok(result)) => {
+                                if res.send(Ok(result)).is_err() {
+                                    error!(target: "RemoteHandler", "failed to send message")
+                                }
+                            }
+                            Ok(Err(e)) => {
+                                // TODO: Notify err
+                                error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
+                            }
+                            Err(_) => {
+                                // TODO: Notify err
+                                error!(target: "RemoteHandler", "failed to send message");
+                            }
                         }
                     }
-                    Ok(Err(e)) => {
-                        // TODO: Notify err
-                        error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
-                    }
-                    Err(_) => {
-                        // TODO: Notify err
-                        error!(target: "RemoteHandler", "failed to send message");
+                    None => {
+                        let res = actor.notify(message);
                     }
                 }
             }

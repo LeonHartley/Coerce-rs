@@ -187,7 +187,7 @@ pub async fn test_pubsub_distributed() {
         PubSub::publish(StatusStream, StatusEvent::Online, remote_b.actor_system()).await;
     }
 
-    // ensure both actors (one on each system) receives all stream messages from both servers within 2 seconds
+    // ensure both actors (one on each system) receives all stream messages from both servers within 3 seconds
     if tokio::time::timeout(
         Duration::from_secs(3),
         futures::future::join_all(vec![receiver_a, receiver_b]),
@@ -215,7 +215,7 @@ impl StreamData for StatusEvent {
         }
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         match &self {
             StatusEvent::Offline => Some(vec![0]),
             StatusEvent::Online => Some(vec![1]),

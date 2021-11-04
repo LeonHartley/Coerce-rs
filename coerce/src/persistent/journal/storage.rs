@@ -44,12 +44,12 @@ impl StreamData for JournalEntry {
         }
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         let journal_entry = self;
         let proto = ProtoJournalEntry {
             sequence: journal_entry.sequence,
-            payload_type: journal_entry.payload_type,
-            bytes: journal_entry.bytes,
+            payload_type: journal_entry.payload_type.clone(),
+            bytes: journal_entry.bytes.clone(),
             ..Default::default()
         };
 

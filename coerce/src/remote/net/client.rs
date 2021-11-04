@@ -48,7 +48,7 @@ impl ClientMessageReceiver {
 impl StreamReceiver for ClientMessageReceiver {
     type Message = ClientEvent;
 
-    async fn on_receive(&mut self, msg: ClientEvent, ctx: &RemoteActorSystem) {
+    async fn on_receive(&mut self, msg: ClientEvent, sys: &RemoteActorSystem) {
         match msg {
             ClientEvent::Handshake(msg) => {
                 let node_id = msg.node_id;
@@ -63,7 +63,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     })
                     .collect();
 
-                ctx.notify_register_nodes(nodes);
+                sys.notify_register_nodes(nodes);
 
                 self.node_id = Some(node_id);
 
@@ -77,7 +77,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     }
                 }
             }
-            ClientEvent::Result(res) => match ctx
+            ClientEvent::Result(res) => match sys
                 .pop_request(Uuid::from_str(&res.message_id).unwrap())
                 .await
             {
@@ -85,12 +85,12 @@ impl StreamReceiver for ClientMessageReceiver {
                     let _ = res_tx.send(RemoteResponse::Ok(res.result));
                 }
                 None => {
-                    warn!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", ctx.node_tag(), ctx.node_id(), res.message_id);
+                    warn!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
                 }
             },
             ClientEvent::Err(_e) => {}
             ClientEvent::Ping(_ping) => {}
-            ClientEvent::Pong(pong) => match ctx
+            ClientEvent::Pong(pong) => match sys
                 .pop_request(Uuid::from_str(&pong.message_id).unwrap())
                 .await
             {
@@ -105,9 +105,9 @@ impl StreamReceiver for ClientMessageReceiver {
         }
     }
 
-    async fn on_close(&mut self, ctx: &RemoteActorSystem) {
+    async fn on_close(&mut self, sys: &RemoteActorSystem) {
         if let Some(node_id) = self.node_id.take() {
-            ctx.deregister_client(node_id).await;
+            sys.deregister_client(node_id).await;
         }
     }
 }

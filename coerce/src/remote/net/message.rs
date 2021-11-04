@@ -23,6 +23,7 @@ pub enum SessionEvent {
     RegisterActor(ActorAddress),
     FindActor(FindActor),
     StreamPublish(StreamPublish),
+    Result(ClientResult),
     Raft(RaftRequest),
 }
 
@@ -51,7 +52,7 @@ impl StreamData for ClientEvent {
         }
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         let (event_id, message) = match &self {
             ClientEvent::Handshake(e) => (Event::Handshake, e.write_to_bytes()),
             ClientEvent::Result(e) => (Event::Result, e.write_to_bytes()),
@@ -95,13 +96,16 @@ impl StreamData for SessionEvent {
                 Some(Event::Raft) => Some(SessionEvent::Raft(
                     RaftRequest::parse_from_bytes(message).unwrap(),
                 )),
+                Some(Event::Result) => Some(SessionEvent::Result(
+                    ClientResult::parse_from_bytes(message).unwrap(),
+                )),
                 _ => None,
             },
             None => None,
         }
     }
 
-    fn write_to_bytes(self) -> Option<Vec<u8>> {
+    fn write_to_bytes(&self) -> Option<Vec<u8>> {
         let (event_id, message) = match self {
             SessionEvent::Handshake(e) => (Event::Handshake, e.write_to_bytes()),
             SessionEvent::Ping(e) => (Event::Ping, e.write_to_bytes()),
@@ -112,6 +116,7 @@ impl StreamData for SessionEvent {
             SessionEvent::CreateActor(e) => (Event::CreateActor, e.write_to_bytes()),
             SessionEvent::StreamPublish(e) => (Event::StreamPublish, e.write_to_bytes()),
             SessionEvent::Raft(e) => (Event::Raft, e.write_to_bytes()),
+            SessionEvent::Result(e) => (Event::Result, e.write_to_bytes()),
         };
 
         write_event(event_id, message)

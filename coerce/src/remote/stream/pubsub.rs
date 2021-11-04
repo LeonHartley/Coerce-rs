@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
 use crate::remote::net::StreamData;
-use crate::remote::stream::mediator::{Publish, PublishRaw, Subscribe, SubscribeErr};
+use crate::remote::stream::mediator::{Publish, PublishRaw, Reach, Subscribe, SubscribeErr};
 
 use std::any::Any;
 
@@ -45,7 +45,9 @@ impl<T: Topic> Message for StreamEvent<T> {
 
 #[async_trait]
 pub trait TopicEmitter: Send + Sync {
-    async fn emit(&mut self, key: &str, bytes: Vec<u8>);
+    async fn emit_serialised(&mut self, key: &str, bytes: Vec<u8>);
+
+    async fn emit(&mut self, key: &str, msg: Arc<dyn Any + Sync + Send>);
 
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
 }
@@ -97,7 +99,7 @@ impl<T: Topic> TopicSubscriberStore<T> {
 
 #[async_trait]
 impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
-    async fn emit(&mut self, key: &str, bytes: Vec<u8>) {
+    async fn emit_serialised(&mut self, key: &str, bytes: Vec<u8>) {
         let topic_data = format!("{}-{}", T::topic_name(), &key);
         let span = tracing::debug_span!(
             "PubSub::emit",
@@ -112,6 +114,12 @@ impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
         } else {
             self.broadcast_err(key)
         }
+    }
+
+    async fn emit(&mut self, key: &str, msg: Arc<dyn Any + Sync + Send>) {
+        let msg = msg.downcast::<T::Message>().unwrap();
+
+        self.broadcast(key, msg);
     }
 
     fn into_any(self: Box<Self>) -> Box<dyn Any> {
@@ -193,7 +201,11 @@ impl PubSub {
 
         if let Some(mediator) = system.remote().stream_mediator() {
             mediator
-                .send(Publish::<T> { topic, message })
+                .send(Publish::<T> {
+                    topic,
+                    message,
+                    reach: Reach::Cluster,
+                })
                 .await
                 .unwrap();
         } else {
@@ -203,15 +215,13 @@ impl PubSub {
 
     pub async fn publish_locally<T: Topic>(topic: T, message: T::Message, system: &ActorSystem) {
         if let Some(mediator) = system.remote().stream_mediator() {
-            let key = topic.key();
-            let topic = T::topic_name().to_string();
-            let message = message.write_to_bytes().unwrap();
+            let reach = Reach::Local;
 
             mediator
-                .send(PublishRaw {
+                .send(Publish {
                     topic,
-                    key,
                     message,
+                    reach,
                 })
                 .await
                 .unwrap();

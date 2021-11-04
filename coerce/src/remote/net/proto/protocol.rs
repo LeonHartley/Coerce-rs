@@ -2193,6 +2193,7 @@ pub struct MessageRequest {
     pub actor_id: ::std::string::String,
     pub message: ::std::vec::Vec<u8>,
     pub trace_id: ::std::string::String,
+    pub requires_response: bool,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -2338,6 +2339,21 @@ impl MessageRequest {
     pub fn take_trace_id(&mut self) -> ::std::string::String {
         ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
     }
+
+    // bool requires_response = 6;
+
+
+    pub fn get_requires_response(&self) -> bool {
+        self.requires_response
+    }
+    pub fn clear_requires_response(&mut self) {
+        self.requires_response = false;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_requires_response(&mut self, v: bool) {
+        self.requires_response = v;
+    }
 }
 
 impl ::protobuf::Message for MessageRequest {
@@ -2363,6 +2379,13 @@ impl ::protobuf::Message for MessageRequest {
                 },
                 5 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
+                },
+                6 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_bool()?;
+                    self.requires_response = tmp;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -2391,6 +2414,9 @@ impl ::protobuf::Message for MessageRequest {
         if !self.trace_id.is_empty() {
             my_size += ::protobuf::rt::string_size(5, &self.trace_id);
         }
+        if self.requires_response != false {
+            my_size += 2;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -2411,6 +2437,9 @@ impl ::protobuf::Message for MessageRequest {
         }
         if !self.trace_id.is_empty() {
             os.write_string(5, &self.trace_id)?;
+        }
+        if self.requires_response != false {
+            os.write_bool(6, self.requires_response)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2475,6 +2504,11 @@ impl ::protobuf::Message for MessageRequest {
                 |m: &MessageRequest| { &m.trace_id },
                 |m: &mut MessageRequest| { &mut m.trace_id },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBool>(
+                "requires_response",
+                |m: &MessageRequest| { &m.requires_response },
+                |m: &mut MessageRequest| { &mut m.requires_response },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<MessageRequest>(
                 "MessageRequest",
                 fields,
@@ -2496,6 +2530,7 @@ impl ::protobuf::Clear for MessageRequest {
         self.actor_id.clear();
         self.message.clear();
         self.trace_id.clear();
+        self.requires_response = false;
         self.unknown_fields.clear();
     }
 }
@@ -3544,6 +3579,200 @@ impl ::protobuf::reflect::ProtobufValue for NodeRemovedEvent {
 }
 
 #[derive(PartialEq,Clone,Default)]
+pub struct LeaderChangedEvent {
+    // message fields
+    pub node_id: u64,
+    pub trace_id: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a LeaderChangedEvent {
+    fn default() -> &'a LeaderChangedEvent {
+        <LeaderChangedEvent as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl LeaderChangedEvent {
+    pub fn new() -> LeaderChangedEvent {
+        ::std::default::Default::default()
+    }
+
+    // uint64 node_id = 1;
+
+
+    pub fn get_node_id(&self) -> u64 {
+        self.node_id
+    }
+    pub fn clear_node_id(&mut self) {
+        self.node_id = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_node_id(&mut self, v: u64) {
+        self.node_id = v;
+    }
+
+    // string trace_id = 2;
+
+
+    pub fn get_trace_id(&self) -> &str {
+        &self.trace_id
+    }
+    pub fn clear_trace_id(&mut self) {
+        self.trace_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_trace_id(&mut self, v: ::std::string::String) {
+        self.trace_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_trace_id(&mut self) -> &mut ::std::string::String {
+        &mut self.trace_id
+    }
+
+    // Take field
+    pub fn take_trace_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.trace_id, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for LeaderChangedEvent {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint64()?;
+                    self.node_id = tmp;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.node_id != 0 {
+            my_size += ::protobuf::rt::value_size(1, self.node_id, ::protobuf::wire_format::WireTypeVarint);
+        }
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.trace_id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if self.node_id != 0 {
+            os.write_uint64(1, self.node_id)?;
+        }
+        if !self.trace_id.is_empty() {
+            os.write_string(2, &self.trace_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> LeaderChangedEvent {
+        LeaderChangedEvent::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+                "node_id",
+                |m: &LeaderChangedEvent| { &m.node_id },
+                |m: &mut LeaderChangedEvent| { &mut m.node_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "trace_id",
+                |m: &LeaderChangedEvent| { &m.trace_id },
+                |m: &mut LeaderChangedEvent| { &mut m.trace_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<LeaderChangedEvent>(
+                "LeaderChangedEvent",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static LeaderChangedEvent {
+        static instance: ::protobuf::rt::LazyV2<LeaderChangedEvent> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(LeaderChangedEvent::new)
+    }
+}
+
+impl ::protobuf::Clear for LeaderChangedEvent {
+    fn clear(&mut self) {
+        self.node_id = 0;
+        self.trace_id.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for LeaderChangedEvent {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for LeaderChangedEvent {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
 pub struct RaftRequest {
     // message fields
     pub message_id: ::std::string::String,
@@ -3963,7 +4192,7 @@ impl ::protobuf::reflect::ProtobufValue for ClientErrorCode {
 pub enum SystemEvent {
     ClusterNewNode = 0,
     ClusterNodeRemoved = 1,
-    ClusterLeaderChanged = 3,
+    ClusterLeaderChanged = 2,
 }
 
 impl ::protobuf::ProtobufEnum for SystemEvent {
@@ -3975,7 +4204,7 @@ impl ::protobuf::ProtobufEnum for SystemEvent {
         match value {
             0 => ::std::option::Option::Some(SystemEvent::ClusterNewNode),
             1 => ::std::option::Option::Some(SystemEvent::ClusterNodeRemoved),
-            3 => ::std::option::Option::Some(SystemEvent::ClusterLeaderChanged),
+            2 => ::std::option::Option::Some(SystemEvent::ClusterLeaderChanged),
             _ => ::std::option::Option::None
         }
     }
@@ -4038,37 +4267,40 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x07actorIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\
     \0\"e\n\x0cActorAddress\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07act\
     orIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\
-    \n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\xae\x01\n\x0eMessa\
+    \n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eMessa\
     geRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\
     \x0chandler_type\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08acto\
     r_id\x18\x03\x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\
     \x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07tr\
-    aceIdB\0:\0\"\x8c\x02\n\x10SessionHandshake\x12\x19\n\x07node_id\x18\x01\
-    \x20\x01(\x04R\x06nodeIdB\0\x12>\n\x05nodes\x18\x02\x20\x03(\x0b2&.coerc\
-    e.remote.net.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\
-    \x20\x01(\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07\
-    nodeTagB\0\x12I\n\x0bclient_type\x18\x05\x20\x01(\x0e2&.coerce.remote.ne\
-    t.protocol.ClientTypeR\nclientTypeB\0\x12\x1b\n\x08trace_id\x18\x06\x20\
-    \x01(\tR\x07traceIdB\0:\0\"v\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\
-    \x20\x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\
-    \x12\x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\x08t\
-    race_id\x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"H\n\x0cNewNodeEvent\x12\
+    aceIdB\0\x12-\n\x11requires_response\x18\x06\x20\x01(\x08R\x10requiresRe\
+    sponseB\0:\0\"\x8c\x02\n\x10SessionHandshake\x12\x19\n\x07node_id\x18\
+    \x01\x20\x01(\x04R\x06nodeIdB\0\x12>\n\x05nodes\x18\x02\x20\x03(\x0b2&.c\
+    oerce.remote.net.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\
+    \x03\x20\x01(\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\
+    \x07nodeTagB\0\x12I\n\x0bclient_type\x18\x05\x20\x01(\x0e2&.coerce.remot\
+    e.net.protocol.ClientTypeR\nclientTypeB\0\x12\x1b\n\x08trace_id\x18\x06\
+    \x20\x01(\tR\x07traceIdB\0:\0\"v\n\rStreamPublish\x12\x16\n\x05topic\x18\
+    \x01\x20\x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03key\
+    B\0\x12\x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\
+    \x08trace_id\x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"H\n\x0cNewNodeEvent\
+    \x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08tr\
+    ace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"L\n\x10NodeRemovedEvent\x12\
     \x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_\
-    id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"L\n\x10NodeRemovedEvent\x12\x19\
-    \n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\
-    \x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"q\n\x0bRaftRequest\x12\x1f\n\nmes\
-    sage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0crequest_type\x18\x02\
-    \x20\x01(\rR\x0brequestTypeB\0\x12\x1a\n\x07payload\x18\x03\x20\x01(\x0c\
-    R\x07payloadB\0:\0*\xac\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\t\
-    Handshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\
-    \x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActo\
-    r\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\
-    \x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\x08\n\
-    \x04Raft\x10\x0b\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\
-    \x06Worker\x10\x01\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUnavai\
-    lable\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*U\n\x0bSystemEve\
-    nt\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\x10\
-    \x01\x12\x18\n\x14ClusterLeaderChanged\x10\x03\x1a\0B\0b\x06proto3\
+    id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"N\n\x12LeaderChangedEvent\x12\
+    \x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_\
+    id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"q\n\x0bRaftRequest\x12\x1f\n\nm\
+    essage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0crequest_type\x18\
+    \x02\x20\x01(\rR\x0brequestTypeB\0\x12\x1a\n\x07payload\x18\x03\x20\x01(\
+    \x0cR\x07payloadB\0:\0*\xac\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\
+    \n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\
+    \x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreate\
+    Actor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\
+    \x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\
+    \x08\n\x04Raft\x10\x0b\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\
+    \n\n\x06Worker\x10\x01\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUn\
+    available\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*U\n\x0bSyste\
+    mEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\
+    \x10\x01\x12\x18\n\x14ClusterLeaderChanged\x10\x02\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

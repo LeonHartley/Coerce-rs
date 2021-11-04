@@ -3,11 +3,13 @@ use crate::actor::message::Handler;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::{EntityRequest, StartEntity};
+use crate::remote::cluster::sharding::host::{EntityRequest, RemoteEntityRequest, StartEntity};
 use crate::remote::handler::ActorHandler;
-use crate::remote::net::proto::protocol::CreateActor;
+use crate::remote::net::message::SessionEvent;
+use crate::remote::net::proto::protocol::{ClientResult, CreateActor};
 use std::future::Future;
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
 
 pub struct Shard {
     shard_id: ShardId,
@@ -78,6 +80,52 @@ impl Handler<EntityRequest> for Shard {
             },
         };
 
-        handler.handle_direct(&actor, &message.message, result_channel.unwrap()).await;
+        let message = message.message;
+        tokio::spawn(async move {
+            handler
+                .handle_direct(&actor, &message, result_channel)
+                .await;
+        });
+    }
+}
+
+#[async_trait]
+impl Handler<RemoteEntityRequest> for Shard {
+    async fn handle(&mut self, message: RemoteEntityRequest, ctx: &mut ActorContext) {
+        let (tx, rx) = oneshot::channel();
+
+        let origin_node = message.origin_node;
+        let request_id = message.request_id;
+        self.handle(
+            {
+                let mut message = message.request;
+                message.result_channel = Some(tx);
+                message
+            },
+            ctx,
+        )
+        .await;
+
+        let system = ctx.system().remote_owned();
+        tokio::spawn(async move {
+            match rx.await {
+                Ok(bytes) => match bytes {
+                    Ok(result) => {
+                        let message_id = request_id.to_string();
+                        let result = SessionEvent::Result(ClientResult {
+                            message_id,
+                            result,
+                            ..Default::default()
+                        });
+
+                        system
+                            .node_rpc_raw(request_id, result, origin_node)
+                            .await;
+                    }
+                    _ => {}
+                },
+                Err(_) => {}
+            };
+        });
     }
 }
