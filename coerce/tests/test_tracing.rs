@@ -9,7 +9,7 @@ struct TracingActor;
 impl Actor for TracingActor {}
 
 async fn app() {
-    let mut sys = ActorSystem::new();
+    let sys = ActorSystem::new();
 
     for i in 0..10 {
         let actor_id = format!("actor-id-{}", i);

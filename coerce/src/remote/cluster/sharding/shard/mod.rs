@@ -1,15 +1,14 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
-use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
+use crate::remote::actor::BoxedActorHandler;
 use crate::remote::cluster::sharding::coordinator::ShardId;
 use crate::remote::cluster::sharding::host::{EntityRequest, RemoteEntityRequest, StartEntity};
 use crate::remote::handler::ActorHandler;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::{ClientResult, CreateActor};
-use std::future::Future;
+use crate::remote::net::proto::protocol::ClientResult;
+
 use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
 
 pub struct Shard {
     shard_id: ShardId,
@@ -38,7 +37,7 @@ impl Shard {
 #[async_trait]
 impl Handler<StartEntity> for Shard {
     async fn handle(&mut self, message: StartEntity, ctx: &mut ActorContext) {
-        let res = self
+        let _res = self
             .start_entity(message.actor_id, message.recipe, ctx)
             .await;
     }
@@ -66,7 +65,7 @@ impl Handler<EntityRequest> for Shard {
             None => match message.recipe {
                 Some(recipe) => match self.start_entity(actor_id, recipe, ctx).await {
                     Ok(actor) => actor,
-                    Err(err) => {
+                    Err(_err) => {
                         // TODO: Send actor could not be created err
                         result_channel.map(|m| m.send(Err(ActorRefErr::ActorUnavailable)));
                         return;
@@ -118,9 +117,7 @@ impl Handler<RemoteEntityRequest> for Shard {
                             ..Default::default()
                         });
 
-                        system
-                            .node_rpc_raw(request_id, result, origin_node)
-                            .await;
+                        system.node_rpc_raw(request_id, result, origin_node).await;
                     }
                     _ => {}
                 },

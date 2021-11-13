@@ -1,6 +1,5 @@
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
-use syn::DeriveInput;
+use proc_macro2::TokenStream;
+use quote::quote;
 
 pub(crate) fn expand(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;

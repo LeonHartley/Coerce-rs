@@ -5,8 +5,6 @@ use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
 
-use std::collections::HashMap;
-
 pub struct Status();
 
 pub struct Stop();

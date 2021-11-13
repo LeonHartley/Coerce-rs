@@ -15,7 +15,6 @@ use std::collections::HashMap;
 
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::protocol::{ActorAddress, FindActor};
-use std::str::FromStr;
 
 use crate::actor::ActorId;
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};

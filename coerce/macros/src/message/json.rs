@@ -1,6 +1,5 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::DeriveInput;
 
 use crate::get_attribute_type_multiple;
 

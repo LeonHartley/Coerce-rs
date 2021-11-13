@@ -1,7 +1,6 @@
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::JournalEntry;
-use coerce::persistent::journal::types::JournalTypes;
-use coerce::persistent::PersistentActor;
+
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 
 #[tokio::test]

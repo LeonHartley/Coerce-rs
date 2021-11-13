@@ -29,8 +29,8 @@ pub async fn main() {
         .try_init()
         .unwrap();
 
-    let mut system = ActorSystem::new();
-    let mut remote = RemoteActorSystem::builder()
+    let system = ActorSystem::new();
+    let remote = RemoteActorSystem::builder()
         .with_tag("example-worker")
         .with_actor_system(system)
         .with_handlers(|handlers| handlers.with_handler::<EchoActor, Echo>("EchoActor.Echo"))
@@ -49,7 +49,7 @@ pub async fn main() {
         let span = tracing::info_span!("CreateAndSend");
         let _enter = span.enter();
 
-        let mut actor = remote
+        let actor = remote
             .actor_ref::<EchoActor>("echo-actor".to_string())
             .await
             .expect("unable to get echo actor");

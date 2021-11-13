@@ -10,8 +10,7 @@ use crate::remote::tracing::extract_trace_identifier;
 use std::marker::PhantomData;
 
 use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
-use tracing::Span;
+
 use uuid::Uuid;
 
 pub struct RemoteActorRef<A: Actor>
@@ -101,7 +100,7 @@ where
                         error!(target: "RemoteActorRef", "failed to receive result, e={}", e);
                         Err(ActorUnavailable)
                     }
-                    Ok(RemoteResponse::Err(e)) => {
+                    Ok(RemoteResponse::Err(_e)) => {
                         // TODO: return custom error
                         Err(ActorUnavailable)
                     }

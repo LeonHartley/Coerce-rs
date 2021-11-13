@@ -1,7 +1,6 @@
 use coerce::actor::context::ActorContext;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, ActorId, IntoActor, LocalActorRef};
-use std::any::Any;
+use coerce::actor::{Actor, ActorId, IntoActor};
 
 pub mod util;
 
@@ -25,7 +24,7 @@ impl Actor for TestActor {
         child.notify_stop();
     }
 
-    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {
+    async fn on_child_stopped(&mut self, id: &ActorId, _ctx: &mut ActorContext) {
         info!("child terminated (id={})", &id);
         self.child_terminated_cb.take().unwrap().send(id.into());
     }
@@ -39,7 +38,7 @@ impl Actor for ActorChild {}
 pub async fn test_actor_child_spawn_and_stop() {
     util::create_trace_logger();
 
-    let mut system = ActorSystem::new();
+    let system = ActorSystem::new();
     let actor_id = "actor".to_string();
 
     let (child_terminated_cb, on_child_stopped) = tokio::sync::oneshot::channel();

@@ -1,7 +1,6 @@
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
 
-use coerce::remote::net::proto::protocol::CreateActor;
 use util::*;
 
 pub mod util;

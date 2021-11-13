@@ -1,8 +1,7 @@
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
-    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, BoxedActorRef,
-    CoreActorRef, LocalActorRef,
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, LocalActorRef,
 };
 use crate::remote::actor::message::{
     ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
@@ -17,8 +16,8 @@ use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::handler::{send_proto_result, RemoteActorMessageMarker};
 use crate::remote::net::client::RemoteClientStream;
-use crate::remote::net::message::{ClientEvent, SessionEvent};
-use crate::remote::net::proto::protocol::{ActorAddress, ClientResult, CreateActor};
+use crate::remote::net::message::SessionEvent;
+use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
@@ -27,12 +26,12 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 
 use crate::actor::context::ActorContext;
-use crate::actor::supervised::Supervised;
+
 use crate::remote::heartbeat::Heartbeat;
 use crate::remote::net::StreamData;
 use crate::remote::raft::RaftSystem;
 use protobuf::Message as ProtoMessage;
-use serde::de::DeserializeOwned;
+
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
@@ -98,7 +97,7 @@ pub enum NodeRpcErr {
 }
 
 impl Display for NodeRpcErr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }

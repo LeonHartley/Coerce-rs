@@ -32,7 +32,7 @@ impl ShardCoordinator {
     }
 
     async fn allocate_shard(&mut self, shard: AllocateShard) -> Option<NodeId> {
-        let mut shard_entry = self.shards.entry(shard.shard_id);
+        let shard_entry = self.shards.entry(shard.shard_id);
 
         match shard_entry {
             Entry::Occupied(node) => Some(*node.get()),
@@ -85,7 +85,7 @@ impl Handler<AllocateShard> for ShardCoordinator {
 
 #[async_trait]
 impl Recover<AllocateShard> for ShardCoordinator {
-    async fn recover(&mut self, message: AllocateShard, ctx: &mut ActorContext) {
+    async fn recover(&mut self, message: AllocateShard, _ctx: &mut ActorContext) {
         self.allocate_shard(message).await;
     }
 }

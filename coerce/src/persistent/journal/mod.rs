@@ -4,19 +4,16 @@ pub mod storage;
 pub mod types;
 
 use crate::actor::context::ActorContext;
-use crate::actor::message::{EnvelopeType, Handler, Message};
-use crate::persistent::journal::snapshot::{JournalPayload, Snapshot};
+use crate::actor::message::Message;
+use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};
 use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
-use crate::remote::actor::BoxedMessageHandler;
-use crate::remote::handler::RemoteActorMessageHandler;
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
+
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub mod proto;
 
@@ -40,7 +37,7 @@ impl<A: PersistentActor> Journal<A> {
     }
 }
 
-type RecoveryHandlerRef<A: PersistentActor> = Arc<dyn RecoveryHandler<A>>;
+type RecoveryHandlerRef<A> = Arc<dyn RecoveryHandler<A>>;
 
 #[async_trait]
 pub trait RecoveryHandler<A>: 'static + Send + Sync {

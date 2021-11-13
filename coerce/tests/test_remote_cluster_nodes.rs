@@ -6,8 +6,6 @@ extern crate async_trait;
 
 use coerce::remote::cluster::node::{RemoteNode, RemoteNodeStore};
 
-use uuid::Uuid;
-
 pub mod util;
 
 #[tokio::test]

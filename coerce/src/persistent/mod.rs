@@ -4,9 +4,8 @@ pub mod journal;
 
 pub use actor::*;
 
-use crate::actor::context::ActorContext;
 use crate::actor::system::ActorSystem;
-use crate::persistent::context::ActorPersistence;
+
 use crate::persistent::journal::provider::{StorageProvider, StorageProviderRef};
 use std::sync::Arc;
 

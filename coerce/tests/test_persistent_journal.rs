@@ -1,22 +1,16 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::lifecycle::Stop;
-use coerce::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+
+use coerce::actor::message::{Handler, MessageUnwrapErr};
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{IntoActor, LocalActorRef};
-use coerce::persistent::context::ActorPersistence;
+use coerce::actor::IntoActor;
+
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
-use coerce::persistent::journal::provider::StorageProvider;
-use coerce::persistent::journal::snapshot::Snapshot;
-use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
+
 use coerce::persistent::journal::types::JournalTypes;
 use coerce::persistent::{
     ConfigurePersistence, Persistence, PersistentActor, Recover, RecoverSnapshot,
 };
 use coerce_macros::{JsonMessage, JsonSnapshot};
-use std::any::Any;
-use std::panic::PanicInfo;
-use std::sync::Arc;
-use uuid::Uuid;
 
 #[macro_use]
 extern crate serde;
@@ -29,7 +23,7 @@ extern crate log;
 
 #[async_trait]
 impl RecoverSnapshot<TestActorSnapshot> for TestActor {
-    async fn recover(&mut self, snapshot: TestActorSnapshot, ctx: &mut ActorContext) {
+    async fn recover(&mut self, _snapshot: TestActorSnapshot, _ctx: &mut ActorContext) {
         info!("recovered a snapshot");
     }
 }
@@ -50,7 +44,7 @@ struct TestActorSnapshot {}
 
 #[async_trait]
 impl PersistentActor for TestActor {
-    fn persistence_key(&self, ctx: &ActorContext) -> String {
+    fn persistence_key(&self, _ctx: &ActorContext) -> String {
         format!("test-actor-{}", &self.id)
     }
 
@@ -75,7 +69,7 @@ impl Handler<Msg> for TestActor {
 
 #[async_trait]
 impl Recover<Msg> for TestActor {
-    async fn recover(&mut self, message: Msg, ctx: &mut ActorContext) {
+    async fn recover(&mut self, message: Msg, _ctx: &mut ActorContext) {
         info!("recovered a number: {}", message.0);
         self.received_numbers.push(message.0);
     }
@@ -85,7 +79,7 @@ impl Recover<Msg> for TestActor {
 pub async fn test_persistent_actor_message_recovery() {
     util::create_trace_logger();
 
-    let mut system =
+    let system =
         ActorSystem::new().add_persistence(Persistence::from(InMemoryStorageProvider::new()));
 
     let id = 1;

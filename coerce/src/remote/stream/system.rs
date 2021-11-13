@@ -3,10 +3,9 @@ use crate::remote::net::proto::protocol::{
 };
 use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::Topic;
-use crate::remote::stream::system::ClusterEvent::LeaderChanged;
+
 use crate::remote::system::NodeId;
 use protobuf::{Message, ProtobufEnum, ProtobufError};
-use uuid::Uuid;
 
 pub struct SystemTopic;
 

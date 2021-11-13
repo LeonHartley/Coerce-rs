@@ -124,7 +124,7 @@ impl JournalStorage for RedisJournalStorage {
 
 fn read_journal_entry_array(redis_value: RespValue) -> Option<Vec<JournalEntry>> {
     match redis_value {
-        RespValue::Array(mut array) => Some(
+        RespValue::Array(array) => Some(
             array
                 .into_iter()
                 .map(|v| match v {
@@ -139,7 +139,7 @@ fn read_journal_entry_array(redis_value: RespValue) -> Option<Vec<JournalEntry>>
 
 fn read_journal_entry(redis_value: RespValue) -> Option<JournalEntry> {
     match redis_value {
-        RespValue::Array(mut array) => {
+        RespValue::Array(array) => {
             for data in array {
                 return match data {
                     RespValue::BulkString(data) => {

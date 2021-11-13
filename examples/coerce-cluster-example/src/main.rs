@@ -1,6 +1,6 @@
 use actor::{Echo, EchoActor};
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorFactory, IntoActor};
+use coerce::actor::IntoActor;
 use coerce::remote::system::RemoteActorSystem;
 use opentelemetry::global;
 use opentelemetry::sdk::propagation::TraceContextPropagator;
@@ -29,8 +29,8 @@ pub async fn main() {
         .try_init()
         .unwrap();
 
-    let mut system = ActorSystem::new();
-    let mut remote = RemoteActorSystem::builder()
+    let system = ActorSystem::new();
+    let remote = RemoteActorSystem::builder()
         .with_tag("example-main")
         .with_actor_system(system)
         .with_handlers(|handlers| handlers.with_handler::<EchoActor, Echo>("EchoActor.Echo"))

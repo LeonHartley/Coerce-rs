@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
 use crate::remote::net::StreamData;
-use crate::remote::stream::mediator::{Publish, PublishRaw, Reach, Subscribe, SubscribeErr};
+use crate::remote::stream::mediator::{Publish, Reach, Subscribe, SubscribeErr};
 
 use std::any::Any;
 

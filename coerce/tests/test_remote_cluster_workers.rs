@@ -9,7 +9,6 @@ use coerce::remote::cluster::node::RemoteNode;
 use coerce::remote::cluster::workers::{
     ClusterWorker, ClusterWorkers, GetActiveWorkers, WorkerStore, WorkerStoreErr,
 };
-use uuid::Uuid;
 
 pub mod util;
 

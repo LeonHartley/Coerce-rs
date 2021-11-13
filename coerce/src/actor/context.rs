@@ -3,8 +3,6 @@ use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, Loc
 use crate::persistent::context::ActorPersistence;
 
 use crate::actor::supervised::Supervised;
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ActorStatus {

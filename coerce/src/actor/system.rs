@@ -3,10 +3,10 @@ use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, Loca
 use crate::remote::system::RemoteActorSystem;
 
 use crate::persistent::Persistence;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::oneshot::error::RecvError;
+
 use uuid::Uuid;
 
 lazy_static! {
@@ -124,7 +124,7 @@ impl ActorSystem {
 
         match rx.await {
             Ok(_) => Ok(actor_ref),
-            Err(e) => {
+            Err(_e) => {
                 error!(
                     "actor not started, actor_id={}, type={}",
                     &id,

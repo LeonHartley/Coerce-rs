@@ -7,8 +7,8 @@ extern crate syn;
 mod message;
 mod snapshot;
 
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use proc_macro2::Span;
+use quote::quote;
 use syn::DeriveInput;
 
 const MESSAGE_ATTR: &str = "result";

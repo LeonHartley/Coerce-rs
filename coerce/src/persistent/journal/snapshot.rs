@@ -1,5 +1,4 @@
 use crate::actor::message::{Envelope, EnvelopeType, Message, MessageUnwrapErr, MessageWrapErr};
-use chrono::{DateTime, Utc};
 
 pub struct JournalPayload {
     pub message_type: String,

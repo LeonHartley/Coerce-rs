@@ -5,7 +5,6 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::{start_actor, ActorType};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
-use std::any::Any;
 
 pub struct Supervised {
     children: HashMap<ActorId, BoxedActorRef>,

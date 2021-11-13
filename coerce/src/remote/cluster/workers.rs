@@ -6,7 +6,6 @@ use chrono::{DateTime, Utc};
 
 use crate::actor::system::ActorSystem;
 use crate::remote::system::NodeId;
-use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum WorkerStoreErr {

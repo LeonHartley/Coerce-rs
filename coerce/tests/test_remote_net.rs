@@ -8,7 +8,6 @@ use coerce::remote::RemoteActorRef;
 use coerce::actor::ActorRef;
 
 use util::*;
-use uuid::Uuid;
 
 pub mod util;
 

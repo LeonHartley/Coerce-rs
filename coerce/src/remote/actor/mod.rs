@@ -11,7 +11,7 @@ use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
+use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::stream::pubsub::Subscription;
 
 use crate::remote::heartbeat::HeartbeatConfig;

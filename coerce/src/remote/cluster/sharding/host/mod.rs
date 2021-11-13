@@ -1,17 +1,15 @@
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActor, IntoChild, LocalActorRef};
-use crate::remote::actor::RemoteResponse;
+use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef};
 use crate::remote::cluster::sharding::coordinator::ShardId;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
-use chrono::{DateTime, Utc};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
+
 use tokio::sync::oneshot::Sender;
 use uuid::Uuid;
 
@@ -183,7 +181,7 @@ impl Handler<ShardAllocated> for ShardHost {
 
 #[async_trait]
 impl Handler<StopShard> for ShardHost {
-    async fn handle(&mut self, message: StopShard, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: StopShard, _ctx: &mut ActorContext) {
         // TODO: having the shard host wait for the shard to stop
         //       will hurt throughput of other shards during re-balancing,
         //       need a way to defer it and return a remote result via oneshot channel

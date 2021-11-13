@@ -1,6 +1,3 @@
-use std::env;
-use std::fs;
-
 use protobuf_codegen_pure::Customize;
 use std::path::Path;
 

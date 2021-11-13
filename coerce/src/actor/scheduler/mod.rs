@@ -6,7 +6,7 @@ use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
 use crate::remote::actor::message::SetRemote;
 use crate::remote::system::RemoteActorSystem;
-use std::any::Any;
+
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use uuid::Uuid;

@@ -1,6 +1,6 @@
 use chrono::Local;
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use coerce::actor::message::{Handler, Message, MessageUnwrapErr};
 use coerce::actor::Actor;
 use coerce_macros::JsonMessage;
 use env_logger::Builder;

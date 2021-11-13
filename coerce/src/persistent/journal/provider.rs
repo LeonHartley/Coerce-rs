@@ -1,4 +1,4 @@
-use crate::persistent::journal::storage::{JournalStorage, JournalStorageRef};
+use crate::persistent::journal::storage::JournalStorageRef;
 use std::sync::Arc;
 
 pub trait StorageProvider: 'static + Send + Sync {
@@ -8,7 +8,7 @@ pub trait StorageProvider: 'static + Send + Sync {
 pub type StorageProviderRef = Arc<dyn StorageProvider>;
 
 pub mod inmemory {
-    use crate::persistent::journal::provider::{StorageProvider, StorageProviderRef};
+    use crate::persistent::journal::provider::StorageProvider;
     use crate::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -123,8 +123,8 @@ pub mod inmemory {
                             .messages
                             .iter()
                             .enumerate()
-                            .find(|(index, j)| j.sequence > from_sequence)
-                            .map(|(index, j)| index);
+                            .find(|(_index, j)| j.sequence > from_sequence)
+                            .map(|(index, _j)| index);
 
                         if let Some(starting_index) = starting_message {
                             journal.messages[starting_index..].iter().cloned().collect()

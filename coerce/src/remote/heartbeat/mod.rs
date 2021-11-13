@@ -1,11 +1,10 @@
-use crate::actor::context::{ActorContext, ActorStatus};
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
-use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, IntoActor, LocalActorRef};
+
+use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 use std::time::Duration;
-use tokio::task::JoinHandle;
 
 #[derive(Default)]
 pub struct HeartbeatConfig {
@@ -65,14 +64,14 @@ impl Actor for Heartbeat {
 
 #[async_trait]
 impl Handler<HeartbeatTick> for Heartbeat {
-    async fn handle(&mut self, _msg: HeartbeatTick, ctx: &mut ActorContext) {
-        let node_tag = self.system.node_tag();
+    async fn handle(&mut self, _msg: HeartbeatTick, _ctx: &mut ActorContext) {
+        let _node_tag = self.system.node_tag();
         let node_id = self.system.node_id();
 
         trace!(target: "Heartbeat", "heartbeat tick, node_id={}, node_tag={}", &node_id, &node_id);
 
         let nodes = self.system.get_nodes().await;
-        for node in nodes {}
+        for _node in nodes {}
 
         // trace!(target: "Heartbeat", "nodes: {:?}, node_id={}, node_tag={}", &nodes, &node_id, &node_tag);
 

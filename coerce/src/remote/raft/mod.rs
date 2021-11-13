@@ -11,7 +11,7 @@ use async_raft::raft::{
 };
 use async_raft::{Config, Raft, RaftNetwork};
 use memstore::{ClientRequest, ClientResponse, MemStore};
-use serde::Serialize;
+
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -105,7 +105,7 @@ impl RaftSystem {
 
                 sessions.send(SessionWrite(session_id, result)).await;
             }
-            Err(e) => {
+            Err(_e) => {
                 // todo: send err
             }
             Ok(None) => {

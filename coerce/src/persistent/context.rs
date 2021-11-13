@@ -1,8 +1,6 @@
-use crate::actor::context::ActorContext;
-use crate::actor::message::Message;
 use crate::persistent::journal::provider::StorageProviderRef;
-use crate::persistent::journal::{Journal, PersistErr};
-use crate::persistent::{PersistentActor, Recover};
+use crate::persistent::journal::Journal;
+use crate::persistent::PersistentActor;
 use std::any::Any;
 
 pub struct ActorPersistence {

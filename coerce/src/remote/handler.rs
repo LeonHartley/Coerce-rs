@@ -1,17 +1,13 @@
-use crate::actor::message::{Envelope, Handler, Message, MessageWrapErr};
+use crate::actor::message::{Envelope, Handler, Message};
 use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, BoxedActorRef,
 };
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
-use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
-use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::context::ActorContext;
-use crate::actor::supervised::Supervised;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
 use tokio::sync::oneshot;
@@ -243,7 +239,7 @@ where
                         }
                     }
                     None => {
-                        let res = actor.notify(message);
+                        let _res = actor.notify(message);
                     }
                 }
             }

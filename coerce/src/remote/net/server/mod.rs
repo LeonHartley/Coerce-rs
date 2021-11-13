@@ -8,11 +8,12 @@ use crate::remote::net::server::session::{
 };
 use crate::remote::net::{receive_loop, StreamReceiver};
 
-use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
+use crate::actor::scheduler::ActorType::Anonymous;
+use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::protocol::{
-    ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
-    RaftRequest, RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
+    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
+    RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
 use opentelemetry::global;
@@ -22,7 +23,6 @@ use std::str::FromStr;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
-use crate::remote::actor::RemoteResponse;
 
 pub mod session;
 
@@ -316,7 +316,7 @@ async fn session_handle_lookup(
     id: ActorId,
     session_id: Uuid,
     ctx: RemoteActorSystem,
-    mut sessions: LocalActorRef<RemoteSessionStore>,
+    sessions: LocalActorRef<RemoteSessionStore>,
 ) {
     let node_id = ctx.locate_actor_node(id.clone()).await;
     trace!(target: "RemoteSession", "sending actor lookup result: {:?}", node_id);

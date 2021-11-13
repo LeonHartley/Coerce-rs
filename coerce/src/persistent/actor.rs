@@ -1,12 +1,11 @@
 use crate::actor::context::{ActorContext, ActorStatus};
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef};
-use crate::persistent::context::ActorPersistence;
+
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
-use crate::persistent::journal::{Journal, PersistErr};
-use std::marker::PhantomData;
+use crate::persistent::journal::PersistErr;
 
 #[async_trait]
 pub trait PersistentActor: 'static + Sized + Send + Sync {
