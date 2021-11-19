@@ -157,6 +157,10 @@ pub async fn test_remote_cluster_workers() {
     assert_eq!(nodes_b_in_c, nodes_b.len());
     assert_eq!(nodes_c_in_a, nodes_c.len());
     assert_eq!(nodes_c_in_b, nodes_c.len());
+
+    remote_c.actor_system().shutdown().await;
+    remote_2_c.actor_system().shutdown().await;
+    remote_3_c.actor_system().shutdown().await;
 }
 
 fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {

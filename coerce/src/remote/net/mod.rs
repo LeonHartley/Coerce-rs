@@ -81,9 +81,13 @@ pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
 {
     let mut fut = StreamReceiverFuture::new(read, stop_rx);
     while let Some(res) = fut.next().await {
+        info!("recv");
         match res {
             Some(res) => match R::Message::read_from_bytes(res) {
-                Some(msg) => receiver.on_receive(msg, &system).await,
+                Some(msg) => {
+                    receiver.on_receive(msg, &system).await;
+                    info!("recv complete")
+                }
                 None => warn!(target: "RemoteReceive", "error decoding msg"),
             },
             None => {

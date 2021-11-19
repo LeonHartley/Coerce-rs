@@ -20,6 +20,7 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 pub struct RemoteActorSystemBuilder {
@@ -120,7 +121,7 @@ impl RemoteActorSystemBuilder {
         let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
 
         let config = handlers.build(self.node_tag);
-        let handler_ref = RemoteHandler::new(&inner, &system_tag).await;
+        let handler_ref = Arc::new(Mutex::new(RemoteHandler::new()));
         let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
 
         let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
@@ -163,9 +164,7 @@ impl RemoteActorSystemBuilder {
         core.heartbeat_ref = Some(
             Heartbeat::start(
                 HeartbeatConfig {
-                    interval: std::time::Duration::from_secs(1),
-                    inactive_node_heartbeat_timeout: std::time::Duration::from_secs(10),
-                    terminated_node_heartbeat_timeout: std::time::Duration::from_secs(30),
+                    ..HeartbeatConfig::default()
                 },
                 &system,
             )

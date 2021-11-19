@@ -1,5 +1,5 @@
 use crate::remote::actor::RemoteRequest;
-use crate::remote::cluster::node::RemoteNode;
+use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::message::Message;
@@ -19,7 +19,7 @@ impl Message for SetRemote {
 pub struct GetNodes;
 
 impl Message for GetNodes {
-    type Result = Vec<RemoteNode>;
+    type Result = Vec<RemoteNodeState>;
 }
 
 pub struct PushRequest(pub Uuid, pub RemoteRequest);
@@ -52,6 +52,12 @@ impl Message for DeregisterClient {
 pub struct RegisterNodes(pub Vec<RemoteNode>);
 
 impl Message for RegisterNodes {
+    type Result = ();
+}
+
+pub struct UpdateNodes(pub Vec<RemoteNodeState>);
+
+impl Message for UpdateNodes {
     type Result = ();
 }
 

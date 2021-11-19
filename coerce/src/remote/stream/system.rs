@@ -1,4 +1,4 @@
-use crate::remote::net::proto::protocol::{
+use crate::remote::net::proto::network::{
     LeaderChangedEvent, NewNodeEvent, NodeRemovedEvent, SystemEvent as SysEvent,
 };
 use crate::remote::net::StreamData;

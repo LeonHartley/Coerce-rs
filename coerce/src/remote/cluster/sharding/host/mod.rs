@@ -70,10 +70,6 @@ impl Message for EntityRequest {
     type Result = ();
 }
 
-impl Message for RemoteEntityRequest {
-    type Result = ();
-}
-
 #[async_trait]
 impl Handler<EntityRequest> for ShardHost {
     async fn handle(&mut self, message: EntityRequest, ctx: &mut ActorContext) {

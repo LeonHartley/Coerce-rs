@@ -17,7 +17,7 @@
 #![allow(trivial_casts)]
 #![allow(unused_imports)]
 #![allow(unused_results)]
-//! Generated file from `journal.proto`
+//! Generated file from `persistent/journal.proto`
 
 /// Generated files are compatible only with the same version
 /// of protobuf runtime.
@@ -260,10 +260,10 @@ impl ::protobuf::reflect::ProtobufValue for JournalEntry {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\rjournal.proto\x12\x19coerce.persistent.journal\"k\n\x0cJournalEntry\
-    \x12\x1c\n\x08sequence\x18\x01\x20\x01(\x03R\x08sequenceB\0\x12#\n\x0cpa\
-    yload_type\x18\x02\x20\x01(\tR\x0bpayloadTypeB\0\x12\x16\n\x05bytes\x18\
-    \x03\x20\x01(\x0cR\x05bytesB\0:\0B\0b\x06proto3\
+    \n\x18persistent/journal.proto\x12\x19coerce.persistent.journal\"k\n\x0c\
+    JournalEntry\x12\x1c\n\x08sequence\x18\x01\x20\x01(\x03R\x08sequenceB\0\
+    \x12#\n\x0cpayload_type\x18\x02\x20\x01(\tR\x0bpayloadTypeB\0\x12\x16\n\
+    \x05bytes\x18\x03\x20\x01(\x0cR\x05bytesB\0:\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

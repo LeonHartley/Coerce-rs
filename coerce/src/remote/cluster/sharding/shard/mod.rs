@@ -1,12 +1,12 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::Handler;
+use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
 use crate::remote::actor::BoxedActorHandler;
 use crate::remote::cluster::sharding::coordinator::ShardId;
 use crate::remote::cluster::sharding::host::{EntityRequest, RemoteEntityRequest, StartEntity};
 use crate::remote::handler::ActorHandler;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::ClientResult;
+use crate::remote::net::proto::network::ClientResult;
 
 use tokio::sync::oneshot;
 
@@ -86,6 +86,10 @@ impl Handler<EntityRequest> for Shard {
                 .await;
         });
     }
+}
+
+impl Message for RemoteEntityRequest {
+    type Result = ();
 }
 
 #[async_trait]

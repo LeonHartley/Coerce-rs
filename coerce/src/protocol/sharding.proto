@@ -1,0 +1,5 @@
+package coerce.sharding;
+
+message RemoteShardRequest {
+
+}

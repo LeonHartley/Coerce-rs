@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package coerce.remote.net.protocol;
+package coerce.network;
 
 message RemoteNode {
   uint64 node_id = 1;

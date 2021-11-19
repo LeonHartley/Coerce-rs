@@ -1,12 +1,14 @@
-use super::proto::protocol;
+use super::proto::network;
 use crate::remote::actor::RemoteResponse;
+use crate::remote::cluster::node::RemoteNodeState;
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
-use crate::remote::net::proto::protocol::{RemoteNode, SessionHandshake};
+use crate::remote::net::proto::network::{Pong, RemoteNode, SessionHandshake};
 use crate::remote::net::{receive_loop, StreamData, StreamReceiver};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
 use futures::SinkExt;
+use protobuf::Message;
 use std::str::FromStr;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
@@ -94,9 +96,16 @@ impl StreamReceiver for ClientMessageReceiver {
                 .pop_request(Uuid::from_str(&pong.message_id).unwrap())
                 .await
             {
-                Some(res_tx) => {
-                    res_tx.send(RemoteResponse::PingOk).expect("send ping ok");
-                }
+                Some(res_tx) => res_tx
+                    .send(RemoteResponse::Ok(
+                        Pong {
+                            message_id: pong.message_id,
+                            ..Pong::default()
+                        }
+                        .write_to_bytes()
+                        .expect("serialised pong"),
+                    ))
+                    .expect("send ping ok"),
                 None => {
                     //                                          :P
                     warn!(target: "RemoteClient", "received unsolicited pong");
@@ -129,7 +138,7 @@ impl RemoteClient {
         addr: String,
         remote_node_id: Option<NodeId>,
         system: RemoteActorSystem,
-        nodes: Option<Vec<crate::remote::cluster::node::RemoteNode>>,
+        nodes: Option<Vec<RemoteNodeState>>,
         client_type: ClientType,
     ) -> Result<RemoteClient, tokio::io::Error> {
         let span = tracing::trace_span!("RemoteClient::connect", address = addr.as_str());
@@ -243,16 +252,16 @@ where
     }
 }
 
-impl From<protocol::ClientType> for ClientType {
-    fn from(client_type: protocol::ClientType) -> Self {
+impl From<network::ClientType> for ClientType {
+    fn from(client_type: network::ClientType) -> Self {
         match client_type {
-            protocol::ClientType::Client => Self::Client,
-            protocol::ClientType::Worker => Self::Worker,
+            network::ClientType::Client => Self::Client,
+            network::ClientType::Worker => Self::Worker,
         }
     }
 }
 
-impl From<ClientType> for protocol::ClientType {
+impl From<ClientType> for network::ClientType {
     fn from(client_type: ClientType) -> Self {
         match client_type {
             ClientType::Client => Self::Client,

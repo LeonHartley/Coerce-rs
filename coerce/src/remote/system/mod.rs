@@ -1,11 +1,11 @@
-use crate::actor::message::Message;
+use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, LocalActorRef,
 };
 use crate::remote::actor::message::{
     ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
-    RegisterClient, RegisterNode, RegisterNodes,
+    RegisterClient, RegisterNode, RegisterNodes, UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -13,17 +13,17 @@ use crate::remote::actor::{
 };
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
-use crate::remote::cluster::node::RemoteNode;
+use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::handler::{send_proto_result, RemoteActorMessageMarker};
 use crate::remote::net::client::RemoteClientStream;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::{ActorAddress, CreateActor};
+use crate::remote::net::proto::network::{ActorAddress, CreateActor};
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use serde::Serialize;
 use std::sync::Arc;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, Mutex};
 
 use crate::actor::context::ActorContext;
 
@@ -34,6 +34,8 @@ use protobuf::Message as ProtoMessage;
 
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::time::Instant;
+use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
 
 pub mod builder;
@@ -49,7 +51,7 @@ pub type NodeId = u64;
 pub struct RemoteSystemCore {
     node_id: NodeId,
     inner: ActorSystem,
-    handler_ref: LocalActorRef<RemoteHandler>,
+    handler_ref: Arc<Mutex<RemoteHandler>>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
     heartbeat_ref: Option<LocalActorRef<Heartbeat>>,
@@ -94,6 +96,7 @@ pub enum NodeRpcErr {
     NodeUnreachable,
     Serialisation,
     ReceiveFailed,
+    Err(Vec<u8>),
 }
 
 impl Display for NodeRpcErr {
@@ -191,8 +194,8 @@ impl RemoteActorSystem {
                     Err(NodeRpcErr::Serialisation)
                 }
             },
-            _ => {
-                error!(target: "NodeEvent", "failed to receive result");
+            Err(e) => {
+                error!(target: "NodeEvent", "failed to receive result, e={:?}", e);
                 Err(NodeRpcErr::ReceiveFailed)
             }
         }
@@ -239,8 +242,9 @@ impl RemoteActorSystem {
         trace!(target: "NodeRpc", "message_id={}, waiting for result", &message_id);
         match res_rx.await {
             Ok(RemoteResponse::Ok(res)) => Ok(res),
-            _ => {
-                error!(target: "NodeEvent", "failed to receive result");
+            Ok(RemoteResponse::Err(res)) => Err(NodeRpcErr::Err(res)),
+            Err(e) => {
+                error!(target: "NodeEvent", "failed to receive result, e={}", e);
                 Err(NodeRpcErr::ReceiveFailed)
             }
         }
@@ -388,8 +392,16 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub async fn get_nodes(&self) -> Vec<RemoteNode> {
+    pub async fn get_nodes(&self) -> Vec<RemoteNodeState> {
         self.inner.registry_ref.send(GetNodes).await.unwrap()
+    }
+
+    pub async fn update_nodes(&self, nodes: Vec<RemoteNodeState>) {
+        self.inner
+            .registry_ref
+            .send(UpdateNodes(nodes))
+            .await
+            .unwrap()
     }
 
     pub async fn send_message(&self, node_id: NodeId, message: SessionEvent) {
@@ -472,18 +484,24 @@ impl RemoteActorSystem {
     }
 
     pub async fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
-        self.inner
-            .handler_ref
-            .send(PushRequest(id, RemoteRequest { res_tx }))
-            .await
-            .expect("push request send");
+        let start = Instant::now();
+        let mut handler = self.inner.handler_ref.lock().await;
+
+        handler.push_request(id, RemoteRequest { res_tx });
+
+        let end = start.elapsed();
+        info!("PushRequest took {} ms", end.as_millis());
     }
 
     pub async fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
-        match self.inner.handler_ref.send(PopRequest(id)).await {
-            Ok(s) => s.map(|s| s.res_tx),
-            Err(_) => None,
-        }
+        let start = Instant::now();
+        let mut handler = self.inner.handler_ref.lock().await;
+
+        let a = handler.pop_request(id).map(|r| r.res_tx);
+
+        let end = start.elapsed();
+        info!("PopRequest took {} ms", end.as_millis());
+        a
     }
 
     pub fn stream_mediator(&self) -> Option<&LocalActorRef<StreamMediator>> {

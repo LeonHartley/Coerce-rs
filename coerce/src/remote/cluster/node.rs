@@ -2,12 +2,32 @@ use crate::remote::system::NodeId;
 
 use hashring::HashRing;
 
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::time::{Duration, Instant};
 
 pub struct RemoteNodeStore {
-    nodes: HashMap<NodeId, RemoteNode>,
+    nodes: HashMap<NodeId, RemoteNodeState>,
     table: HashRing<RemoteNode>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum NodeStatus {
+    Joining,
+    Healthy,
+    Unhealthy,
+    Terminated,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RemoteNodeState {
+    pub id: NodeId,
+    pub addr: String,
+    pub ping_latency: Option<Duration>,
+    pub last_heartbeat: Option<Instant>,
+    pub node_started_at: Option<DateTime<Utc>>,
+    pub status: NodeStatus,
 }
 
 #[derive(Hash, Serialize, Deserialize, Debug, Clone)]
@@ -24,14 +44,20 @@ impl RemoteNodeStore {
             .into_iter()
             .map(|n| {
                 table.add(n.clone());
-                (n.id, n)
+                (n.id, RemoteNodeState::new(n))
             })
             .collect();
 
         RemoteNodeStore { table, nodes }
     }
 
-    pub fn get(&self, node_id: &NodeId) -> Option<&RemoteNode> {
+    pub fn update_nodes(&mut self, nodes: Vec<RemoteNodeState>) {
+        for node in nodes {
+            self.nodes.insert(node.id, node);
+        }
+    }
+
+    pub fn get(&self, node_id: &NodeId) -> Option<&RemoteNodeState> {
         self.nodes.get(node_id)
     }
 
@@ -42,7 +68,7 @@ impl RemoteNodeStore {
     pub fn remove(&mut self, node_id: &NodeId) -> Option<RemoteNode> {
         self.nodes
             .remove(&node_id)
-            .and_then(|node| self.table.remove(&node))
+            .and_then(|node| self.table.remove(&RemoteNode::new(node.id, node.addr)))
     }
 
     pub fn get_by_key(&mut self, key: impl Hash) -> Option<&RemoteNode> {
@@ -51,21 +77,48 @@ impl RemoteNodeStore {
 
     pub fn add(&mut self, node: RemoteNode) {
         let mut nodes = self.get_all();
-        nodes.push(node);
+        nodes.push(RemoteNodeState::new(node));
         nodes.sort_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
 
         self.table = HashRing::new();
         self.nodes = nodes
             .into_iter()
             .map(|n| {
-                self.table.add(n.clone());
-                (n.id, n)
+                let node = n.clone();
+                self.table.add(RemoteNode::new(n.id, n.addr));
+                (node.id, node)
             })
             .collect();
     }
 
-    pub fn get_all(&self) -> Vec<RemoteNode> {
+    pub fn get_all(&self) -> Vec<RemoteNodeState> {
         self.nodes.values().cloned().collect()
+    }
+}
+
+impl RemoteNodeState {
+    pub fn new(node: RemoteNode) -> Self {
+        let id = node.id;
+        let addr = node.addr;
+
+        Self {
+            id,
+            addr,
+            ..RemoteNodeState::default()
+        }
+    }
+}
+
+impl Default for RemoteNodeState {
+    fn default() -> Self {
+        RemoteNodeState {
+            id: NodeId::default(),
+            addr: String::default(),
+            status: NodeStatus::Joining,
+            ping_latency: None,
+            last_heartbeat: None,
+            node_started_at: None,
+        }
     }
 }
 

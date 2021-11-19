@@ -11,7 +11,7 @@ use crate::remote::net::{receive_loop, StreamReceiver};
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::proto::protocol::{
+use crate::remote::net::proto::network::{
     ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };

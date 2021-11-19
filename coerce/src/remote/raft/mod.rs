@@ -1,6 +1,6 @@
 use crate::actor::LocalActorRef;
 use crate::remote::net::message::{ClientEvent, SessionEvent};
-use crate::remote::net::proto::protocol::{ClientResult, RaftRequest as ProtoRaftRequest};
+use crate::remote::net::proto::network::{ClientResult, RaftRequest as ProtoRaftRequest};
 use crate::remote::net::server::session::{RemoteSessionStore, SessionWrite};
 use crate::remote::net::StreamData;
 use crate::remote::system::RemoteActorSystem;

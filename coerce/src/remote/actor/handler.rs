@@ -2,19 +2,19 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
 use crate::remote::actor::message::{
     ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
-    RegisterClient, RegisterNode, RegisterNodes, SetRemote,
+    RegisterClient, RegisterNode, RegisterNodes, SetRemote, UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
-use crate::remote::cluster::node::RemoteNode;
+use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::net::client::{ClientType, RemoteClient, RemoteClientStream};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use std::collections::HashMap;
 
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::{ActorAddress, FindActor};
+use crate::remote::net::proto::network::{ActorAddress, FindActor};
 
 use crate::actor::ActorId;
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};
@@ -42,7 +42,11 @@ impl Handler<SetRemote> for RemoteRegistry {
 
 #[async_trait]
 impl Handler<GetNodes> for RemoteRegistry {
-    async fn handle(&mut self, _message: GetNodes, _ctx: &mut ActorContext) -> Vec<RemoteNode> {
+    async fn handle(
+        &mut self,
+        _message: GetNodes,
+        _ctx: &mut ActorContext,
+    ) -> Vec<RemoteNodeState> {
         let now = Instant::now();
         let nodes = self.nodes.get_all();
 
@@ -136,6 +140,13 @@ impl Handler<RegisterNode> for RemoteRegistry {
         }
 
         self.nodes.add(message.0);
+    }
+}
+
+#[async_trait]
+impl Handler<UpdateNodes> for RemoteRegistry {
+    async fn handle(&mut self, message: UpdateNodes, _ctx: &mut ActorContext) {
+        self.nodes.update_nodes(message.0);
     }
 }
 
@@ -321,7 +332,7 @@ impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
 
 async fn connect_all(
     nodes: Vec<RemoteNode>,
-    current_nodes: Vec<RemoteNode>,
+    current_nodes: Vec<RemoteNodeState>,
     ctx: &RemoteActorSystem,
 ) -> HashMap<NodeId, Option<RemoteClient>> {
     let mut clients = HashMap::new();

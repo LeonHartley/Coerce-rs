@@ -1,4 +1,4 @@
-use crate::remote::net::proto::protocol::{
+use crate::remote::net::proto::network::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
     MessageRequest, Ping, Pong, RaftRequest, SessionHandshake, StreamPublish,
 };

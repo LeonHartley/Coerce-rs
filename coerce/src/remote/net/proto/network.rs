@@ -255,7 +255,7 @@ impl ClientHandshake {
         self.node_id = v;
     }
 
-    // repeated .coerce.remote.net.protocol.RemoteNode nodes = 2;
+    // repeated .coerce.network.RemoteNode nodes = 2;
 
 
     pub fn get_nodes(&self) -> &[RemoteNode] {
@@ -793,7 +793,7 @@ impl ClientErr {
         ::std::mem::replace(&mut self.message_id, ::std::string::String::new())
     }
 
-    // .coerce.remote.net.protocol.ClientErrorCode code = 2;
+    // .coerce.network.ClientErrorCode code = 2;
 
 
     pub fn get_code(&self) -> ClientErrorCode {
@@ -2587,7 +2587,7 @@ impl SessionHandshake {
         self.node_id = v;
     }
 
-    // repeated .coerce.remote.net.protocol.RemoteNode nodes = 2;
+    // repeated .coerce.network.RemoteNode nodes = 2;
 
 
     pub fn get_nodes(&self) -> &[RemoteNode] {
@@ -2664,7 +2664,7 @@ impl SessionHandshake {
         ::std::mem::replace(&mut self.node_tag, ::std::string::String::new())
     }
 
-    // .coerce.remote.net.protocol.ClientType client_type = 5;
+    // .coerce.network.ClientType client_type = 5;
 
 
     pub fn get_client_type(&self) -> ClientType {
@@ -4242,65 +4242,65 @@ impl ::protobuf::reflect::ProtobufValue for SystemEvent {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x0eprotocol.proto\x12\x1acoerce.remote.net.protocol\"?\n\nRemoteNode\
-    \x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x14\n\x04ad\
-    dr\x18\x02\x20\x01(\tR\x04addrB\0:\0\"\xa8\x01\n\x0fClientHandshake\x12\
-    \x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12>\n\x05nodes\x18\
-    \x02\x20\x03(\x0b2&.coerce.remote.net.protocol.RemoteNodeR\x05nodesB\0\
-    \x12\x1b\n\x08node_tag\x18\x03\x20\x01(\tR\x07nodeTagB\0\x12\x1b\n\x08tr\
-    ace_id\x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"h\n\x0cClientResult\x12\x1f\
-    \n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x18\n\x06result\x18\
-    \x02\x20\x01(\x0cR\x06resultB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\t\
-    R\x07traceIdB\0:\0\"\x8e\x01\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\
-    \x20\x01(\tR\tmessageIdB\0\x12A\n\x04code\x18\x02\x20\x01(\x0e2+.coerce.\
-    remote.net.protocol.ClientErrorCodeR\x04codeB\0\x12\x1b\n\x08trace_id\
-    \x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Ping\x12\x1f\n\nmessage_id\
-    \x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01\
-    (\tR\x07traceIdB\0:\0\"F\n\x04Pong\x12\x1f\n\nmessage_id\x18\x01\x20\x01\
-    (\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\
-    \0:\0\"\xa5\x01\n\x0bCreateActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\
-    \tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\
-    \0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\tactorTypeB\0\x12\x18\n\x06\
-    recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0\x12\x1b\n\x08trace_id\x18\x05\
-    \x20\x01(\tR\x07traceIdB\0:\0\"h\n\tFindActor\x12\x1f\n\nmessage_id\x18\
-    \x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\
-    \x07actorIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\
-    \0\"e\n\x0cActorAddress\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07act\
-    orIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\
-    \n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eMessa\
-    geRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\
-    \x0chandler_type\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08acto\
-    r_id\x18\x03\x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\
-    \x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07tr\
-    aceIdB\0\x12-\n\x11requires_response\x18\x06\x20\x01(\x08R\x10requiresRe\
-    sponseB\0:\0\"\x8c\x02\n\x10SessionHandshake\x12\x19\n\x07node_id\x18\
-    \x01\x20\x01(\x04R\x06nodeIdB\0\x12>\n\x05nodes\x18\x02\x20\x03(\x0b2&.c\
-    oerce.remote.net.protocol.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\
-    \x03\x20\x01(\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\
-    \x07nodeTagB\0\x12I\n\x0bclient_type\x18\x05\x20\x01(\x0e2&.coerce.remot\
-    e.net.protocol.ClientTypeR\nclientTypeB\0\x12\x1b\n\x08trace_id\x18\x06\
-    \x20\x01(\tR\x07traceIdB\0:\0\"v\n\rStreamPublish\x12\x16\n\x05topic\x18\
-    \x01\x20\x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03key\
-    B\0\x12\x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\
-    \x08trace_id\x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"H\n\x0cNewNodeEvent\
-    \x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08tr\
-    ace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"L\n\x10NodeRemovedEvent\x12\
-    \x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_\
-    id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"N\n\x12LeaderChangedEvent\x12\
-    \x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_\
-    id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"q\n\x0bRaftRequest\x12\x1f\n\nm\
-    essage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0crequest_type\x18\
-    \x02\x20\x01(\rR\x0brequestTypeB\0\x12\x1a\n\x07payload\x18\x03\x20\x01(\
-    \x0cR\x07payloadB\0:\0*\xac\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\
-    \n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\
-    \x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreate\
-    Actor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\
-    \x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\
-    \x08\n\x04Raft\x10\x0b\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\
-    \n\n\x06Worker\x10\x01\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUn\
-    available\x10\0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*U\n\x0bSyste\
-    mEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\
-    \x10\x01\x12\x18\n\x14ClusterLeaderChanged\x10\x02\x1a\0B\0b\x06proto3\
+    \n\rnetwork.proto\x12\x0ecoerce.network\"?\n\nRemoteNode\x12\x19\n\x07no\
+    de_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x14\n\x04addr\x18\x02\x20\
+    \x01(\tR\x04addrB\0:\0\"\x9c\x01\n\x0fClientHandshake\x12\x19\n\x07node_\
+    id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x122\n\x05nodes\x18\x02\x20\x03(\
+    \x0b2\x1a.coerce.network.RemoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\
+    \x18\x03\x20\x01(\tR\x07nodeTagB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01\
+    (\tR\x07traceIdB\0:\0\"h\n\x0cClientResult\x12\x1f\n\nmessage_id\x18\x01\
+    \x20\x01(\tR\tmessageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01(\x0cR\x06\
+    resultB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\
+    \x82\x01\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessage\
+    IdB\0\x125\n\x04code\x18\x02\x20\x01(\x0e2\x1f.coerce.network.ClientErro\
+    rCodeR\x04codeB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\
+    \0:\0\"F\n\x04Ping\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\
+    \0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Po\
+    ng\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08\
+    trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"\xa5\x01\n\x0bCreateActor\
+    \x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08ac\
+    tor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12\x1f\n\nactor_type\x18\x03\
+    \x20\x01(\tR\tactorTypeB\0\x12\x18\n\x06recipe\x18\x04\x20\x01(\x0cR\x06\
+    recipeB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceIdB\0:\0\"h\
+    \n\tFindActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
+    \x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12\x1b\n\x08tr\
+    ace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"e\n\x0cActorAddress\x12\x1b\
+    \n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x19\n\x07node_id\
+    \x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\
+    \x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eMessageRequest\x12\x1f\n\nmessa\
+    ge_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0chandler_type\x18\x02\
+    \x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08actor_id\x18\x03\x20\x01(\tR\
+    \x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\x07messageB\0\
+    \x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceIdB\0\x12-\n\x11requi\
+    res_response\x18\x06\x20\x01(\x08R\x10requiresResponseB\0:\0\"\xf4\x01\n\
+    \x10SessionHandshake\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeI\
+    dB\0\x122\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNode\
+    R\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01(\x0cR\x05tokenB\0\x12\
+    \x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07nodeTagB\0\x12=\n\x0bclient_ty\
+    pe\x18\x05\x20\x01(\x0e2\x1a.coerce.network.ClientTypeR\nclientTypeB\0\
+    \x12\x1b\n\x08trace_id\x18\x06\x20\x01(\tR\x07traceIdB\0:\0\"v\n\rStream\
+    Publish\x12\x16\n\x05topic\x18\x01\x20\x01(\tR\x05topicB\0\x12\x12\n\x03\
+    key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\n\x07message\x18\x03\x20\x01(\
+    \x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceId\
+    B\0:\0\"H\n\x0cNewNodeEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\
+    \x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\
+    \"L\n\x10NodeRemovedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06\
+    nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"N\
+    \n\x12LeaderChangedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06n\
+    odeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"q\n\
+    \x0bRaftRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
+    \x12#\n\x0crequest_type\x18\x02\x20\x01(\rR\x0brequestTypeB\0\x12\x1a\n\
+    \x07payload\x18\x03\x20\x01(\x0cR\x07payloadB\0:\0*\xac\x01\n\x05Event\
+    \x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\
+    \x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
+    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
+    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
+    \x11\n\rStreamPublish\x10\n\x12\x08\n\x04Raft\x10\x0b\x1a\0*&\n\nClientT\
+    ype\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01\x1a\0*?\n\x0fClien\
+    tErrorCode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFa\
+    iled\x10\x01\x1a\0*U\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\
+    \x12\x16\n\x12ClusterNodeRemoved\x10\x01\x12\x18\n\x14ClusterLeaderChang\
+    ed\x10\x02\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

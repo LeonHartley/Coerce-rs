@@ -3,7 +3,7 @@ use crate::actor::ActorRefErr::ActorUnavailable;
 use crate::actor::{Actor, ActorId, ActorRefErr};
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::protocol::MessageRequest;
+use crate::remote::net::proto::network::MessageRequest;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
 

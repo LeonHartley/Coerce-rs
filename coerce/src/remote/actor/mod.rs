@@ -14,11 +14,11 @@ use std::collections::HashMap;
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::stream::pubsub::Subscription;
 
+use crate::remote::cluster::sharding::host::RemoteEntityRequest;
 use crate::remote::heartbeat::HeartbeatConfig;
 use uuid::Uuid;
 
 pub mod handler;
-pub mod heartbeat;
 pub mod message;
 
 pub struct RemoteClientRegistry {
@@ -100,6 +100,16 @@ pub struct RemoteHandler {
     requests: HashMap<Uuid, RemoteRequest>,
 }
 
+impl RemoteHandler {
+    pub fn push_request(&mut self, message_id: Uuid, request: RemoteRequest) {
+        self.requests.insert(message_id, request);
+    }
+
+    pub fn pop_request(&mut self, message_id: Uuid) -> Option<RemoteRequest> {
+        self.requests.remove(&message_id)
+    }
+}
+
 pub struct RemoteRequest {
     pub res_tx: tokio::sync::oneshot::Sender<RemoteResponse>,
 }
@@ -108,13 +118,12 @@ pub struct RemoteRequest {
 pub enum RemoteResponse {
     Ok(Vec<u8>),
     Err(Vec<u8>),
-    PingOk,
 }
 
 impl RemoteResponse {
     pub fn is_ok(&self) -> bool {
         match self {
-            &RemoteResponse::Ok(..) | &RemoteResponse::PingOk => true,
+            &RemoteResponse::Ok(..) => true,
             _ => false,
         }
     }
@@ -184,15 +193,9 @@ impl RemoteRegistry {
 }
 
 impl RemoteHandler {
-    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteHandler> {
-        ctx.new_actor(
-            format!("RemoteHandler-{}", system_tag),
-            RemoteHandler {
-                requests: HashMap::new(),
-            },
-            Anonymous,
-        )
-        .await
-        .expect("RemoteHandler")
+    pub fn new() -> RemoteHandler {
+        RemoteHandler {
+            requests: HashMap::new(),
+        }
     }
 }
