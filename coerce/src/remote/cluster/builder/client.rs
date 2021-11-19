@@ -3,6 +3,7 @@ use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::client::ClientType::Client;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::system::RemoteActorSystem;
+use chrono::Utc;
 
 pub struct ClusterClientBuilder {
     system: RemoteActorSystem,
@@ -31,7 +32,7 @@ impl ClusterClientBuilder {
             .expect("failed to connect to seed server");
 
         self.system
-            .register_node(RemoteNode::new(client.node_id, seed_addr))
+            .register_node(RemoteNode::new(client.node_id, seed_addr, Some(Utc::now())))
             .await;
 
         self.system.register_client(client.node_id, client).await;

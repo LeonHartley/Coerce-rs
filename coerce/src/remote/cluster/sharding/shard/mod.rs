@@ -37,6 +37,10 @@ impl Shard {
 #[async_trait]
 impl Handler<StartEntity> for Shard {
     async fn handle(&mut self, message: StartEntity, ctx: &mut ActorContext) {
+        /*  TODO: `start_entity` should be done asynchronously, any messages sent while the actor is
+                   starting should be buffered and emitted once the Shard receives confirmation that the actor was created
+        */
+
         let _res = self
             .start_entity(message.actor_id, message.recipe, ctx)
             .await;
@@ -63,6 +67,9 @@ impl Handler<EntityRequest> for Shard {
         let actor = match actor {
             Some(actor) => actor,
             None => match message.recipe {
+                /*  TODO: `start_entity` should be done asynchronously, any messages sent while the actor is
+                          starting should be buffered and emitted once the Shard receives confirmation that the actor was created
+                */
                 Some(recipe) => match self.start_entity(actor_id, recipe, ctx).await {
                     Ok(actor) => actor,
                     Err(_err) => {

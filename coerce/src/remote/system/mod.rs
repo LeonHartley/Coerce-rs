@@ -4,7 +4,7 @@ use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, LocalActorRef,
 };
 use crate::remote::actor::message::{
-    ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
+    ClientWrite, DeregisterClient, GetActorNode, GetNodes, RegisterActor,
     RegisterClient, RegisterNode, RegisterNodes, UpdateNodes,
 };
 use crate::remote::actor::{
@@ -32,6 +32,7 @@ use crate::remote::net::StreamData;
 use crate::remote::raft::RaftSystem;
 use protobuf::Message as ProtoMessage;
 
+use chrono::{DateTime, Utc};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::time::Instant;
@@ -51,6 +52,7 @@ pub type NodeId = u64;
 pub struct RemoteSystemCore {
     node_id: NodeId,
     inner: ActorSystem,
+    started_at: DateTime<Utc>,
     handler_ref: Arc<Mutex<RemoteHandler>>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
@@ -75,6 +77,10 @@ impl RemoteActorSystem {
 
     pub fn config(&self) -> &RemoteSystemConfig {
         &self.inner.config
+    }
+
+    pub fn started_at(&self) -> &DateTime<Utc> {
+        &self.inner.started_at
     }
 
     pub fn raft(&self) -> Option<&RaftSystem> {

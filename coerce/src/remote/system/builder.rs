@@ -20,6 +20,7 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use chrono::Utc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -155,6 +156,7 @@ impl RemoteActorSystemBuilder {
             mediator_ref,
             raft: None,
             heartbeat_ref: None,
+            started_at: Utc::now(),
             config,
         };
 

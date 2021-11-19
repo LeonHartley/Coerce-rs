@@ -2,10 +2,14 @@ syntax = "proto3";
 
 package coerce.network;
 
+import "google/protobuf/timestamp.proto";
+
 message RemoteNode {
   uint64 node_id = 1;
 
   string addr = 2;
+
+  google.protobuf.Timestamp node_started_at = 3;
 }
 
 enum Event {
@@ -36,6 +40,8 @@ message ClientHandshake {
   string node_tag = 3;
 
   string trace_id = 4;
+
+  google.protobuf.Timestamp node_started_at = 5;
 }
 
 message ClientResult {

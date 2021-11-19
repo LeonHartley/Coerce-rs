@@ -20,7 +20,7 @@ pub enum NodeStatus {
     Terminated,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct RemoteNodeState {
     pub id: NodeId,
     pub addr: String,
@@ -30,10 +30,11 @@ pub struct RemoteNodeState {
     pub status: NodeStatus,
 }
 
-#[derive(Hash, Serialize, Deserialize, Debug, Clone)]
+#[derive(Hash, Debug, Clone)]
 pub struct RemoteNode {
     pub id: NodeId,
     pub addr: String,
+    pub node_started_at: Option<DateTime<Utc>>,
 }
 
 impl RemoteNodeStore {
@@ -66,9 +67,10 @@ impl RemoteNodeStore {
     }
 
     pub fn remove(&mut self, node_id: &NodeId) -> Option<RemoteNode> {
-        self.nodes
-            .remove(&node_id)
-            .and_then(|node| self.table.remove(&RemoteNode::new(node.id, node.addr)))
+        self.nodes.remove(&node_id).and_then(|node| {
+            self.table
+                .remove(&RemoteNode::new(node.id, node.addr, None))
+        })
     }
 
     pub fn get_by_key(&mut self, key: impl Hash) -> Option<&RemoteNode> {
@@ -85,7 +87,8 @@ impl RemoteNodeStore {
             .into_iter()
             .map(|n| {
                 let node = n.clone();
-                self.table.add(RemoteNode::new(n.id, n.addr));
+                self.table
+                    .add(RemoteNode::new(n.id, n.addr, node.node_started_at));
                 (node.id, node)
             })
             .collect();
@@ -100,10 +103,12 @@ impl RemoteNodeState {
     pub fn new(node: RemoteNode) -> Self {
         let id = node.id;
         let addr = node.addr;
+        let node_started_at = node.node_started_at;
 
         Self {
             id,
             addr,
+            node_started_at,
             ..RemoteNodeState::default()
         }
     }
@@ -123,8 +128,12 @@ impl Default for RemoteNodeState {
 }
 
 impl RemoteNode {
-    pub fn new(id: u64, addr: String) -> RemoteNode {
-        RemoteNode { id, addr }
+    pub fn new(id: u64, addr: String, node_started_at: Option<DateTime<Utc>>) -> RemoteNode {
+        RemoteNode {
+            id,
+            addr,
+            node_started_at,
+        }
     }
 }
 
@@ -136,6 +145,12 @@ impl ToString for RemoteNode {
 
 impl PartialEq for RemoteNode {
     fn eq(&self, other: &RemoteNode) -> bool {
+        self.id == other.id && self.addr == other.addr
+    }
+}
+
+impl PartialEq for RemoteNodeState {
+    fn eq(&self, other: &RemoteNodeState) -> bool {
         self.id == other.id && self.addr == other.addr
     }
 }

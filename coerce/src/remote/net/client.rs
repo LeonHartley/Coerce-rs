@@ -7,7 +7,10 @@ use crate::remote::net::proto::network::{Pong, RemoteNode, SessionHandshake};
 use crate::remote::net::{receive_loop, StreamData, StreamReceiver};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
+use chrono::format::Numeric::Timestamp;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::SinkExt;
+use protobuf::well_known_types::Int64Value;
 use protobuf::Message;
 use std::str::FromStr;
 use tokio::io::WriteHalf;
@@ -19,6 +22,7 @@ use uuid::Uuid;
 pub struct RemoteClient {
     pub node_id: NodeId,
     pub node_tag: String,
+    pub node_started_at: DateTime<Utc>,
     write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
     stop: Option<oneshot::Sender<bool>>,
 }
@@ -26,6 +30,7 @@ pub struct RemoteClient {
 pub struct HandshakeAcknowledge {
     node_id: NodeId,
     node_tag: String,
+    node_started_at: DateTime<Utc>,
 }
 
 pub struct ClientMessageReceiver {
@@ -62,6 +67,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     .map(|n| crate::remote::cluster::node::RemoteNode {
                         id: n.get_node_id(),
                         addr: n.addr,
+                        node_started_at: n.node_started_at.into_option().map(timestamp_to_datetime),
                     })
                     .collect();
 
@@ -71,8 +77,17 @@ impl StreamReceiver for ClientMessageReceiver {
 
                 if let Some(handshake_tx) = self.handshake_tx.take() {
                     let node_tag = msg.node_tag;
+                    let node_started_at = msg
+                        .node_started_at
+                        .into_option()
+                        .map_or_else(|| Utc::now(), timestamp_to_datetime);
+
                     if !handshake_tx
-                        .send(HandshakeAcknowledge { node_id, node_tag })
+                        .send(HandshakeAcknowledge {
+                            node_id,
+                            node_tag,
+                            node_started_at,
+                        })
                         .is_ok()
                     {
                         warn!(target: "RemoteClient", "error sending handshake_tx");
@@ -183,11 +198,14 @@ impl RemoteClient {
         };
 
         for node in nodes {
-            msg.nodes.push(RemoteNode {
+            let node = RemoteNode {
                 node_id: node.id,
                 addr: node.addr,
+                node_started_at: node.node_started_at.as_ref().map(datetime_to_timestamp).into(),
                 ..RemoteNode::default()
-            });
+            };
+
+            msg.nodes.push(node);
         }
 
         write_msg(SessionEvent::Handshake(msg), &mut write)
@@ -198,12 +216,14 @@ impl RemoteClient {
         let handshake_ack = handshake_rx.await.expect("handshake ack");
         let node_id = handshake_ack.node_id;
         let node_tag = handshake_ack.node_tag;
+        let node_started_at = handshake_ack.node_started_at;
 
         trace!("handshake ack (node_id={}, node_tag={})", node_id, node_tag);
         Ok(RemoteClient {
             write,
             node_id,
             node_tag,
+            node_started_at,
             stop: Some(stop_tx),
         })
     }
@@ -268,4 +288,19 @@ impl From<ClientType> for network::ClientType {
             ClientType::Worker => Self::Worker,
         }
     }
+}
+
+pub fn datetime_to_timestamp(date_time: &DateTime<Utc>) -> protobuf::well_known_types::Timestamp {
+    let mut t = protobuf::well_known_types::Timestamp::new();
+
+    t.set_seconds(date_time.timestamp());
+    t.set_nanos(date_time.timestamp_subsec_nanos() as i32);
+    t
+}
+
+pub fn timestamp_to_datetime(timestamp: protobuf::well_known_types::Timestamp) -> DateTime<Utc> {
+    DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
+        Utc,
+    )
 }

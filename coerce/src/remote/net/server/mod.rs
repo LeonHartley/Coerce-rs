@@ -11,11 +11,13 @@ use crate::remote::net::{receive_loop, StreamReceiver};
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::RemoteNode;
+use crate::remote::net::client::{timestamp_to_datetime, datetime_to_timestamp};
 use crate::remote::net::proto::network::{
     ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use opentelemetry::global;
 use protobuf::Message;
 use std::collections::HashMap;
@@ -250,6 +252,7 @@ async fn session_handshake(
     let mut response = ClientHandshake {
         node_id: ctx.node_id(),
         node_tag: ctx.node_tag().to_string(),
+        node_started_at: Some(datetime_to_timestamp(ctx.started_at())).into(),
         ..ClientHandshake::default()
     };
 
@@ -257,6 +260,7 @@ async fn session_handshake(
         response.nodes.push(RemoteNodeProto {
             node_id: node.id,
             addr: node.addr,
+            node_started_at: node.node_started_at.as_ref().map(datetime_to_timestamp).into(),
             ..RemoteNodeProto::default()
         });
     }
@@ -270,7 +274,10 @@ async fn session_handshake(
         handshake
             .nodes
             .into_iter()
-            .map(|n| RemoteNode::new(n.node_id, n.addr))
+            .map(|n| {
+                let started_at = n.node_started_at.into_option().map(timestamp_to_datetime);
+                RemoteNode::new(n.node_id, n.addr, started_at)
+            })
             .collect(),
     )
     .await;

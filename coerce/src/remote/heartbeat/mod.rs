@@ -117,7 +117,12 @@ impl Handler<HeartbeatTick> for Heartbeat {
 
         updates.extend(join_all(ping_futures).await);
 
-        trace!("current_node = {}, nodes: {:?}, heartbeat took {} ms", current_node, &updates, now.elapsed().as_millis());
+        trace!(
+            "current_node = {}, nodes: {:?}, heartbeat took {} ms",
+            current_node,
+            &updates,
+            now.elapsed().as_millis()
+        );
         self.system.update_nodes(updates).await;
         self.last_heartbeat = Some(Instant::now())
     }

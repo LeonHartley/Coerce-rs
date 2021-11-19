@@ -23,23 +23,23 @@ pub async fn test_remote_node_store() {
     ];
 
     let mut nodes = RemoteNodeStore::new(vec![
-        RemoteNode::new(node_1, "127.0.0.1:1024".to_owned()),
-        RemoteNode::new(node_2, "127.0.0.2:1024".to_owned()),
-        RemoteNode::new(node_3, "127.0.0.3:1024".to_owned()),
-        RemoteNode::new(node_4, "127.0.0.4:1024".to_owned()),
+        RemoteNode::new(node_1, "127.0.0.1:1024".to_owned(), None),
+        RemoteNode::new(node_2, "127.0.0.2:1024".to_owned(), None),
+        RemoteNode::new(node_3, "127.0.0.3:1024".to_owned(), None),
+        RemoteNode::new(node_4, "127.0.0.4:1024".to_owned(), None),
     ]);
 
     let mut nodes_2 = RemoteNodeStore::new(vec![
-        RemoteNode::new(node_2, "127.0.0.2:1024".to_owned()),
-        RemoteNode::new(node_4, "127.0.0.4:1024".to_owned()),
-        RemoteNode::new(node_1, "127.0.0.1:1024".to_owned()),
-        RemoteNode::new(node_3, "127.0.0.3:1024".to_owned()),
+        RemoteNode::new(node_2, "127.0.0.2:1024".to_owned(), None),
+        RemoteNode::new(node_4, "127.0.0.4:1024".to_owned(), None),
+        RemoteNode::new(node_1, "127.0.0.1:1024".to_owned(), None),
+        RemoteNode::new(node_3, "127.0.0.3:1024".to_owned(), None),
     ]);
 
     assert_eq!(&nodes.get_by_key(actors[0]).unwrap().id, &node_1);
     assert_eq!(&nodes_2.get_by_key(actors[0]).unwrap().id, &node_1);
-    assert_eq!(&nodes.get_by_key(actors[1]).unwrap().id, &node_1);
-    assert_eq!(&nodes_2.get_by_key(actors[1]).unwrap().id, &node_1);
+    assert_eq!(&nodes.get_by_key(actors[1]).unwrap().id, &node_4);
+    assert_eq!(&nodes_2.get_by_key(actors[1]).unwrap().id, &node_4);
     assert_eq!(&nodes.get_by_key(actors[2]).unwrap().id, &node_3);
     assert_eq!(&nodes_2.get_by_key(actors[2]).unwrap().id, &node_3);
     assert_eq!(&nodes.get_by_key(actors[3]).unwrap().id, &node_4);
