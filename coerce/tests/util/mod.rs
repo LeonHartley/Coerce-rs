@@ -8,7 +8,7 @@ use log::LevelFilter;
 use serde::Serialize;
 use std::io::Write;
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TestActorStatus {
     Inactive,
     Active,

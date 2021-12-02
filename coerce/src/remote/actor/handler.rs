@@ -217,7 +217,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
 
                 trace!(target: "RemoteRegistry::GetActorNode", "remote request={}", message_id);
-                system.push_request(message_id, res_tx).await;
+                system.push_request(message_id, res_tx);
 
                 trace!(target: "RemoteRegistry::GetActorNode", "sending actor lookup request to={}", assigned_registry_node);
                 let trace_id = extract_trace_identifier(&span);

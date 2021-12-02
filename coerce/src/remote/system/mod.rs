@@ -4,8 +4,8 @@ use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, LocalActorRef,
 };
 use crate::remote::actor::message::{
-    ClientWrite, DeregisterClient, GetActorNode, GetNodes, RegisterActor,
-    RegisterClient, RegisterNode, RegisterNodes, UpdateNodes,
+    ClientWrite, DeregisterClient, GetActorNode, GetNodes, RegisterActor, RegisterClient,
+    RegisterNode, RegisterNodes, UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -35,6 +35,8 @@ use protobuf::Message as ProtoMessage;
 use chrono::{DateTime, Utc};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering::{Relaxed, SeqCst};
 use std::time::Instant;
 use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
@@ -48,18 +50,21 @@ pub struct RemoteActorSystem {
 
 pub type NodeId = u64;
 
+pub type AtomicNodeId = AtomicU64;
+
 #[derive(Clone)]
 pub struct RemoteSystemCore {
     node_id: NodeId,
     inner: ActorSystem,
     started_at: DateTime<Utc>,
-    handler_ref: Arc<Mutex<RemoteHandler>>,
+    handler_ref: Arc<parking_lot::Mutex<RemoteHandler>>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
     heartbeat_ref: Option<LocalActorRef<Heartbeat>>,
     mediator_ref: Option<LocalActorRef<StreamMediator>>,
     config: Arc<RemoteSystemConfig>,
     raft: Option<Arc<RaftSystem>>,
+    current_leader: Arc<AtomicNodeId>,
 }
 
 impl RemoteActorSystem {
@@ -85,6 +90,14 @@ impl RemoteActorSystem {
 
     pub fn raft(&self) -> Option<&RaftSystem> {
         self.inner.raft.as_ref().map(|s| s.as_ref())
+    }
+
+    pub fn current_leader(&self) -> Option<NodeId> {
+        Some(self.inner.current_leader.load(SeqCst))
+    }
+
+    pub fn update_leader(&self, new_leader: NodeId) -> Option<NodeId> {
+        Some(self.inner.current_leader.swap(new_leader, SeqCst))
     }
 }
 
@@ -240,7 +253,7 @@ impl RemoteActorSystem {
         let (res_tx, res_rx) = oneshot::channel();
 
         trace!(target: "NodeRpc", "message_id={}, created channel, storing request", &message_id);
-        self.push_request(message_id, res_tx).await;
+        self.push_request(message_id, res_tx);
 
         trace!(target: "NodeRpc", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
         self.send_message(node_id, event).await;
@@ -489,9 +502,9 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
+    pub fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
         let start = Instant::now();
-        let mut handler = self.inner.handler_ref.lock().await;
+        let mut handler = self.inner.handler_ref.lock();
 
         handler.push_request(id, RemoteRequest { res_tx });
 
@@ -499,9 +512,9 @@ impl RemoteActorSystem {
         info!("PushRequest took {} ms", end.as_millis());
     }
 
-    pub async fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
+    pub fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
         let start = Instant::now();
-        let mut handler = self.inner.handler_ref.lock().await;
+        let mut handler = self.inner.handler_ref.lock();
 
         let a = handler.pop_request(id).map(|r| r.res_tx);
 

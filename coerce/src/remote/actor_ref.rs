@@ -45,6 +45,10 @@ where
         &self.id
     }
 
+    pub fn node_id(&self) -> NodeId {
+        self.node_id
+    }
+
     pub async fn notify<Msg: Message>(&self, msg: Envelope<Msg>) -> Result<(), ActorRefErr>
     where
         A: Handler<Msg>,
@@ -83,7 +87,7 @@ where
         let event = self.create_request(msg, extract_trace_identifier(&span), id);
 
         let (res_tx, res_rx) = oneshot::channel();
-        self.system.push_request(id, res_tx).await;
+        self.system.push_request(id, res_tx);
 
         match event {
             Some(event) => {
@@ -104,7 +108,6 @@ where
                         // TODO: return custom error
                         Err(ActorUnavailable)
                     }
-                    _ => Err(ActorUnavailable),
                 }
             }
             None => {

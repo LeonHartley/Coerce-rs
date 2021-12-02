@@ -7,9 +7,10 @@ use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{Ping, Pong};
 use crate::remote::system::{NodeId, NodeRpcErr, RemoteActorSystem};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, MIN_DATETIME};
 use futures::future::Map;
 use futures::{future::join_all, FutureExt, TryFutureExt};
+use std::cmp::Ordering;
 use std::future::Future;
 use std::ops::Add;
 use std::pin::Pin;
@@ -123,6 +124,28 @@ impl Handler<HeartbeatTick> for Heartbeat {
             &updates,
             now.elapsed().as_millis()
         );
+
+        updates.sort_by(|a, b| {
+            match Ord::cmp(
+                &a.node_started_at.unwrap_or(MIN_DATETIME),
+                &b.node_started_at.unwrap_or(MIN_DATETIME),
+            ) {
+                Ordering::Equal => Ord::cmp(&a.id, &b.id),
+                ordering => ordering,
+            }
+        });
+
+        let oldest_node = updates.first();
+        if let Some(oldest_node) = oldest_node {
+            if Some(oldest_node.id) != self.system.current_leader() {
+                self.system.update_leader(oldest_node.id);
+                info!(
+                    "leader of cluster: {:?}, current_node_tag={}",
+                    oldest_node, &node_tag
+                );
+            }
+        }
+
         self.system.update_nodes(updates).await;
         self.last_heartbeat = Some(Instant::now())
     }
@@ -220,6 +243,7 @@ fn node_status(
                 NodeStatus::Healthy
             }
         }
+
         PingResult::Timeout => {
             let terminated = last_heartbeat.map_or(true, |h| {
                 h.add(config.terminated_node_heartbeat_timeout) >= Instant::now()
@@ -234,6 +258,7 @@ fn node_status(
                 NodeStatus::Unhealthy
             }
         }
+
         PingResult::Err(e) => {
             if previous_status == NodeStatus::Unhealthy {
                 error!(

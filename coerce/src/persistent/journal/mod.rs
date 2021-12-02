@@ -27,7 +27,7 @@ pub struct Journal<A: PersistentActor> {
 impl<A: PersistentActor> Journal<A> {
     pub async fn new(persistence_id: String, storage: JournalStorageRef) -> Self {
         let last_sequence_id = 0;
-        let types = init_journal_types::<A>().await;
+        let types = init_journal_types::<A>();
         Self {
             persistence_id,
             last_sequence_id,
