@@ -11,7 +11,7 @@ use crate::remote::net::{receive_loop, StreamReceiver};
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::client::{timestamp_to_datetime, datetime_to_timestamp};
+use crate::remote::net::client::{datetime_to_timestamp, timestamp_to_datetime};
 use crate::remote::net::proto::network::{
     ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
@@ -211,17 +211,16 @@ impl StreamReceiver for SessionMessageReceiver {
                         .await
                 }
             }
-            SessionEvent::Result(res) => match sys
-                .pop_request(Uuid::from_str(&res.message_id).unwrap())
-                .await
-            {
-                Some(res_tx) => {
-                    let _ = res_tx.send(RemoteResponse::Ok(res.result));
+            SessionEvent::Result(res) => {
+                match sys.pop_request(Uuid::from_str(&res.message_id).unwrap()) {
+                    Some(res_tx) => {
+                        let _ = res_tx.send(RemoteResponse::Ok(res.result));
+                    }
+                    None => {
+                        warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
+                    }
                 }
-                None => {
-                    warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
-                }
-            },
+            }
         }
     }
 
@@ -260,7 +259,11 @@ async fn session_handshake(
         response.nodes.push(RemoteNodeProto {
             node_id: node.id,
             addr: node.addr,
-            node_started_at: node.node_started_at.as_ref().map(datetime_to_timestamp).into(),
+            node_started_at: node
+                .node_started_at
+                .as_ref()
+                .map(datetime_to_timestamp)
+                .into(),
             ..RemoteNodeProto::default()
         });
     }

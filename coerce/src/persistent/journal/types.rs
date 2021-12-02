@@ -8,11 +8,10 @@ use std::any::Any;
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 lazy_static! {
-    static ref JOURNAL_TYPE_CACHE: Mutex<HashMap<TypeId, Arc<dyn Any + Send + Sync>>> =
-        Mutex::new(HashMap::new());
+    static ref JOURNAL_TYPE_CACHE: parking_lot::Mutex<HashMap<TypeId, Arc<dyn Any + Send + Sync>>> =
+        parking_lot::Mutex::new(HashMap::new());
 }
 
 pub struct JournalTypes<A: PersistentActor> {
@@ -85,9 +84,9 @@ impl<A: PersistentActor> JournalTypes<A> {
     }
 }
 
-pub(crate) async fn init_journal_types<A: PersistentActor>() -> Arc<JournalTypes<A>> {
+pub(crate) fn init_journal_types<A: PersistentActor>() -> Arc<JournalTypes<A>> {
     let actor_type_id = TypeId::of::<A>();
-    if let Some(types) = get_cached_types(&actor_type_id).await {
+    if let Some(types) = get_cached_types(&actor_type_id) {
         return types;
     }
 
@@ -97,16 +96,13 @@ pub(crate) async fn init_journal_types<A: PersistentActor>() -> Arc<JournalTypes
     let types = Arc::new(types);
     JOURNAL_TYPE_CACHE
         .lock()
-        .await
         .insert(actor_type_id, types.clone());
 
     types
 }
 
-async fn get_cached_types<A: PersistentActor>(
-    actor_type_id: &TypeId,
-) -> Option<Arc<JournalTypes<A>>> {
-    if let Some(journal_types) = JOURNAL_TYPE_CACHE.lock().await.get(&actor_type_id) {
+fn get_cached_types<A: PersistentActor>(actor_type_id: &TypeId) -> Option<Arc<JournalTypes<A>>> {
+    if let Some(journal_types) = JOURNAL_TYPE_CACHE.lock().get(&actor_type_id) {
         Some(journal_types.clone().downcast().unwrap())
     } else {
         None

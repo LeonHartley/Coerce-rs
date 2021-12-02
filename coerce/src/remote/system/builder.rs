@@ -12,7 +12,7 @@ use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
 use crate::remote::raft::RaftSystem;
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::stream::system::SystemTopic;
-use crate::remote::system::{NodeId, RemoteActorSystem, RemoteSystemCore};
+use crate::remote::system::{AtomicNodeId, NodeId, RemoteActorSystem, RemoteSystemCore};
 
 use futures::TryFutureExt;
 use rand::RngCore;
@@ -21,7 +21,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::Utc;
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
 pub struct RemoteActorSystemBuilder {
@@ -64,6 +63,10 @@ impl RemoteActorSystemBuilder {
     {
         self.handlers.push(Box::new(f));
 
+        self
+    }
+
+    pub fn with_sharding<F>(mut self, f: F) -> Self {
         self
     }
 
@@ -122,7 +125,7 @@ impl RemoteActorSystemBuilder {
         let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
 
         let config = handlers.build(self.node_tag);
-        let handler_ref = Arc::new(Mutex::new(RemoteHandler::new()));
+        let handler_ref = Arc::new(parking_lot::Mutex::new(RemoteHandler::new()));
         let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
 
         let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
@@ -158,6 +161,7 @@ impl RemoteActorSystemBuilder {
             heartbeat_ref: None,
             started_at: Utc::now(),
             config,
+            current_leader: Arc::new(AtomicNodeId::new(0)),
         };
 
         let inner = Arc::new(core.clone());

@@ -13,8 +13,6 @@ use std::collections::HashMap;
 
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::stream::pubsub::Subscription;
-
-use crate::remote::cluster::sharding::host::RemoteEntityRequest;
 use crate::remote::heartbeat::HeartbeatConfig;
 use uuid::Uuid;
 

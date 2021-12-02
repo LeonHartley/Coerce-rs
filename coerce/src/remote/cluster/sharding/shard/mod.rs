@@ -3,12 +3,13 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
 use crate::remote::actor::BoxedActorHandler;
 use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::{EntityRequest, RemoteEntityRequest, StartEntity};
+use crate::remote::cluster::sharding::host::StartEntity;
 use crate::remote::handler::ActorHandler;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::ClientResult;
 
 use tokio::sync::oneshot;
+use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 
 pub struct Shard {
     shard_id: ShardId,
@@ -57,8 +58,15 @@ impl Handler<EntityRequest> for Shard {
         let actor_id = message.actor_id;
         let result_channel = message.result_channel;
 
+        trace!("entity request");
         if handler.is_none() {
             // TODO: send unsupported msg err
+            warn!(
+                "no message handler configured for message={}, actor_type={}, actor_id={}",
+                message.message_type,
+                self.handler.actor_type_name(),
+                &actor_id
+            );
             result_channel.map(|m| m.send(Err(ActorRefErr::ActorUnavailable)));
             return;
         }
@@ -93,10 +101,6 @@ impl Handler<EntityRequest> for Shard {
                 .await;
         });
     }
-}
-
-impl Message for RemoteEntityRequest {
-    type Result = ();
 }
 
 #[async_trait]

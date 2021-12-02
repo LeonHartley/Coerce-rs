@@ -3,6 +3,7 @@ use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, BoxedActorRef,
+    CoreActorRef,
 };
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 
@@ -25,6 +26,8 @@ pub trait ActorHandler: 'static + Any + Sync + Send {
     fn new_boxed(&self) -> BoxedActorHandler;
 
     fn id(&self) -> TypeId;
+
+    fn actor_type_name(&self) -> &'static str;
 }
 
 #[async_trait]
@@ -168,6 +171,10 @@ where
     fn id(&self) -> TypeId {
         self.type_id()
     }
+
+    fn actor_type_name(&self) -> &'static str {
+        A::type_name()
+    }
 }
 
 #[async_trait]
@@ -210,6 +217,7 @@ where
         buffer: &[u8],
         res: Option<oneshot::Sender<Result<Vec<u8>, ActorRefErr>>>,
     ) {
+        let actor_type = actor.actor_type();
         let actor = actor.as_actor::<A>();
         let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
 
@@ -221,7 +229,6 @@ where
                             .send(message)
                             .await
                             .map(|result| M::write_remote_result(result));
-
                         match result {
                             Ok(Ok(result)) => {
                                 if res.send(Ok(result)).is_err() {
@@ -243,7 +250,16 @@ where
                     }
                 }
             }
-            _ => {}
+            (_, Err(e)) => {
+                error!("error: {:?}", e);
+            }
+            (None, _) => {
+                error!(
+                    "could not convert BoxedActorRef (inner={}) to LocalActorRef<{}>",
+                    actor_type,
+                    A::type_name()
+                );
+            }
         }
     }
 

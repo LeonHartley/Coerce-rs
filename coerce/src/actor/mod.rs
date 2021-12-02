@@ -9,6 +9,7 @@ use crate::actor::scheduler::ActorType::Tracked;
 use std::any::Any;
 
 use crate::actor::supervised::Terminated;
+use crate::remote::system::NodeId;
 use futures::SinkExt;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -148,6 +149,13 @@ impl<A: Actor> ActorRef<A> {
         match &self.inner_ref {
             Ref::Local(a) => &a.id,
             Ref::Remote(a) => a.actor_id(),
+        }
+    }
+
+    pub fn node_id(&self) -> Option<NodeId> {
+        match &self.inner_ref {
+            Ref::Local(_) => None,
+            Ref::Remote(r) => Some(r.node_id()),
         }
     }
 }
@@ -296,6 +304,8 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
 pub trait CoreActorRef: Any {
     fn actor_id(&self) -> &ActorId;
 
+    fn actor_type(&self) -> &'static str;
+
     async fn status(&self) -> Result<ActorStatus, ActorRefErr>;
 
     async fn stop(&self) -> Result<ActorStatus, ActorRefErr>;
@@ -314,7 +324,7 @@ pub struct BoxedActorRef(Arc<dyn CoreActorRef + Send + Sync>);
 
 impl BoxedActorRef {
     pub fn as_actor<A: Actor>(&self) -> Option<LocalActorRef<A>> {
-        self.as_any().downcast_ref::<LocalActorRef<A>>().cloned()
+        self.0.as_any().downcast_ref::<LocalActorRef<A>>().cloned()
     }
 }
 
@@ -364,8 +374,8 @@ impl<A: Actor> LocalActorRef<A> {
     {
         let message_type = msg.name();
         let actor_type = A::type_name();
-        let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
-        let _enter = span.enter();
+        // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
+        // let _enter = span.enter();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
@@ -443,6 +453,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.actor_id()
     }
 
+    fn actor_type(&self) -> &'static str {
+        A::type_name()
+    }
+
     async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
         self.status().await
     }
@@ -472,6 +486,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
 impl CoreActorRef for BoxedActorRef {
     fn actor_id(&self) -> &ActorId {
         self.0.actor_id()
+    }
+
+    fn actor_type(&self) -> &'static str {
+        self.0.actor_type()
     }
 
     async fn status(&self) -> Result<ActorStatus, ActorRefErr> {

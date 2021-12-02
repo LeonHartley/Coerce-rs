@@ -94,38 +94,36 @@ impl StreamReceiver for ClientMessageReceiver {
                     }
                 }
             }
-            ClientEvent::Result(res) => match sys
-                .pop_request(Uuid::from_str(&res.message_id).unwrap())
-                .await
-            {
-                Some(res_tx) => {
-                    let _ = res_tx.send(RemoteResponse::Ok(res.result));
+            ClientEvent::Result(res) => {
+                match sys.pop_request(Uuid::from_str(&res.message_id).unwrap()) {
+                    Some(res_tx) => {
+                        let _ = res_tx.send(RemoteResponse::Ok(res.result));
+                    }
+                    None => {
+                        warn!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
+                    }
                 }
-                None => {
-                    warn!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
-                }
-            },
+            }
             ClientEvent::Err(_e) => {}
             ClientEvent::Ping(_ping) => {}
-            ClientEvent::Pong(pong) => match sys
-                .pop_request(Uuid::from_str(&pong.message_id).unwrap())
-                .await
-            {
-                Some(res_tx) => res_tx
-                    .send(RemoteResponse::Ok(
-                        Pong {
-                            message_id: pong.message_id,
-                            ..Pong::default()
-                        }
-                        .write_to_bytes()
-                        .expect("serialised pong"),
-                    ))
-                    .expect("send ping ok"),
-                None => {
-                    //                                          :P
-                    warn!(target: "RemoteClient", "received unsolicited pong");
+            ClientEvent::Pong(pong) => {
+                match sys.pop_request(Uuid::from_str(&pong.message_id).unwrap()) {
+                    Some(res_tx) => res_tx
+                        .send(RemoteResponse::Ok(
+                            Pong {
+                                message_id: pong.message_id,
+                                ..Pong::default()
+                            }
+                            .write_to_bytes()
+                            .expect("serialised pong"),
+                        ))
+                        .expect("send ping ok"),
+                    None => {
+                        //                                          :P
+                        warn!(target: "RemoteClient", "received unsolicited pong");
+                    }
                 }
-            },
+            }
         }
     }
 
@@ -201,7 +199,11 @@ impl RemoteClient {
             let node = RemoteNode {
                 node_id: node.id,
                 addr: node.addr,
-                node_started_at: node.node_started_at.as_ref().map(datetime_to_timestamp).into(),
+                node_started_at: node
+                    .node_started_at
+                    .as_ref()
+                    .map(datetime_to_timestamp)
+                    .into(),
                 ..RemoteNode::default()
             };
 
