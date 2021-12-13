@@ -6,10 +6,11 @@ use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use tokio::sync::oneshot;
 
+use crate::remote::cluster::sharding::host::request::EntityRequest;
 use tokio::sync::oneshot::Sender;
 use uuid::Uuid;
 
@@ -25,6 +26,7 @@ pub struct ShardHost {
     max_shards: ShardId,
     hosted_shards: HashMap<ShardId, ShardState>,
     remote_shards: HashMap<ShardId, ActorRef<Shard>>,
+    buffered_requests: HashMap<ShardId, Vec<EntityRequest>>,
 }
 
 impl Actor for ShardHost {}
@@ -59,6 +61,7 @@ impl ShardHost {
             max_shards: 100,
             hosted_shards: Default::default(),
             remote_shards: Default::default(),
+            buffered_requests: Default::default(),
         }
     }
 }
@@ -67,6 +70,8 @@ impl ShardHost {
 impl Handler<ShardAllocated> for ShardHost {
     async fn handle(&mut self, message: ShardAllocated, ctx: &mut ActorContext) {
         let remote = ctx.system().remote();
+
+        info!("shard#{} allocated on node={}", message.0, message.1);
 
         let shard_id = message.0;
         let node_id = message.1;
@@ -93,6 +98,18 @@ impl Handler<ShardAllocated> for ShardHost {
                 RemoteActorRef::new(shard_actor_id, node_id, ctx.system().remote_owned()).into();
 
             self.remote_shards.insert(shard_id, shard_actor);
+        }
+
+        if let Some(buffered_requests) = self.buffered_requests.remove(&shard_id) {
+            trace!(
+                "processing {} buffered requests for shard={}",
+                buffered_requests.len(),
+                shard_id
+            );
+
+            for request in buffered_requests {
+                self.handle(request, ctx).await;
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
+use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use crate::persistent::context::ActorPersistence;
+use futures::{Stream, StreamExt};
 
 use crate::actor::supervised::Supervised;
 
@@ -169,6 +171,44 @@ impl ActorContext {
     pub fn with_parent(mut self, boxed_parent_ref: Option<BoxedActorRef>) -> Self {
         self.boxed_parent_ref = boxed_parent_ref;
         self
+    }
+}
+
+pub fn attach_stream<A, S, I, E, M, F>(
+    actor_ref: LocalActorRef<A>,
+    stream: S,
+    options: StreamAttachmentOptions,
+    message_converter: F,
+) where
+    A: Actor + Handler<M>,
+    S: 'static + Stream<Item = Result<I, E>> + Send,
+    F: 'static + Fn(I) -> Option<M> + Send,
+    M: Message,
+    S: Unpin,
+{
+    tokio::spawn(async move {
+        let mut reader = stream;
+        while let Some(Ok(msg)) = reader.next().await {
+            if let Some(message) = message_converter(msg) {
+                actor_ref.notify(message);
+            }
+        }
+
+        if options.stop_on_stream_end {
+            actor_ref.notify_stop();
+        }
+    });
+}
+
+pub struct StreamAttachmentOptions {
+    stop_on_stream_end: bool,
+}
+
+impl Default for StreamAttachmentOptions {
+    fn default() -> Self {
+        Self {
+            stop_on_stream_end: true,
+        }
     }
 }
 

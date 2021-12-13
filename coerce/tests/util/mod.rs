@@ -7,6 +7,8 @@ use env_logger::Builder;
 use log::LevelFilter;
 use serde::Serialize;
 use std::io::Write;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TestActorStatus {
@@ -116,7 +118,7 @@ impl Handler<GetCounterRequest> for EchoActor {
 }
 
 pub fn create_trace_logger() {
-    Builder::new()
+    if Builder::new()
         .format(|buf, record| {
             writeln!(
                 buf,
@@ -128,5 +130,7 @@ pub fn create_trace_logger() {
             )
         })
         .filter(None, LevelFilter::Trace)
-        .init();
+        .try_init()
+        .is_err()
+    {}
 }

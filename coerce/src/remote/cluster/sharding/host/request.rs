@@ -1,9 +1,13 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{ActorId, ActorRef, ActorRefErr};
+use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
+use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::{calculate_shard_id, ShardHost};
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::RemoteActorRef;
+use std::sync::Arc;
 use tokio::sync::oneshot::{channel, Sender};
 use uuid::Uuid;
 
@@ -11,7 +15,7 @@ pub struct EntityRequest {
     pub actor_id: ActorId,
     pub message_type: String,
     pub message: Vec<u8>,
-    pub recipe: Option<Vec<u8>>,
+    pub recipe: Option<Arc<Vec<u8>>>,
     pub result_channel: Option<Sender<Result<Vec<u8>, ActorRefErr>>>,
 }
 
@@ -63,8 +67,30 @@ impl Handler<EntityRequest> for ShardHost {
                 ctx.system().remote_owned(),
             ));
         } else {
-            // TODO: unallocated shard -> ask coordinator for the shard allocation
-            // TODO: buffer the request until new shard is allocated
+            let remote = ctx.system().remote();
+            let leader = remote.current_leader();
+
+            if let Some(leader) = leader {
+                let actor_id = format!("ShardCoordinator-{}", &self.shard_entity);
+
+                let leader: ActorRef<ShardCoordinator> = if leader == remote.node_id() {
+                    ctx.system()
+                        .get_tracked_actor::<ShardCoordinator>(actor_id)
+                        .await
+                        .expect("")
+                        .into()
+                } else {
+                    RemoteActorRef::<ShardCoordinator>::new(actor_id, leader, remote.clone()).into()
+                };
+
+                let buffered_requests = self.buffered_requests.entry(shard_id);
+                let mut buffered_requests = buffered_requests.or_insert_with(|| vec![]);
+                buffered_requests.push(message);
+
+                trace!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})", shard_id, buffered_requests.len());
+
+                let _ = leader.notify(AllocateShard { shard_id }).await;
+            }
         }
     }
 }

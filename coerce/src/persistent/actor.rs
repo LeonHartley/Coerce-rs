@@ -5,7 +5,7 @@ use crate::actor::{Actor, BoxedActorRef};
 
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
-use crate::persistent::journal::PersistErr;
+use crate::persistent::journal::{PersistErr, RecoveredPayload};
 
 #[async_trait]
 pub trait PersistentActor: 'static + Sized + Send + Sync {
@@ -71,17 +71,12 @@ where
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
-        let journal = ctx
-            .persistence_mut()
-            .init_journal::<Self>(persistence_key)
-            .await;
-
-        let snapshot = journal.recover_snapshot().await;
-        let messages = journal.recover_messages().await;
+        let (snapshot, messages) = load_journal::<A>(persistence_key, ctx).await;
 
         trace!(
-            "actor recovered {} messages",
-            messages.as_ref().map_or(0, |m| m.len())
+            "actor recovered {} messages (snapshot_recovered={})",
+            messages.as_ref().map_or(0, |m| m.len()),
+            snapshot.is_some()
         );
 
         if let Some(snapshot) = snapshot {
@@ -100,8 +95,26 @@ where
     async fn stopped(&mut self, ctx: &mut ActorContext) {
         // Try to persist a snapshot.
         trace!("persistent actor stopped");
+
         self.stopped(ctx).await
     }
+}
+
+async fn load_journal<A: PersistentActor>(
+    persistence_key: String,
+    ctx: &mut ActorContext,
+) -> (
+    Option<RecoveredPayload<A>>,
+    Option<Vec<RecoveredPayload<A>>>,
+) {
+    let journal = ctx
+        .persistence_mut()
+        .init_journal::<A>(persistence_key)
+        .await;
+    (
+        journal.recover_snapshot().await,
+        journal.recover_messages().await,
+    )
 }
 
 #[async_trait]

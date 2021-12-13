@@ -8,17 +8,24 @@ use crate::remote::handler::ActorHandler;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::ClientResult;
 
-use tokio::sync::oneshot;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
+use tokio::sync::oneshot;
 
 pub struct Shard {
     shard_id: ShardId,
     handler: BoxedActorHandler,
+    persistent_entities: bool,
 }
 
 impl Shard {
     pub fn new(shard_id: ShardId, handler: BoxedActorHandler) -> Shard {
-        Shard { shard_id, handler }
+        let persistent_entities = false;
+
+        Shard {
+            shard_id,
+            handler,
+            persistent_entities,
+        }
     }
 }
 
@@ -28,10 +35,18 @@ impl Shard {
     async fn start_entity(
         &self,
         actor_id: ActorId,
-        recipe: Vec<u8>,
+        recipe: &Vec<u8>,
         ctx: &mut ActorContext,
     ) -> Result<BoxedActorRef, ActorRefErr> {
-        self.handler.create(Some(actor_id), recipe, Some(ctx)).await
+        let entity = self
+            .handler
+            .create(Some(actor_id), recipe.clone(), Some(ctx))
+            .await;
+        if self.persistent_entities && entity.is_ok() {
+            // TODO: persist it
+        }
+
+        entity
     }
 }
 
@@ -43,7 +58,7 @@ impl Handler<StartEntity> for Shard {
         */
 
         let _res = self
-            .start_entity(message.actor_id, message.recipe, ctx)
+            .start_entity(message.actor_id, message.recipe.as_ref(), ctx)
             .await;
     }
 }
@@ -78,7 +93,7 @@ impl Handler<EntityRequest> for Shard {
                 /*  TODO: `start_entity` should be done asynchronously, any messages sent while the actor is
                           starting should be buffered and emitted once the Shard receives confirmation that the actor was created
                 */
-                Some(recipe) => match self.start_entity(actor_id, recipe, ctx).await {
+                Some(recipe) => match self.start_entity(actor_id, recipe.as_ref(), ctx).await {
                     Ok(actor) => actor,
                     Err(_err) => {
                         // TODO: Send actor could not be created err

@@ -12,8 +12,8 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 use crate::actor::scheduler::ActorType::Anonymous;
-use crate::remote::stream::pubsub::Subscription;
 use crate::remote::heartbeat::HeartbeatConfig;
+use crate::remote::stream::pubsub::Subscription;
 use uuid::Uuid;
 
 pub mod handler;
@@ -65,10 +65,8 @@ impl RemoteSystemConfig {
         &self.node_tag
     }
 
-    pub fn handler_name<A: Actor, M: Message>(
-        &self,
-        marker: RemoteActorMessageMarker<A, M>,
-    ) -> Option<String> {
+    pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String> {
+        let marker = RemoteActorMessageMarker::<A, M>::new();
         self.handler_types
             .get(&marker.id())
             .map(|name| name.clone())
@@ -137,7 +135,6 @@ impl RemoteResponse {
         match self {
             RemoteResponse::Ok(buff) => Ok(buff),
             RemoteResponse::Err(buff) => Err(buff),
-            _ => panic!("response is not a buffer"),
         }
     }
 }

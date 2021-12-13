@@ -35,7 +35,7 @@ use protobuf::Message as ProtoMessage;
 use chrono::{DateTime, Utc};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::AtomicI64;
 use std::sync::atomic::Ordering::{Relaxed, SeqCst};
 use std::time::Instant;
 use tokio::sync::oneshot::error::RecvError;
@@ -50,7 +50,7 @@ pub struct RemoteActorSystem {
 
 pub type NodeId = u64;
 
-pub type AtomicNodeId = AtomicU64;
+pub type AtomicNodeId = AtomicI64;
 
 #[derive(Clone)]
 pub struct RemoteSystemCore {
@@ -93,11 +93,21 @@ impl RemoteActorSystem {
     }
 
     pub fn current_leader(&self) -> Option<NodeId> {
-        Some(self.inner.current_leader.load(SeqCst))
+        let n = self.inner.current_leader.load(SeqCst);
+        if n > 0 {
+            Some(n as NodeId)
+        } else {
+            None
+        }
     }
 
     pub fn update_leader(&self, new_leader: NodeId) -> Option<NodeId> {
-        Some(self.inner.current_leader.swap(new_leader, SeqCst))
+        let n = self.inner.current_leader.swap(new_leader as i64, SeqCst);
+        if n > 0 {
+            Some(n as NodeId)
+        } else {
+            None
+        }
     }
 }
 
@@ -349,8 +359,7 @@ impl RemoteActorSystem {
     }
 
     pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String> {
-        let marker = RemoteActorMessageMarker::<A, M>::new();
-        self.inner.config.handler_name(marker)
+        self.inner.config.handler_name::<A, M>()
     }
 
     pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader> {

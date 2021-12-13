@@ -6,6 +6,7 @@ use std::any::Any;
 pub struct ActorPersistence {
     storage_provider: StorageProviderRef,
     journal: Option<BoxedJournal>,
+    is_recovering: bool,
 }
 
 type BoxedJournal = Box<dyn Any + Sync + Send>;
@@ -16,6 +17,7 @@ impl ActorPersistence {
         Self {
             storage_provider,
             journal: None,
+            is_recovering: false,
         }
     }
 

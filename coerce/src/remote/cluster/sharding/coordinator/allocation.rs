@@ -19,6 +19,7 @@ pub enum AllocateShardErr {
     Persistence,
 }
 
+#[derive(Debug)]
 pub enum AllocateShardResult {
     Allocated(NodeId),
     NotAllocated,

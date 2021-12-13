@@ -70,6 +70,8 @@ impl ClusterWorkerBuilder {
         let server_ctx = self.system.clone();
         let mut server = RemoteServer::new();
 
+        trace!("starting on {}", &self.server_listen_addr);
+
         server
             .start(self.server_listen_addr.clone(), server_ctx)
             .await

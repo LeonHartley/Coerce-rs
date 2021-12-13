@@ -29,6 +29,7 @@ pub struct RemoteActorSystemBuilder {
     inner: Option<ActorSystem>,
     handlers: Vec<HandlerFn>,
     mediator: Option<StreamMediator>,
+    single_node_cluster: bool,
 }
 
 impl RemoteActorSystemBuilder {
@@ -42,6 +43,7 @@ impl RemoteActorSystemBuilder {
             inner: None,
             handlers: vec![],
             mediator: Some(mediator),
+            single_node_cluster: false,
         }
     }
 
@@ -101,6 +103,11 @@ impl RemoteActorSystemBuilder {
         self
     }
 
+    pub fn single_node(mut self) -> Self {
+        self.single_node_cluster = true;
+        self
+    }
+
     pub async fn build(self) -> RemoteActorSystem {
         let span = tracing::trace_span!("RemoteActorSystemBuilder::build");
         let _enter = span.enter();
@@ -148,8 +155,6 @@ impl RemoteActorSystemBuilder {
             None
         };
 
-        // TODO: raft config in builder
-
         let mut core = RemoteSystemCore {
             node_id,
             inner,
@@ -161,7 +166,11 @@ impl RemoteActorSystemBuilder {
             heartbeat_ref: None,
             started_at: Utc::now(),
             config,
-            current_leader: Arc::new(AtomicNodeId::new(0)),
+            current_leader: Arc::new(AtomicNodeId::new(if self.single_node_cluster {
+                node_id as i64
+            } else {
+                -1
+            })),
         };
 
         let inner = Arc::new(core.clone());
@@ -177,7 +186,7 @@ impl RemoteActorSystemBuilder {
             .await,
         );
 
-        core.raft = Some(RaftSystem::new(system.clone()));
+        core.raft = None;
         core.inner.set_remote(system.clone());
 
         let system = RemoteActorSystem {

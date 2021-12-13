@@ -44,11 +44,11 @@ pub(crate) fn expand(ast: &syn::DeriveInput) -> TokenStream {
             }
 
             fn from_remote_envelope(bytes: Vec<u8>) -> Result<Self, coerce::actor::message::MessageUnwrapErr> {
-                serde_json::from_slice(bytes.as_slice()).map_err(|_e| MessageUnwrapErr::DeserializationErr)
+                serde_json::from_slice(bytes.as_slice()).map_err(|_e| coerce::actor::message::MessageUnwrapErr::DeserializationErr)
             }
 
             fn read_remote_result(bytes: Vec<u8>) -> Result<Self::Result, coerce::actor::message::MessageUnwrapErr> {
-                serde_json::from_slice(bytes.as_slice()).map_err(|_e| MessageUnwrapErr::DeserializationErr)
+                serde_json::from_slice(bytes.as_slice()).map_err(|_e| coerce::actor::message::MessageUnwrapErr::DeserializationErr)
             }
 
             fn write_remote_result(res: Self::Result) -> Result<Vec<u8>, coerce::actor::message::MessageWrapErr> {

@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 
-use crate::actor::ActorRef;
+use crate::actor::{ActorRef, LocalActorRef};
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
@@ -14,6 +14,8 @@ use crate::persistent::journal::PersistErr;
 use std::collections::{HashMap, HashSet};
 
 pub mod allocation;
+pub mod spawner;
+pub mod stream;
 
 pub type ShardId = u32;
 
@@ -26,6 +28,7 @@ pub struct ShardHostState {
 
 pub struct ShardCoordinator {
     shard_entity: String,
+    local_shard_host: LocalActorRef<ShardHost>,
     hosts: HashMap<NodeId, ShardHostState>,
     shards: HashMap<ShardId, NodeId>,
 }
@@ -41,15 +44,32 @@ impl PersistentActor for ShardCoordinator {
     }
 
     async fn pre_recovery(&mut self, ctx: &mut ActorContext) {
-        let hosts = ctx.system().remote().get_nodes().await;
-        info!("got potential shard hosts, {:?}", hosts);
+        let remote = ctx.system().remote();
+        let node_id = remote.node_id();
+        let node_tag = remote.node_tag().to_string();
+
+        self.hosts.insert(
+            node_id,
+            ShardHostState {
+                node_id,
+                node_tag,
+                shards: Default::default(),
+                actor: self.local_shard_host.clone().into(),
+            },
+        );
+
+        let potential_hosts = remote.get_nodes().await;
     }
 }
 
 impl ShardCoordinator {
-    pub fn new(shard_entity: String) -> ShardCoordinator {
+    pub fn new(
+        shard_entity: String,
+        local_shard_host: LocalActorRef<ShardHost>,
+    ) -> ShardCoordinator {
         ShardCoordinator {
             shard_entity,
+            local_shard_host,
             hosts: Default::default(),
             shards: Default::default(),
         }

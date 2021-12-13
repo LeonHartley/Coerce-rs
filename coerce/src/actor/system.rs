@@ -2,11 +2,12 @@ use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, 
 use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 
-use crate::persistent::Persistence;
+use crate::persistent::{ConfigurePersistence, Persistence};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 
+use crate::persistent::journal::provider::StorageProvider;
 use uuid::Uuid;
 
 lazy_static! {
@@ -32,6 +33,10 @@ impl ActorSystem {
             persistence: None,
             is_terminated: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    pub fn new_persistent<S: StorageProvider>(storage_provider: S) -> ActorSystem {
+        ActorSystem::new().add_persistence(Persistence::from(storage_provider))
     }
 
     pub fn system_id(&self) -> &Uuid {

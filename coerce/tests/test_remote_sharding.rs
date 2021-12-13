@@ -9,11 +9,14 @@ use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::{ConfigurePersistence, Persistence};
 use coerce::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use coerce::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState};
-use coerce::remote::cluster::sharding::host::{ShardHost, StartEntity};
-use coerce::remote::system::RemoteActorSystem;
-use tokio::sync::oneshot;
 use coerce::remote::cluster::sharding::host::request::EntityRequest;
 use coerce::remote::cluster::sharding::host::stats::GetStats;
+use coerce::remote::cluster::sharding::host::{ShardHost, StartEntity};
+use coerce::remote::cluster::sharding::Sharding;
+use coerce::remote::system::RemoteActorSystem;
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::sync::oneshot;
 
 pub mod util;
 
@@ -46,7 +49,7 @@ impl ActorFactory for TestActorFactory {
     type Actor = TestActor;
     type Recipe = TestActorRecipe;
 
-    async fn create(&self, _recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr> {
+    async fn create(&self, _recipe: TestActorRecipe) -> Result<TestActor, ActorCreationErr> {
         Ok(TestActor {
             status: None,
             counter: 0,
@@ -74,7 +77,10 @@ pub async fn test_shard_coordinator_shard_allocation() {
         .expect("ShardHost start")
         .into();
 
-    let mut shard_coordinator = ShardCoordinator::new(TestActor::type_name().to_string());
+    let mut shard_coordinator = ShardCoordinator::new(
+        TestActor::type_name().to_string(),
+        shard_host.clone().unwrap_local(),
+    );
     shard_coordinator.add_host(ShardHostState {
         node_id: 1,
         node_tag: "system-one".to_string(),
@@ -100,6 +106,8 @@ pub async fn test_shard_coordinator_shard_allocation() {
 pub async fn test_shard_host_actor_request() {
     const SHARD_ID: u32 = 99;
 
+    util::create_trace_logger();
+
     let sys = ActorSystem::new().add_persistence(Persistence::from(InMemoryStorageProvider::new()));
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
@@ -110,87 +118,31 @@ pub async fn test_shard_host_actor_request() {
                 .with_handler::<TestActor, SetStatusRequest>("SetStatusRequest")
         })
         .with_id(1)
+        .single_node()
         .build()
         .await;
 
-    let shard_host: ActorRef<ShardHost> = ShardHost::new(TestActor::type_name().to_string())
-        .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
-        .await
-        .expect("ShardHost start")
-        .into();
-
-    let mut shard_coordinator = ShardCoordinator::new(TestActor::type_name().to_string());
-    shard_coordinator.add_host(ShardHostState {
-        node_id: 1,
-        node_tag: "system-one".to_string(),
-        shards: Default::default(),
-        actor: shard_host.clone(),
-    });
-
-    let shard_coordinator = shard_coordinator
-        .into_actor(Some("ShardCoordinator".to_string()), &remote.actor_system())
-        .await
-        .expect("ShardCoordinator start");
-
-    let allocation = shard_coordinator
-        .send(AllocateShard { shard_id: SHARD_ID })
+    remote
+        .clone()
+        .cluster_worker()
+        .listen_addr("0.0.0.0:30101")
+        .start()
         .await;
 
-    allocation.expect("shard allocation");
-
-    let (tx, rx) = oneshot::channel();
-
     let expected_status = TestActorStatus::Active;
-    let set_status = SetStatusRequest {
-        status: expected_status.clone(),
-    }
-    .as_remote_envelope()
-        .unwrap();
+    let sharding = Sharding::<TestActorFactory>::start(remote).await;
+    let sharded_actor = sharding.get("leon".to_string(), Some(TestActorRecipe));
 
-    let _ = shard_host
-        .notify(EntityRequest {
-            actor_id: "leon".to_string(),
-            message_type: "SetStatusRequest".to_string(),
-            message: match set_status {
-                Envelope::Remote(b) => b,
-                _ => unreachable!(),
-            },
-            recipe: Some(vec![]),
-            result_channel: None,
+    sharded_actor
+        .send(SetStatusRequest {
+            status: TestActorStatus::Active,
         })
+        .await;
+
+    let res = sharded_actor
+        .send(GetStatusRequest())
         .await
-        .expect("notify shard host");
+        .expect("get status");
 
-    let get_status = GetStatusRequest().as_remote_envelope().unwrap();
-    let _ = shard_host
-        .notify(EntityRequest {
-            actor_id: "leon".to_string(),
-            message_type: "GetStatusRequest".to_string(),
-            message: match get_status {
-                Envelope::Remote(b) => b,
-                _ => unreachable!(),
-            },
-            recipe: Some(vec![]),
-            result_channel: Some(tx),
-        })
-        .await
-        .expect("notify shard host");
-
-    let result = rx.await.expect("channel recv").expect("msg result");
-    let result = GetStatusRequest::read_remote_result(result).unwrap();
-    assert_eq!(result, GetStatusResponse::Ok(expected_status));
-
-    // let sharding = Sharding::<TestActor>::start(&system).await;
-    // let sharded_actor = sharding.get("leon".to_string(), None);
-    // sharded_actor
-    //     .notify(SetStatusRequest {
-    //         status: TestActorStatus::Active,
-    //     })
-    //     .await;
-    //
-    // let res = sharded_actor
-    //     .send(GetStatusRequest())
-    //     .await
-    //     .expect("get status");
-    // assert_eq!(res, GetStatusResponse::Ok(expected_status));
+    assert_eq!(res, GetStatusResponse::Ok(expected_status));
 }
