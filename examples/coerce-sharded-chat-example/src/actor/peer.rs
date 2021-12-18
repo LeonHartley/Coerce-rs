@@ -3,20 +3,21 @@ use crate::actor::stream::{
     ChatMessage, ChatStream, ChatStreamFactory, CreateChatStream, Join, JoinResult,
 };
 use coerce::actor::context::{attach_stream, ActorContext, StreamAttachmentOptions};
+use coerce::actor::message::EnvelopeType::Remote;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::{Actor, ActorRefErr, CoreActorRef};
 use coerce::remote::cluster::sharding::{Sharded, Sharding};
 use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription};
 use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::StreamExt;
+use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use tokio::net::TcpStream;
-use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tungstenite::Message as WebSocketMessage;
 
-type WebSocketReader = SplitStream<WebSocketStream<TcpStream>>;
-type WebSocketWriter = SplitSink<WebSocketStream<TcpStream>, WebSocketMessage>;
+pub type WebSocketReader = SplitStream<WebSocketStream<TcpStream>>;
+pub type WebSocketWriter = SplitSink<WebSocketStream<TcpStream>, WebSocketMessage>;
 
 pub struct Peer {
     name: String,
@@ -27,25 +28,6 @@ pub struct Peer {
     chat_stream_sharding: Sharding<ChatStreamFactory>,
     chat_streams: HashMap<String, (Sharded<ChatStream>, Subscription)>,
 }
-
-enum ClientEvent {
-    Join(JoinChat),
-    Chat(SendChatMessage),
-    Leave(LeaveChat),
-    Close,
-}
-
-struct SendChatMessage {
-    chat_stream: String,
-    message: ChatMessage,
-}
-
-pub struct JoinChat {
-    stream_name: String,
-    join_token: Option<String>,
-}
-
-pub struct LeaveChat(String);
 
 impl Peer {
     pub fn new(
@@ -66,6 +48,14 @@ impl Peer {
             stream_subscriptions: vec![],
             chat_streams: HashMap::new(),
         }
+    }
+
+    pub async fn write<M: Message>(&mut self, id: Option<u8>, message: M) {
+        self.websocket_writer
+            .send(WebSocketMessage::Binary(
+                write_outbound_message(id, message).unwrap(),
+            ))
+            .await;
     }
 }
 
@@ -89,6 +79,35 @@ impl Actor for Peer {
     }
 }
 
+enum ClientEvent {
+    Join(JoinChat),
+    Chat(SendChatMessage),
+    Leave(LeaveChat),
+    Close,
+}
+
+#[derive(Serialize, Deserialize, coerce_macros::JsonMessage, Clone)]
+#[result("()")]
+pub struct SendChatMessage {
+    pub chat_stream: String,
+    pub message: ChatMessage,
+}
+
+#[derive(Serialize, Deserialize, coerce_macros::JsonMessage, Clone)]
+#[result("()")]
+pub struct JoinChat {
+    pub stream_name: String,
+    pub join_token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, coerce_macros::JsonMessage, Clone)]
+#[result("()")]
+pub struct LeaveChat(String);
+
+impl Message for ClientEvent {
+    type Result = ();
+}
+
 #[async_trait]
 impl Handler<ClientEvent> for Peer {
     async fn handle(&mut self, message: ClientEvent, ctx: &mut ActorContext) {
@@ -108,29 +127,22 @@ impl Handler<StreamEvent<ChatStreamTopic>> for Peer {
     async fn handle(&mut self, message: StreamEvent<ChatStreamTopic>, _ctx: &mut ActorContext) {
         match message {
             StreamEvent::Receive(chat_stream_event) => match chat_stream_event.as_ref() {
-                ChatStreamEvent::Message(_chat_message) => {
-                    // write it to the websocket
+                ChatStreamEvent::Message(chat_message) => {
+                    let sender = chat_message.sender.clone();
+                    let message = chat_message.message.clone();
+
+                    trace!(
+                        "user={} received chat message {} from {}",
+                        &self.name,
+                        &message,
+                        &sender
+                    );
+
+                    self.write(None, ChatMessage { sender, message }).await;
                 }
             },
             StreamEvent::Err => {}
         }
-    }
-}
-
-#[async_trait]
-impl Handler<SendChatMessage> for Peer {
-    async fn handle(&mut self, message: SendChatMessage, ctx: &mut ActorContext) {
-        if let Some((chat_stream, subscription)) = self.chat_streams.get(&message.chat_stream) {
-            let res = chat_stream.send(message.message).await;
-            res.expect("send chat message")
-        }
-    }
-}
-
-#[async_trait]
-impl Handler<LeaveChat> for Peer {
-    async fn handle(&mut self, message: LeaveChat, ctx: &mut ActorContext) {
-        todo!()
     }
 }
 
@@ -146,6 +158,10 @@ impl Handler<JoinChat> for Peer {
             }),
         );
 
+        debug!(
+            "user {} joining chat (chat_stream={})",
+            &self.name, &chat_stream_id
+        );
         let result = chat_stream
             .send(Join {
                 peer_name: self.name.clone(),
@@ -166,27 +182,53 @@ impl Handler<JoinChat> for Peer {
                 subscription.expect("ChatStream PubSub subscription"),
             );
 
-            self.chat_streams.insert(chat_stream_id, chat_stream);
+            info!(
+                "user {} joined chat (chat_stream={}, creator={})",
+                &self.name, &chat_stream_id, &creator
+            );
 
-            // emit history and creator over the websocket
+            for message in message_history {
+                self.write(None, message).await;
+            }
+
+            self.write(
+                None,
+                ChatMessage {
+                    sender: "Coerce".to_string(),
+                    message: format!("Welcome to {}, say hello!", &chat_stream_id),
+                },
+            )
+            .await;
+
+            self.chat_streams.insert(chat_stream_id, chat_stream);
+        } else {
+            warn!(
+                "user {} failed to join chat (stream={})",
+                &self.name, &chat_stream_id
+            );
         }
     }
 }
 
-impl Message for ClientEvent {
-    type Result = ();
+#[async_trait]
+impl Handler<SendChatMessage> for Peer {
+    async fn handle(&mut self, message: SendChatMessage, ctx: &mut ActorContext) {
+        if let Some((chat_stream, _)) = self.chat_streams.get(&message.chat_stream) {
+            let mut message = message.message;
+            message.sender = self.name.clone();
+
+            chat_stream.send(message).await.expect("send chat message")
+        }
+    }
 }
 
-impl Message for SendChatMessage {
-    type Result = ();
-}
-
-impl Message for JoinChat {
-    type Result = ();
-}
-
-impl Message for LeaveChat {
-    type Result = ();
+#[async_trait]
+impl Handler<LeaveChat> for Peer {
+    async fn handle(&mut self, message: LeaveChat, _ctx: &mut ActorContext) {
+        if let Some((_, mut subscription)) = self.chat_streams.remove(&message.0) {
+            subscription.unsubscribe();
+        }
+    }
 }
 
 fn parse_inbound_message(data: Vec<u8>) -> Option<ClientEvent> {
@@ -205,4 +247,16 @@ fn parse_inbound_message(data: Vec<u8>) -> Option<ClientEvent> {
         },
         _ => Some(ClientEvent::Close),
     }
+}
+
+fn write_outbound_message<M: Message>(id: Option<u8>, event: M) -> Option<Vec<u8>> {
+    event.into_envelope(Remote).map_or(None, |e| {
+        let mut bytes = e.into_bytes();
+
+        if let Some(id) = id {
+            bytes.insert(0, id);
+        }
+
+        Some(bytes)
+    })
 }

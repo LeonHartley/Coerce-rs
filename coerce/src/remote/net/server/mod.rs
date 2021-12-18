@@ -314,8 +314,8 @@ async fn session_handle_message(
             )
             .await
         }
-        Err(_) => {
-            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+        Err(e) => {
+            error!(target: "RemoteSession", "failed to handle message, error={:?}", e);
             // TODO: Send error
         }
     }
@@ -358,7 +358,7 @@ async fn session_create_actor(
         Some(msg.actor_id)
     };
 
-    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor (ac", ctx.node_tag(), ctx.node_id(), &msg.message_id);
+    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor (actor_id={})", ctx.node_tag(), ctx.node_id(), &msg.message_id, actor_id.as_ref().map_or_else(|| "N/A", |s| s));
     match ctx
         .handle_create_actor(actor_id, msg.actor_type, msg.recipe, None)
         .await
@@ -371,8 +371,6 @@ async fn session_create_actor(
 }
 
 async fn session_stream_publish(msg: StreamPublish, sys: RemoteActorSystem) {
-    info!("stream publish");
-
     // TODO: node should acknowledge the message
     if let Some(mediator) = sys.stream_mediator() {
         mediator.notify::<PublishRaw>(msg.into()).unwrap()

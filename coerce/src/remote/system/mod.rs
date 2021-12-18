@@ -116,6 +116,8 @@ pub enum RemoteActorErr {
     ActorUnavailable,
     ActorExists,
     RecipeSerializationErr,
+    MessageSerializationErr,
+    ResultSerializationErr,
     ActorNotSupported,
     NodeErr(NodeRpcErr),
 }
@@ -512,24 +514,13 @@ impl RemoteActorSystem {
     }
 
     pub fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
-        let start = Instant::now();
         let mut handler = self.inner.handler_ref.lock();
-
         handler.push_request(id, RemoteRequest { res_tx });
-
-        let end = start.elapsed();
-        info!("PushRequest took {} ms", end.as_millis());
     }
 
     pub fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
-        let start = Instant::now();
         let mut handler = self.inner.handler_ref.lock();
-
-        let a = handler.pop_request(id).map(|r| r.res_tx);
-
-        let end = start.elapsed();
-        info!("PopRequest took {} ms", end.as_millis());
-        a
+        handler.pop_request(id).map(|r| r.res_tx)
     }
 
     pub fn stream_mediator(&self) -> Option<&LocalActorRef<StreamMediator>> {

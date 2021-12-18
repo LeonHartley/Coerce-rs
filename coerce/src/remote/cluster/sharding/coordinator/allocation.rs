@@ -9,31 +9,22 @@ use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
 use crate::remote::system::NodeId;
 use futures::future::join_all;
 use std::collections::hash_map::{Entry, VacantEntry};
+use std::convert::TryInto;
 
 pub struct AllocateShard {
     pub shard_id: ShardId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AllocateShardErr {
     Persistence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum AllocateShardResult {
     Allocated(NodeId),
     NotAllocated,
     Err(AllocateShardErr),
-}
-
-impl Message for AllocateShard {
-    type Result = AllocateShardResult;
-
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
-        Ok(Envelope::<Self>::Remote(
-            self.shard_id.to_be_bytes().to_vec(),
-        ))
-    }
 }
 
 impl ShardCoordinator {
@@ -62,6 +53,32 @@ impl ShardCoordinator {
                 .await
             }
         }
+    }
+}
+
+#[async_trait]
+impl Handler<AllocateShard> for ShardCoordinator {
+    async fn handle(
+        &mut self,
+        message: AllocateShard,
+        ctx: &mut ActorContext,
+    ) -> AllocateShardResult {
+        if self.persist(&message, ctx).await.is_ok() {
+            if let Some(node_id) = self.allocate_shard(message, ctx).await {
+                AllocateShardResult::Allocated(node_id)
+            } else {
+                AllocateShardResult::NotAllocated
+            }
+        } else {
+            AllocateShardResult::Err(AllocateShardErr::Persistence)
+        }
+    }
+}
+
+#[async_trait]
+impl Recover<AllocateShard> for ShardCoordinator {
+    async fn recover(&mut self, message: AllocateShard, ctx: &mut ActorContext) {
+        self.allocate_shard(message, ctx).await;
     }
 }
 
@@ -106,6 +123,10 @@ async fn broadcast_allocation(
         futures.push(async move {
             let host = host;
 
+            trace!(
+                "emitting ShardAllocated to node_id={}",
+                host.node_id().unwrap_or(0)
+            );
             host.send(ShardAllocated(shard_id, node_id)).await
         });
     }
@@ -114,28 +135,28 @@ async fn broadcast_allocation(
     trace!(target: "ShardCoordinator", "broadcast to all nodes complete");
 }
 
-#[async_trait]
-impl Handler<AllocateShard> for ShardCoordinator {
-    async fn handle(
-        &mut self,
-        message: AllocateShard,
-        ctx: &mut ActorContext,
-    ) -> AllocateShardResult {
-        if self.persist(&message, ctx).await.is_ok() {
-            if let Some(node_id) = self.allocate_shard(message, ctx).await {
-                AllocateShardResult::Allocated(node_id)
-            } else {
-                AllocateShardResult::NotAllocated
-            }
-        } else {
-            AllocateShardResult::Err(AllocateShardErr::Persistence)
-        }
-    }
-}
+impl Message for AllocateShard {
+    type Result = AllocateShardResult;
 
-#[async_trait]
-impl Recover<AllocateShard> for ShardCoordinator {
-    async fn recover(&mut self, message: AllocateShard, ctx: &mut ActorContext) {
-        self.allocate_shard(message, ctx).await;
+    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+        Ok(Envelope::<Self>::Remote(
+            self.shard_id.to_be_bytes().to_vec(),
+        ))
+    }
+
+    fn from_remote_envelope(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        let len = buffer.len();
+        let shard_id = u32::from_be_bytes(buffer[0..len].try_into().unwrap());
+        Ok(Self { shard_id })
+    }
+
+    fn read_remote_result(buffer: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        // TODO: protobuf this stuff
+        serde_json::from_slice(&buffer).map_err(|_| MessageUnwrapErr::DeserializationErr)
+    }
+
+    fn write_remote_result(res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        // TODO: protobuf this stuff
+        serde_json::to_vec(&res).map_err(|_| MessageWrapErr::SerializationErr)
     }
 }

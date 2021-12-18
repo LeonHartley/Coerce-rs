@@ -11,6 +11,7 @@ use crate::remote::system::NodeId;
 use crate::actor::message::Message;
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::PersistErr;
+use crate::remote::RemoteActorRef;
 use std::collections::{HashMap, HashSet};
 
 pub mod allocation;
@@ -58,7 +59,26 @@ impl PersistentActor for ShardCoordinator {
             },
         );
 
+        info!("shard coordinator started");
         let potential_hosts = remote.get_nodes().await;
+        for host in potential_hosts {
+            if host.id != node_id {
+                self.hosts.insert(
+                    host.id,
+                    ShardHostState {
+                        node_id: host.id,
+                        node_tag: String::default(),
+                        shards: HashSet::new(),
+                        actor: RemoteActorRef::<ShardHost>::new(
+                            format!("ShardHost-{}-{}", &self.shard_entity, host.id),
+                            host.id,
+                            remote.clone(),
+                        )
+                        .into(),
+                    },
+                );
+            }
+        }
     }
 }
 

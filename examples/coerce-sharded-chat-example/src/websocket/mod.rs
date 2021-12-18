@@ -1,19 +1,37 @@
 use crate::actor::peer::Peer;
-use futures_util::StreamExt;
-use log::info;
+use crate::actor::stream::{ChatMessage, ChatStream, ChatStreamFactory, Handshake};
+use coerce::actor::message::{EnvelopeType, Message};
+use coerce::actor::system::ActorSystem;
+use coerce::actor::IntoActor;
+use coerce::remote::cluster::sharding::Sharding;
+use futures_util::{SinkExt, StreamExt};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio_tungstenite::accept_async;
-use tungstenite::Error::{ConnectionClosed, Protocol, Utf8};
+use tungstenite::{
+    Error::{ConnectionClosed, Protocol, Utf8},
+    Message as WebSocketMessage,
+};
+use uuid::Uuid;
 
-async fn handle_connection(peer: IpAddr, stream: TcpStream) -> Result<(), tungstenite::Error> {
+async fn handle_connection(
+    peer_addr: IpAddr,
+    stream: TcpStream,
+    actor_system: ActorSystem,
+    sharding: Sharding<ChatStreamFactory>,
+) -> Result<(), tungstenite::Error> {
     let stream = accept_async(stream).await;
     if let Ok(stream) = stream {
-        let (writer, mut reader) = stream.split();
+        let (mut writer, mut reader) = stream.split();
         let handshake = reader.next().await;
         if let Some(Ok(handshake)) = handshake {
-            info!("handshake!");
+            let handshake: Handshake =
+                Handshake::from_remote_envelope(handshake.into_data()).unwrap();
+
+            Peer::new(handshake.name, peer_addr, reader, writer, sharding)
+                .into_actor(Some(format!("peer-{}", Uuid::new_v4())), &actor_system)
+                .await;
         } else {
             info!("nope");
         }
@@ -21,8 +39,13 @@ async fn handle_connection(peer: IpAddr, stream: TcpStream) -> Result<(), tungst
     Ok(())
 }
 
-async fn accept_connection(peer: IpAddr, stream: TcpStream) {
-    if let Err(e) = handle_connection(peer, stream).await {
+async fn accept_connection(
+    peer: IpAddr,
+    stream: TcpStream,
+    system: ActorSystem,
+    sharding: Sharding<ChatStreamFactory>,
+) {
+    if let Err(e) = handle_connection(peer, stream, system, sharding).await {
         match e {
             ConnectionClosed | Protocol(_) | Utf8 => (),
             _err => {}
@@ -30,13 +53,22 @@ async fn accept_connection(peer: IpAddr, stream: TcpStream) {
     }
 }
 
-pub async fn start<S: ToSocketAddrs>(addr: S) {
+pub async fn start<S: ToSocketAddrs>(
+    addr: S,
+    system: ActorSystem,
+    sharding: Sharding<ChatStreamFactory>,
+) {
     let mut listener = TcpListener::bind(addr).await.expect("websocket listen");
 
     while let Ok((stream, _)) = listener.accept().await {
         let peer_address = stream.peer_addr().unwrap().ip();
 
-        println!("peer_addr: {}", peer_address);
-        tokio::spawn(accept_connection(peer_address, stream));
+        debug!("websocket connection from peer_addr: {}", peer_address);
+        tokio::spawn(accept_connection(
+            peer_address,
+            stream,
+            system.clone(),
+            sharding.clone(),
+        ));
     }
 }

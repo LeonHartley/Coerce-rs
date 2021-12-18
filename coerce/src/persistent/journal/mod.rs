@@ -91,8 +91,9 @@ impl<A: PersistentActor> Journal<A> {
         A: Recover<M>,
     {
         info!(
-            "persisting message, persistence_id={}",
-            &self.persistence_id
+            "persisting message, persistence_id={}, message_type={}",
+            &self.persistence_id,
+            M::type_name()
         );
 
         let payload_type = self

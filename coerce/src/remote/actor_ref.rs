@@ -111,7 +111,7 @@ where
                 }
             }
             None => {
-                error!(target: "RemoteActorRef", "no handler returned");
+                error!(target: "RemoteActorRef", "no handler registered actor_type={}, message_type={}", &actor_type, &message_type);
                 // TODO: add more errors
                 Err(ActorUnavailable)
             }

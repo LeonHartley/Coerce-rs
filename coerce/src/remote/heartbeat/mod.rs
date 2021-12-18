@@ -6,6 +6,9 @@ use crate::remote::cluster::node::NodeStatus::Healthy;
 use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{Ping, Pong};
+use crate::remote::stream::pubsub::PubSub;
+use crate::remote::stream::system::ClusterEvent::LeaderChanged;
+use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, NodeRpcErr, RemoteActorSystem};
 use chrono::{DateTime, Utc, MIN_DATETIME};
 use futures::future::Map;
@@ -38,8 +41,8 @@ pub struct HeartbeatConfig {
 impl Default for HeartbeatConfig {
     fn default() -> Self {
         Self {
-            interval: Duration::from_secs(2),
-            ping_timeout: Duration::from_secs(5),
+            interval: Duration::from_millis(500),
+            ping_timeout: Duration::from_secs(15),
             unhealthy_node_heartbeat_timeout: Duration::from_millis(500),
             terminated_node_heartbeat_timeout: Duration::from_secs(30),
         }
@@ -83,7 +86,7 @@ impl Actor for Heartbeat {
             self.system.node_id()
         );
 
-        self.heartbeat_timer = Some(Timer::start::<Heartbeat, HeartbeatTick>(
+        self.heartbeat_timer = Some(Timer::start_immediately::<Heartbeat, HeartbeatTick>(
             ctx.actor_ref(),
             self.config.interval,
             HeartbeatTick,
@@ -93,7 +96,7 @@ impl Actor for Heartbeat {
 
 #[async_trait]
 impl Handler<HeartbeatTick> for Heartbeat {
-    async fn handle(&mut self, _msg: HeartbeatTick, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, _msg: HeartbeatTick, ctx: &mut ActorContext) {
         let node_tag = self.system.node_tag();
         let current_node = self.system.node_id();
 
@@ -143,10 +146,23 @@ impl Handler<HeartbeatTick> for Heartbeat {
                     "leader of cluster: {:?}, current_node_tag={}",
                     oldest_node, &node_tag
                 );
+
+                let id = oldest_node.id;
+                let system = self.system.clone();
+                tokio::spawn(async move {
+                    let system = system;
+                    let _ = PubSub::publish_locally(
+                        SystemTopic,
+                        SystemEvent::Cluster(LeaderChanged(id)),
+                        &system,
+                    )
+                    .await;
+                });
             }
         }
 
         self.system.update_nodes(updates).await;
+
         self.last_heartbeat = Some(Instant::now())
     }
 }

@@ -2,9 +2,13 @@ use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr};
 use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, LocalActorRef,
 };
+use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
-use crate::remote::cluster::sharding::host::request::EntityRequest;
-use crate::remote::cluster::sharding::host::ShardHost;
+use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
+use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
+use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
+use crate::remote::cluster::sharding::shard::Shard;
+use crate::remote::system::builder::RemoteActorHandlerBuilder;
 use crate::remote::system::RemoteActorSystem;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -37,9 +41,12 @@ pub struct Sharded<A: Actor> {
 impl<A: ActorFactory> Sharding<A> {
     pub async fn start(system: RemoteActorSystem) -> Self {
         let shard_entity = A::Actor::type_name().to_string();
-        let coordinator_spawner_actor_id =
-            Some(format!("ShardCoordinator-{}-Spawner", &shard_entity));
-        let host_actor_id = Some(format!("ShardHost-{}", &shard_entity));
+        let coordinator_spawner_actor_id = Some(format!(
+            "ShardCoordinator-{}-Spawner-{}",
+            &shard_entity,
+            system.node_id()
+        ));
+        let host_actor_id = Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()));
 
         let host = ShardHost::new(shard_entity.clone())
             .into_actor(host_actor_id, system.actor_system())
@@ -107,6 +114,7 @@ impl<A: Actor> Sharded<A> {
             .expect("message not setup for remoting");
 
         let (tx, rx) = oneshot::channel();
+
         let actor_id = self.actor_id.clone();
         self.sharding.host.notify(EntityRequest {
             actor_id,
@@ -130,4 +138,11 @@ impl<A: Actor> Sharded<A> {
             Err(ActorRefErr::ActorUnavailable)
         }
     }
+}
+
+pub fn sharding(builder: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
+    builder
+        .with_handler::<ShardCoordinator, AllocateShard>("ShardCoordinator.AllocateShard")
+        .with_handler::<ShardHost, ShardAllocated>("ShardHost.ShardAllocated")
+        .with_handler::<Shard, RemoteEntityRequest>("Shard.RemoteEntityRequest")
 }

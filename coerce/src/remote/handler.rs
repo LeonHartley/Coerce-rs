@@ -206,7 +206,9 @@ where
                 }
 
                 // TODO: Notify err
-                Err(_) => error!(target: "RemoteHandler", "failed to decode message"),
+                Err(_) => {
+                    error!(target: "RemoteHandler", "failed to decode message ({})", M::type_name())
+                }
             };
         }
     }
@@ -233,6 +235,8 @@ where
                             Ok(Ok(result)) => {
                                 if res.send(Ok(result)).is_err() {
                                     error!(target: "RemoteHandler", "failed to send message")
+                                } else {
+                                    trace!(target: "RemoteHandler", "handled message (actor_type={}, message_type={})", &actor_type, M::type_name());
                                 }
                             }
                             Ok(Err(e)) => {
@@ -246,6 +250,7 @@ where
                         }
                     }
                     None => {
+                        trace!(target: "RemoteHandler", "no result consumer, notifying actor");
                         let _res = actor.notify(message);
                     }
                 }

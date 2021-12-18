@@ -9,12 +9,14 @@ use protobuf::{Message, ProtobufEnum, ProtobufError};
 
 pub struct SystemTopic;
 
+#[derive(Debug)]
 pub enum ClusterEvent {
     NodeAdded(NodeId),
     NodeRemoved(NodeId),
     LeaderChanged(NodeId),
 }
 
+#[derive(Debug)]
 pub enum SystemEvent {
     Cluster(ClusterEvent),
 }

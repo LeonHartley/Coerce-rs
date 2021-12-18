@@ -27,7 +27,6 @@ impl Drop for ActorContext {
     fn drop(&mut self) {
         if let Some(boxed_parent_ref) = &self.boxed_parent_ref {
             boxed_parent_ref.notify_child_terminated(self.id().into());
-            info!("notify child terminated");
         }
 
         if let Some(supervised) = self.supervised.take() {
@@ -40,12 +39,12 @@ impl Drop for ActorContext {
             }
             ActorStatus::Started => {
                 if self.system.is_some() && self.system().is_terminated() {
-                    trace!(
+                    debug!(
                         "actor (id={}) has stopped due to system shutdown",
                         &self.id()
                     );
                 } else {
-                    warn!("actor (id={}) has stopped unexpectedly", &self.id());
+                    debug!("actor (id={}) has stopped unexpectedly", &self.id());
                 }
             }
             ActorStatus::Stopping => {
@@ -127,7 +126,23 @@ impl ActorContext {
     }
 
     pub fn boxed_child_ref(&self, id: &ActorId) -> Option<BoxedActorRef> {
-        self.supervised.as_ref().and_then(|s| s.child_boxed(id))
+        if let Some(supervised) = self.supervised.as_ref() {
+            supervised.child_boxed(id)
+        } else {
+            None
+        }
+    }
+
+    pub fn attach_child_ref(&mut self, actor_ref: BoxedActorRef) {
+        let supervised = {
+            if self.supervised.is_none() {
+                self.supervised = Some(Supervised::new());
+            }
+
+            self.supervised.as_mut().unwrap()
+        };
+
+        supervised.attach_child_ref(actor_ref);
     }
 
     pub fn persistence(&self) -> &ActorPersistence {

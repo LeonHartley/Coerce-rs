@@ -1,8 +1,13 @@
+use crate::actor::pubsub::ChatStreamTopic;
 use crate::actor::stream::{ChatMessage, ChatStream, ChatStreamFactory, Join};
 use crate::websocket::start;
 use chrono::Local;
 use coerce::actor::system::ActorSystem;
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
+use coerce::remote::cluster::sharding::coordinator::allocation::AllocateShard;
+use coerce::remote::cluster::sharding::coordinator::ShardCoordinator;
+use coerce::remote::cluster::sharding::host::request::RemoteEntityRequest;
+use coerce::remote::cluster::sharding::shard::Shard;
 use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
@@ -26,8 +31,13 @@ pub struct ShardedChat {
 impl ShardedChat {
     pub async fn start(config: ShardedChatConfig) -> ShardedChat {
         let system = create_actor_system(&config).await;
-        let listen_task = tokio::spawn(start(config.websocket_listen_addr));
         let sharding = Sharding::start(system.clone()).await;
+        let listen_task = tokio::spawn(start(
+            config.websocket_listen_addr,
+            system.actor_system().clone(),
+            sharding.clone(),
+        ));
+
         ShardedChat {
             system,
             sharding,
@@ -48,6 +58,7 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
     let remote_system = RemoteActorSystemBuilder::new()
         .with_id(config.node_id)
         .with_actor_system(system)
+        .with_distributed_streams(|s| s.add_topic::<ChatStreamTopic>())
         .with_handlers(|handlers| {
             handlers
                 .with_actor(ChatStreamFactory)

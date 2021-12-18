@@ -117,7 +117,7 @@ impl Handler<RegisterNodes> for RemoteRegistry {
                 PubSub::publish_locally(
                     SystemTopic,
                     SystemEvent::Cluster(ClusterEvent::NodeAdded(node_id)),
-                    sys.actor_system(),
+                    sys.actor_system().remote(),
                 )
                 .await;
             });
@@ -134,7 +134,7 @@ impl Handler<RegisterNode> for RemoteRegistry {
             PubSub::publish_locally(
                 SystemTopic,
                 SystemEvent::Cluster(ClusterEvent::NodeAdded(message.0.id)),
-                ctx.system_mut(),
+                self.system.as_ref().unwrap(),
             )
             .await;
         }

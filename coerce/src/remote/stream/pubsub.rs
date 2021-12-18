@@ -10,6 +10,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::remote::system::RemoteActorSystem;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
@@ -28,6 +29,74 @@ pub trait Topic: 'static + Send + Sync {
 pub enum StreamEvent<T: Topic> {
     Receive(Arc<T::Message>),
     Err,
+}
+
+impl PubSub {
+    pub async fn subscribe<A: Actor, T: Topic>(
+        topic: T,
+        ctx: &ActorContext,
+    ) -> Result<Subscription, SubscribeErr>
+    where
+        A: Handler<StreamEvent<T>>,
+    {
+        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
+        let span = tracing::debug_span!(
+            "PubSub::subscribe",
+            actor_type_name = A::type_name(),
+            topic = topic_data.as_str()
+        );
+        let _enter = span.enter();
+
+        let system = ctx.system().remote();
+        if let Some(mediator) = system.stream_mediator() {
+            mediator
+                .send(Subscribe::<A, T>::new(topic, ctx.actor_ref()))
+                .await
+                .unwrap()
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
+    }
+
+    pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &RemoteActorSystem) {
+        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
+        let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
+        let _enter = span.enter();
+
+        if let Some(mediator) = system.stream_mediator() {
+            mediator
+                .send(Publish::<T> {
+                    topic,
+                    message,
+                    reach: Reach::Cluster,
+                })
+                .await
+                .unwrap();
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
+    }
+
+    pub async fn publish_locally<T: Topic>(
+        topic: T,
+        message: T::Message,
+        system: &RemoteActorSystem,
+    ) {
+        if let Some(mediator) = system.stream_mediator() {
+            let reach = Reach::Local;
+
+            mediator
+                .send(Publish {
+                    topic,
+                    message,
+                    reach,
+                })
+                .await
+                .unwrap();
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
+    }
 }
 
 impl<T: Topic> Clone for StreamEvent<T> {
@@ -106,6 +175,7 @@ impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
             topic = topic_data.as_str(),
             message_length = bytes.len()
         );
+
         let _enter = span.enter();
 
         if let Some(message) = T::Message::read_from_bytes(bytes) {
@@ -164,69 +234,5 @@ impl Subscription {
         }));
 
         Subscription { task_handle }
-    }
-}
-
-impl PubSub {
-    pub async fn subscribe<A: Actor, T: Topic>(
-        topic: T,
-        ctx: &ActorContext,
-    ) -> Result<Subscription, SubscribeErr>
-    where
-        A: Handler<StreamEvent<T>>,
-    {
-        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
-        let span = tracing::debug_span!(
-            "PubSub::subscribe",
-            actor_type_name = A::type_name(),
-            topic = topic_data.as_str()
-        );
-        let _enter = span.enter();
-
-        let system = ctx.system().remote();
-        if let Some(mediator) = system.stream_mediator() {
-            mediator
-                .send(Subscribe::<A, T>::new(topic, ctx.actor_ref()))
-                .await
-                .unwrap()
-        } else {
-            panic!("no stream mediator found, system not setup for distributed streams")
-        }
-    }
-
-    pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &ActorSystem) {
-        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
-        let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
-        let _enter = span.enter();
-
-        if let Some(mediator) = system.remote().stream_mediator() {
-            mediator
-                .send(Publish::<T> {
-                    topic,
-                    message,
-                    reach: Reach::Cluster,
-                })
-                .await
-                .unwrap();
-        } else {
-            panic!("no stream mediator found, system not setup for distributed streams")
-        }
-    }
-
-    pub async fn publish_locally<T: Topic>(topic: T, message: T::Message, system: &ActorSystem) {
-        if let Some(mediator) = system.remote().stream_mediator() {
-            let reach = Reach::Local;
-
-            mediator
-                .send(Publish {
-                    topic,
-                    message,
-                    reach,
-                })
-                .await
-                .unwrap();
-        } else {
-            panic!("no stream mediator found, system not setup for distributed streams")
-        }
     }
 }

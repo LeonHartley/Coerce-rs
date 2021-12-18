@@ -7,7 +7,7 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 
 pub struct Supervised {
-    children: HashMap<ActorId, BoxedActorRef>,
+    pub children: HashMap<ActorId, BoxedActorRef>,
 }
 
 impl Supervised {
@@ -77,6 +77,11 @@ impl Supervised {
 
     pub fn child_boxed(&self, id: &ActorId) -> Option<BoxedActorRef> {
         self.children.get(id).map(|a| a.clone())
+    }
+
+    pub fn attach_child_ref(&mut self, boxed_ref: BoxedActorRef) {
+        self.children
+            .insert(boxed_ref.actor_id().clone(), boxed_ref.into());
     }
 
     pub async fn stop_all(&self) {

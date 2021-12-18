@@ -100,7 +100,7 @@ impl StreamReceiver for ClientMessageReceiver {
                         let _ = res_tx.send(RemoteResponse::Ok(res.result));
                     }
                     None => {
-                        warn!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
+                        trace!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
                     }
                 }
             }

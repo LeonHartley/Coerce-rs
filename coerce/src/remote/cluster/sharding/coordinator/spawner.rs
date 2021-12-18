@@ -17,6 +17,8 @@ pub struct CoordinatorSpawner {
     coordinator: Option<LocalActorRef<ShardCoordinator>>,
 }
 
+const COORDINATOR_SPAWNER: &str = "ShardCoordinator-Spawner";
+
 impl CoordinatorSpawner {
     pub fn new(
         node_id: NodeId,
@@ -45,10 +47,18 @@ impl CoordinatorSpawner {
             Ok(coordinator) => {
                 self.coordinator = Some(coordinator);
 
-                trace!(target: "ShardCoordinator-Spawner", "started shard coordinator for entity: {}", &self.shard_entity);
+                debug!(
+                    target: COORDINATOR_SPAWNER,
+                    "[node={}] started shard coordinator for entity type={}",
+                    self.node_id,
+                    &self.shard_entity
+                );
             }
             Err(e) => {
-                error!(target: "ShardCoordinator-Spawner", "failed to spawn shard coordinator, e={}", e);
+                error!(
+                    target: COORDINATOR_SPAWNER,
+                    "[node={}] failed to spawn shard coordinator, e={}", self.node_id, e
+                );
             }
         }
     }
@@ -76,6 +86,11 @@ impl Actor for CoordinatorSpawner {
             if current_leader == remote.node_id() {
                 self.start_coordinator(ctx).await;
             }
+        } else {
+            info!(
+                target: COORDINATOR_SPAWNER,
+                "[node={}] no leader allocated", self.node_id
+            );
         }
 
         self.system_event_subscription = Some(
@@ -89,22 +104,36 @@ impl Actor for CoordinatorSpawner {
 #[async_trait]
 impl Handler<StreamEvent<SystemTopic>> for CoordinatorSpawner {
     async fn handle(&mut self, message: StreamEvent<SystemTopic>, ctx: &mut ActorContext) {
-        trace!(target: "ShardCoordinator-Spawner", "received system event");
-
         match message {
-            StreamEvent::Receive(msg) => match msg.as_ref() {
-                SystemEvent::Cluster(event) => match event {
-                    &ClusterEvent::NodeAdded(node_id) => {}
-                    &ClusterEvent::NodeRemoved(node_id) => {}
-                    &ClusterEvent::LeaderChanged(leader_node_id) => {
-                        if leader_node_id == self.node_id && self.coordinator.is_none() {
-                            self.start_coordinator(ctx).await;
-                        } else if self.stop_coordinator().await {
-                            trace!(target: "ShardCoordinator-Spawner", "stopped coordinator");
+            StreamEvent::Receive(msg) => {
+                info!(
+                    target: COORDINATOR_SPAWNER,
+                    "[node={}] received system event - {:?}", self.node_id, msg
+                );
+                match msg.as_ref() {
+                    SystemEvent::Cluster(event) => match event {
+                        &ClusterEvent::NodeAdded(node_id) => {}
+                        &ClusterEvent::NodeRemoved(node_id) => {}
+                        &ClusterEvent::LeaderChanged(leader_node_id) => {
+                            info!(
+                                target: COORDINATOR_SPAWNER,
+                                "[node={}] Leader changed, leader_node_id={}",
+                                self.node_id,
+                                leader_node_id,
+                            );
+                            if leader_node_id == self.node_id && self.coordinator.is_none() {
+                                self.start_coordinator(ctx).await;
+                            } else if self.stop_coordinator().await {
+                                trace!(
+                                    target: COORDINATOR_SPAWNER,
+                                    "[node={}] stopped coordinator",
+                                    self.node_id
+                                );
+                            }
                         }
-                    }
-                },
-            },
+                    },
+                }
+            }
             StreamEvent::Err => {}
         }
     }

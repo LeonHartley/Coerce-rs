@@ -20,6 +20,11 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
+use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
+use crate::remote::cluster::sharding::host::request::RemoteEntityRequest;
+use crate::remote::cluster::sharding::shard::Shard;
+use crate::remote::cluster::sharding::sharding;
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -41,7 +46,7 @@ impl RemoteActorSystemBuilder {
             node_id: None,
             node_tag: None,
             inner: None,
-            handlers: vec![],
+            handlers: vec![Box::new(sharding)],
             mediator: Some(mediator),
             single_node_cluster: false,
         }
@@ -65,10 +70,6 @@ impl RemoteActorSystemBuilder {
     {
         self.handlers.push(Box::new(f));
 
-        self
-    }
-
-    pub fn with_sharding<F>(mut self, f: F) -> Self {
         self
     }
 

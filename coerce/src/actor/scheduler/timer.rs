@@ -1,6 +1,7 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, LocalActorRef};
 use log::trace;
+use std::ops::Add;
 
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
@@ -14,6 +15,22 @@ pub struct Timer {
 }
 
 impl Timer {
+    pub fn start_immediately<A: Actor, T: TimerTick>(
+        actor: LocalActorRef<A>,
+        tick: Duration,
+        msg: T,
+    ) -> Timer
+    where
+        A: 'static + Handler<T> + Sync + Send,
+        T: 'static + Clone + Sync + Send,
+        T::Result: 'static + Sync + Send,
+    {
+        let (stop, stop_rx) = oneshot::channel();
+        tokio::spawn(timer_loop(tick, msg, actor, stop_rx, true));
+
+        Timer { stop }
+    }
+
     pub fn start<A: Actor, T: TimerTick>(actor: LocalActorRef<A>, tick: Duration, msg: T) -> Timer
     where
         A: 'static + Handler<T> + Sync + Send,
@@ -21,7 +38,7 @@ impl Timer {
         T::Result: 'static + Sync + Send,
     {
         let (stop, stop_rx) = oneshot::channel();
-        tokio::spawn(timer_loop(tick, msg, actor, stop_rx));
+        tokio::spawn(timer_loop(tick, msg, actor, stop_rx, false));
 
         Timer { stop }
     }
@@ -40,11 +57,18 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
     msg: T,
     actor: LocalActorRef<A>,
     mut stop_rx: oneshot::Receiver<bool>,
+    tick_immediately: bool,
 ) where
     A: Handler<T>,
     T: 'static + Clone + Sync + Send,
 {
-    let mut interval = time::interval_at(tokio::time::Instant::now(), tick);
+    let start = if tick_immediately {
+        tokio::time::Instant::now()
+    } else {
+        tokio::time::Instant::now().add(tick)
+    };
+
+    let mut interval = time::interval_at(start, tick);
     let timer_id = Uuid::new_v4();
 
     interval.tick().await;
@@ -60,7 +84,7 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
 
         let now = Instant::now();
 
-        if actor.send(msg.clone()).await.is_err() {
+        if actor.notify(msg.clone()).is_err() {
             break;
         }
 

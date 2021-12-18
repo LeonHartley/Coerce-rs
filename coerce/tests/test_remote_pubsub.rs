@@ -109,7 +109,7 @@ pub async fn test_pubsub_local() {
         .unwrap();
 
     for _ in 0..10 {
-        PubSub::publish(StatusStream, StatusEvent::Online, remote.actor_system()).await;
+        PubSub::publish(StatusStream, StatusEvent::Online, &remote).await;
     }
 
     let received_stream_messages = receiver_a.await.unwrap();
@@ -179,12 +179,12 @@ pub async fn test_pubsub_distributed() {
 
     // Publish 5 messages on the first server
     for _ in 0..5 {
-        PubSub::publish(StatusStream, StatusEvent::Online, remote.actor_system()).await;
+        PubSub::publish(StatusStream, StatusEvent::Online, &remote).await;
     }
 
     // Publish 5 messages on the second server
     for _ in 0..5 {
-        PubSub::publish(StatusStream, StatusEvent::Online, remote_b.actor_system()).await;
+        PubSub::publish(StatusStream, StatusEvent::Online, &remote_b).await;
     }
 
     // ensure both actors (one on each system) receives all stream messages from both servers within 3 seconds

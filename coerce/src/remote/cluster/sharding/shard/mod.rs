@@ -1,4 +1,4 @@
-use crate::actor::context::ActorContext;
+use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
 use crate::remote::actor::BoxedActorHandler;
@@ -8,6 +8,7 @@ use crate::remote::handler::ActorHandler;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::ClientResult;
 
+use crate::actor::system::ActorSystem;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 use tokio::sync::oneshot;
 
@@ -20,7 +21,6 @@ pub struct Shard {
 impl Shard {
     pub fn new(shard_id: ShardId, handler: BoxedActorHandler) -> Shard {
         let persistent_entities = false;
-
         Shard {
             shard_id,
             handler,
@@ -29,7 +29,12 @@ impl Shard {
     }
 }
 
-impl Actor for Shard {}
+#[async_trait]
+impl Actor for Shard {
+    async fn started(&mut self, _ctx: &mut ActorContext) {
+        debug!("started shard#{}", self.shard_id);
+    }
+}
 
 impl Shard {
     async fn start_entity(
@@ -42,11 +47,20 @@ impl Shard {
             .handler
             .create(Some(actor_id), recipe.clone(), Some(ctx))
             .await;
+
         if self.persistent_entities && entity.is_ok() {
             // TODO: persist it
         }
 
-        entity
+        entity.map(|entity| {
+            debug!(
+                "spawned entity, registered it as a child of Shard#{}, hosted_entities={}",
+                self.shard_id,
+                &ctx.supervised_mut().unwrap().children.len()
+            );
+            ctx.attach_child_ref(entity.clone());
+            entity
+        })
     }
 }
 
@@ -73,7 +87,12 @@ impl Handler<EntityRequest> for Shard {
         let actor_id = message.actor_id;
         let result_channel = message.result_channel;
 
-        trace!("entity request");
+        debug!(
+            "entity request, node={}, actor_id={}, shard_id={}",
+            system.node_id(),
+            &actor_id,
+            self.shard_id
+        );
         if handler.is_none() {
             // TODO: send unsupported msg err
             warn!(
@@ -123,11 +142,19 @@ impl Handler<RemoteEntityRequest> for Shard {
     async fn handle(&mut self, message: RemoteEntityRequest, ctx: &mut ActorContext) {
         let (tx, rx) = oneshot::channel();
 
+        debug!(
+            "remote entity request, node={}, actor_id={}, shard_id={}, origin_node={}",
+            ctx.system().remote().node_id(),
+            &message.actor_id,
+            self.shard_id,
+            message.origin_node,
+        );
+
         let origin_node = message.origin_node;
         let request_id = message.request_id;
         self.handle(
             {
-                let mut message = message.request;
+                let mut message: EntityRequest = message.into();
                 message.result_channel = Some(tx);
                 message
             },
