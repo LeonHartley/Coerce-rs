@@ -898,6 +898,443 @@ impl ::protobuf::reflect::ProtobufValue for RemoteEntityRequest_Recipe {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct ShardStateSnapshot {
+    // message fields
+    pub shard_id: u32,
+    pub node_id: u64,
+    pub entities: ::protobuf::RepeatedField<ShardStateSnapshot_Entity>,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a ShardStateSnapshot {
+    fn default() -> &'a ShardStateSnapshot {
+        <ShardStateSnapshot as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ShardStateSnapshot {
+    pub fn new() -> ShardStateSnapshot {
+        ::std::default::Default::default()
+    }
+
+    // uint32 shard_id = 1;
+
+
+    pub fn get_shard_id(&self) -> u32 {
+        self.shard_id
+    }
+    pub fn clear_shard_id(&mut self) {
+        self.shard_id = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_shard_id(&mut self, v: u32) {
+        self.shard_id = v;
+    }
+
+    // uint64 node_id = 2;
+
+
+    pub fn get_node_id(&self) -> u64 {
+        self.node_id
+    }
+    pub fn clear_node_id(&mut self) {
+        self.node_id = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_node_id(&mut self, v: u64) {
+        self.node_id = v;
+    }
+
+    // repeated .coerce.sharding.ShardStateSnapshot.Entity entities = 3;
+
+
+    pub fn get_entities(&self) -> &[ShardStateSnapshot_Entity] {
+        &self.entities
+    }
+    pub fn clear_entities(&mut self) {
+        self.entities.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_entities(&mut self, v: ::protobuf::RepeatedField<ShardStateSnapshot_Entity>) {
+        self.entities = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_entities(&mut self) -> &mut ::protobuf::RepeatedField<ShardStateSnapshot_Entity> {
+        &mut self.entities
+    }
+
+    // Take field
+    pub fn take_entities(&mut self) -> ::protobuf::RepeatedField<ShardStateSnapshot_Entity> {
+        ::std::mem::replace(&mut self.entities, ::protobuf::RepeatedField::new())
+    }
+}
+
+impl ::protobuf::Message for ShardStateSnapshot {
+    fn is_initialized(&self) -> bool {
+        for v in &self.entities {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint32()?;
+                    self.shard_id = tmp;
+                },
+                2 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint64()?;
+                    self.node_id = tmp;
+                },
+                3 => {
+                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.entities)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.shard_id != 0 {
+            my_size += ::protobuf::rt::value_size(1, self.shard_id, ::protobuf::wire_format::WireTypeVarint);
+        }
+        if self.node_id != 0 {
+            my_size += ::protobuf::rt::value_size(2, self.node_id, ::protobuf::wire_format::WireTypeVarint);
+        }
+        for value in &self.entities {
+            let len = value.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+        };
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if self.shard_id != 0 {
+            os.write_uint32(1, self.shard_id)?;
+        }
+        if self.node_id != 0 {
+            os.write_uint64(2, self.node_id)?;
+        }
+        for v in &self.entities {
+            os.write_tag(3, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
+        };
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> ShardStateSnapshot {
+        ShardStateSnapshot::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+                "shard_id",
+                |m: &ShardStateSnapshot| { &m.shard_id },
+                |m: &mut ShardStateSnapshot| { &mut m.shard_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+                "node_id",
+                |m: &ShardStateSnapshot| { &m.node_id },
+                |m: &mut ShardStateSnapshot| { &mut m.node_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<ShardStateSnapshot_Entity>>(
+                "entities",
+                |m: &ShardStateSnapshot| { &m.entities },
+                |m: &mut ShardStateSnapshot| { &mut m.entities },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ShardStateSnapshot>(
+                "ShardStateSnapshot",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static ShardStateSnapshot {
+        static instance: ::protobuf::rt::LazyV2<ShardStateSnapshot> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(ShardStateSnapshot::new)
+    }
+}
+
+impl ::protobuf::Clear for ShardStateSnapshot {
+    fn clear(&mut self) {
+        self.shard_id = 0;
+        self.node_id = 0;
+        self.entities.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for ShardStateSnapshot {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ShardStateSnapshot {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct ShardStateSnapshot_Entity {
+    // message fields
+    pub actor_id: ::std::string::String,
+    pub recipe: ::std::vec::Vec<u8>,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a ShardStateSnapshot_Entity {
+    fn default() -> &'a ShardStateSnapshot_Entity {
+        <ShardStateSnapshot_Entity as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ShardStateSnapshot_Entity {
+    pub fn new() -> ShardStateSnapshot_Entity {
+        ::std::default::Default::default()
+    }
+
+    // string actor_id = 1;
+
+
+    pub fn get_actor_id(&self) -> &str {
+        &self.actor_id
+    }
+    pub fn clear_actor_id(&mut self) {
+        self.actor_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actor_id(&mut self, v: ::std::string::String) {
+        self.actor_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_actor_id(&mut self) -> &mut ::std::string::String {
+        &mut self.actor_id
+    }
+
+    // Take field
+    pub fn take_actor_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.actor_id, ::std::string::String::new())
+    }
+
+    // bytes recipe = 2;
+
+
+    pub fn get_recipe(&self) -> &[u8] {
+        &self.recipe
+    }
+    pub fn clear_recipe(&mut self) {
+        self.recipe.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_recipe(&mut self, v: ::std::vec::Vec<u8>) {
+        self.recipe = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_recipe(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.recipe
+    }
+
+    // Take field
+    pub fn take_recipe(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.recipe, ::std::vec::Vec::new())
+    }
+}
+
+impl ::protobuf::Message for ShardStateSnapshot_Entity {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_id)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.recipe)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.actor_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.actor_id);
+        }
+        if !self.recipe.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(2, &self.recipe);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.actor_id.is_empty() {
+            os.write_string(1, &self.actor_id)?;
+        }
+        if !self.recipe.is_empty() {
+            os.write_bytes(2, &self.recipe)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> ShardStateSnapshot_Entity {
+        ShardStateSnapshot_Entity::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actor_id",
+                |m: &ShardStateSnapshot_Entity| { &m.actor_id },
+                |m: &mut ShardStateSnapshot_Entity| { &mut m.actor_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
+                "recipe",
+                |m: &ShardStateSnapshot_Entity| { &m.recipe },
+                |m: &mut ShardStateSnapshot_Entity| { &mut m.recipe },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ShardStateSnapshot_Entity>(
+                "ShardStateSnapshot.Entity",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static ShardStateSnapshot_Entity {
+        static instance: ::protobuf::rt::LazyV2<ShardStateSnapshot_Entity> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(ShardStateSnapshot_Entity::new)
+    }
+}
+
+impl ::protobuf::Clear for ShardStateSnapshot_Entity {
+    fn clear(&mut self) {
+        self.actor_id.clear();
+        self.recipe.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for ShardStateSnapshot_Entity {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ShardStateSnapshot_Entity {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0esharding.proto\x12\x0fcoerce.sharding\".\n\rAllocateShard\x12\x1b\
     \n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0:\0\"J\n\x0eShardAllocat\
@@ -909,7 +1346,13 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x01(\x0cR\x07messageB\0\x12E\n\x06recipe\x18\x05\x20\x01(\x0b2+.coerce.\
     sharding.RemoteEntityRequest.RecipeR\x06recipeB\0\x12!\n\x0borigin_node\
     \x18\x06\x20\x01(\x04R\noriginNodeB\0\x1a$\n\x06Recipe\x12\x18\n\x06reci\
-    pe\x18\x01\x20\x01(\x0cR\x06recipeB\0:\0:\0B\0b\x06proto3\
+    pe\x18\x01\x20\x01(\x0cR\x06recipeB\0:\0:\0\"\xdb\x01\n\x12ShardStateSna\
+    pshot\x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\
+    \x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12H\n\x08entities\x18\
+    \x03\x20\x03(\x0b2*.coerce.sharding.ShardStateSnapshot.EntityR\x08entiti\
+    esB\0\x1aA\n\x06Entity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07acto\
+    rIdB\0\x12\x18\n\x06recipe\x18\x02\x20\x01(\x0cR\x06recipeB\0:\0:\0B\0b\
+    \x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

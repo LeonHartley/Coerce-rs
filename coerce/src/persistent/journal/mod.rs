@@ -135,7 +135,7 @@ impl<A: PersistentActor> Journal<A> {
             .expect("snapshot type not configured");
 
         let bytes = snapshot
-            .as_remote_envelope()
+            .into_remote_envelope()
             .expect("cannot serialize snapshot")
             .into_bytes();
 

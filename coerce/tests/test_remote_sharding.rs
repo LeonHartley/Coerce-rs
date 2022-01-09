@@ -4,16 +4,20 @@ use crate::util::{
 use crate::TestActorStatus::Active;
 use coerce::actor::message::{Envelope, Message};
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorRef, IntoActor};
+use coerce::actor::{
+    Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorRef, IntoActor, LocalActorRef,
+};
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::{ConfigurePersistence, Persistence};
-use coerce::remote::cluster::sharding::coordinator::allocation::AllocateShard;
+use coerce::remote::cluster::sharding::coordinator::allocation::{
+    AllocateShard, AllocateShardResult,
+};
 use coerce::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState};
 use coerce::remote::cluster::sharding::host::request::EntityRequest;
 use coerce::remote::cluster::sharding::host::stats::GetStats;
 use coerce::remote::cluster::sharding::host::{ShardHost, StartEntity};
 use coerce::remote::cluster::sharding::Sharding;
-use coerce::remote::system::RemoteActorSystem;
+use coerce::remote::system::{NodeId, RemoteActorSystem};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::oneshot;
@@ -57,6 +61,32 @@ impl ActorFactory for TestActorFactory {
     }
 }
 
+async fn create_shard_coordinator<T: Actor>(
+    remote: &RemoteActorSystem,
+    node_id: NodeId,
+    node_tag: String,
+    shard_host: ActorRef<ShardHost>,
+) -> LocalActorRef<ShardCoordinator> {
+    let mut shard_coordinator = ShardCoordinator::new(
+        T::type_name().to_string(),
+        shard_host.clone().unwrap_local(),
+    );
+
+    shard_coordinator.add_host(ShardHostState {
+        node_id,
+        node_tag,
+        shards: Default::default(),
+        actor: shard_host,
+    });
+
+    let shard_coordinator = shard_coordinator
+        .into_actor(Some("ShardCoordinator".to_string()), remote.actor_system())
+        .await
+        .expect("ShardCoordinator start");
+
+    shard_coordinator
+}
+
 #[tokio::test]
 pub async fn test_shard_coordinator_shard_allocation() {
     const SHARD_ID: u32 = 1;
@@ -77,29 +107,44 @@ pub async fn test_shard_coordinator_shard_allocation() {
         .expect("ShardHost start")
         .into();
 
-    let mut shard_coordinator = ShardCoordinator::new(
-        TestActor::type_name().to_string(),
-        shard_host.clone().unwrap_local(),
-    );
-    shard_coordinator.add_host(ShardHostState {
-        node_id: 1,
-        node_tag: "system-one".to_string(),
-        shards: Default::default(),
-        actor: shard_host.clone(),
-    });
-
-    let shard_coordinator = shard_coordinator
-        .into_actor(Some("ShardCoordinator".to_string()), &remote.actor_system())
-        .await
-        .expect("ShardCoordinator start");
+    let shard_coordinator = create_shard_coordinator::<TestActor>(
+        &remote,
+        1,
+        "system-one".to_string(),
+        shard_host.clone(),
+    )
+    .await;
 
     let allocation = shard_coordinator
         .send(AllocateShard { shard_id: SHARD_ID })
         .await;
-    allocation.expect("shard allocation");
+
+    let initial_allocation = allocation.expect("shard allocation");
+
+    shard_coordinator.stop().await;
 
     let host_stats = shard_host.send(GetStats).await.expect("get host stats");
+
+    let shard_coordinator = create_shard_coordinator::<TestActor>(
+        &remote,
+        1,
+        "system-one".to_string(),
+        shard_host.clone(),
+    )
+    .await;
+
+    let allocation = shard_coordinator
+        .send(AllocateShard { shard_id: SHARD_ID })
+        .await;
+
+    let allocation_after_restart = allocation.expect("shard allocation");
     assert_eq!(host_stats.hosted_shards, [SHARD_ID]);
+
+    assert_eq!(initial_allocation, AllocateShardResult::Allocated(1));
+    assert_eq!(
+        allocation_after_restart,
+        AllocateShardResult::AlreadyAllocated(1)
+    );
 }
 
 #[tokio::test]

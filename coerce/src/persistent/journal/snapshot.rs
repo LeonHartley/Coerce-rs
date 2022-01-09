@@ -10,11 +10,11 @@ pub trait Snapshot: 'static + Sync + Send + Sized {
     fn into_envelope(self, envelope_type: EnvelopeType) -> Result<Envelope<Self>, MessageWrapErr> {
         match envelope_type {
             EnvelopeType::Local => Ok(Envelope::Local(self)),
-            EnvelopeType::Remote => self.as_remote_envelope(),
+            EnvelopeType::Remote => self.into_remote_envelope(),
         }
     }
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn into_remote_envelope(self) -> Result<Envelope<Self>, MessageWrapErr> {
         Err(MessageWrapErr::NotTransmittable)
     }
 

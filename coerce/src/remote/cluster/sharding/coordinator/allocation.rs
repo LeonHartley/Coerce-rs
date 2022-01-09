@@ -15,14 +15,15 @@ pub struct AllocateShard {
     pub shard_id: ShardId,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum AllocateShardErr {
     Persistence,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum AllocateShardResult {
     Allocated(NodeId),
+    AlreadyAllocated(NodeId),
     NotAllocated,
     Err(AllocateShardErr),
 }
@@ -38,11 +39,11 @@ impl ShardCoordinator {
         &mut self,
         shard: AllocateShard,
         ctx: &mut ActorContext,
-    ) -> Option<NodeId> {
+    ) -> AllocateShardResult {
         let shard_entry = self.shards.entry(shard.shard_id);
 
         match shard_entry {
-            Entry::Occupied(node) => Some(*node.get()),
+            Entry::Occupied(node) => AllocateShardResult::AlreadyAllocated(*node.get()),
             Entry::Vacant(vacant) => {
                 allocate(
                     ctx.actor_ref(),
@@ -64,11 +65,7 @@ impl Handler<AllocateShard> for ShardCoordinator {
         ctx: &mut ActorContext,
     ) -> AllocateShardResult {
         if self.persist(&message, ctx).await.is_ok() {
-            if let Some(node_id) = self.allocate_shard(message, ctx).await {
-                AllocateShardResult::Allocated(node_id)
-            } else {
-                AllocateShardResult::NotAllocated
-            }
+            self.allocate_shard(message, ctx).await
         } else {
             AllocateShardResult::Err(AllocateShardErr::Persistence)
         }
@@ -87,11 +84,13 @@ async fn allocate(
     shard_id: ShardId,
     mut hosts: Vec<&mut ShardHostState>,
     shard_entry: VacantEntry<'_, ShardId, NodeId>,
-) -> Option<NodeId> {
+) -> AllocateShardResult {
     hosts.sort_by(|h1, h2| h1.shards.len().cmp(&h2.shards.len()));
 
     if let Some(host) = hosts.first_mut() {
         let node_id = host.node_id;
+
+        trace!(target: "ShardCoordinator", "shard#{} allocated, target_node={}", shard_id, node_id);
 
         shard_entry.insert(node_id);
         if host.shards.insert(shard_id) {
@@ -103,9 +102,9 @@ async fn allocate(
             ));
         }
 
-        Some(node_id)
+        AllocateShardResult::Allocated(node_id)
     } else {
-        None
+        AllocateShardResult::NotAllocated
     }
 }
 

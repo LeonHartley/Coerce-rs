@@ -59,6 +59,9 @@ impl PersistentActor for ShardCoordinator {
             },
         );
 
+        // TODO: start a healthcheck actor/timer checking all allocated shards ensuring they're up,
+        //       or rebalance/rehydrate if necessary
+
         info!("shard coordinator started");
         let potential_hosts = remote.get_nodes().await;
         for host in potential_hosts {

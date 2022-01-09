@@ -7,7 +7,7 @@ pub(crate) fn expand(ast: &syn::DeriveInput) -> TokenStream {
 
     quote! {
         impl #impl_generics ::coerce::persistent::journal::snapshot::Snapshot for #name #ty_generics #where_clause {
-            fn as_remote_envelope(&self) -> Result<coerce::actor::message::Envelope<Self>, coerce::actor::message::MessageWrapErr> {
+            fn into_remote_envelope(self) -> Result<coerce::actor::message::Envelope<Self>, coerce::actor::message::MessageWrapErr> {
                 serde_json::to_vec(&self)
                     .map_err(|_e| coerce::actor::message::MessageWrapErr::SerializationErr)
                     .map(|bytes| coerce::actor::message::Envelope::Remote(bytes))

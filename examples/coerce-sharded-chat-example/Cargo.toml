@@ -9,7 +9,7 @@ edition = "2021"
 coerce = { path = "../../coerce" }
 coerce-macros = { path = "../../coerce/macros" }
 tokio = { version = "1.6", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 async-trait = { version = "0.1" }
 tungstenite = "0.16"

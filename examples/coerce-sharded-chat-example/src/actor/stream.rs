@@ -64,7 +64,7 @@ impl Handler<Join> for ChatStream {
 
         JoinResult::Ok {
             creator: self.creator.clone(),
-            message_history: self.messages.iter().take(100).cloned().to_vec(),
+            message_history: self.messages.iter().take(100).cloned().collect(),
             token: self.join_token.clone(),
         }
     }
