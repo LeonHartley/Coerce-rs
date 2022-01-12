@@ -23,14 +23,14 @@ impl ActorPersistence {
 
     pub async fn init_journal<A: PersistentActor>(
         &mut self,
-        persistence_id: String,
+        persistence_id: &String,
     ) -> &mut Journal<A> {
         let storage = self
             .storage_provider
             .journal_storage()
             .expect("journal storage not configured");
 
-        let journal = Journal::<A>::new(persistence_id, storage).await;
+        let journal = Journal::<A>::new(persistence_id.clone(), storage).await;
         self.journal = Some(Box::new(journal));
         self.journal.as_mut().unwrap().downcast_mut().unwrap()
     }

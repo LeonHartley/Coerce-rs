@@ -10,6 +10,7 @@ use crate::remote::net::codec::NetworkCodec;
 use futures::StreamExt;
 use protobuf::Message;
 use tokio_util::codec::FramedRead;
+use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
 
 pub mod client;
 pub mod codec;
@@ -74,21 +75,20 @@ where
 pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
     mut system: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
-    stop_rx: tokio::sync::oneshot::Receiver<bool>,
     mut receiver: R,
 ) where
     R: Send,
 {
-    let mut fut = StreamReceiverFuture::new(read, stop_rx);
-    while let Some(res) = fut.next().await {
+    let mut reader = read;
+    while let Some(res) = reader.next().await {
         match res {
-            Some(res) => match R::Message::read_from_bytes(res) {
+            Ok(res) => match R::Message::read_from_bytes(res) {
                 Some(msg) => {
                     receiver.on_receive(msg, &system).await;
                 }
                 None => warn!(target: "RemoteReceive", "error decoding msg"),
             },
-            None => {
+            Err(_) => {
                 error!(target: "RemoteReceive", "error receiving msg");
                 break;
             }

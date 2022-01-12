@@ -16,7 +16,9 @@ use std::str::FromStr;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
+use tokio::task::JoinHandle;
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub struct RemoteClient {
@@ -25,6 +27,7 @@ pub struct RemoteClient {
     pub node_started_at: DateTime<Utc>,
     write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
     stop: Option<oneshot::Sender<bool>>,
+    receive_task: JoinHandle<()>,
 }
 
 pub struct HandshakeAcknowledge {
@@ -176,10 +179,9 @@ impl RemoteClient {
 
         trace!("got nodes {:?}", &nodes);
 
-        tokio::spawn(receive_loop(
+        let receive_task = tokio::spawn(receive_loop(
             system,
             read,
-            stop_rx,
             ClientMessageReceiver::new(remote_node_id, handshake_tx),
         ));
 
@@ -226,6 +228,7 @@ impl RemoteClient {
             node_id,
             node_tag,
             node_started_at,
+            receive_task,
             stop: Some(stop_tx),
         })
     }

@@ -65,7 +65,7 @@ impl Actor for Peer {
         let reader = self.websocket_reader.take().unwrap();
 
         attach_stream(
-            ctx.actor_ref::<Self>(),
+            self.actor_ref(ctx),
             reader,
             StreamAttachmentOptions::default(),
             |msg| match msg {

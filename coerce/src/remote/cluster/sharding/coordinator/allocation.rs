@@ -2,14 +2,20 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
 };
-use crate::actor::{ActorRef, LocalActorRef};
+use crate::actor::{ActorId, ActorRef, LocalActorRef};
 use crate::persistent::{PersistentActor, Recover};
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
-use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
+use crate::remote::cluster::sharding::host::{ShardAllocated, ShardAllocator, ShardHost};
+use crate::remote::cluster::sharding::proto::sharding as proto;
+use crate::remote::cluster::sharding::proto::sharding::{
+    AllocateShardResult_AllocateShardErr, AllocateShardResult_Type,
+};
 use crate::remote::system::NodeId;
 use futures::future::join_all;
-use std::collections::hash_map::{Entry, VacantEntry};
+use protobuf::{Message as ProtoMessage, SingularPtrField};
+use std::collections::hash_map::{DefaultHasher, Entry, VacantEntry};
 use std::convert::TryInto;
+use std::hash::{Hash, Hasher};
 
 pub struct AllocateShard {
     pub shard_id: ShardId,
@@ -17,13 +23,14 @@ pub struct AllocateShard {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum AllocateShardErr {
+    Unknown,
     Persistence,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum AllocateShardResult {
-    Allocated(NodeId),
-    AlreadyAllocated(NodeId),
+    Allocated(ShardId, NodeId),
+    AlreadyAllocated(ShardId, NodeId),
     NotAllocated,
     Err(AllocateShardErr),
 }
@@ -43,7 +50,9 @@ impl ShardCoordinator {
         let shard_entry = self.shards.entry(shard.shard_id);
 
         match shard_entry {
-            Entry::Occupied(node) => AllocateShardResult::AlreadyAllocated(*node.get()),
+            Entry::Occupied(node) => {
+                AllocateShardResult::AlreadyAllocated(shard.shard_id, *node.get())
+            }
             Entry::Vacant(vacant) => {
                 allocate(
                     ctx.actor_ref(),
@@ -67,6 +76,7 @@ impl Handler<AllocateShard> for ShardCoordinator {
         if self.persist(&message, ctx).await.is_ok() {
             self.allocate_shard(message, ctx).await
         } else {
+            warn!(target: "ShardCoordinator", "error persisting a `AllocateShard`, shard_id={}", message.shard_id);
             AllocateShardResult::Err(AllocateShardErr::Persistence)
         }
     }
@@ -75,6 +85,8 @@ impl Handler<AllocateShard> for ShardCoordinator {
 #[async_trait]
 impl Recover<AllocateShard> for ShardCoordinator {
     async fn recover(&mut self, message: AllocateShard, ctx: &mut ActorContext) {
+        trace!(target: "ShardCoordinator", "recovered `AllocateShard`, shard_id={}", message.shard_id);
+
         self.allocate_shard(message, ctx).await;
     }
 }
@@ -102,7 +114,7 @@ async fn allocate(
             ));
         }
 
-        AllocateShardResult::Allocated(node_id)
+        AllocateShardResult::Allocated(shard_id, node_id)
     } else {
         AllocateShardResult::NotAllocated
     }
@@ -138,24 +150,108 @@ impl Message for AllocateShard {
     type Result = AllocateShardResult;
 
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
-        Ok(Envelope::<Self>::Remote(
-            self.shard_id.to_be_bytes().to_vec(),
-        ))
+        proto::AllocateShard {
+            shard_id: self.shard_id,
+            ..Default::default()
+        }
+        .write_to_bytes()
+        .map_or_else(
+            |_| Err(MessageWrapErr::SerializationErr),
+            |b| Ok(Envelope::Remote(b)),
+        )
     }
 
     fn from_remote_envelope(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        let len = buffer.len();
-        let shard_id = u32::from_be_bytes(buffer[0..len].try_into().unwrap());
-        Ok(Self { shard_id })
+        proto::AllocateShard::parse_from_bytes(&buffer).map_or_else(
+            |_| Err(MessageUnwrapErr::DeserializationErr),
+            |allocate_shard| {
+                Ok(AllocateShard {
+                    shard_id: allocate_shard.shard_id,
+                })
+            },
+        )
     }
 
     fn read_remote_result(buffer: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
-        // TODO: protobuf this stuff
-        serde_json::from_slice(&buffer).map_err(|_| MessageUnwrapErr::DeserializationErr)
+        let result = proto::AllocateShardResult::parse_from_bytes(&buffer);
+        let result = match result {
+            Ok(result) => match result.result_type {
+                AllocateShardResult_Type::ALLOCATED => {
+                    let allocation = result.allocation.unwrap();
+                    AllocateShardResult::Allocated(allocation.shard_id, allocation.node_id)
+                }
+                AllocateShardResult_Type::ALREADY_ALLOCATED => {
+                    let allocation = result.allocation.unwrap();
+                    AllocateShardResult::AlreadyAllocated(allocation.shard_id, allocation.node_id)
+                }
+                AllocateShardResult_Type::NOT_ALLOCATED => AllocateShardResult::NotAllocated,
+                AllocateShardResult_Type::ERR => AllocateShardResult::Err(match result.err {
+                    AllocateShardResult_AllocateShardErr::PERSISTENCE => {
+                        AllocateShardErr::Persistence
+                    }
+                    AllocateShardResult_AllocateShardErr::UNKNOWN => AllocateShardErr::Unknown,
+                }),
+            },
+            Err(_e) => return Err(MessageUnwrapErr::DeserializationErr),
+        };
+
+        Ok(result)
     }
 
     fn write_remote_result(res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
-        // TODO: protobuf this stuff
-        serde_json::to_vec(&res).map_err(|_| MessageWrapErr::SerializationErr)
+        let mut result: proto::AllocateShardResult = Default::default();
+
+        match res {
+            AllocateShardResult::Allocated(shard_id, node_id) => {
+                result.result_type = AllocateShardResult_Type::ALLOCATED;
+                result.allocation = Some(proto::ShardAllocated {
+                    shard_id,
+                    node_id,
+                    ..Default::default()
+                })
+                .into();
+            }
+            AllocateShardResult::AlreadyAllocated(shard_id, node_id) => {
+                result.result_type = AllocateShardResult_Type::ALREADY_ALLOCATED;
+                result.allocation = Some(proto::ShardAllocated {
+                    shard_id,
+                    node_id,
+                    ..Default::default()
+                })
+                .into();
+            }
+            AllocateShardResult::NotAllocated => {
+                result.result_type = AllocateShardResult_Type::NOT_ALLOCATED;
+            }
+            AllocateShardResult::Err(e) => {
+                result.result_type = AllocateShardResult_Type::ERR;
+                result.err = match e {
+                    AllocateShardErr::Persistence => {
+                        AllocateShardResult_AllocateShardErr::PERSISTENCE
+                    }
+                    AllocateShardErr::Unknown => AllocateShardResult_AllocateShardErr::UNKNOWN,
+                }
+            }
+        }
+
+        result
+            .write_to_bytes()
+            .map_err(|_e| MessageWrapErr::SerializationErr)
+    }
+}
+
+pub struct DefaultAllocator {
+    pub max_shards: ShardId,
+}
+
+impl ShardAllocator for DefaultAllocator {
+    fn allocate(&mut self, actor_id: &ActorId) -> ShardId {
+        let hashed_actor_id = {
+            let mut hasher = DefaultHasher::new();
+            actor_id.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        (hashed_actor_id % self.max_shards as u64) as ShardId
     }
 }

@@ -18,18 +18,26 @@ use crate::remote::net::proto::network::{
 };
 use crate::remote::stream::mediator::PublishRaw;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use futures::future::FutureExt;
 use opentelemetry::global;
 use protobuf::Message;
 use std::collections::HashMap;
+use std::net::{SocketAddr, TcpListener};
+use std::pin::Pin;
 use std::str::FromStr;
+use std::task::{Context, Poll};
+use tokio::io;
+use tokio::net::TcpStream;
+use tokio::task::JoinHandle;
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
 pub mod session;
 
 pub struct RemoteServer {
-    stop: Option<tokio::sync::oneshot::Sender<bool>>,
+    cancellation_token: Option<CancellationToken>,
 }
 
 pub struct SessionMessageReceiver {
@@ -63,7 +71,9 @@ impl SessionMessageReceiver {
 
 impl RemoteServer {
     pub fn new() -> Self {
-        RemoteServer { stop: None }
+        RemoteServer {
+            cancellation_token: None,
+        }
     }
 
     pub async fn start(
@@ -72,7 +82,6 @@ impl RemoteServer {
         system: RemoteActorSystem,
     ) -> Result<(), tokio::io::Error> {
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        let (stop_tx, _stop_rx) = tokio::sync::oneshot::channel();
 
         let session_store = system
             .actor_system()
@@ -84,16 +93,34 @@ impl RemoteServer {
             .await
             .unwrap();
 
-        tokio::spawn(server_loop(listener, system, session_store));
-        self.stop = Some(stop_tx);
+        let token = CancellationToken::new();
+        tokio::spawn(server_loop(listener, system, session_store, token.clone()));
+        self.cancellation_token = Some(token);
         Ok(())
     }
 
-    pub fn stop(&mut self) -> bool {
-        if let Some(stop) = self.stop.take() {
-            stop.send(true).is_ok()
-        } else {
-            false
+    pub fn stop(&mut self) {
+        if let Some(cancellation_token) = self.cancellation_token.take() {
+            cancellation_token.cancel();
+        }
+    }
+}
+
+pub async fn cancellation(cancellation_token: CancellationToken) {
+    cancellation_token.cancelled().await
+}
+
+pub async fn accept(
+    listener: &tokio::net::TcpListener,
+    cancellation_token: CancellationToken,
+) -> Option<io::Result<(tokio::net::TcpStream, SocketAddr)>> {
+    tokio::select! {
+        _ = cancellation(cancellation_token) => {
+            None
+        }
+
+        res = listener.accept() => {
+            Some(res)
         }
     }
 }
@@ -102,16 +129,16 @@ pub async fn server_loop(
     listener: tokio::net::TcpListener,
     system: RemoteActorSystem,
     session_store: LocalActorRef<RemoteSessionStore>,
+    cancellation_token: CancellationToken,
 ) {
     loop {
-        match listener.accept().await {
-            Ok((socket, addr)) => {
+        match accept(&listener, cancellation_token.clone()).await {
+            Some(Ok((socket, addr))) => {
                 trace!(target: "RemoteServer", "client accepted {}", addr);
                 let (read, write) = tokio::io::split(socket);
 
                 let read = FramedRead::new(read, NetworkCodec);
                 let write = FramedWrite::new(write, NetworkCodec);
-                let (_stop_tx, stop_rx) = tokio::sync::oneshot::channel();
 
                 let session_id = Uuid::new_v4();
 
@@ -123,13 +150,15 @@ pub async fn server_loop(
                 let _session = tokio::spawn(receive_loop(
                     system.clone(),
                     read,
-                    stop_rx,
                     SessionMessageReceiver::new(session_id, session_store.clone()),
                 ));
             }
-            Err(e) => error!(target: "RemoteServer", "error accepting client: {:?}", e),
+            Some(Err(e)) => error!(target: "RemoteServer", "error accepting client: {:?}", e),
+            None => break,
         }
     }
+
+    info!("tcp listener {:?} stopped", &listener)
 }
 
 #[async_trait]

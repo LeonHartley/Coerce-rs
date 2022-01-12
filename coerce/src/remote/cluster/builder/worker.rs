@@ -50,7 +50,7 @@ impl ClusterWorkerBuilder {
         self
     }
 
-    pub async fn start(mut self) {
+    pub async fn start(mut self) -> RemoteServer {
         let span = tracing::trace_span!(
             "ClusterWorkerBuilder::start",
             listen_addr = self.server_listen_addr.as_str(),
@@ -78,6 +78,7 @@ impl ClusterWorkerBuilder {
             .expect("failed to start server");
 
         self.discover_peers().await;
+        server
 
         // let node_id = self.system.node_id();
         // let sys = self.system.clone();

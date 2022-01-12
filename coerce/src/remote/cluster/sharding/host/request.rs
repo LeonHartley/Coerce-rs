@@ -2,16 +2,13 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
 };
-use crate::actor::{ActorId, ActorRef, ActorRefErr};
+use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr};
 use crate::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
 };
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
-use crate::remote::cluster::sharding::host::{calculate_shard_id, ShardAllocated, ShardHost};
-use crate::remote::cluster::sharding::proto::sharding::{
-    AllocateShard as AllocateShardProto, RemoteEntityRequest as RemoteEntityRequestProto,
-    RemoteEntityRequest_Recipe, ShardAllocated as ShardAllocatedProto,
-};
+use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
+use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
@@ -42,7 +39,7 @@ pub struct RemoteEntityRequest {
 #[async_trait]
 impl Handler<EntityRequest> for ShardHost {
     async fn handle(&mut self, message: EntityRequest, ctx: &mut ActorContext) {
-        let shard_id = calculate_shard_id(&message.actor_id, self.max_shards);
+        let shard_id = self.allocator.allocate(&message.actor_id);
 
         if let Some(shard) = self.hosted_shards.get(&shard_id) {
             let actor = shard.actor.clone();
@@ -96,10 +93,10 @@ impl Handler<EntityRequest> for ShardHost {
 
                 debug!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})", shard_id, buffered_requests.len());
 
-                let host_ref = ctx.actor_ref::<Self>();
+                let host_ref = self.actor_ref(ctx);
                 tokio::spawn(async move {
                     let allocation = leader.send(AllocateShard { shard_id }).await;
-                    if let Ok(AllocateShardResult::Allocated(node_id)) = allocation {
+                    if let Ok(AllocateShardResult::Allocated(shard_id, node_id)) = allocation {
                         host_ref.notify(ShardAllocated(shard_id, node_id));
                     }
                 });
@@ -187,7 +184,7 @@ impl Message for RemoteEntityRequest {
     type Result = ();
 
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
-        let proto = RemoteEntityRequestProto {
+        let proto = proto::RemoteEntityRequest {
             request_id: self.request_id.to_string(),
             actor_id: self.actor_id.clone(),
             message_type: self.message_type.clone(),
@@ -195,7 +192,7 @@ impl Message for RemoteEntityRequest {
             recipe: self.recipe.clone().map_or_else(
                 || SingularPtrField::none(),
                 |r| {
-                    SingularPtrField::some(RemoteEntityRequest_Recipe {
+                    SingularPtrField::some(proto::RemoteEntityRequest_Recipe {
                         recipe: r,
                         ..Default::default()
                     })
@@ -212,7 +209,7 @@ impl Message for RemoteEntityRequest {
     }
 
     fn from_remote_envelope(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        RemoteEntityRequestProto::parse_from_bytes(&buffer).map_or_else(
+        proto::RemoteEntityRequest::parse_from_bytes(&buffer).map_or_else(
             |_e| Err(MessageUnwrapErr::DeserializationErr),
             |proto| {
                 Ok(RemoteEntityRequest {

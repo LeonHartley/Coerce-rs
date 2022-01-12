@@ -71,12 +71,13 @@ where
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
-        let (snapshot, messages) = load_journal::<A>(persistence_key, ctx).await;
+        let (snapshot, messages) = load_journal::<A>(&persistence_key, ctx).await;
 
         trace!(
-            "actor recovered {} messages (snapshot_recovered={})",
+            "persistent actor ({}) recovered {} snapshot(s) and {} message(s)",
+            &persistence_key,
+            if snapshot.is_some() { 1 } else { 0 },
             messages.as_ref().map_or(0, |m| m.len()),
-            snapshot.is_some()
         );
 
         if let Some(snapshot) = snapshot {
@@ -101,7 +102,7 @@ where
 }
 
 async fn load_journal<A: PersistentActor>(
-    persistence_key: String,
+    persistence_key: &String,
     ctx: &mut ActorContext,
 ) -> (
     Option<RecoveredPayload<A>>,

@@ -363,6 +363,348 @@ impl ::protobuf::reflect::ProtobufValue for ShardAllocated {
 }
 
 #[derive(PartialEq,Clone,Default)]
+pub struct AllocateShardResult {
+    // message fields
+    pub result_type: AllocateShardResult_Type,
+    pub allocation: ::protobuf::SingularPtrField<ShardAllocated>,
+    pub err: AllocateShardResult_AllocateShardErr,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a AllocateShardResult {
+    fn default() -> &'a AllocateShardResult {
+        <AllocateShardResult as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl AllocateShardResult {
+    pub fn new() -> AllocateShardResult {
+        ::std::default::Default::default()
+    }
+
+    // .coerce.sharding.AllocateShardResult.Type result_type = 1;
+
+
+    pub fn get_result_type(&self) -> AllocateShardResult_Type {
+        self.result_type
+    }
+    pub fn clear_result_type(&mut self) {
+        self.result_type = AllocateShardResult_Type::ALLOCATED;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_result_type(&mut self, v: AllocateShardResult_Type) {
+        self.result_type = v;
+    }
+
+    // .coerce.sharding.ShardAllocated allocation = 2;
+
+
+    pub fn get_allocation(&self) -> &ShardAllocated {
+        self.allocation.as_ref().unwrap_or_else(|| <ShardAllocated as ::protobuf::Message>::default_instance())
+    }
+    pub fn clear_allocation(&mut self) {
+        self.allocation.clear();
+    }
+
+    pub fn has_allocation(&self) -> bool {
+        self.allocation.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_allocation(&mut self, v: ShardAllocated) {
+        self.allocation = ::protobuf::SingularPtrField::some(v);
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_allocation(&mut self) -> &mut ShardAllocated {
+        if self.allocation.is_none() {
+            self.allocation.set_default();
+        }
+        self.allocation.as_mut().unwrap()
+    }
+
+    // Take field
+    pub fn take_allocation(&mut self) -> ShardAllocated {
+        self.allocation.take().unwrap_or_else(|| ShardAllocated::new())
+    }
+
+    // .coerce.sharding.AllocateShardResult.AllocateShardErr err = 3;
+
+
+    pub fn get_err(&self) -> AllocateShardResult_AllocateShardErr {
+        self.err
+    }
+    pub fn clear_err(&mut self) {
+        self.err = AllocateShardResult_AllocateShardErr::UNKNOWN;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_err(&mut self, v: AllocateShardResult_AllocateShardErr) {
+        self.err = v;
+    }
+}
+
+impl ::protobuf::Message for AllocateShardResult {
+    fn is_initialized(&self) -> bool {
+        for v in &self.allocation {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.result_type, 1, &mut self.unknown_fields)?
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.allocation)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.err, 3, &mut self.unknown_fields)?
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.result_type != AllocateShardResult_Type::ALLOCATED {
+            my_size += ::protobuf::rt::enum_size(1, self.result_type);
+        }
+        if let Some(ref v) = self.allocation.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+        }
+        if self.err != AllocateShardResult_AllocateShardErr::UNKNOWN {
+            my_size += ::protobuf::rt::enum_size(3, self.err);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if self.result_type != AllocateShardResult_Type::ALLOCATED {
+            os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.result_type))?;
+        }
+        if let Some(ref v) = self.allocation.as_ref() {
+            os.write_tag(2, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
+        }
+        if self.err != AllocateShardResult_AllocateShardErr::UNKNOWN {
+            os.write_enum(3, ::protobuf::ProtobufEnum::value(&self.err))?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> AllocateShardResult {
+        AllocateShardResult::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<AllocateShardResult_Type>>(
+                "result_type",
+                |m: &AllocateShardResult| { &m.result_type },
+                |m: &mut AllocateShardResult| { &mut m.result_type },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<ShardAllocated>>(
+                "allocation",
+                |m: &AllocateShardResult| { &m.allocation },
+                |m: &mut AllocateShardResult| { &mut m.allocation },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<AllocateShardResult_AllocateShardErr>>(
+                "err",
+                |m: &AllocateShardResult| { &m.err },
+                |m: &mut AllocateShardResult| { &mut m.err },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<AllocateShardResult>(
+                "AllocateShardResult",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static AllocateShardResult {
+        static instance: ::protobuf::rt::LazyV2<AllocateShardResult> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(AllocateShardResult::new)
+    }
+}
+
+impl ::protobuf::Clear for AllocateShardResult {
+    fn clear(&mut self) {
+        self.result_type = AllocateShardResult_Type::ALLOCATED;
+        self.allocation.clear();
+        self.err = AllocateShardResult_AllocateShardErr::UNKNOWN;
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for AllocateShardResult {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for AllocateShardResult {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum AllocateShardResult_Type {
+    ALLOCATED = 0,
+    ALREADY_ALLOCATED = 1,
+    NOT_ALLOCATED = 2,
+    ERR = 3,
+}
+
+impl ::protobuf::ProtobufEnum for AllocateShardResult_Type {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<AllocateShardResult_Type> {
+        match value {
+            0 => ::std::option::Option::Some(AllocateShardResult_Type::ALLOCATED),
+            1 => ::std::option::Option::Some(AllocateShardResult_Type::ALREADY_ALLOCATED),
+            2 => ::std::option::Option::Some(AllocateShardResult_Type::NOT_ALLOCATED),
+            3 => ::std::option::Option::Some(AllocateShardResult_Type::ERR),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [AllocateShardResult_Type] = &[
+            AllocateShardResult_Type::ALLOCATED,
+            AllocateShardResult_Type::ALREADY_ALLOCATED,
+            AllocateShardResult_Type::NOT_ALLOCATED,
+            AllocateShardResult_Type::ERR,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<AllocateShardResult_Type>("AllocateShardResult.Type", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for AllocateShardResult_Type {
+}
+
+impl ::std::default::Default for AllocateShardResult_Type {
+    fn default() -> Self {
+        AllocateShardResult_Type::ALLOCATED
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for AllocateShardResult_Type {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum AllocateShardResult_AllocateShardErr {
+    UNKNOWN = 0,
+    PERSISTENCE = 1,
+}
+
+impl ::protobuf::ProtobufEnum for AllocateShardResult_AllocateShardErr {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<AllocateShardResult_AllocateShardErr> {
+        match value {
+            0 => ::std::option::Option::Some(AllocateShardResult_AllocateShardErr::UNKNOWN),
+            1 => ::std::option::Option::Some(AllocateShardResult_AllocateShardErr::PERSISTENCE),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [AllocateShardResult_AllocateShardErr] = &[
+            AllocateShardResult_AllocateShardErr::UNKNOWN,
+            AllocateShardResult_AllocateShardErr::PERSISTENCE,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<AllocateShardResult_AllocateShardErr>("AllocateShardResult.AllocateShardErr", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for AllocateShardResult_AllocateShardErr {
+}
+
+impl ::std::default::Default for AllocateShardResult_AllocateShardErr {
+    fn default() -> Self {
+        AllocateShardResult_AllocateShardErr::UNKNOWN
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for AllocateShardResult_AllocateShardErr {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
 pub struct RemoteEntityRequest {
     // message fields
     pub request_id: ::std::string::String,
@@ -899,6 +1241,525 @@ impl ::protobuf::reflect::ProtobufValue for RemoteEntityRequest_Recipe {
 }
 
 #[derive(PartialEq,Clone,Default)]
+pub struct StartEntity {
+    // message fields
+    pub actor_id: ::std::string::String,
+    pub recipe: ::std::vec::Vec<u8>,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a StartEntity {
+    fn default() -> &'a StartEntity {
+        <StartEntity as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl StartEntity {
+    pub fn new() -> StartEntity {
+        ::std::default::Default::default()
+    }
+
+    // string actor_id = 1;
+
+
+    pub fn get_actor_id(&self) -> &str {
+        &self.actor_id
+    }
+    pub fn clear_actor_id(&mut self) {
+        self.actor_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actor_id(&mut self, v: ::std::string::String) {
+        self.actor_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_actor_id(&mut self) -> &mut ::std::string::String {
+        &mut self.actor_id
+    }
+
+    // Take field
+    pub fn take_actor_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.actor_id, ::std::string::String::new())
+    }
+
+    // bytes recipe = 2;
+
+
+    pub fn get_recipe(&self) -> &[u8] {
+        &self.recipe
+    }
+    pub fn clear_recipe(&mut self) {
+        self.recipe.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_recipe(&mut self, v: ::std::vec::Vec<u8>) {
+        self.recipe = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_recipe(&mut self) -> &mut ::std::vec::Vec<u8> {
+        &mut self.recipe
+    }
+
+    // Take field
+    pub fn take_recipe(&mut self) -> ::std::vec::Vec<u8> {
+        ::std::mem::replace(&mut self.recipe, ::std::vec::Vec::new())
+    }
+}
+
+impl ::protobuf::Message for StartEntity {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_id)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.recipe)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.actor_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.actor_id);
+        }
+        if !self.recipe.is_empty() {
+            my_size += ::protobuf::rt::bytes_size(2, &self.recipe);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.actor_id.is_empty() {
+            os.write_string(1, &self.actor_id)?;
+        }
+        if !self.recipe.is_empty() {
+            os.write_bytes(2, &self.recipe)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> StartEntity {
+        StartEntity::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actor_id",
+                |m: &StartEntity| { &m.actor_id },
+                |m: &mut StartEntity| { &mut m.actor_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBytes>(
+                "recipe",
+                |m: &StartEntity| { &m.recipe },
+                |m: &mut StartEntity| { &mut m.recipe },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<StartEntity>(
+                "StartEntity",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static StartEntity {
+        static instance: ::protobuf::rt::LazyV2<StartEntity> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(StartEntity::new)
+    }
+}
+
+impl ::protobuf::Clear for StartEntity {
+    fn clear(&mut self) {
+        self.actor_id.clear();
+        self.recipe.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for StartEntity {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for StartEntity {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct PassivateEntity {
+    // message fields
+    pub actor_id: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a PassivateEntity {
+    fn default() -> &'a PassivateEntity {
+        <PassivateEntity as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl PassivateEntity {
+    pub fn new() -> PassivateEntity {
+        ::std::default::Default::default()
+    }
+
+    // string actor_id = 1;
+
+
+    pub fn get_actor_id(&self) -> &str {
+        &self.actor_id
+    }
+    pub fn clear_actor_id(&mut self) {
+        self.actor_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actor_id(&mut self, v: ::std::string::String) {
+        self.actor_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_actor_id(&mut self) -> &mut ::std::string::String {
+        &mut self.actor_id
+    }
+
+    // Take field
+    pub fn take_actor_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.actor_id, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for PassivateEntity {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_id)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.actor_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.actor_id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.actor_id.is_empty() {
+            os.write_string(1, &self.actor_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> PassivateEntity {
+        PassivateEntity::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actor_id",
+                |m: &PassivateEntity| { &m.actor_id },
+                |m: &mut PassivateEntity| { &mut m.actor_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<PassivateEntity>(
+                "PassivateEntity",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static PassivateEntity {
+        static instance: ::protobuf::rt::LazyV2<PassivateEntity> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(PassivateEntity::new)
+    }
+}
+
+impl ::protobuf::Clear for PassivateEntity {
+    fn clear(&mut self) {
+        self.actor_id.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for PassivateEntity {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for PassivateEntity {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct RemoveEntity {
+    // message fields
+    pub actor_id: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a RemoveEntity {
+    fn default() -> &'a RemoveEntity {
+        <RemoveEntity as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl RemoveEntity {
+    pub fn new() -> RemoveEntity {
+        ::std::default::Default::default()
+    }
+
+    // string actor_id = 1;
+
+
+    pub fn get_actor_id(&self) -> &str {
+        &self.actor_id
+    }
+    pub fn clear_actor_id(&mut self) {
+        self.actor_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actor_id(&mut self, v: ::std::string::String) {
+        self.actor_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_actor_id(&mut self) -> &mut ::std::string::String {
+        &mut self.actor_id
+    }
+
+    // Take field
+    pub fn take_actor_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.actor_id, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for RemoveEntity {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_id)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.actor_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.actor_id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if !self.actor_id.is_empty() {
+            os.write_string(1, &self.actor_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> RemoveEntity {
+        RemoveEntity::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actor_id",
+                |m: &RemoveEntity| { &m.actor_id },
+                |m: &mut RemoveEntity| { &mut m.actor_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<RemoveEntity>(
+                "RemoveEntity",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static RemoveEntity {
+        static instance: ::protobuf::rt::LazyV2<RemoveEntity> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(RemoveEntity::new)
+    }
+}
+
+impl ::protobuf::Clear for RemoveEntity {
+    fn clear(&mut self) {
+        self.actor_id.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for RemoveEntity {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for RemoveEntity {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
 pub struct ShardStateSnapshot {
     // message fields
     pub shard_id: u32,
@@ -1139,6 +2000,7 @@ pub struct ShardStateSnapshot_Entity {
     // message fields
     pub actor_id: ::std::string::String,
     pub recipe: ::std::vec::Vec<u8>,
+    pub status: EntityStatus,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -1206,6 +2068,21 @@ impl ShardStateSnapshot_Entity {
     pub fn take_recipe(&mut self) -> ::std::vec::Vec<u8> {
         ::std::mem::replace(&mut self.recipe, ::std::vec::Vec::new())
     }
+
+    // .coerce.sharding.EntityStatus status = 3;
+
+
+    pub fn get_status(&self) -> EntityStatus {
+        self.status
+    }
+    pub fn clear_status(&mut self) {
+        self.status = EntityStatus::ACTIVE;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_status(&mut self, v: EntityStatus) {
+        self.status = v;
+    }
 }
 
 impl ::protobuf::Message for ShardStateSnapshot_Entity {
@@ -1222,6 +2099,9 @@ impl ::protobuf::Message for ShardStateSnapshot_Entity {
                 },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_bytes_into(wire_type, is, &mut self.recipe)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.status, 3, &mut self.unknown_fields)?
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -1241,6 +2121,9 @@ impl ::protobuf::Message for ShardStateSnapshot_Entity {
         if !self.recipe.is_empty() {
             my_size += ::protobuf::rt::bytes_size(2, &self.recipe);
         }
+        if self.status != EntityStatus::ACTIVE {
+            my_size += ::protobuf::rt::enum_size(3, self.status);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -1252,6 +2135,9 @@ impl ::protobuf::Message for ShardStateSnapshot_Entity {
         }
         if !self.recipe.is_empty() {
             os.write_bytes(2, &self.recipe)?;
+        }
+        if self.status != EntityStatus::ACTIVE {
+            os.write_enum(3, ::protobuf::ProtobufEnum::value(&self.status))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1301,6 +2187,11 @@ impl ::protobuf::Message for ShardStateSnapshot_Entity {
                 |m: &ShardStateSnapshot_Entity| { &m.recipe },
                 |m: &mut ShardStateSnapshot_Entity| { &mut m.recipe },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<EntityStatus>>(
+                "status",
+                |m: &ShardStateSnapshot_Entity| { &m.status },
+                |m: &mut ShardStateSnapshot_Entity| { &mut m.status },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ShardStateSnapshot_Entity>(
                 "ShardStateSnapshot.Entity",
                 fields,
@@ -1319,6 +2210,7 @@ impl ::protobuf::Clear for ShardStateSnapshot_Entity {
     fn clear(&mut self) {
         self.actor_id.clear();
         self.recipe.clear();
+        self.status = EntityStatus::ACTIVE;
         self.unknown_fields.clear();
     }
 }
@@ -1335,24 +2227,88 @@ impl ::protobuf::reflect::ProtobufValue for ShardStateSnapshot_Entity {
     }
 }
 
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum EntityStatus {
+    ACTIVE = 0,
+    PASSIVATED = 1,
+}
+
+impl ::protobuf::ProtobufEnum for EntityStatus {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<EntityStatus> {
+        match value {
+            0 => ::std::option::Option::Some(EntityStatus::ACTIVE),
+            1 => ::std::option::Option::Some(EntityStatus::PASSIVATED),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [EntityStatus] = &[
+            EntityStatus::ACTIVE,
+            EntityStatus::PASSIVATED,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<EntityStatus>("EntityStatus", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for EntityStatus {
+}
+
+impl ::std::default::Default for EntityStatus {
+    fn default() -> Self {
+        EntityStatus::ACTIVE
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for EntityStatus {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0esharding.proto\x12\x0fcoerce.sharding\".\n\rAllocateShard\x12\x1b\
     \n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0:\0\"J\n\x0eShardAllocat\
     ed\x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\x07\
-    node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0:\0\"\xa6\x02\n\x13RemoteEntit\
-    yRequest\x12\x1f\n\nrequest_id\x18\x01\x20\x01(\tR\trequestIdB\0\x12\x1b\
-    \n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12#\n\x0cmessage_type\
-    \x18\x03\x20\x01(\tR\x0bmessageTypeB\0\x12\x1a\n\x07message\x18\x04\x20\
-    \x01(\x0cR\x07messageB\0\x12E\n\x06recipe\x18\x05\x20\x01(\x0b2+.coerce.\
-    sharding.RemoteEntityRequest.RecipeR\x06recipeB\0\x12!\n\x0borigin_node\
-    \x18\x06\x20\x01(\x04R\noriginNodeB\0\x1a$\n\x06Recipe\x12\x18\n\x06reci\
-    pe\x18\x01\x20\x01(\x0cR\x06recipeB\0:\0:\0\"\xdb\x01\n\x12ShardStateSna\
-    pshot\x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\
-    \x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12H\n\x08entities\x18\
-    \x03\x20\x03(\x0b2*.coerce.sharding.ShardStateSnapshot.EntityR\x08entiti\
-    esB\0\x1aA\n\x06Entity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07acto\
-    rIdB\0\x12\x18\n\x06recipe\x18\x02\x20\x01(\x0cR\x06recipeB\0:\0:\0B\0b\
-    \x06proto3\
+    node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0:\0\"\xf3\x02\n\x13AllocateSha\
+    rdResult\x12L\n\x0bresult_type\x18\x01\x20\x01(\x0e2).coerce.sharding.Al\
+    locateShardResult.TypeR\nresultTypeB\0\x12A\n\nallocation\x18\x02\x20\
+    \x01(\x0b2\x1f.coerce.sharding.ShardAllocatedR\nallocationB\0\x12I\n\x03\
+    err\x18\x03\x20\x01(\x0e25.coerce.sharding.AllocateShardResult.AllocateS\
+    hardErrR\x03errB\0\"J\n\x04Type\x12\r\n\tALLOCATED\x10\0\x12\x15\n\x11AL\
+    READY_ALLOCATED\x10\x01\x12\x11\n\rNOT_ALLOCATED\x10\x02\x12\x07\n\x03ER\
+    R\x10\x03\x1a\0\"2\n\x10AllocateShardErr\x12\x0b\n\x07UNKNOWN\x10\0\x12\
+    \x0f\n\x0bPERSISTENCE\x10\x01\x1a\0:\0\"\xa6\x02\n\x13RemoteEntityReques\
+    t\x12\x1f\n\nrequest_id\x18\x01\x20\x01(\tR\trequestIdB\0\x12\x1b\n\x08a\
+    ctor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12#\n\x0cmessage_type\x18\x03\
+    \x20\x01(\tR\x0bmessageTypeB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0c\
+    R\x07messageB\0\x12E\n\x06recipe\x18\x05\x20\x01(\x0b2+.coerce.sharding.\
+    RemoteEntityRequest.RecipeR\x06recipeB\0\x12!\n\x0borigin_node\x18\x06\
+    \x20\x01(\x04R\noriginNodeB\0\x1a$\n\x06Recipe\x12\x18\n\x06recipe\x18\
+    \x01\x20\x01(\x0cR\x06recipeB\0:\0:\0\"F\n\x0bStartEntity\x12\x1b\n\x08a\
+    ctor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x18\n\x06recipe\x18\x02\
+    \x20\x01(\x0cR\x06recipeB\0:\0\"0\n\x0fPassivateEntity\x12\x1b\n\x08acto\
+    r_id\x18\x01\x20\x01(\tR\x07actorIdB\0:\0\"-\n\x0cRemoveEntity\x12\x1b\n\
+    \x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0:\0\"\x94\x02\n\x12ShardSt\
+    ateSnapshot\x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\
+    \x19\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12H\n\x08entities\
+    \x18\x03\x20\x03(\x0b2*.coerce.sharding.ShardStateSnapshot.EntityR\x08en\
+    titiesB\0\x1az\n\x06Entity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07\
+    actorIdB\0\x12\x18\n\x06recipe\x18\x02\x20\x01(\x0cR\x06recipeB\0\x127\n\
+    \x06status\x18\x03\x20\x01(\x0e2\x1d.coerce.sharding.EntityStatusR\x06st\
+    atusB\0:\0:\0*,\n\x0cEntityStatus\x12\n\n\x06ACTIVE\x10\0\x12\x0e\n\nPAS\
+    SIVATED\x10\x01\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

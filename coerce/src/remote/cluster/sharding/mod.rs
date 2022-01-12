@@ -48,7 +48,7 @@ impl<A: ActorFactory> Sharding<A> {
         ));
         let host_actor_id = Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()));
 
-        let host = ShardHost::new(shard_entity.clone())
+        let host = ShardHost::new(shard_entity.clone(), None)
             .into_actor(host_actor_id, system.actor_system())
             .await
             .expect("create ShardHost actor");

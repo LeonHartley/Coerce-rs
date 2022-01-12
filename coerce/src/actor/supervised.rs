@@ -84,7 +84,7 @@ impl Supervised {
             .insert(boxed_ref.actor_id().clone(), boxed_ref.into());
     }
 
-    pub async fn stop_all(&self) {
+    pub async fn stop_all(&mut self) {
         let stop_results = futures::future::join_all(
             self.children
                 .iter()
@@ -95,6 +95,7 @@ impl Supervised {
         for (actor_id, stop_result) in stop_results {
             if let Ok(status) = stop_result {
                 trace!("actor stopped ({}, status={:?})", actor_id, &status);
+                self.children.remove(&actor_id);
             } else {
                 warn!(
                     "failed to stop child actor_id={}, err={}",

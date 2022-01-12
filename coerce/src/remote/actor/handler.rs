@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, FindActor};
 
-use crate::actor::ActorId;
+use crate::actor::{Actor, ActorId};
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
@@ -304,7 +304,7 @@ impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
                 SystemEvent::Cluster(_) => {
                     trace!(target: "RemoteRegistry", "cluster event");
                     let system = self.system.as_ref().unwrap().clone();
-                    let registry_ref = ctx.actor_ref::<Self>();
+                    let registry_ref = self.actor_ref(ctx);
 
                     tokio::spawn(async move {
                         let sys = system;

@@ -29,7 +29,7 @@ impl Drop for ActorContext {
             boxed_parent_ref.notify_child_terminated(self.id().into());
         }
 
-        if let Some(supervised) = self.supervised.take() {
+        if let Some(mut supervised) = self.supervised.take() {
             tokio::spawn(async move { supervised.stop_all().await });
         }
 

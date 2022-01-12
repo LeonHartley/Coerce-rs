@@ -43,6 +43,13 @@ pub trait Actor: 'static + Send + Sync {
 
     async fn on_child_stopped(&mut self, _id: &ActorId, _ctx: &mut ActorContext) {}
 
+    fn actor_ref(&self, ctx: &ActorContext) -> LocalActorRef<Self>
+    where
+        Self: Sized,
+    {
+        ctx.actor_ref()
+    }
+
     fn type_name() -> &'static str
     where
         Self: Sized,
@@ -95,21 +102,6 @@ pub trait ActorFactory: Clone {
     type Recipe: ActorRecipe + 'static + Sync + Send;
 
     async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr>;
-}
-
-pub trait GetActorRef {
-    fn get_ref(&self, ctx: &ActorContext) -> LocalActorRef<Self>
-    where
-        Self: Actor + Sized + Send + Sync;
-}
-
-impl<A: Actor> GetActorRef for A {
-    fn get_ref(&self, ctx: &ActorContext) -> LocalActorRef<Self>
-    where
-        Self: Sized + Send + Sync,
-    {
-        ctx.actor_ref()
-    }
 }
 
 pub async fn new_actor<A: Actor>(actor: A) -> Result<LocalActorRef<A>, ActorRefErr>

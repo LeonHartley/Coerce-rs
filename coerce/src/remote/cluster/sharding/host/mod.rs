@@ -3,9 +3,10 @@ use crate::actor::message::{
     Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
 };
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef};
+use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
 use crate::remote::cluster::sharding::coordinator::ShardId;
 use crate::remote::cluster::sharding::host::request::EntityRequest;
-use crate::remote::cluster::sharding::proto::sharding::ShardAllocated as ShardAllocatedProto;
+use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
@@ -26,22 +27,35 @@ struct ShardState {
 
 pub struct ShardHost {
     shard_entity: String,
-    max_shards: ShardId,
     hosted_shards: HashMap<ShardId, ShardState>,
     remote_shards: HashMap<ShardId, ActorRef<Shard>>,
     buffered_requests: HashMap<ShardId, Vec<EntityRequest>>,
+    allocator: Box<dyn ShardAllocator + Send + Sync>,
+}
+
+pub trait ShardAllocator {
+    fn allocate(&mut self, actor_id: &ActorId) -> ShardId;
 }
 
 impl Actor for ShardHost {}
 
 impl ShardHost {
-    pub fn new(shard_entity: String) -> ShardHost {
+    pub fn new(
+        shard_entity: String,
+        allocator: Option<Box<dyn ShardAllocator + Send + Sync>>,
+    ) -> ShardHost {
         ShardHost {
             shard_entity,
-            max_shards: 100,
             hosted_shards: Default::default(),
             remote_shards: Default::default(),
             buffered_requests: Default::default(),
+            allocator: allocator.map_or_else(
+                || {
+                    Box::new(DefaultAllocator { max_shards: 100 })
+                        as Box<dyn ShardAllocator + Send + Sync>
+                },
+                |s| s,
+            ),
         }
     }
 }
@@ -55,6 +69,14 @@ pub struct StopShard {
 pub struct StartEntity {
     pub actor_id: ActorId,
     pub recipe: Vec<u8>,
+}
+
+pub struct RemoveEntity {
+    pub actor_id: ActorId,
+}
+
+pub struct PassivateEntity {
+    pub actor_id: String,
 }
 
 #[async_trait]
@@ -72,7 +94,7 @@ impl Handler<ShardAllocated> for ShardHost {
                 .actor_handler(&self.shard_entity)
                 .expect("actor factory not supported");
 
-            let shard = Shard::new(shard_id, handler)
+            let shard = Shard::new(shard_id, handler, true)
                 .into_actor(Some(shard_actor_id), ctx.system())
                 .await
                 .expect("create shard actor");
@@ -125,17 +147,6 @@ impl Handler<StopShard> for ShardHost {
     }
 }
 
-// TODO: Allow this to be overridden
-pub fn calculate_shard_id(actor_id: &ActorId, max_shards: ShardId) -> ShardId {
-    let hashed_actor_id = {
-        let mut hasher = DefaultHasher::new();
-        actor_id.hash(&mut hasher);
-        hasher.finish()
-    };
-
-    (hashed_actor_id % max_shards as u64) as ShardId
-}
-
 pub fn shard_actor_id(shard_entity: &String, shard_id: ShardId) -> ActorId {
     format!("{}-Shard#{}", &shard_entity, shard_id)
 }
@@ -144,7 +155,7 @@ impl Message for ShardAllocated {
     type Result = ();
 
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
-        ShardAllocatedProto {
+        proto::ShardAllocated {
             shard_id: self.0,
             node_id: self.1,
             ..Default::default()
@@ -157,17 +168,17 @@ impl Message for ShardAllocated {
     }
 
     fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        ShardAllocatedProto::parse_from_bytes(&b)
+        proto::ShardAllocated::parse_from_bytes(&b)
             .map(|r| Self(r.shard_id, r.node_id))
             .map_err(|e| MessageUnwrapErr::DeserializationErr)
     }
 
-    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
-        Ok(vec![])
-    }
-
     fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
         Ok(())
+    }
+
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        Ok(vec![])
     }
 }
 
@@ -177,4 +188,98 @@ impl Message for StopShard {
 
 impl Message for StartEntity {
     type Result = ();
+
+    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+        proto::StartEntity {
+            actor_id: self.actor_id.clone(),
+            recipe: self.recipe.clone(),
+            ..Default::default()
+        }
+        .write_to_bytes()
+        .map_or_else(
+            |_e| Err(MessageWrapErr::SerializationErr),
+            |m| Ok(Envelope::Remote(m)),
+        )
+    }
+
+    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        proto::StartEntity::parse_from_bytes(&b)
+            .map(|r| Self {
+                actor_id: r.actor_id,
+                recipe: r.recipe,
+            })
+            .map_err(|e| MessageUnwrapErr::DeserializationErr)
+    }
+
+    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Ok(())
+    }
+
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        Ok(vec![])
+    }
+}
+
+impl Message for RemoveEntity {
+    type Result = ();
+
+    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+        proto::RemoveEntity {
+            actor_id: self.actor_id.clone(),
+            ..Default::default()
+        }
+        .write_to_bytes()
+        .map_or_else(
+            |_e| Err(MessageWrapErr::SerializationErr),
+            |m| Ok(Envelope::Remote(m)),
+        )
+    }
+
+    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        proto::RemoveEntity::parse_from_bytes(&b)
+            .map(|r| Self {
+                actor_id: r.actor_id,
+            })
+            .map_err(|e| MessageUnwrapErr::DeserializationErr)
+    }
+
+    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Ok(())
+    }
+
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        Ok(vec![])
+    }
+}
+
+impl Message for PassivateEntity {
+    type Result = ();
+
+    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+        proto::PassivateEntity {
+            actor_id: self.actor_id.clone(),
+            ..Default::default()
+        }
+        .write_to_bytes()
+        .map_or_else(
+            |_e| Err(MessageWrapErr::SerializationErr),
+            |m| Ok(Envelope::Remote(m)),
+        )
+    }
+
+    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        proto::PassivateEntity::parse_from_bytes(&b)
+            .map(|r| Self {
+                actor_id: r.actor_id,
+            })
+            .map_err(|e| MessageUnwrapErr::DeserializationErr)
+    }
+
+    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Ok(())
+    }
+
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        Ok(vec![])
+    }
 }

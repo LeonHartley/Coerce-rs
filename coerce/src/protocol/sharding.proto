@@ -12,6 +12,26 @@ message ShardAllocated {
   uint64 node_id = 2;
 }
 
+message AllocateShardResult {
+  enum Type {
+    ALLOCATED = 0;
+    ALREADY_ALLOCATED = 1;
+    NOT_ALLOCATED = 2;
+    ERR = 3;
+  }
+
+  enum AllocateShardErr {
+    UNKNOWN = 0;
+    PERSISTENCE = 1;
+  }
+
+  Type result_type = 1;
+
+  ShardAllocated allocation = 2;
+
+  AllocateShardErr err = 3;
+}
+
 message RemoteEntityRequest {
   message Recipe {
     bytes recipe = 1;
@@ -30,11 +50,32 @@ message RemoteEntityRequest {
   uint64 origin_node = 6;
 }
 
+enum EntityStatus {
+  ACTIVE = 0;
+  PASSIVATED = 1;
+}
+
+message StartEntity {
+  string actor_id = 1;
+
+  bytes recipe = 2;
+}
+
+message PassivateEntity {
+  string actor_id = 1;
+}
+
+message RemoveEntity {
+  string actor_id = 1;
+}
+
 message ShardStateSnapshot {
   message Entity {
     string actor_id = 1;
 
     bytes recipe = 2;
+
+    EntityStatus status = 3;
   }
 
   uint32 shard_id = 1;

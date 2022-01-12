@@ -86,8 +86,8 @@ impl Actor for Heartbeat {
             self.system.node_id()
         );
 
-        self.heartbeat_timer = Some(Timer::start_immediately::<Heartbeat, HeartbeatTick>(
-            ctx.actor_ref(),
+        self.heartbeat_timer = Some(Timer::start_immediately(
+            self.actor_ref(ctx),
             self.config.interval,
             HeartbeatTick,
         ));
@@ -96,7 +96,7 @@ impl Actor for Heartbeat {
 
 #[async_trait]
 impl Handler<HeartbeatTick> for Heartbeat {
-    async fn handle(&mut self, _msg: HeartbeatTick, ctx: &mut ActorContext) {
+    async fn handle(&mut self, _msg: HeartbeatTick, _ctx: &mut ActorContext) {
         let node_tag = self.system.node_tag();
         let current_node = self.system.node_id();
 
@@ -205,7 +205,7 @@ fn ping_rpc(
                     Ok(pong) => PingResult::Ok(pong),
                     Err(e) => PingResult::Err(e),
                 },
-                Err(_) => PingResult::Timeout,
+                Err(_e) => PingResult::Timeout,
             },
         )
     })
