@@ -6,10 +6,14 @@ message AllocateShard {
   uint32 shard_id = 1;
 }
 
-message ShardAllocated {
+message RemoteShard {
   uint32 shard_id = 1;
 
   uint64 node_id = 2;
+}
+
+message ShardAllocated {
+  RemoteShard shard = 1;
 }
 
 message AllocateShardResult {
@@ -27,7 +31,7 @@ message AllocateShardResult {
 
   Type result_type = 1;
 
-  ShardAllocated allocation = 2;
+  RemoteShard allocation = 2;
 
   AllocateShardErr err = 3;
 }
@@ -83,4 +87,36 @@ message ShardStateSnapshot {
   uint64 node_id = 2;
 
   repeated Entity entities = 3;
+}
+
+message GetShardingStats {
+
+}
+
+message NodeStats {
+  uint64 node_id = 1;
+
+  uint64 shard_count = 2;
+}
+
+message ShardingStats {
+  string entity_type = 1;
+
+  uint64 total_shards = 2;
+
+  repeated RemoteShard shards = 3;
+
+  repeated NodeStats nodes = 4;
+}
+
+message GetShardStats {
+
+}
+
+message ShardStats {
+  uint32 shard_id = 1;
+
+  uint64 node_id = 2;
+
+  repeated string entities = 3;
 }

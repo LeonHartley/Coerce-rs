@@ -10,6 +10,8 @@ message RemoteNode {
   string addr = 2;
 
   google.protobuf.Timestamp node_started_at = 3;
+
+  string tag = 4;
 }
 
 enum Event {

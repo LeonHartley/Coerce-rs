@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 
+use crate::actor::metrics::ActorSystemMetrics;
 use crate::persistent::journal::provider::StorageProvider;
 use uuid::Uuid;
 
@@ -21,6 +22,7 @@ pub struct ActorSystem {
     remote: Option<RemoteActorSystem>,
     persistence: Option<Persistence>,
     is_terminated: Arc<AtomicBool>,
+    metrics: Arc<ActorSystemMetrics>,
 }
 
 impl ActorSystem {
@@ -32,6 +34,7 @@ impl ActorSystem {
             remote: None,
             persistence: None,
             is_terminated: Arc::new(AtomicBool::new(false)),
+            metrics: Arc::new(ActorSystemMetrics::new()),
         }
     }
 
@@ -70,6 +73,10 @@ impl ActorSystem {
 
     pub fn is_remote(&self) -> bool {
         self.remote.is_some()
+    }
+
+    pub fn metrics(&self) -> &ActorSystemMetrics {
+        self.metrics.as_ref()
     }
 
     pub async fn new_tracked_actor<A: Actor>(

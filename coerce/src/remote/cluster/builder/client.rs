@@ -32,7 +32,12 @@ impl ClusterClientBuilder {
             .expect("failed to connect to seed server");
 
         self.system
-            .register_node(RemoteNode::new(client.node_id, seed_addr, Some(Utc::now())))
+            .register_node(RemoteNode::new(
+                client.node_id,
+                seed_addr,
+                client.node_tag.clone(),
+                Some(Utc::now()),
+            ))
             .await;
 
         self.system.register_client(client.node_id, client).await;

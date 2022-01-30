@@ -28,7 +28,7 @@ pub struct Heartbeat {
     config: Arc<HeartbeatConfig>,
     system: RemoteActorSystem,
     heartbeat_timer: Option<Timer>,
-    last_heartbeat: Option<Instant>,
+    last_heartbeat: Option<DateTime<Utc>>,
 }
 
 pub struct HeartbeatConfig {
@@ -162,8 +162,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
         }
 
         self.system.update_nodes(updates).await;
-
-        self.last_heartbeat = Some(Instant::now())
+        self.last_heartbeat = Some(Utc::now())
     }
 }
 
@@ -221,7 +220,7 @@ async fn ping_node(
     let ping_latency = start.elapsed();
 
     if ping.is_ok() {
-        node.last_heartbeat = Some(Instant::now());
+        node.last_heartbeat = Some(Utc::now());
         node.ping_latency = Some(ping_latency);
     }
 
@@ -240,7 +239,7 @@ async fn ping_node(
 fn node_status(
     node_id: NodeId,
     previous_status: NodeStatus,
-    last_heartbeat: &Option<Instant>,
+    last_heartbeat: &Option<DateTime<Utc>>,
     ping: PingResult,
     ping_latency: Duration,
     config: &HeartbeatConfig,
@@ -262,7 +261,8 @@ fn node_status(
 
         PingResult::Timeout => {
             let terminated = last_heartbeat.map_or(true, |h| {
-                h.add(config.terminated_node_heartbeat_timeout) >= Instant::now()
+                h.add(chrono::Duration::from_std(config.terminated_node_heartbeat_timeout).unwrap())
+                    >= Utc::now()
             });
 
             if terminated {

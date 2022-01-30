@@ -24,6 +24,7 @@ pub async fn main() {
         remote_listen_addr: "0.0.0.0:31101".to_string(),
         remote_seed_addr: None,
         websocket_listen_addr: "0.0.0.0:31102".to_string(),
+        cluster_api_listen_addr: "0.0.0.0:31111".to_string(),
     };
 
     let mut sharded_chat = ShardedChat::start(sharded_chat_config).await;

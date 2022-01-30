@@ -63,6 +63,7 @@ impl ClusterWorkerBuilder {
             .register_node(RemoteNode::new(
                 self.system.node_id(),
                 self.server_listen_addr.clone(),
+                self.system.node_tag().to_string(),
                 Some(Utc::now()),
             ))
             .await;
@@ -124,6 +125,7 @@ impl ClusterWorkerBuilder {
                 .register_node(RemoteNode::new(
                     client.node_id,
                     seed_addr,
+                    client.node_tag.clone(),
                     Some(client.node_started_at),
                 ))
                 .await;

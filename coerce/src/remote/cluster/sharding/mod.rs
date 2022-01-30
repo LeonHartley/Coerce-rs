@@ -4,9 +4,11 @@ use crate::actor::{
 };
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
+use crate::remote::cluster::sharding::coordinator::stats::GetShardingStats;
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
+use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::builder::RemoteActorHandlerBuilder;
 use crate::remote::system::RemoteActorSystem;
@@ -28,6 +30,7 @@ pub struct Sharding<A: ActorFactory> {
 struct ShardingCore {
     host: LocalActorRef<ShardHost>,
     coordinator_spawner: LocalActorRef<CoordinatorSpawner>,
+    shard_entity: String,
     system: RemoteActorSystem,
 }
 
@@ -64,6 +67,7 @@ impl<A: ActorFactory> Sharding<A> {
                 host,
                 system,
                 coordinator_spawner,
+                shard_entity,
             }),
             _a: PhantomData,
         }
@@ -93,6 +97,14 @@ impl<A: ActorFactory> Sharding<A> {
         ShardHost: Handler<M>,
     {
         self.core.host.notify(message)
+    }
+
+    pub fn shard_host(&self) -> &LocalActorRef<ShardHost> {
+        &self.core.host
+    }
+
+    pub fn shard_entity(&self) -> &String {
+        &self.core.shard_entity
     }
 }
 
@@ -143,6 +155,8 @@ impl<A: Actor> Sharded<A> {
 pub fn sharding(builder: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
     builder
         .with_handler::<ShardCoordinator, AllocateShard>("ShardCoordinator.AllocateShard")
+        .with_handler::<ShardCoordinator, GetShardingStats>("ShardCoordinator.GetShardingStats")
         .with_handler::<ShardHost, ShardAllocated>("ShardHost.ShardAllocated")
         .with_handler::<Shard, RemoteEntityRequest>("Shard.RemoteEntityRequest")
+        .with_handler::<Shard, GetShardStats>("Shard.GetShardStats")
 }

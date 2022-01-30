@@ -204,7 +204,7 @@ impl Message for AllocateShard {
         match res {
             AllocateShardResult::Allocated(shard_id, node_id) => {
                 result.result_type = AllocateShardResult_Type::ALLOCATED;
-                result.allocation = Some(proto::ShardAllocated {
+                result.allocation = Some(proto::RemoteShard {
                     shard_id,
                     node_id,
                     ..Default::default()
@@ -213,7 +213,7 @@ impl Message for AllocateShard {
             }
             AllocateShardResult::AlreadyAllocated(shard_id, node_id) => {
                 result.result_type = AllocateShardResult_Type::ALREADY_ALLOCATED;
-                result.allocation = Some(proto::ShardAllocated {
+                result.allocation = Some(proto::RemoteShard {
                     shard_id,
                     node_id,
                     ..Default::default()
@@ -242,6 +242,12 @@ impl Message for AllocateShard {
 
 pub struct DefaultAllocator {
     pub max_shards: ShardId,
+}
+
+impl Default for DefaultAllocator {
+    fn default() -> Self {
+        DefaultAllocator { max_shards: 1000 }
+    }
 }
 
 impl ShardAllocator for DefaultAllocator {

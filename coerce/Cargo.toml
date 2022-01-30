@@ -13,7 +13,7 @@ repository = "https://github.com/leonhartley/coerce-rs"
 [dependencies]
 tokio = { version = "1.14", features = ["full"] }
 tokio-util = { version = "0.6", features = ["full"] }
-tokio-stream = { version = "0.1"}
+tokio-stream = { version = "0.1" }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -37,6 +37,8 @@ anyhow = "1.0"
 rand = "0.8.4"
 parking_lot = "0.11.2"
 axum = "0.4.3"
+axum-extra = "0.1.1"
+
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }
 #trust-dns-client = { version = "0.19" }

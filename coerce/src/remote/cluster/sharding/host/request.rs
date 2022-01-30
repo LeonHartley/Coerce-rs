@@ -69,38 +69,22 @@ impl Handler<EntityRequest> for ShardHost {
                 message,
                 ctx.system().remote_owned(),
             ));
-        } else {
-            let remote = ctx.system().remote();
-            let leader = remote.current_leader();
+        } else if ctx.system().remote().current_leader().is_some() {
+            let leader = self.get_coordinator(&ctx).await;
 
-            if let Some(leader) = leader {
-                let actor_id = format!("ShardCoordinator-{}", &self.shard_entity);
+            let buffered_requests = self.buffered_requests.entry(shard_id);
+            let mut buffered_requests = buffered_requests.or_insert_with(|| vec![]);
+            buffered_requests.push(message);
 
-                let leader: ActorRef<ShardCoordinator> = if leader == remote.node_id() {
-                    // TODO: Cache the coordinator ref
-                    ctx.system()
-                        .get_tracked_actor::<ShardCoordinator>(actor_id)
-                        .await
-                        .expect("get local coordinator")
-                        .into()
-                } else {
-                    RemoteActorRef::<ShardCoordinator>::new(actor_id, leader, remote.clone()).into()
-                };
+            debug!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})", shard_id, buffered_requests.len());
 
-                let buffered_requests = self.buffered_requests.entry(shard_id);
-                let mut buffered_requests = buffered_requests.or_insert_with(|| vec![]);
-                buffered_requests.push(message);
-
-                debug!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})", shard_id, buffered_requests.len());
-
-                let host_ref = self.actor_ref(ctx);
-                tokio::spawn(async move {
-                    let allocation = leader.send(AllocateShard { shard_id }).await;
-                    if let Ok(AllocateShardResult::Allocated(shard_id, node_id)) = allocation {
-                        host_ref.notify(ShardAllocated(shard_id, node_id));
-                    }
-                });
-            }
+            let host_ref = self.actor_ref(ctx);
+            tokio::spawn(async move {
+                let allocation = leader.send(AllocateShard { shard_id }).await;
+                if let Ok(AllocateShardResult::Allocated(shard_id, node_id)) = allocation {
+                    host_ref.notify(ShardAllocated(shard_id, node_id));
+                }
+            });
         }
     }
 }
@@ -192,10 +176,11 @@ impl Message for RemoteEntityRequest {
             recipe: self.recipe.clone().map_or_else(
                 || SingularPtrField::none(),
                 |r| {
-                    SingularPtrField::some(proto::RemoteEntityRequest_Recipe {
+                    Some(proto::RemoteEntityRequest_Recipe {
                         recipe: r,
                         ..Default::default()
                     })
+                    .into()
                 },
             ),
             origin_node: self.origin_node,

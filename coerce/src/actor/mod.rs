@@ -17,6 +17,7 @@ use uuid::Uuid;
 pub mod context;
 pub mod lifecycle;
 pub mod message;
+pub mod metrics;
 pub mod scheduler;
 pub mod supervised;
 pub mod system;

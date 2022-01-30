@@ -16,6 +16,7 @@ use std::collections::{HashMap, HashSet};
 
 pub mod allocation;
 pub mod spawner;
+pub mod stats;
 pub mod stream;
 
 pub type ShardId = u32;

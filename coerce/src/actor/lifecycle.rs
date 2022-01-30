@@ -64,6 +64,10 @@ impl ActorLoop {
 
         actor.started(&mut ctx).await;
 
+        if let Some(system) = &system {
+            system.metrics().increment_actors_started();
+        }
+
         match ctx.get_status() {
             Stopping => return,
             _ => {}
@@ -99,6 +103,10 @@ impl ActorLoop {
                 );
 
                 msg.handle(&mut actor, &mut ctx).await;
+
+                if let Some(system) = &system {
+                    system.metrics().increment_msgs_processed();
+                }
             }
 
             match ctx.get_status() {
@@ -118,6 +126,10 @@ impl ActorLoop {
         actor.stopped(&mut ctx).await;
 
         ctx.set_status(Stopped);
+
+        if let Some(system) = &system {
+            system.metrics().increment_actors_stopped();
+        }
 
         if actor_type.is_tracked() {
             if let Some(system) = system.take() {

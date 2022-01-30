@@ -13,7 +13,7 @@ use coerce::persistent::{ConfigurePersistence, Persistence};
 use coerce::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
 };
-use coerce::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState};
+use coerce::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
 use coerce::remote::cluster::sharding::host::request::EntityRequest;
 use coerce::remote::cluster::sharding::host::stats::GetStats;
 use coerce::remote::cluster::sharding::host::{ShardHost, StartEntity};
@@ -125,7 +125,12 @@ pub async fn test_shard_coordinator_shard_allocation() {
 
     shard_coordinator.stop().await;
 
-    let host_stats = shard_host.send(GetStats).await.expect("get host stats");
+    let host_stats = shard_host
+        .send(GetStats)
+        .await
+        .unwrap()
+        .await
+        .expect("get host stats");
     let _ = shard_host.unwrap_local().stop().await;
 
     let shard_host: ActorRef<ShardHost> = ShardHost::new(TestActor::type_name().to_string(), None)
@@ -147,7 +152,14 @@ pub async fn test_shard_coordinator_shard_allocation() {
         .await;
 
     let allocation_after_restart = allocation.expect("shard allocation");
-    assert_eq!(host_stats.hosted_shards, [SHARD_ID]);
+    assert_eq!(
+        host_stats
+            .hosted_shards
+            .keys()
+            .map(|k| *k)
+            .collect::<Vec<ShardId>>(),
+        [SHARD_ID]
+    );
 
     assert_eq!(
         initial_allocation,

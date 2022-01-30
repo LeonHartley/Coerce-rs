@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::oneshot;
 
-mod stats;
+pub(crate) mod stats;
 
 pub struct Shard {
     shard_id: ShardId,
@@ -55,7 +55,7 @@ impl Shard {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 enum EntityStatus {
     Active,
     Passivated,
@@ -142,6 +142,16 @@ impl Shard {
             .handler
             .create(Some(actor_id.clone()), recipe.clone(), Some(ctx))
             .await;
+
+        self.entities.insert(
+            actor_id.clone(),
+            Entity {
+                actor_id: actor_id.clone(),
+                recipe: recipe.clone(),
+                status: EntityStatus::Active,
+                last_request: Utc::now(),
+            },
+        );
 
         if !is_recovering && self.persistent_entities && entity.is_ok() {
             self.persist(
@@ -389,6 +399,10 @@ impl Snapshot for ShardStateSnapshot {
                 .map(|e| proto::ShardStateSnapshot_Entity {
                     actor_id: e.actor_id,
                     recipe: e.recipe,
+                    status: match e.status {
+                        EntityStatus::Active => proto::EntityStatus::ACTIVE,
+                        EntityStatus::Passivated => proto::EntityStatus::PASSIVATED,
+                    },
                     ..Default::default()
                 })
                 .collect(),

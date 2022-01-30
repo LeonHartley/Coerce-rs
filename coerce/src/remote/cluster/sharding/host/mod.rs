@@ -4,9 +4,10 @@ use crate::actor::message::{
 };
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef};
 use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
-use crate::remote::cluster::sharding::coordinator::ShardId;
+use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
 use crate::remote::cluster::sharding::host::request::EntityRequest;
 use crate::remote::cluster::sharding::proto::sharding as proto;
+use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
@@ -50,14 +51,33 @@ impl ShardHost {
             remote_shards: Default::default(),
             buffered_requests: Default::default(),
             allocator: allocator.map_or_else(
-                || {
-                    Box::new(DefaultAllocator { max_shards: 100 })
-                        as Box<dyn ShardAllocator + Send + Sync>
-                },
+                || Box::new(DefaultAllocator::default()) as Box<dyn ShardAllocator + Send + Sync>,
                 |s| s,
             ),
         }
     }
+
+    pub async fn get_coordinator(&self, ctx: &ActorContext) -> ActorRef<ShardCoordinator> {
+        let actor_id = format!("ShardCoordinator-{}", &self.shard_entity);
+        let remote = ctx.system().remote();
+        let leader = remote.current_leader();
+        if leader == Some(remote.node_id()) {
+            ctx.system()
+                .get_tracked_actor::<ShardCoordinator>(actor_id)
+                .await
+                .expect("get local coordinator")
+                .into()
+        } else {
+            RemoteActorRef::<ShardCoordinator>::new(actor_id, leader.unwrap(), remote.clone())
+                .into()
+        }
+    }
+}
+
+pub struct GetCoordinator;
+
+impl Message for GetCoordinator {
+    type Result = ActorRef<ShardCoordinator>;
 }
 
 pub struct ShardAllocated(pub ShardId, pub NodeId);
@@ -80,6 +100,17 @@ pub struct PassivateEntity {
 }
 
 #[async_trait]
+impl Handler<GetCoordinator> for ShardHost {
+    async fn handle(
+        &mut self,
+        _message: GetCoordinator,
+        ctx: &mut ActorContext,
+    ) -> ActorRef<ShardCoordinator> {
+        self.get_coordinator(&ctx).await
+    }
+}
+
+#[async_trait]
 impl Handler<ShardAllocated> for ShardHost {
     async fn handle(&mut self, message: ShardAllocated, ctx: &mut ActorContext) {
         let remote = ctx.system().remote();
@@ -88,7 +119,11 @@ impl Handler<ShardAllocated> for ShardHost {
         let node_id = message.1;
         let shard_actor_id = shard_actor_id(&self.shard_entity, shard_id);
 
-        if node_id == remote.node_id() && !ctx.boxed_child_ref(&shard_actor_id).is_some() {
+        if node_id == remote.node_id() {
+            if ctx.boxed_child_ref(&shard_actor_id).is_some() {
+                return;
+            }
+
             let handler = remote
                 .config()
                 .actor_handler(&self.shard_entity)
@@ -156,8 +191,12 @@ impl Message for ShardAllocated {
 
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
         proto::ShardAllocated {
-            shard_id: self.0,
-            node_id: self.1,
+            shard: Some(proto::RemoteShard {
+                shard_id: self.0,
+                node_id: self.1,
+                ..Default::default()
+            })
+            .into(),
             ..Default::default()
         }
         .write_to_bytes()
@@ -169,7 +208,10 @@ impl Message for ShardAllocated {
 
     fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::ShardAllocated::parse_from_bytes(&b)
-            .map(|r| Self(r.shard_id, r.node_id))
+            .map(|r| {
+                let shard = r.shard.unwrap();
+                Self(shard.shard_id, shard.node_id)
+            })
             .map_err(|e| MessageUnwrapErr::DeserializationErr)
     }
 

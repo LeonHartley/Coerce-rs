@@ -3,6 +3,7 @@ use crate::actor::Actor;
 
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
+use tokio::sync::oneshot;
 
 pub enum Envelope<M> {
     Local(M),
@@ -107,7 +108,7 @@ where
     A: Handler<M>,
 {
     msg: Option<M>,
-    sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
+    sender: Option<oneshot::Sender<M::Result>>,
     _a: PhantomData<A>,
 }
 
@@ -136,10 +137,7 @@ impl<A: Actor, M: Message> ActorMessage<A, M>
 where
     A: Handler<M>,
 {
-    pub fn new(
-        msg: M,
-        sender: Option<tokio::sync::oneshot::Sender<M::Result>>,
-    ) -> ActorMessage<A, M> {
+    pub fn new(msg: M, sender: Option<oneshot::Sender<M::Result>>) -> ActorMessage<A, M> {
         ActorMessage {
             msg: Some(msg),
             sender,

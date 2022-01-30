@@ -156,6 +156,10 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
         let client_id = message.0;
         let message = message.1;
 
+        // TODO: we could open multiple clients per node and use some routing mechanism
+        //       to potentially improve throughput, whilst still maintaining
+        //       message ordering
+
         if let Some(client) = self.clients.get_mut(&client_id) {
             client.send(message).await.expect("send client msg");
             trace!(target: "RemoteRegistry", "writing data to client")
@@ -354,6 +358,7 @@ async fn connect_all(
                     let res = raft.core().add_non_voter(node.id).await;
                     info!("register new node, add_none_voter res={:?}", &res)
                 }
+
                 clients.insert(node.id, Some(client));
             }
             Err(_) => {

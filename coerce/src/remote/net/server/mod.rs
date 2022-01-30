@@ -288,6 +288,7 @@ async fn session_handshake(
         response.nodes.push(RemoteNodeProto {
             node_id: node.id,
             addr: node.addr,
+            tag: node.tag,
             node_started_at: node
                 .node_started_at
                 .as_ref()
@@ -308,7 +309,7 @@ async fn session_handshake(
             .into_iter()
             .map(|n| {
                 let started_at = n.node_started_at.into_option().map(timestamp_to_datetime);
-                RemoteNode::new(n.node_id, n.addr, started_at)
+                RemoteNode::new(n.node_id, n.addr, n.tag, started_at)
             })
             .collect(),
     )

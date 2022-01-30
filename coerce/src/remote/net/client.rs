@@ -70,6 +70,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     .map(|n| crate::remote::cluster::node::RemoteNode {
                         id: n.get_node_id(),
                         addr: n.addr,
+                        tag: n.tag,
                         node_started_at: n.node_started_at.into_option().map(timestamp_to_datetime),
                     })
                     .collect();
@@ -201,6 +202,7 @@ impl RemoteClient {
             let node = RemoteNode {
                 node_id: node.id,
                 addr: node.addr,
+                tag: node.tag,
                 node_started_at: node
                     .node_started_at
                     .as_ref()

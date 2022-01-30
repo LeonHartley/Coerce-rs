@@ -29,6 +29,7 @@ pub struct RemoteNode {
     pub node_id: u64,
     pub addr: ::std::string::String,
     pub node_started_at: ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp>,
+    pub tag: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -118,6 +119,32 @@ impl RemoteNode {
     pub fn take_node_started_at(&mut self) -> ::protobuf::well_known_types::Timestamp {
         self.node_started_at.take().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::new())
     }
+
+    // string tag = 4;
+
+
+    pub fn get_tag(&self) -> &str {
+        &self.tag
+    }
+    pub fn clear_tag(&mut self) {
+        self.tag.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_tag(&mut self, v: ::std::string::String) {
+        self.tag = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_tag(&mut self) -> &mut ::std::string::String {
+        &mut self.tag
+    }
+
+    // Take field
+    pub fn take_tag(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.tag, ::std::string::String::new())
+    }
 }
 
 impl ::protobuf::Message for RemoteNode {
@@ -147,6 +174,9 @@ impl ::protobuf::Message for RemoteNode {
                 3 => {
                     ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.node_started_at)?;
                 },
+                4 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.tag)?;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -169,6 +199,9 @@ impl ::protobuf::Message for RemoteNode {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
+        if !self.tag.is_empty() {
+            my_size += ::protobuf::rt::string_size(4, &self.tag);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -185,6 +218,9 @@ impl ::protobuf::Message for RemoteNode {
             os.write_tag(3, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
+        }
+        if !self.tag.is_empty() {
+            os.write_string(4, &self.tag)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -239,6 +275,11 @@ impl ::protobuf::Message for RemoteNode {
                 |m: &RemoteNode| { &m.node_started_at },
                 |m: &mut RemoteNode| { &mut m.node_started_at },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "tag",
+                |m: &RemoteNode| { &m.tag },
+                |m: &mut RemoteNode| { &mut m.tag },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<RemoteNode>(
                 "RemoteNode",
                 fields,
@@ -258,6 +299,7 @@ impl ::protobuf::Clear for RemoteNode {
         self.node_id = 0;
         self.addr.clear();
         self.node_started_at.clear();
+        self.tag.clear();
         self.unknown_fields.clear();
     }
 }
@@ -4357,67 +4399,68 @@ impl ::protobuf::reflect::ProtobufValue for SystemEvent {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\rnetwork.proto\x12\x0ecoerce.network\x1a\x1fgoogle/protobuf/timestamp\
-    .proto\"\x85\x01\n\nRemoteNode\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04\
+    .proto\"\x99\x01\n\nRemoteNode\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04\
     R\x06nodeIdB\0\x12\x14\n\x04addr\x18\x02\x20\x01(\tR\x04addrB\0\x12D\n\
     \x0fnode_started_at\x18\x03\x20\x01(\x0b2\x1a.google.protobuf.TimestampR\
-    \rnodeStartedAtB\0:\0\"\xe2\x01\n\x0fClientHandshake\x12\x19\n\x07node_i\
-    d\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x122\n\x05nodes\x18\x02\x20\x03(\
-    \x0b2\x1a.coerce.network.RemoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\
-    \x18\x03\x20\x01(\tR\x07nodeTagB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01\
-    (\tR\x07traceIdB\0\x12D\n\x0fnode_started_at\x18\x05\x20\x01(\x0b2\x1a.g\
-    oogle.protobuf.TimestampR\rnodeStartedAtB\0:\0\"h\n\x0cClientResult\x12\
-    \x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x18\n\x06result\
-    \x18\x02\x20\x01(\x0cR\x06resultB\0\x12\x1b\n\x08trace_id\x18\x03\x20\
-    \x01(\tR\x07traceIdB\0:\0\"\x82\x01\n\tClientErr\x12\x1f\n\nmessage_id\
-    \x18\x01\x20\x01(\tR\tmessageIdB\0\x125\n\x04code\x18\x02\x20\x01(\x0e2\
-    \x1f.coerce.network.ClientErrorCodeR\x04codeB\0\x12\x1b\n\x08trace_id\
-    \x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Ping\x12\x1f\n\nmessage_id\
-    \x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01\
-    (\tR\x07traceIdB\0:\0\"F\n\x04Pong\x12\x1f\n\nmessage_id\x18\x01\x20\x01\
-    (\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\
-    \0:\0\"\xa5\x01\n\x0bCreateActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\
-    \tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\
-    \0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\tactorTypeB\0\x12\x18\n\x06\
-    recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0\x12\x1b\n\x08trace_id\x18\x05\
-    \x20\x01(\tR\x07traceIdB\0:\0\"h\n\tFindActor\x12\x1f\n\nmessage_id\x18\
-    \x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\
-    \x07actorIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\
-    \0\"e\n\x0cActorAddress\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07act\
-    orIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\
-    \n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eMessa\
-    geRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\
-    \x0chandler_type\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08acto\
-    r_id\x18\x03\x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\
-    \x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07tr\
-    aceIdB\0\x12-\n\x11requires_response\x18\x06\x20\x01(\x08R\x10requiresRe\
-    sponseB\0:\0\"\xf4\x01\n\x10SessionHandshake\x12\x19\n\x07node_id\x18\
-    \x01\x20\x01(\x04R\x06nodeIdB\0\x122\n\x05nodes\x18\x02\x20\x03(\x0b2\
-    \x1a.coerce.network.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\x03\
-    \x20\x01(\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07\
-    nodeTagB\0\x12=\n\x0bclient_type\x18\x05\x20\x01(\x0e2\x1a.coerce.networ\
-    k.ClientTypeR\nclientTypeB\0\x12\x1b\n\x08trace_id\x18\x06\x20\x01(\tR\
-    \x07traceIdB\0:\0\"v\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\x01\
-    (\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\
-    \n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\
-    \x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"H\n\x0cNewNodeEvent\x12\x19\n\x07\
-    node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\
-    \x20\x01(\tR\x07traceIdB\0:\0\"L\n\x10NodeRemovedEvent\x12\x19\n\x07node\
-    _id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\
-    \x01(\tR\x07traceIdB\0:\0\"N\n\x12LeaderChangedEvent\x12\x19\n\x07node_i\
-    d\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\
-    \x01(\tR\x07traceIdB\0:\0\"q\n\x0bRaftRequest\x12\x1f\n\nmessage_id\x18\
-    \x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0crequest_type\x18\x02\x20\x01(\r\
-    R\x0brequestTypeB\0\x12\x1a\n\x07payload\x18\x03\x20\x01(\x0cR\x07payloa\
-    dB\0:\0*\xac\x01\n\x05Event\x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\
-    \x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\
-    \x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\
-    \x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\
-    \n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\x08\n\x04Raft\
-    \x10\x0b\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\
-    \x10\x01\x1a\0*?\n\x0fClientErrorCode\x12\x14\n\x10ActorUnavailable\x10\
-    \0\x12\x14\n\x10ProcessingFailed\x10\x01\x1a\0*U\n\x0bSystemEvent\x12\
-    \x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\x10\x01\
-    \x12\x18\n\x14ClusterLeaderChanged\x10\x02\x1a\0B\0b\x06proto3\
+    \rnodeStartedAtB\0\x12\x12\n\x03tag\x18\x04\x20\x01(\tR\x03tagB\0:\0\"\
+    \xe2\x01\n\x0fClientHandshake\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\
+    \x06nodeIdB\0\x122\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.network.R\
+    emoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\x18\x03\x20\x01(\tR\x07node\
+    TagB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceIdB\0\x12D\n\
+    \x0fnode_started_at\x18\x05\x20\x01(\x0b2\x1a.google.protobuf.TimestampR\
+    \rnodeStartedAtB\0:\0\"h\n\x0cClientResult\x12\x1f\n\nmessage_id\x18\x01\
+    \x20\x01(\tR\tmessageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01(\x0cR\x06\
+    resultB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\
+    \x82\x01\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessage\
+    IdB\0\x125\n\x04code\x18\x02\x20\x01(\x0e2\x1f.coerce.network.ClientErro\
+    rCodeR\x04codeB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\
+    \0:\0\"F\n\x04Ping\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\
+    \0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Po\
+    ng\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08\
+    trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"\xa5\x01\n\x0bCreateActor\
+    \x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08ac\
+    tor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12\x1f\n\nactor_type\x18\x03\
+    \x20\x01(\tR\tactorTypeB\0\x12\x18\n\x06recipe\x18\x04\x20\x01(\x0cR\x06\
+    recipeB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceIdB\0:\0\"h\
+    \n\tFindActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
+    \x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12\x1b\n\x08tr\
+    ace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"e\n\x0cActorAddress\x12\x1b\
+    \n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x19\n\x07node_id\
+    \x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\
+    \x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eMessageRequest\x12\x1f\n\nmessa\
+    ge_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0chandler_type\x18\x02\
+    \x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08actor_id\x18\x03\x20\x01(\tR\
+    \x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\x07messageB\0\
+    \x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceIdB\0\x12-\n\x11requi\
+    res_response\x18\x06\x20\x01(\x08R\x10requiresResponseB\0:\0\"\xf4\x01\n\
+    \x10SessionHandshake\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeI\
+    dB\0\x122\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNode\
+    R\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01(\x0cR\x05tokenB\0\x12\
+    \x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07nodeTagB\0\x12=\n\x0bclient_ty\
+    pe\x18\x05\x20\x01(\x0e2\x1a.coerce.network.ClientTypeR\nclientTypeB\0\
+    \x12\x1b\n\x08trace_id\x18\x06\x20\x01(\tR\x07traceIdB\0:\0\"v\n\rStream\
+    Publish\x12\x16\n\x05topic\x18\x01\x20\x01(\tR\x05topicB\0\x12\x12\n\x03\
+    key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\n\x07message\x18\x03\x20\x01(\
+    \x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceId\
+    B\0:\0\"H\n\x0cNewNodeEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\
+    \x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\
+    \"L\n\x10NodeRemovedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06\
+    nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"N\
+    \n\x12LeaderChangedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06n\
+    odeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"q\n\
+    \x0bRaftRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
+    \x12#\n\x0crequest_type\x18\x02\x20\x01(\rR\x0brequestTypeB\0\x12\x1a\n\
+    \x07payload\x18\x03\x20\x01(\x0cR\x07payloadB\0:\0*\xac\x01\n\x05Event\
+    \x12\x08\n\x04Exit\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\
+    \x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
+    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
+    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
+    \x11\n\rStreamPublish\x10\n\x12\x08\n\x04Raft\x10\x0b\x1a\0*&\n\nClientT\
+    ype\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01\x1a\0*?\n\x0fClien\
+    tErrorCode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10ProcessingFa\
+    iled\x10\x01\x1a\0*U\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\
+    \x12\x16\n\x12ClusterNodeRemoved\x10\x01\x12\x18\n\x14ClusterLeaderChang\
+    ed\x10\x02\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;
