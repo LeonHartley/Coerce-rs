@@ -3,6 +3,7 @@ use crate::remote::net::proto::network::{
     MessageRequest, Ping, Pong, RaftRequest, SessionHandshake, StreamPublish,
 };
 use crate::remote::net::StreamData;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use protobuf::{Message, ProtobufEnum, ProtobufError};
 
 pub enum ClientEvent {
@@ -131,4 +132,19 @@ fn write_event(event_id: Event, message: Result<Vec<u8>, ProtobufError>) -> Opti
         }
         Err(_) => None,
     }
+}
+
+pub fn datetime_to_timestamp(date_time: &DateTime<Utc>) -> protobuf::well_known_types::Timestamp {
+    let mut t = protobuf::well_known_types::Timestamp::new();
+
+    t.set_seconds(date_time.timestamp());
+    t.set_nanos(date_time.timestamp_subsec_nanos() as i32);
+    t
+}
+
+pub fn timestamp_to_datetime(timestamp: protobuf::well_known_types::Timestamp) -> DateTime<Utc> {
+    DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
+        Utc,
+    )
 }

@@ -15,7 +15,7 @@ use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::handler::{send_proto_result, RemoteActorMessageMarker};
-use crate::remote::net::client::RemoteClientStream;
+use crate::remote::net::client::{RemoteClient, RemoteClientStream};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, CreateActor};
 use crate::remote::stream::mediator::StreamMediator;
@@ -374,10 +374,7 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn register_client<T: RemoteClientStream>(&self, node_id: NodeId, client: T)
-    where
-        T: 'static + Sync + Send,
-    {
+    pub async fn register_client(&self, node_id: NodeId, client: LocalActorRef<RemoteClient>) {
         self.inner
             .clients_ref
             .send(RegisterClient(node_id, client))

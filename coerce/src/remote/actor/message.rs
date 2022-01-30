@@ -3,10 +3,10 @@ use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::message::Message;
-use crate::remote::net::client::RemoteClientStream;
+use crate::remote::net::client::{RemoteClient, RemoteClientStream};
 use crate::remote::net::message::SessionEvent;
 
-use crate::actor::ActorId;
+use crate::actor::{ActorId, LocalActorRef};
 
 use uuid::Uuid;
 
@@ -34,12 +34,9 @@ impl Message for PopRequest {
     type Result = Option<RemoteRequest>;
 }
 
-pub struct RegisterClient<T: RemoteClientStream>(pub NodeId, pub T);
+pub struct RegisterClient(pub NodeId, pub LocalActorRef<RemoteClient>);
 
-impl<T: RemoteClientStream> Message for RegisterClient<T>
-where
-    T: 'static + Sync + Send,
-{
+impl Message for RegisterClient {
     type Result = ();
 }
 

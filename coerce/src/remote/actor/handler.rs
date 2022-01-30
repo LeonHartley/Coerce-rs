@@ -76,11 +76,8 @@ impl Handler<PopRequest> for RemoteHandler {
 }
 
 #[async_trait]
-impl<T: RemoteClientStream> Handler<RegisterClient<T>> for RemoteClientRegistry
-where
-    T: 'static + Sync + Send,
-{
-    async fn handle(&mut self, message: RegisterClient<T>, _ctx: &mut ActorContext) {
+impl Handler<RegisterClient> for RemoteClientRegistry {
+    async fn handle(&mut self, message: RegisterClient, _ctx: &mut ActorContext) {
         self.add_client(message.0, message.1);
 
         trace!(target: "RemoteRegistry", "client {} registered", message.0);
