@@ -25,22 +25,22 @@ impl ClusterClientBuilder {
     }
 
     pub async fn start(self) -> RemoteClusterClient {
-        let seed_addr = self.seed_addr.expect("no seed addr");
-        let system = self.system.clone();
-        let client = RemoteClient::connect(seed_addr.clone(), None, system, None, Client)
-            .await
-            .expect("failed to connect to seed server");
+        // let seed_addr = self.seed_addr.expect("no seed addr");
+        // let system = self.system.clone();
+        // let client = RemoteClient::connect(seed_addr.clone(), None, system, None, Client)
+        //     .await
+        //     .expect("failed to connect to seed server");
+        //
+        // self.system
+        //     .register_node(RemoteNode::new(
+        //         client.node_id,
+        //         seed_addr,
+        //         client.node_tag.clone(),
+        //         Some(Utc::now()),
+        //     ))
+        //     .await;
 
-        self.system
-            .register_node(RemoteNode::new(
-                client.node_id,
-                seed_addr,
-                client.node_tag.clone(),
-                Some(Utc::now()),
-            ))
-            .await;
-
-        self.system.register_client(client.node_id, client).await;
+        // self.system.register_client(client.node_id, client).await;
         RemoteClusterClient::new(self.system)
     }
 }

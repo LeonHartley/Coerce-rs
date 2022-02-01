@@ -8,7 +8,7 @@ use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
-use crate::remote::net::client::{ClientType, RemoteClient, RemoteClientStream};
+use crate::remote::net::client::{ClientType, RemoteClient, Write};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use std::collections::HashMap;
@@ -16,11 +16,13 @@ use std::collections::HashMap;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, FindActor};
 
-use crate::actor::{Actor, ActorId};
+use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
 
+use crate::remote::net::client::connect::Connect;
+use crate::remote::net::client::ClientType::Worker;
 use protobuf::Message;
 use std::time::Instant;
 use uuid::Uuid;
@@ -47,13 +49,7 @@ impl Handler<GetNodes> for RemoteRegistry {
         _message: GetNodes,
         _ctx: &mut ActorContext,
     ) -> Vec<RemoteNodeState> {
-        let now = Instant::now();
-        let nodes = self.nodes.get_all();
-
-        let ms = now.elapsed().as_millis();
-        trace!("it took {}ms", ms);
-
-        nodes
+        self.nodes.get_all()
     }
 }
 
@@ -87,27 +83,26 @@ impl Handler<RegisterClient> for RemoteClientRegistry {
 #[async_trait]
 impl Handler<RegisterNodes> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterNodes, _ctx: &mut ActorContext) {
-        let remote_ctx = self.system.as_ref().unwrap().clone();
+        let remote = self.system.as_ref().unwrap().clone();
         let nodes = message.0;
 
         let unregistered_nodes = nodes
             .iter()
-            .filter(|node| node.id != remote_ctx.node_id() && !self.nodes.is_registered(node.id))
+            .filter(|node| node.id != remote.node_id() && !self.nodes.is_registered(node.id))
             .map(|node| node.clone())
             .collect();
 
         trace!(target: "RemoteRegistry", "registering new nodes {:?}", &unregistered_nodes);
         let current_nodes = self.nodes.get_all();
 
-        let clients = connect_all(unregistered_nodes, current_nodes, &remote_ctx).await;
-        for (_node_id, client) in clients {
-            if let Some(client) = client {
-                remote_ctx.register_client(client.node_id, client).await;
-            }
-        }
+        let _ = tokio::spawn(connect_all(
+            unregistered_nodes,
+            current_nodes,
+            remote.clone(),
+        ));
 
         for node in nodes {
-            let sys = remote_ctx.clone();
+            let sys = remote.clone();
             let node_id = node.id;
             tokio::spawn(async move {
                 let sys = sys;
@@ -118,8 +113,6 @@ impl Handler<RegisterNodes> for RemoteRegistry {
                 )
                 .await;
             });
-
-            self.nodes.add(node)
         }
     }
 }
@@ -158,7 +151,7 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
         //       message ordering
 
         if let Some(client) = self.clients.get_mut(&client_id) {
-            client.send(message).await.expect("send client msg");
+            client.send(Write(message)).await.expect("send client msg");
             trace!(target: "RemoteRegistry", "writing data to client")
         } else {
             trace!(target: "RemoteRegistry", "client {} not found", &client_id);
@@ -334,36 +327,22 @@ impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
 async fn connect_all(
     nodes: Vec<RemoteNode>,
     current_nodes: Vec<RemoteNodeState>,
-    ctx: &RemoteActorSystem,
-) -> HashMap<NodeId, Option<RemoteClient>> {
-    let mut clients = HashMap::new();
+    system: RemoteActorSystem,
+) {
     for node in nodes {
         let addr = node.addr.to_string();
-        match RemoteClient::connect(
-            addr,
-            Some(node.id),
-            ctx.clone(),
-            Some(current_nodes.clone()),
-            ClientType::Worker,
-        )
-        .await
-        {
+        match RemoteClient::new(addr, Some(node.id), system.clone(), Worker).await {
             Ok(client) => {
-                trace!(target: "RemoteRegistry", "connected to node");
-
-                if let Some(raft) = ctx.raft() {
-                    let res = raft.core().add_non_voter(node.id).await;
-                    info!("register new node, add_none_voter res={:?}", &res)
+                trace!(target: "RemoteRegistry", "connecting to node_id={}, addr={}", node.id, node.addr);
+                if client.send(Connect).await.unwrap() {
+                    trace!(target: "RemoteRegistry", "connected to node_id={}, addr={}", node.id, node.addr);
+                } else {
+                    warn!(target: "RemoteRegistry", "failed to node_id={}, addr={}", node.id, node.addr);
                 }
-
-                clients.insert(node.id, Some(client));
             }
             Err(_) => {
-                clients.insert(node.id, None);
-                warn!(target: "RemoteRegistry", "failed to connect to discovered worker");
+                warn!(target: "RemoteRegistry", "failed to create remoteclient actor for remote node (node_id={}, addr={})", node.id, node.addr);
             }
         }
     }
-
-    clients
 }

@@ -85,7 +85,10 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
     let system = ActorSystem::new_persistent(InMemoryStorageProvider::new());
     let remote_system = RemoteActorSystemBuilder::new()
         .with_id(config.node_id)
-        .with_tag(match config.node_id { 1 => "node-a", _ => "node-b" })
+        .with_tag(match config.node_id {
+            1 => "node-a",
+            _ => "node-b",
+        })
         .with_actor_system(system)
         .with_distributed_streams(|s| s.add_topic::<ChatStreamTopic>())
         .with_handlers(|handlers| {

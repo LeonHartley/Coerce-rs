@@ -5,6 +5,7 @@ use crate::remote::net::client::RemoteClient;
 use crate::remote::net::server::RemoteServer;
 use crate::remote::system::RemoteActorSystem;
 
+use crate::remote::net::client::connect::Connect;
 use chrono::Utc;
 use tokio::time::Duration;
 
@@ -117,21 +118,11 @@ impl ClusterWorkerBuilder {
             let enter = span.enter();
 
             let client_ctx = self.system.clone();
-            let client = RemoteClient::connect(seed_addr.clone(), None, client_ctx, None, Worker)
+            let client = RemoteClient::new(seed_addr.clone(), None, client_ctx, Worker)
                 .await
                 .expect("failed to connect to seed server");
 
-            self.system
-                .register_node(RemoteNode::new(
-                    client.node_id,
-                    seed_addr,
-                    client.node_tag.clone(),
-                    Some(client.node_started_at),
-                ))
-                .await;
-
-            let node_id = client.node_id;
-            self.system.register_client(node_id, client).await;
+            client.send(Connect).await.expect("connect");
 
             drop(enter);
             drop(span);

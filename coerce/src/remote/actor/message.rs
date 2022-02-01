@@ -3,7 +3,7 @@ use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::message::Message;
-use crate::remote::net::client::{RemoteClient, RemoteClientStream};
+use crate::remote::net::client::RemoteClient;
 use crate::remote::net::message::SessionEvent;
 
 use crate::actor::{ActorId, LocalActorRef};

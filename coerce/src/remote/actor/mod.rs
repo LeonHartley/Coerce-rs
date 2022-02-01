@@ -6,7 +6,7 @@ use crate::actor::{scheduler::ActorType, Actor, ActorId, LocalActorRef};
 use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
-use crate::remote::net::client::{RemoteClient, RemoteClientStream};
+use crate::remote::net::client::RemoteClient;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::any::TypeId;
 use std::collections::HashMap;
