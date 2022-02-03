@@ -2,7 +2,7 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, BoxedActorRef, IntoActor, LocalActorRef};
-use crate::remote::net::client::connect::Connect;
+use crate::remote::net::client::connect::{Connect, Disconnected};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network as proto;
@@ -11,7 +11,6 @@ use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc};
 use futures::SinkExt;
 use std::collections::VecDeque;
-use std::intrinsics::unreachable;
 use tokio::io::{AsyncWrite, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
@@ -25,8 +24,9 @@ pub struct RemoteClient {
     addr: String,
     client_type: ClientType,
     remote_node_id: Option<NodeId>,
-    state: ClientState,
+    state: Option<ClientState>,
     stop: Option<oneshot::Sender<bool>>,
+    write_buffer_bytes_total: usize,
     write_buffer: VecDeque<Vec<u8>>,
 }
 
@@ -43,8 +43,11 @@ impl RemoteClient {
             remote_node_id,
             client_type,
             stop: None,
-            state: ClientState::Idle,
+            state: Some(ClientState::Idle {
+                connection_attempts: 0,
+            }),
             write_buffer: VecDeque::new(),
+            write_buffer_bytes_total: 0,
         }
         .into_actor(actor_id, system.actor_system())
         .await
@@ -55,9 +58,14 @@ impl RemoteClient {
 impl Actor for RemoteClient {}
 
 pub enum ClientState {
-    Idle,
+    Idle {
+        connection_attempts: usize,
+    },
     Connected(ConnectionState),
-    Quarantined { since: DateTime<Utc> },
+    Quarantined {
+        since: DateTime<Utc>,
+        connection_attempts: usize,
+    },
 }
 
 pub struct ConnectionState {
@@ -97,46 +105,99 @@ impl<M: StreamData> Handler<Write<M>> for RemoteClient {
     async fn handle(
         &mut self,
         message: Write<M>,
-        _ctx: &mut ActorContext,
+        ctx: &mut ActorContext,
     ) -> Result<(), RemoteClientErr> {
-        self.write(message.0).await
+        self.write(message.0, ctx).await
     }
 }
 
 impl RemoteClient {
     pub async fn flush_buffered_writes(&mut self) {
         let mut connection_state = match &mut self.state {
-            ClientState::Connected(connection_state) => connection_state
-            _ => unreachable!(),
+            Some(ClientState::Connected(connection_state)) => connection_state,
+            _ => return,
         };
 
+        debug!(
+            "flushing {} pending messages (addr={})",
+            self.write_buffer.len(),
+            &self.addr
+        );
+
         while let Some(buffered_message) = self.write_buffer.pop_front() {
-            write_bytes(buffered_message, &mut connection_state.write).await;
+            let len = buffered_message.len();
+            if let Ok(()) = write_bytes(&buffered_message, &mut connection_state.write).await {
+                self.write_buffer_bytes_total -= len;
+            } else {
+                self.write_buffer.push_front(buffered_message);
+
+                // write failed, no point trying again - break and reconnect/retry later
+                break;
+            }
         }
     }
 
-    pub async fn write<M: StreamData>(&mut self, message: M) -> Result<(), RemoteClientErr>
+    pub fn buffer_message(&mut self, message_bytes: Vec<u8>) {
+        self.write_buffer_bytes_total += message_bytes.len();
+        self.write_buffer.push_back(message_bytes);
+    }
+
+    pub async fn write<M: StreamData>(
+        &mut self,
+        message: M,
+        ctx: &mut ActorContext,
+    ) -> Result<(), RemoteClientErr>
     where
         M: Sync + Send,
     {
         if let Some(bytes) = message.write_to_bytes() {
-            match &mut self.state {
-                ClientState::Idle | ClientState::Quarantined { .. } => {
-                    self.write_buffer.push_back(bytes);
+            let mut buffer_message = None;
+
+            let stream_write_error = match &mut self.state.as_mut().unwrap() {
+                ClientState::Idle { .. } | ClientState::Quarantined { .. } => {
+                    buffer_message = Some(bytes);
 
                     debug!("attempt to write to addr={} but no connection is established, buffering message (total_buffered={})",
                         &self.addr,
                         self.write_buffer.len()
                     );
 
-                    Ok(())
+                    false
                 }
 
-                ClientState::Connected(state) => write_bytes(bytes, &mut state.write).await,
+                ClientState::Connected(state) => {
+                    if let Err(e) = write_bytes(&bytes, &mut state.write).await {
+                        match e {
+                            RemoteClientErr::StreamErr(_e) => {
+                                warn!("node {} (addr={}) is unreachable but marked as connected, buffering message (total_buffered={})",
+                                    &state.node_id,
+                                    &self.addr,
+                                    self.write_buffer.len());
+
+                                buffer_message = Some(bytes);
+
+                                true
+                            }
+                            _ => false,
+                        }
+                    } else {
+                        false
+                    }
+                }
+            };
+
+            if let Some(message_bytes) = buffer_message {
+                self.buffer_message(message_bytes);
+            }
+
+            if stream_write_error {
+                self.handle(Disconnected, ctx).await;
             }
         } else {
-            Err(RemoteClientErr::Encoding)
+            return Err(RemoteClientErr::Encoding);
         }
+
+        Ok(())
     }
 
     pub fn close(&mut self) -> bool {
@@ -148,8 +209,12 @@ impl RemoteClient {
     }
 }
 
+impl ConnectionState {
+    pub async fn disconnected(&mut self) {}
+}
+
 pub(crate) async fn write_bytes(
-    bytes: Vec<u8>,
+    bytes: &Vec<u8>,
     writer: &mut FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
 ) -> Result<(), RemoteClientErr> {
     match writer.send(bytes).await {

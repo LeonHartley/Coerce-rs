@@ -12,6 +12,7 @@ use crate::remote::net::client::{ClientType, RemoteClient, Write};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, FindActor};
@@ -90,16 +91,14 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             .iter()
             .filter(|node| node.id != remote.node_id() && !self.nodes.is_registered(node.id))
             .map(|node| node.clone())
-            .collect();
+            .collect::<Vec<RemoteNode>>();
 
         trace!(target: "RemoteRegistry", "registering new nodes {:?}", &unregistered_nodes);
         let current_nodes = self.nodes.get_all();
 
-        let _ = tokio::spawn(connect_all(
-            unregistered_nodes,
-            current_nodes,
-            remote.clone(),
-        ));
+        if unregistered_nodes.len() > 0 {
+            connect_all(unregistered_nodes, current_nodes, remote.clone()).await;
+        }
 
         for node in nodes {
             let sys = remote.clone();
@@ -334,7 +333,11 @@ async fn connect_all(
         match RemoteClient::new(addr, Some(node.id), system.clone(), Worker).await {
             Ok(client) => {
                 trace!(target: "RemoteRegistry", "connecting to node_id={}, addr={}", node.id, node.addr);
-                if client.send(Connect).await.unwrap() {
+                if client
+                    .send(Connect::new(Some(current_nodes.clone())))
+                    .await
+                    .unwrap()
+                {
                     trace!(target: "RemoteRegistry", "connected to node_id={}, addr={}", node.id, node.addr);
                 } else {
                     warn!(target: "RemoteRegistry", "failed to node_id={}, addr={}", node.id, node.addr);

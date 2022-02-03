@@ -140,10 +140,10 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                     if !nodes.is_empty() {
                         let topic = T::topic_name().to_string();
                         let key = message.topic.key();
-                        let message = bytes.clone();
 
                         trace!("notifying {} nodes", nodes.len());
                         tokio::spawn(async move {
+                            let message = bytes;
                             let publish = StreamPublish {
                                 topic,
                                 message,

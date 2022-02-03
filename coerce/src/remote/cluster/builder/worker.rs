@@ -122,7 +122,7 @@ impl ClusterWorkerBuilder {
                 .await
                 .expect("failed to connect to seed server");
 
-            client.send(Connect).await.expect("connect");
+            client.send(Connect::new(None)).await.expect("connect");
 
             drop(enter);
             drop(span);

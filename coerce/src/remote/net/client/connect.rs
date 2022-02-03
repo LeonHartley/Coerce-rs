@@ -12,12 +12,23 @@ use crate::remote::net::proto::network as proto;
 use crate::remote::net::{receive_loop, StreamData};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-pub struct Connect;
+pub struct Connect {
+    pub outbound_seed_nodes: Option<Vec<RemoteNodeState>>,
+}
+
+impl Connect {
+    pub fn new(outbound_seed_nodes: Option<Vec<RemoteNodeState>>) -> Self {
+        Self {
+            outbound_seed_nodes,
+        }
+    }
+}
 
 pub struct Disconnected;
 
@@ -25,8 +36,8 @@ const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
 
 #[async_trait]
 impl Handler<Connect> for RemoteClient {
-    async fn handle(&mut self, _message: Connect, ctx: &mut ActorContext) -> bool {
-        if let Some(connection_state) = self.connect(ctx).await {
+    async fn handle(&mut self, message: Connect, ctx: &mut ActorContext) -> bool {
+        if let Some(connection_state) = self.connect(message, ctx).await {
             let remote = ctx.system().remote();
             let node_id = connection_state.node_id;
             remote
@@ -39,7 +50,7 @@ impl Handler<Connect> for RemoteClient {
                 .await;
 
             remote.register_client(node_id, self.actor_ref(ctx)).await;
-            self.state = ClientState::Connected(connection_state);
+            self.state = Some(ClientState::Connected(connection_state));
 
             debug!(
                 "RemoteClient connected to node (addr={}, node_id={})",
@@ -50,19 +61,7 @@ impl Handler<Connect> for RemoteClient {
 
             true
         } else {
-            let self_ref = self.actor_ref(ctx);
-
-            warn!(
-                "RemoteClient connection to node (addr={}) failed, retrying in {}ms",
-                &self.addr,
-                RECONNECT_DELAY.as_millis()
-            );
-
-            tokio::spawn(async move {
-                tokio::time::sleep(RECONNECT_DELAY).await;
-                let _res = self_ref.send(Connect).await;
-            });
-
+            self.handle(Disconnected, ctx).await;
             false
         }
     }
@@ -70,17 +69,55 @@ impl Handler<Connect> for RemoteClient {
 
 #[async_trait]
 impl Handler<Disconnected> for RemoteClient {
-    async fn handle(&mut self, message: Disconnected, ctx: &mut ActorContext) {
+    async fn handle(&mut self, _msg: Disconnected, ctx: &mut ActorContext) {
         // TODO: try to connect again, if fails after {n} attempts with a timeout,
         //       we should quarantine the node and ensuring the node no longer
         //       participates in cluster activities/sharding
 
-        self.state = ClientState::Idle;
+        warn!(
+            "RemoteClient connection to node (addr={}) closed/failed, retrying in {}ms",
+            &self.addr,
+            RECONNECT_DELAY.as_millis()
+        );
+
+        let state = match self.state.take().unwrap() {
+            ClientState::Idle {
+                connection_attempts,
+            } => {
+                let connection_attempts = connection_attempts + 1;
+
+                ClientState::Idle {
+                    connection_attempts,
+                }
+            }
+
+            ClientState::Quarantined {
+                since,
+                connection_attempts,
+            } => {
+                let connection_attempts = connection_attempts + 1;
+
+                ClientState::Quarantined {
+                    since,
+                    connection_attempts,
+                }
+            }
+
+            ClientState::Connected(mut state) => {
+                state.disconnected().await;
+
+                ClientState::Idle {
+                    connection_attempts: 1,
+                }
+            }
+        };
+
+        self.state = Some(state);
 
         let self_ref = self.actor_ref(ctx);
         tokio::spawn(async move {
             tokio::time::sleep(RECONNECT_DELAY).await;
-            let _res = self_ref.send(Connect).await;
+            let _res = self_ref.send(Connect::new(None)).await;
         });
     }
 }
@@ -94,7 +131,11 @@ impl Message for Disconnected {
 }
 
 impl RemoteClient {
-    pub async fn connect(&mut self, ctx: &mut ActorContext) -> Option<ConnectionState> {
+    pub async fn connect(
+        &mut self,
+        connect: Connect,
+        ctx: &mut ActorContext,
+    ) -> Option<ConnectionState> {
         let span = tracing::trace_span!("RemoteClient::connect", address = self.addr.as_str());
 
         let _enter = span.enter();
@@ -118,12 +159,21 @@ impl RemoteClient {
         let receive_task = tokio::spawn(receive_loop(
             remote.clone(),
             reader,
-            ClientMessageReceiver::new(self.remote_node_id.clone(), handshake_tx),
+            ClientMessageReceiver::new(
+                self.remote_node_id.clone(),
+                handshake_tx,
+                self.actor_ref(ctx),
+            ),
         ));
 
         trace!("writing handshake");
 
         let trace_id = extract_trace_identifier(&span);
+
+        let seed_nodes = match connect.outbound_seed_nodes {
+            Some(seed_nodes) => seed_nodes.into_iter(),
+            None => remote.get_nodes().await.into_iter(),
+        };
 
         write_bytes(
             SessionEvent::Handshake(proto::SessionHandshake {
@@ -132,10 +182,7 @@ impl RemoteClient {
                 token: vec![],
                 client_type: self.client_type.into(),
                 trace_id,
-                nodes: remote
-                    .get_nodes()
-                    .await
-                    .into_iter()
+                nodes: seed_nodes
                     .map(|node| proto::RemoteNode {
                         node_id: node.id,
                         addr: node.addr,
@@ -151,7 +198,8 @@ impl RemoteClient {
                 ..proto::SessionHandshake::default()
             })
             .write_to_bytes()
-            .unwrap(),
+            .unwrap()
+            .as_ref(),
             &mut writer,
         )
         .await

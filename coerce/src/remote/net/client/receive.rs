@@ -1,5 +1,7 @@
+use crate::actor::LocalActorRef;
 use crate::remote::actor::RemoteResponse;
-use crate::remote::net::client::HandshakeAcknowledge;
+use crate::remote::net::client::connect::Disconnected;
+use crate::remote::net::client::{HandshakeAcknowledge, RemoteClient};
 use crate::remote::net::message::{timestamp_to_datetime, ClientEvent};
 use crate::remote::net::proto::network::Pong;
 use crate::remote::net::StreamReceiver;
@@ -13,17 +15,20 @@ use uuid::Uuid;
 pub struct ClientMessageReceiver {
     node_id: Option<NodeId>,
     handshake_tx: Option<oneshot::Sender<HandshakeAcknowledge>>,
+    actor_ref: LocalActorRef<RemoteClient>,
 }
 
 impl ClientMessageReceiver {
     pub fn new(
         node_id: Option<NodeId>,
         handshake_tx: oneshot::Sender<HandshakeAcknowledge>,
+        actor_ref: LocalActorRef<RemoteClient>,
     ) -> ClientMessageReceiver {
         let handshake_tx = Some(handshake_tx);
         Self {
             node_id,
             handshake_tx,
+            actor_ref,
         }
     }
 }
@@ -78,7 +83,10 @@ impl StreamReceiver for ClientMessageReceiver {
                         let _ = res_tx.send(RemoteResponse::Ok(res.result));
                     }
                     None => {
-                        trace!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
+                        trace!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})",
+                            sys.node_tag(),
+                            sys.node_id(),
+                            res.message_id);
                     }
                 }
             }
@@ -106,8 +114,6 @@ impl StreamReceiver for ClientMessageReceiver {
     }
 
     async fn on_close(&mut self, sys: &RemoteActorSystem) {
-        if let Some(node_id) = self.node_id.take() {
-            sys.deregister_client(node_id).await;
-        }
+        let _ = self.actor_ref.send(Disconnected).await;
     }
 }

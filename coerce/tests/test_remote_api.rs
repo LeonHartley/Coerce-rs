@@ -107,4 +107,5 @@ pub async fn test_remote_api_routes() {
         })
         .await;
 
+    // ctrl_c().await;
 }

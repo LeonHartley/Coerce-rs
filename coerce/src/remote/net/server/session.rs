@@ -105,7 +105,7 @@ impl Handler<SessionWrite> for RemoteSession {
         match message.1.write_to_bytes() {
             Some(msg) => {
                 trace!(target: "RemoteSession", "message encoded");
-                if self.write.send(msg).await.is_ok() {
+                if self.write.send(&msg).await.is_ok() {
                     trace!(target: "RemoteSession", "message sent");
                 } else {
                     error!(target: "RemoteSession", "failed to send message");
