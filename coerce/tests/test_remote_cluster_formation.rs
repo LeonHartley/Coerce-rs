@@ -134,6 +134,8 @@ pub async fn test_remote_cluster_workers() {
         .start()
         .await;
 
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
     let nodes_a = remote_c.get_nodes().await;
     let nodes_b = remote_2_c.get_nodes().await;
     let nodes_c = remote_3_c.get_nodes().await;

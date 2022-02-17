@@ -94,8 +94,9 @@ impl Handler<RegisterNodes> for RemoteRegistry {
             .collect::<Vec<RemoteNode>>();
 
         trace!(target: "RemoteRegistry", "registering new nodes {:?}", &unregistered_nodes);
-        let current_nodes = self.nodes.get_all();
 
+        let current_nodes = self.nodes.get_all();
+        // tokio::spawn(async move {
         if unregistered_nodes.len() > 0 {
             connect_all(unregistered_nodes, current_nodes, remote.clone()).await;
         }
@@ -112,7 +113,10 @@ impl Handler<RegisterNodes> for RemoteRegistry {
                 )
                 .await;
             });
+
+            self.nodes.add(node);
         }
+        // });
     }
 }
 

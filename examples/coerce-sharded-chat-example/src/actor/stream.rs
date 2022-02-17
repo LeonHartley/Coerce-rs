@@ -62,16 +62,20 @@ impl Handler<Join> for ChatStream {
             &message.peer_name, &self.name
         );
 
+        let message_history =  self
+            .messages
+            .iter()
+            .rev()
+            .take(100)
+            .rev()
+            .cloned()
+            .collect();
+
+        info!("data = {:?}, {:?}", &message_history, &self.messages);
+
         JoinResult::Ok {
             creator: self.creator.clone(),
-            message_history: self
-                .messages
-                .iter()
-                .rev()
-                .take(100)
-                .rev()
-                .cloned()
-                .collect(),
+            message_history,
             token: self.join_token.clone(),
         }
     }
@@ -83,9 +87,10 @@ impl Handler<ChatMessage> for ChatStream {
         self.messages.push(message.clone());
 
         info!(
-            "user {} said \"{}\" (chat_stream={})",
-            &message.sender, &message.message, self.name,
+            "user {} said \"{}\" (chat_stream={}), history={:?}",
+            &message.sender, &message.message, self.name, &self.messages
         );
+
 
         PubSub::publish(
             self.topic.clone(),

@@ -30,12 +30,19 @@ pub struct ShardHost {
     shard_entity: String,
     hosted_shards: HashMap<ShardId, ShardState>,
     remote_shards: HashMap<ShardId, ActorRef<Shard>>,
-    buffered_requests: HashMap<ShardId, Vec<EntityRequest>>,
+    requests_pending_leader_allocation: VecDeque<EntityRequest>,
+    requests_pending_shard_allocation: HashMap<ShardId, Vec<EntityRequest>>,
     allocator: Box<dyn ShardAllocator + Send + Sync>,
 }
 
 pub trait ShardAllocator {
     fn allocate(&mut self, actor_id: &ActorId) -> ShardId;
+}
+
+pub struct LeaderAllocated;
+
+impl Message for LeaderAllocated {
+    type Result = ();
 }
 
 impl Actor for ShardHost {}
@@ -49,7 +56,8 @@ impl ShardHost {
             shard_entity,
             hosted_shards: Default::default(),
             remote_shards: Default::default(),
-            buffered_requests: Default::default(),
+            requests_pending_shard_allocation: Default::default(),
+            requests_pending_leader_allocation: Default::default(),
             allocator: allocator.map_or_else(
                 || Box::new(DefaultAllocator::default()) as Box<dyn ShardAllocator + Send + Sync>,
                 |s| s,
@@ -111,6 +119,22 @@ impl Handler<GetCoordinator> for ShardHost {
 }
 
 #[async_trait]
+impl Handler<LeaderAllocated> for ShardHost {
+    async fn handle(&mut self, message: LeaderAllocated, ctx: &mut ActorContext) {
+        if self.requests_pending_leader_allocation.len() > 0 {
+            debug!(
+                "processing {} buffered requests_pending_leader_allocation",
+                self.requests_pending_leader_allocation.len(),
+            );
+
+            while let Some(request) = self.requests_pending_leader_allocation.pop_front() {
+                self.handle(request, ctx).await;
+            }
+        }
+    }
+}
+
+#[async_trait]
 impl Handler<ShardAllocated> for ShardHost {
     async fn handle(&mut self, message: ShardAllocated, ctx: &mut ActorContext) {
         let remote = ctx.system().remote();
@@ -146,7 +170,7 @@ impl Handler<ShardAllocated> for ShardHost {
             self.remote_shards.insert(shard_id, shard_actor);
         }
 
-        if let Some(buffered_requests) = self.buffered_requests.remove(&shard_id) {
+        if let Some(buffered_requests) = self.requests_pending_shard_allocation.remove(&shard_id) {
             debug!(
                 "processing {} buffered requests for shard={}",
                 buffered_requests.len(),

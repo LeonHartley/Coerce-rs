@@ -45,6 +45,7 @@ impl Actor for ActorScheduler {
     async fn stopped(&mut self, _ctx: &mut ActorContext) {
         trace!("scheduler stopping, total actors={}", self.actors.len());
 
+        // TODO: join all these stop() calls into a single future
         for actor in self.actors.values() {
             actor.stop().await;
             trace!(target: "ActorScheduler", "stopping actor (id={})", &actor.actor_id());
@@ -197,10 +198,18 @@ where
     let actor_id_clone = id.clone();
     let actor_id = actor_id_clone.as_str();
     let actor_type_name = A::type_name();
+
+    let node_id = if let Some(system) = &system {
+        if system.is_remote() { system.remote().node_id() } else { 0 }
+    } else {
+        0
+    };
+
     tracing::trace_span!(
         "ActorScheduler::start_actor",
         actor_id = actor_id,
-        actor_type_name = actor_type_name
+        actor_type_name = actor_type_name,
+        node_id = node_id,
     );
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();

@@ -2,7 +2,7 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::Handler;
 use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef};
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
-use crate::remote::cluster::sharding::host::ShardHost;
+use crate::remote::cluster::sharding::host::{LeaderAllocated, ShardHost};
 use crate::remote::stream::pubsub::{PubSub, StreamEvent, Subscription};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::NodeId;
@@ -121,6 +121,7 @@ impl Handler<StreamEvent<SystemTopic>> for CoordinatorSpawner {
                                 self.node_id,
                                 leader_node_id,
                             );
+
                             if leader_node_id == self.node_id && self.coordinator.is_none() {
                                 self.start_coordinator(ctx).await;
                             } else if self.stop_coordinator().await {
@@ -130,6 +131,8 @@ impl Handler<StreamEvent<SystemTopic>> for CoordinatorSpawner {
                                     self.node_id
                                 );
                             }
+
+                            self.local_shard_host.notify(LeaderAllocated);
                         }
                     },
                 }

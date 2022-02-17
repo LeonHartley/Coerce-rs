@@ -130,16 +130,19 @@ async fn broadcast_allocation(
     let mut futures = vec![];
 
     for host in hosts.into_iter() {
-        // TODO: apply timeout
-        futures.push(async move {
-            let host = host;
+        if host.node_id() == Some(node_id) {
+            host.send(ShardAllocated(shard_id, node_id)).await;
+        } else {
+            futures.push(async move {
+                let host = host;
 
-            trace!(
-                "emitting ShardAllocated to node_id={}",
-                host.node_id().unwrap_or(0)
-            );
-            host.send(ShardAllocated(shard_id, node_id)).await
-        });
+                trace!(
+                    "emitting ShardAllocated to node_id={}",
+                    host.node_id().unwrap_or(0)
+                );
+                host.send(ShardAllocated(shard_id, node_id)).await
+            });
+        }
     }
 
     let _results = join_all(futures).await;

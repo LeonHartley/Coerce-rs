@@ -40,14 +40,13 @@ impl Handler<Connect> for RemoteClient {
         if let Some(connection_state) = self.connect(message, ctx).await {
             let remote = ctx.system().remote();
             let node_id = connection_state.node_id;
-            remote
-                .register_node(RemoteNode::new(
-                    connection_state.node_id,
-                    self.addr.clone(),
-                    connection_state.node_tag.clone(),
-                    Some(connection_state.node_started_at),
-                ))
-                .await;
+
+            remote.notify_register_node(RemoteNode::new(
+                connection_state.node_id,
+                self.addr.clone(),
+                connection_state.node_tag.clone(),
+                Some(connection_state.node_started_at),
+            ));
 
             remote.register_client(node_id, self.actor_ref(ctx)).await;
             self.state = Some(ClientState::Connected(connection_state));
@@ -61,6 +60,7 @@ impl Handler<Connect> for RemoteClient {
 
             true
         } else {
+            warn!("RemoteClient failed to connect");
             self.handle(Disconnected, ctx).await;
             false
         }

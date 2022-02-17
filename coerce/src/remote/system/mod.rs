@@ -419,6 +419,10 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
+    pub async fn notify_register_node(&self, node: RemoteNode) {
+        self.inner.registry_ref.notify(RegisterNode(node));
+    }
+
     pub async fn get_nodes(&self) -> Vec<RemoteNodeState> {
         self.inner.registry_ref.send(GetNodes).await.unwrap()
     }

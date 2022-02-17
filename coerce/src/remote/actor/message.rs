@@ -3,7 +3,7 @@ use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::actor::message::Message;
-use crate::remote::net::client::RemoteClient;
+use crate::remote::net::client::{ClientType, RemoteClient};
 use crate::remote::net::message::SessionEvent;
 
 use crate::actor::{ActorId, LocalActorRef};
@@ -32,6 +32,12 @@ pub struct PopRequest(pub Uuid);
 
 impl Message for PopRequest {
     type Result = Option<RemoteRequest>;
+}
+
+pub struct Connect {
+    addr: String,
+    remote_node_id: Option<NodeId>,
+    client_type: ClientType,
 }
 
 pub struct RegisterClient(pub NodeId, pub LocalActorRef<RemoteClient>);

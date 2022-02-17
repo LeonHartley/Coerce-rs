@@ -183,8 +183,8 @@ impl Handler<JoinChat> for Peer {
             );
 
             info!(
-                "user {} joined chat (chat_stream={}, creator={})",
-                &self.name, &chat_stream_id, &creator
+                "user {} joined chat (chat_stream={}, creator={}), history = {:?}",
+                &self.name, &chat_stream_id, &creator, message_history
             );
 
             for message in message_history {
@@ -202,7 +202,7 @@ impl Handler<JoinChat> for Peer {
 
             self.chat_streams.insert(chat_stream_id, chat_stream);
         } else {
-            warn!(
+            error!(
                 "user {} failed to join chat (stream={})",
                 &self.name, &chat_stream_id
             );
