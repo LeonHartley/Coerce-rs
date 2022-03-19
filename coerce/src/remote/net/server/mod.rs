@@ -333,7 +333,7 @@ async fn session_handle_message(
     let _enter = span.enter();
 
     match ctx
-        .handle_message(msg.handler_type, msg.actor_id, msg.message.as_slice())
+        .handle_message(msg.handler_type.as_str(), msg.actor_id.clone(), msg.message.as_slice())
         .await
     {
         Ok(buf) => {
@@ -346,11 +346,12 @@ async fn session_handle_message(
             .await
         }
         Err(e) => {
-            error!(target: "RemoteSession", "failed to handle message, error={:?}", e);
+            error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &msg.actor_id, e);
             // TODO: Send error
         }
     }
 }
+
 
 async fn session_handle_lookup(
     msg_id: Uuid,

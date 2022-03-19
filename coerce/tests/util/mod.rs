@@ -7,6 +7,7 @@ use env_logger::Builder;
 use log::LevelFilter;
 use serde::Serialize;
 use std::io::Write;
+use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
@@ -117,6 +118,10 @@ impl Handler<GetCounterRequest> for EchoActor {
     }
 }
 
+lazy_static::lazy_static! {
+    static ref LOG_LEVEL: String = std::env::var("LOG_LEVEL").map_or(String::from("OFF"), |s| s);
+}
+
 pub fn create_trace_logger() {
     if Builder::new()
         .format(|buf, record| {
@@ -129,7 +134,10 @@ pub fn create_trace_logger() {
                 record.args(),
             )
         })
-        .filter(None, LevelFilter::Trace)
+        .filter(
+            None,
+            LevelFilter::from_str(&LOG_LEVEL).expect("invalid `LOG_LEVEL` environment variable"),
+        )
         .try_init()
         .is_err()
     {}

@@ -4,10 +4,12 @@ use coerce_sharded_chat_example::actor::pubsub::ChatStreamEvent;
 use coerce_sharded_chat_example::actor::stream::{ChatMessage, Handshake};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
+use tokio::time::error::Elapsed;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::{Message as WebSocketMessage, Result};
 
@@ -67,11 +69,20 @@ impl ChatClient {
     }
 
     pub async fn read<M: Message>(&mut self) -> Option<M> {
-        let message = self.websocket_messages.recv().await;
-        if let Some(message) = message {
-            M::from_remote_envelope(message.into_data()).map_or(None, |m| Some(m))
-        } else {
-            None
+        let message =
+            tokio::time::timeout(Duration::from_secs(3), self.websocket_messages.recv()).await;
+        match message {
+            Ok(message) => {
+                if let Some(message) = message {
+                    M::from_remote_envelope(message.into_data()).map_or(None, |m| Some(m))
+                } else {
+                    None
+                }
+            }
+            Err(_) => {
+                error!("timeout");
+                None
+            }
         }
     }
 

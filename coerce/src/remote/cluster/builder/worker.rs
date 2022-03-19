@@ -60,12 +60,13 @@ impl ClusterWorkerBuilder {
 
         let _enter = span.enter();
 
+        let started_at = *self.system.started_at();
         self.system
             .register_node(RemoteNode::new(
                 self.system.node_id(),
                 self.server_listen_addr.clone(),
                 self.system.node_tag().to_string(),
-                Some(Utc::now()),
+                Some(started_at),
             ))
             .await;
 

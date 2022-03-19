@@ -194,9 +194,10 @@ impl Handler<GetActorNode> for RemoteRegistry {
 
         trace!(target: "RemoteRegistry", "{:?}", &self.nodes.get_all());
 
-        if &assigned_registry_node == &current_system {
+        let local_registry_entry = self.actors.get(&id);
+        if local_registry_entry.is_some() || &assigned_registry_node == &current_system {
             trace!(target: "RemoteRegistry::GetActorNode", "searching locally, {}", current_system);
-            let node = self.actors.get(&id).map(|s| *s);
+            let node = local_registry_entry.map(|s| *s);
 
             trace!(target: "RemoteRegistry::GetActorNode", "found: {:?}", &node);
             message.sender.send(node);

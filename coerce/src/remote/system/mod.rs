@@ -283,7 +283,7 @@ impl RemoteActorSystem {
 
     pub async fn handle_message(
         &self,
-        identifier: String,
+        identifier: &str,
         actor_id: ActorId,
         buffer: &[u8],
     ) -> Result<Vec<u8>, RemoteActorErr> {
@@ -419,7 +419,7 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub async fn notify_register_node(&self, node: RemoteNode) {
+    pub fn notify_register_node(&self, node: RemoteNode) {
         self.inner.registry_ref.notify(RegisterNode(node));
     }
 
@@ -492,7 +492,7 @@ impl RemoteActorSystem {
         {
             Ok(_) => {
                 // TODO: configurable timeouts (?)
-                match tokio::time::timeout(tokio::time::Duration::from_secs(30), rx).await {
+                match tokio::time::timeout(tokio::time::Duration::from_secs(5), rx).await {
                     Ok(Ok(res)) => {
                         trace!(target: "LocateActorNode", "received actor node (current_node={}, actor_id={}, actor_node={:?})", self.node_tag(), &actor_id, &res);
                         res

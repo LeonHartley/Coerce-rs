@@ -148,10 +148,12 @@ where
             .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));
 
         if let Some(remote) = self.remote.as_mut() {
+            debug!("[node={}] registering actor with remote registry, actor_id={}", remote.node_id(), &message.id);
+
             remote.register_actor(message.id.clone(), None);
         }
 
-        trace!(target: "ActorScheduler", "actor {} registered", message.id);
+        debug!(target: "ActorScheduler", "actor {} registered", message.id);
     }
 }
 
@@ -159,7 +161,7 @@ where
 impl Handler<DeregisterActor> for ActorScheduler {
     async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorContext) -> () {
         if let Some(_a) = self.actors.remove(&msg.0) {
-            trace!(target: "ActorScheduler", "de-registered actor {}", msg.0);
+            debug!(target: "ActorScheduler", "de-registered actor {}", msg.0);
         } else {
             warn!(target: "ActorScheduler", "actor {} not found to de-register", msg.0);
         }
@@ -176,11 +178,19 @@ where
         message: GetActor<A>,
         _ctx: &mut ActorContext,
     ) -> Option<LocalActorRef<A>> {
-        self.actors.get(&message.id).map_or(None, |actor| {
+        let actor_ref = self.actors.get(&message.id).map_or(None, |actor| {
             (&actor.0.as_any())
                 .downcast_ref::<LocalActorRef<A>>()
                 .map(|s| s.clone())
-        })
+        });
+
+        if let Some(remote) = &self.remote {
+            info!(target: "ActorScheduler", "[node={}] GetActor(actor_id={}) actor_found={}", remote.node_id(), &message.id, actor_ref.is_some())
+        } else {
+            info!(target: "ActorScheduler", "[no-remote-attached] GetActor(actor_id={}) actor_found={}", &message.id, actor_ref.is_some())
+        }
+
+        actor_ref
     }
 }
 
@@ -200,7 +210,11 @@ where
     let actor_type_name = A::type_name();
 
     let node_id = if let Some(system) = &system {
-        if system.is_remote() { system.remote().node_id() } else { 0 }
+        if system.is_remote() {
+            system.remote().node_id()
+        } else {
+            0
+        }
     } else {
         0
     };

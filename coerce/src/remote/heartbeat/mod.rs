@@ -62,7 +62,7 @@ impl Heartbeat {
             heartbeat_timer: None,
             last_heartbeat: None,
         }
-        .into_actor(Some("heartbeat".to_string()), &remote_system.actor_system())
+        .into_actor(Some(format!("heartbeat-{}", &remote_system.node_tag())), &remote_system.actor_system())
         .await
         .expect("heartbeat actor")
     }
@@ -86,7 +86,7 @@ impl Actor for Heartbeat {
             self.system.node_id()
         );
 
-        self.heartbeat_timer = Some(Timer::start_immediately(
+        self.heartbeat_timer = Some(Timer::start(
             self.actor_ref(ctx),
             self.config.interval,
             HeartbeatTick,
@@ -143,8 +143,8 @@ impl Handler<HeartbeatTick> for Heartbeat {
             if Some(oldest_node.id) != self.system.current_leader() {
                 self.system.update_leader(oldest_node.id);
                 info!(
-                    "leader of cluster: {:?}, current_node_tag={}",
-                    oldest_node, &node_tag
+                    "[node={}] leader of cluster: {:?}, current_node_tag={}",
+                    self.system.node_id(), oldest_node, &node_tag
                 );
 
                 let id = oldest_node.id;
@@ -225,6 +225,7 @@ async fn ping_node(
     }
 
     node.status = node_status(
+        system.node_id(),
         node.id,
         node.status,
         &node.last_heartbeat,
@@ -238,6 +239,7 @@ async fn ping_node(
 
 fn node_status(
     node_id: NodeId,
+    peer_node_id: NodeId,
     previous_status: NodeStatus,
     last_heartbeat: &Option<DateTime<Utc>>,
     ping: PingResult,
@@ -247,12 +249,12 @@ fn node_status(
     match ping {
         PingResult::Ok(_) => {
             if ping_latency > config.unhealthy_node_heartbeat_timeout {
-                warn!(target: "Heartbeat", "node_id={} took {}ms to respond to ping, marking as unhealthy", node_id,
+                warn!("[node={}] node_id={} took {}ms to respond to ping, marking as unhealthy", node_id, peer_node_id,
                     ping_latency.as_millis());
                 NodeStatus::Unhealthy
             } else {
                 if previous_status != NodeStatus::Healthy {
-                    info!(target: "Heartbeat", "node_id={} is now healthy", node_id);
+                    info!( "[node={}] remote node_id={} is now healthy", node_id, peer_node_id);
                 }
 
                 NodeStatus::Healthy

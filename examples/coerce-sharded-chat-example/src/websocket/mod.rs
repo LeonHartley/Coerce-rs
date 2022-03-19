@@ -30,7 +30,7 @@ async fn handle_connection(
                 Handshake::from_remote_envelope(handshake.into_data()).unwrap();
 
             Peer::new(handshake.name, peer_addr, reader, writer, sharding)
-                .into_actor(Some(format!("peer-{}", Uuid::new_v4())), &actor_system)
+                .into_actor(None, &actor_system)
                 .await;
         } else {
             info!("nope");

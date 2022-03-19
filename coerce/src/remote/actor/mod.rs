@@ -79,7 +79,7 @@ impl RemoteSystemConfig {
         self.actor_types.get(&marker.id()).map(|name| name.clone())
     }
 
-    pub fn message_handler(&self, key: &String) -> Option<BoxedMessageHandler> {
+    pub fn message_handler(&self, key: &str) -> Option<BoxedMessageHandler> {
         self.message_handlers
             .get(key)
             .map(|handler| handler.new_boxed())

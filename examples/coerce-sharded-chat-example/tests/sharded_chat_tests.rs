@@ -8,8 +8,10 @@ use chrono::Local;
 use coerce_sharded_chat_example::actor::peer::{JoinChat, SendChatMessage};
 use coerce_sharded_chat_example::actor::stream::ChatMessage;
 use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig};
+use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
+use std::str::FromStr;
 use std::time::Duration;
 use tokio::signal::ctrl_c;
 use tokio::time::sleep;
@@ -37,7 +39,7 @@ pub async fn test_sharded_chat_join_and_chat() {
     let _sharded_chat_1 = ShardedChat::start(sharded_chat_config).await;
     let _sharded_chat_2 = ShardedChat::start(sharded_chat_config_2).await;
 
-    // tokio::time::sleep(Duration::from_secs(1)).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
 
     let mut client_a = ChatClient::connect("ws://localhost:31102", "client-a")
         .await
@@ -145,20 +147,20 @@ pub async fn test_sharded_chat_join_and_chat() {
     let heyo = client_c.read::<ChatMessage>().await.unwrap();
 
     assert_eq!("Hello!", &hello.message);
-    // assert_eq!("Heyo!", &heyo.message);
-    //
-    // let welcome_message_c = client_c.read::<ChatMessage>().await.unwrap();
-    //
-    // assert_eq!(
-    //     "Welcome to example-chat-stream, say hello!",
-    //     &welcome_message_c.message
-    // );
+    assert_eq!("Heyo!", &heyo.message);
+
+    let welcome_message_c = client_c.read::<ChatMessage>().await.unwrap();
+
+    assert_eq!(
+        "Welcome to example-chat-stream, say hello!",
+        &welcome_message_c.message
+    );
 
     // ctrl_c().await;
 }
 
-fn logger() {
-    let _ = env_logger::Builder::new()
+pub fn logger() {
+    if Builder::new()
         .format(|buf, record| {
             writeln!(
                 buf,
@@ -169,6 +171,16 @@ fn logger() {
                 record.args(),
             )
         })
-        .filter(None, LevelFilter::Trace)
-        .try_init();
+        .filter(
+            None,
+            LevelFilter::from_str(
+                std::env::var("LOG_LEVEL")
+                    .map_or(String::from("OFF"), |s| s)
+                    .as_str(),
+            )
+            .expect("invalid `LOG_LEVEL` environment variable"),
+        )
+        .try_init()
+        .is_err()
+    {}
 }

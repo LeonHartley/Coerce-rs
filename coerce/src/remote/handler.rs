@@ -11,6 +11,7 @@ use crate::actor::context::ActorContext;
 
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
+use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
@@ -210,6 +211,10 @@ where
                     error!(target: "RemoteHandler", "failed to decode message ({})", M::type_name())
                 }
             };
+        } else {
+            warn!("deadletter - actor={} not found, retrying in 100ms", &actor_id);
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            self.handle(actor_id, buffer, res).await;
         }
     }
 

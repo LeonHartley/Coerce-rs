@@ -64,7 +64,7 @@ pub async fn test_remote_handle_from_json() {
 
     let res = remote
         .handle_message(
-            "TestActor.SetStatusRequest".to_string(),
+            "TestActor.SetStatusRequest",
             actor.id.clone(),
             b"{\"status\": \"Active\"}",
         )

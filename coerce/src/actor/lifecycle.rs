@@ -87,7 +87,7 @@ impl ActorLoop {
 
         while let Some(mut msg) = receiver.recv().await {
             {
-                let span = tracing::info_span!(
+                let span = tracing::trace_span!(
                     "Actor::handle",
                     actor_id = ctx.id().as_str(),
                     actor_type_name = A::type_name(),

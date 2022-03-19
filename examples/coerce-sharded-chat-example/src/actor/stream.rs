@@ -62,7 +62,7 @@ impl Handler<Join> for ChatStream {
             &message.peer_name, &self.name
         );
 
-        let message_history =  self
+        let message_history = self
             .messages
             .iter()
             .rev()
@@ -90,7 +90,6 @@ impl Handler<ChatMessage> for ChatStream {
             "user {} said \"{}\" (chat_stream={}), history={:?}",
             &message.sender, &message.message, self.name, &self.messages
         );
-
 
         PubSub::publish(
             self.topic.clone(),

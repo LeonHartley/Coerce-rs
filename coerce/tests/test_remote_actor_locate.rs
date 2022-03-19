@@ -9,6 +9,7 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
+use crate::util::create_trace_logger;
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
@@ -44,16 +45,22 @@ pub async fn test_remote_actor_locate_node_locally() {
 
 #[tokio::test]
 pub async fn test_remote_actor_locate_remotely() {
+    util::create_trace_logger();
+
     let system_a = ActorSystem::new();
     let system_b = ActorSystem::new();
 
     let remote_a = RemoteActorSystem::builder()
         .with_actor_system(system_a.clone())
+        .with_id(1)
+        .with_tag("remote-a")
         .build()
         .await;
 
     let remote_b = RemoteActorSystem::builder()
         .with_actor_system(system_b.clone())
+        .with_id(2)
+        .with_tag("remote-b")
         .build()
         .await;
 
@@ -75,6 +82,9 @@ pub async fn test_remote_actor_locate_remotely() {
     let locate_before_creation_a = remote_a.locate_actor_node("leon".to_string()).await;
     let locate_before_creation_b = remote_b.locate_actor_node("leon".to_string()).await;
 
+    assert_eq!(locate_before_creation_a, None);
+    assert_eq!(locate_before_creation_b, None);
+
     system_a
         .new_actor(
             "leon".to_string(),
@@ -85,9 +95,6 @@ pub async fn test_remote_actor_locate_remotely() {
             Tracked,
         )
         .await;
-
-    // TODO: remote actor registration is sometimes not instant, especially on resource limited environments like CI containers
-    tokio::time::sleep(Duration::from_millis(10)).await;
 
     // let mut tasks = vec![];
     //
@@ -118,8 +125,6 @@ pub async fn test_remote_actor_locate_remotely() {
         .await
         .expect("unable to get remote ref");
 
-    assert_eq!(locate_before_creation_a, None);
-    assert_eq!(locate_before_creation_b, None);
     assert_eq!(remote_ref.is_remote(), true);
     assert_eq!(local_ref.is_local(), true);
 }

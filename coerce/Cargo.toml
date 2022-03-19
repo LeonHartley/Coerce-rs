@@ -38,6 +38,7 @@ rand = "0.8.4"
 parking_lot = "0.11.2"
 axum = "0.4.3"
 axum-extra = "0.1.1"
+metrics = "0.18.0"
 
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }

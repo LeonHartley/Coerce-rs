@@ -35,6 +35,7 @@ impl Handler<TestTimer> for TimerActor {
     }
 }
 
+#[ignore]
 #[tokio::test]
 pub async fn test_timer() {
     util::create_trace_logger();
