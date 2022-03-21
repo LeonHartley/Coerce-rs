@@ -71,8 +71,6 @@ impl Handler<Join> for ChatStream {
             .cloned()
             .collect();
 
-        info!("data = {:?}, {:?}", &message_history, &self.messages);
-
         JoinResult::Ok {
             creator: self.creator.clone(),
             message_history,

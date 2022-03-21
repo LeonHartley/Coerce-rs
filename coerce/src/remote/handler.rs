@@ -38,6 +38,16 @@ pub trait ActorMessageHandler: Any {
         actor: ActorId,
         buffer: &[u8],
         res: tokio::sync::oneshot::Sender<Vec<u8>>,
+    ) {
+        self.handle_attempt(actor, buffer, res, 1).await
+    }
+
+    async fn handle_attempt(
+        &self,
+        actor: ActorId,
+        buffer: &[u8],
+        res: tokio::sync::oneshot::Sender<Vec<u8>>,
+        attempt: usize,
     );
 
     async fn handle_direct(
@@ -183,7 +193,7 @@ impl<A: Actor, M: Message> ActorMessageHandler for RemoteActorMessageHandler<A, 
 where
     A: Handler<M>,
 {
-    async fn handle(&self, actor_id: ActorId, buffer: &[u8], res: Sender<Vec<u8>>) {
+    async fn handle_attempt(&self, actor_id: ActorId, buffer: &[u8], res: Sender<Vec<u8>>, attempt: usize) {
         let actor = self.system.get_tracked_actor::<A>(actor_id.clone()).await;
         if let Some(actor) = actor {
             let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
@@ -199,22 +209,33 @@ where
                             }
 
                             Err(_) => {
-                                // TODO: Notify err
+                                // TODO: send notification back to `res` sender
                                 error!(target: "RemoteHandler", "failed to encode message result")
                             }
                         }
                     }
                 }
 
-                // TODO: Notify err
                 Err(_) => {
                     error!(target: "RemoteHandler", "failed to decode message ({})", M::type_name())
+                    // TODO: send notification back to `res` sender
                 }
             };
         } else {
-            warn!("deadletter - actor={} not found, retrying in 100ms", &actor_id);
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            self.handle(actor_id, buffer, res).await;
+            const RETRY_DELAY_MILLIS: u64 = 100;
+            const MAX_RETRIES: usize = 10;
+
+            let next_attempt = attempt + 1;
+            if next_attempt >= MAX_RETRIES {
+                error!("actor={} not found, exceeded max retries (attempts={})", &actor_id, attempt);
+
+                // TODO: send notification back to `res` sender
+                return;
+            }
+
+            warn!("actor={} not found, retrying in {}ms (attempts={}, max={})", &actor_id, RETRY_DELAY_MILLIS, attempt, MAX_RETRIES);
+            tokio::time::sleep(Duration::from_millis(RETRY_DELAY_MILLIS)).await;
+            self.handle_attempt(actor_id, buffer, res, next_attempt).await;
         }
     }
 
@@ -245,11 +266,11 @@ where
                                 }
                             }
                             Ok(Err(e)) => {
-                                // TODO: Notify err
+                                // TODO: send notification back to `res` sender
                                 error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
                             }
                             Err(_) => {
-                                // TODO: Notify err
+                                // TODO: send notification back to `res` sender
                                 error!(target: "RemoteHandler", "failed to send message");
                             }
                         }
@@ -262,6 +283,7 @@ where
             }
             (_, Err(e)) => {
                 error!("error: {:?}", e);
+                // TODO: send notification back to `res` sender
             }
             (None, _) => {
                 error!(
@@ -269,6 +291,8 @@ where
                     actor_type,
                     A::type_name()
                 );
+
+                // TODO: send notification back to `res` sender
             }
         }
     }

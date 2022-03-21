@@ -352,7 +352,6 @@ async fn session_handle_message(
     }
 }
 
-
 async fn session_handle_lookup(
     msg_id: Uuid,
     id: ActorId,

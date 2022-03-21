@@ -39,8 +39,6 @@ pub async fn test_sharded_chat_join_and_chat() {
     let _sharded_chat_1 = ShardedChat::start(sharded_chat_config).await;
     let _sharded_chat_2 = ShardedChat::start(sharded_chat_config_2).await;
 
-    tokio::time::sleep(Duration::from_secs(1)).await;
-
     let mut client_a = ChatClient::connect("ws://localhost:31102", "client-a")
         .await
         .expect("connection 1");
