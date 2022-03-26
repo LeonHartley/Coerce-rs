@@ -15,6 +15,8 @@ use tungstenite::{
 };
 use uuid::Uuid;
 
+pub mod client;
+
 async fn handle_connection(
     peer_addr: IpAddr,
     stream: TcpStream,

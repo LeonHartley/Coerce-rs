@@ -8,7 +8,7 @@ use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
-use crate::remote::net::client::{ClientType, RemoteClient, Write};
+use crate::remote::net::client::{ClientType, RemoteClient};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use std::collections::HashMap;
@@ -23,6 +23,7 @@ use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
 
 use crate::remote::net::client::connect::Connect;
+use crate::remote::net::client::send::Write;
 use crate::remote::net::client::ClientType::Worker;
 use protobuf::Message;
 use std::time::Instant;
@@ -96,9 +97,13 @@ impl Handler<RegisterNodes> for RemoteRegistry {
         trace!(target: "RemoteRegistry", "registering new nodes {:?}", &unregistered_nodes);
 
         let current_nodes = self.nodes.get_all();
-        // tokio::spawn(async move {
-        if unregistered_nodes.len() > 0 {
-            connect_all(unregistered_nodes, current_nodes, remote.clone()).await;
+
+        if !unregistered_nodes.is_empty() {
+            let connected_nodes =
+                connect_all(unregistered_nodes, current_nodes, remote.clone()).await;
+            for connected_node in connected_nodes {
+                self.register_node(connected_node);
+            }
         }
 
         for node in nodes {
@@ -116,7 +121,6 @@ impl Handler<RegisterNodes> for RemoteRegistry {
 
             self.nodes.add(node);
         }
-        // });
     }
 }
 
@@ -129,10 +133,16 @@ impl Handler<RegisterNode> for RemoteRegistry {
                 SystemEvent::Cluster(ClusterEvent::NodeAdded(message.0.id)),
                 self.system.as_ref().unwrap(),
             )
-            .await;
+                .await;
         }
 
-        self.nodes.add(message.0);
+        self.register_node(message.0);
+    }
+}
+
+impl RemoteRegistry {
+    pub fn register_node(&mut self, node: RemoteNode) {
+        self.nodes.add(node);
     }
 }
 
@@ -332,18 +342,25 @@ async fn connect_all(
     nodes: Vec<RemoteNode>,
     current_nodes: Vec<RemoteNodeState>,
     system: RemoteActorSystem,
-) {
+) -> Vec<RemoteNode> {
+    debug!(
+        "discovered {} new nodes, currently active peers={}",
+        nodes.len(),
+        current_nodes.len()
+    );
+
+    let mut connected_nodes = vec![];
     for node in nodes {
         let addr = node.addr.to_string();
-        match RemoteClient::new(addr, Some(node.id), system.clone(), Worker).await {
+        match RemoteClient::new(addr, Some(node.id), system.clone(), Worker, false).await {
             Ok(client) => {
                 trace!(target: "RemoteRegistry", "connecting to node_id={}, addr={}", node.id, node.addr);
-                if client
+                if let Some(node) = client
                     .send(Connect::new(Some(current_nodes.clone())))
                     .await
                     .unwrap()
                 {
-                    trace!(target: "RemoteRegistry", "connected to node_id={}, addr={}", node.id, node.addr);
+                    connected_nodes.push(node);
                 } else {
                     warn!(target: "RemoteRegistry", "failed to node_id={}, addr={}", node.id, node.addr);
                 }
@@ -353,4 +370,6 @@ async fn connect_all(
             }
         }
     }
+
+    connected_nodes
 }

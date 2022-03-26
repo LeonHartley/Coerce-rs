@@ -136,13 +136,13 @@ impl ActorSystem {
 
         match rx.await {
             Ok(_) => Ok(actor_ref),
-            Err(_e) => {
+            Err(e) => {
                 error!(
                     "actor not started, actor_id={}, type={}",
                     &id,
                     A::type_name()
                 );
-                Err(ActorRefErr::ActorUnavailable)
+                Err(ActorRefErr::StartChannelClosed)
             }
         }
     }
@@ -156,6 +156,7 @@ impl ActorSystem {
 
         self.is_terminated.store(true, Relaxed);
         self.scheduler.stop().await;
+        info!("shutdown complete");
     }
 
     pub async fn get_tracked_actor<A: Actor>(&self, id: ActorId) -> Option<LocalActorRef<A>> {

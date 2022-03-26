@@ -1,11 +1,12 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
+use crate::actor::scheduler::timer::Timer;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
+use crate::remote::net::client::ping::PingTick;
 use crate::remote::net::client::receive::ClientMessageReceiver;
-use crate::remote::net::client::{
-    write_bytes, ClientState, ClientType, ConnectionState, RemoteClient,
-};
+use crate::remote::net::client::send::write_bytes;
+use crate::remote::net::client::{ClientState, ClientType, ConnectionState, RemoteClient};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
 use crate::remote::net::proto::network as proto;
@@ -20,114 +21,6 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 pub struct Connect {
     pub outbound_seed_nodes: Option<Vec<RemoteNodeState>>,
-}
-
-impl Connect {
-    pub fn new(outbound_seed_nodes: Option<Vec<RemoteNodeState>>) -> Self {
-        Self {
-            outbound_seed_nodes,
-        }
-    }
-}
-
-pub struct Disconnected;
-
-const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
-
-#[async_trait]
-impl Handler<Connect> for RemoteClient {
-    async fn handle(&mut self, message: Connect, ctx: &mut ActorContext) -> bool {
-        if let Some(connection_state) = self.connect(message, ctx).await {
-            let remote = ctx.system().remote();
-            let node_id = connection_state.node_id;
-
-            remote.notify_register_node(RemoteNode::new(
-                connection_state.node_id,
-                self.addr.clone(),
-                connection_state.node_tag.clone(),
-                Some(connection_state.node_started_at),
-            ));
-
-            remote.register_client(node_id, self.actor_ref(ctx)).await;
-            self.state = Some(ClientState::Connected(connection_state));
-
-            debug!(
-                "RemoteClient connected to node (addr={}, node_id={})",
-                &self.addr, node_id
-            );
-
-            self.flush_buffered_writes().await;
-
-            true
-        } else {
-            warn!("RemoteClient failed to connect");
-            self.handle(Disconnected, ctx).await;
-            false
-        }
-    }
-}
-
-#[async_trait]
-impl Handler<Disconnected> for RemoteClient {
-    async fn handle(&mut self, _msg: Disconnected, ctx: &mut ActorContext) {
-        // TODO: try to connect again, if fails after {n} attempts with a timeout,
-        //       we should quarantine the node and ensuring the node no longer
-        //       participates in cluster activities/sharding
-
-        warn!(
-            "RemoteClient connection to node (addr={}) closed/failed, retrying in {}ms",
-            &self.addr,
-            RECONNECT_DELAY.as_millis()
-        );
-
-        let state = match self.state.take().unwrap() {
-            ClientState::Idle {
-                connection_attempts,
-            } => {
-                let connection_attempts = connection_attempts + 1;
-
-                ClientState::Idle {
-                    connection_attempts,
-                }
-            }
-
-            ClientState::Quarantined {
-                since,
-                connection_attempts,
-            } => {
-                let connection_attempts = connection_attempts + 1;
-
-                ClientState::Quarantined {
-                    since,
-                    connection_attempts,
-                }
-            }
-
-            ClientState::Connected(mut state) => {
-                state.disconnected().await;
-
-                ClientState::Idle {
-                    connection_attempts: 1,
-                }
-            }
-        };
-
-        self.state = Some(state);
-
-        let self_ref = self.actor_ref(ctx);
-        tokio::spawn(async move {
-            tokio::time::sleep(RECONNECT_DELAY).await;
-            let _res = self_ref.send(Connect::new(None)).await;
-        });
-    }
-}
-
-impl Message for Connect {
-    type Result = bool;
-}
-
-impl Message for Disconnected {
-    type Result = ();
 }
 
 impl RemoteClient {
@@ -211,12 +104,136 @@ impl RemoteClient {
         let node_tag = handshake_ack.node_tag;
         let node_started_at = handshake_ack.node_started_at;
         let write = writer;
+
+        let ping_timer = Some(Timer::start_immediately(
+            self.actor_ref(ctx),
+            Duration::from_millis(500),
+            PingTick,
+        ));
+
         Some(ConnectionState {
             node_id,
             node_tag,
             node_started_at,
             write,
             receive_task,
+            ping_timer,
         })
     }
+}
+
+impl Connect {
+    pub fn new(outbound_seed_nodes: Option<Vec<RemoteNodeState>>) -> Self {
+        Self {
+            outbound_seed_nodes,
+        }
+    }
+}
+
+pub struct Disconnected;
+
+const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
+
+#[async_trait]
+impl Handler<Connect> for RemoteClient {
+    async fn handle(&mut self, message: Connect, ctx: &mut ActorContext) -> Option<RemoteNode> {
+        let register_node_upon_connection = self.register_node_upon_connect.is_none()
+            || self.register_node_upon_connect.take().unwrap() == true;
+
+        if let Some(connection_state) = self.connect(message, ctx).await {
+            let remote = ctx.system().remote();
+            let node_id = connection_state.node_id;
+
+            let remote_node = RemoteNode::new(
+                connection_state.node_id,
+                self.addr.clone(),
+                connection_state.node_tag.clone(),
+                Some(connection_state.node_started_at),
+            );
+
+            if register_node_upon_connection {
+                remote.notify_register_node(remote_node.clone());
+            }
+
+            remote.register_client(node_id, self.actor_ref(ctx)).await;
+            self.remote_node_id = Some(node_id);
+            self.state = Some(ClientState::Connected(connection_state));
+
+            debug!(
+                "RemoteClient connected to node (addr={}, node_id={})",
+                &self.addr, node_id
+            );
+
+            self.flush_buffered_writes().await;
+
+            Some(remote_node)
+        } else {
+            warn!("RemoteClient failed to connect");
+            self.handle(Disconnected, ctx).await;
+            None
+        }
+    }
+}
+
+#[async_trait]
+impl Handler<Disconnected> for RemoteClient {
+    async fn handle(&mut self, _msg: Disconnected, ctx: &mut ActorContext) {
+        // TODO: try to connect again, if fails after {n} attempts with a timeout,
+        //       we should quarantine the node and ensuring the node no longer
+        //       participates in cluster activities/sharding
+
+        warn!(
+            "RemoteClient connection to node (addr={}) closed/failed, retrying in {}ms",
+            &self.addr,
+            RECONNECT_DELAY.as_millis()
+        );
+
+        let state = match self.state.take().unwrap() {
+            ClientState::Idle {
+                connection_attempts,
+            } => {
+                let connection_attempts = connection_attempts + 1;
+
+                ClientState::Idle {
+                    connection_attempts,
+                }
+            }
+
+            ClientState::Quarantined {
+                since,
+                connection_attempts,
+            } => {
+                let connection_attempts = connection_attempts + 1;
+
+                ClientState::Quarantined {
+                    since,
+                    connection_attempts,
+                }
+            }
+
+            ClientState::Connected(mut state) => {
+                state.disconnected().await;
+
+                ClientState::Idle {
+                    connection_attempts: 1,
+                }
+            }
+        };
+
+        self.state = Some(state);
+
+        let self_ref = self.actor_ref(ctx);
+        tokio::spawn(async move {
+            tokio::time::sleep(RECONNECT_DELAY).await;
+            let _res = self_ref.send(Connect::new(None)).await;
+        });
+    }
+}
+
+impl Message for Connect {
+    type Result = Option<RemoteNode>;
+}
+
+impl Message for Disconnected {
+    type Result = ();
 }

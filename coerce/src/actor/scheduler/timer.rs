@@ -84,6 +84,9 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
 
         let now = Instant::now();
 
+        // TODO allow whether this is a send/notify to be configurable, at the moment
+        //      if the actor takes a while to process the msg, it may end up with a backlog of
+        //      timer ticks to work through, which may be undesirable
         if actor.notify(msg.clone()).is_err() {
             break;
         }

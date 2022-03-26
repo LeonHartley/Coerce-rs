@@ -90,6 +90,10 @@ impl RemoteSystemConfig {
             .get(key)
             .map(|handler| handler.new_boxed())
     }
+
+    pub fn heartbeat_config(&self) -> &HeartbeatConfig {
+        &self.heartbeat_config
+    }
 }
 
 pub struct RemoteHandler {

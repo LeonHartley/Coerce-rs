@@ -228,13 +228,22 @@ impl Handler<EntityRequest> for Shard {
 
         if handler.is_none() {
             // TODO: send unsupported msg err
+            let message_type = message.message_type;
+            let actor_type = self.handler.actor_type_name().to_string();
+
             warn!(
                 "no message handler configured for message={}, actor_type={}, actor_id={}",
-                message.message_type,
-                self.handler.actor_type_name(),
-                &actor_id
+                &message_type, &actor_type, &actor_id
             );
-            result_channel.map(|m| m.send(Err(ActorRefErr::ActorUnavailable)));
+
+            result_channel.map(|m| {
+                m.send(Err(ActorRefErr::NotSupported {
+                    actor_id,
+                    message_type,
+                    actor_type,
+                }))
+            });
+
             return;
         }
 
@@ -264,7 +273,7 @@ impl Handler<EntityRequest> for Shard {
                 },
                 None => {
                     // TODO: send actor doesnt exist (and cannot be created) err
-                    result_channel.map(|m| m.send(Err(ActorRefErr::ActorUnavailable)));
+                    result_channel.map(|m| m.send(Err(ActorRefErr::NotFound(actor_id))));
                     return;
                 }
             },

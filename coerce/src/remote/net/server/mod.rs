@@ -10,7 +10,7 @@ use crate::remote::net::server::session::{
 };
 use crate::remote::net::{receive_loop, StreamReceiver};
 
-use crate::actor::scheduler::ActorType::Anonymous;
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::network::{
@@ -333,7 +333,11 @@ async fn session_handle_message(
     let _enter = span.enter();
 
     match ctx
-        .handle_message(msg.handler_type.as_str(), msg.actor_id.clone(), msg.message.as_slice())
+        .handle_message(
+            msg.handler_type.as_str(),
+            msg.actor_id.clone(),
+            msg.message.as_slice(),
+        )
         .await
     {
         Ok(buf) => {

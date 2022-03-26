@@ -1,13 +1,11 @@
-pub mod client;
-
 #[macro_use]
 extern crate log;
 
-use crate::client::ChatClient;
 use chrono::Local;
 use coerce_sharded_chat_example::actor::peer::{JoinChat, SendChatMessage};
 use coerce_sharded_chat_example::actor::stream::ChatMessage;
 use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig};
+use coerce_sharded_chat_example::websocket::client::ChatClient;
 use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;

@@ -1,7 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::Actor;
+use std::error::Error;
 
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::marker::PhantomData;
 use tokio::sync::oneshot;
 
@@ -23,15 +24,31 @@ pub enum MessageWrapErr {
 
 impl Display for MessageWrapErr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({:?})", &self)
+        match &self {
+            MessageWrapErr::NotTransmittable => write!(f, "Message serialisation not supported, messages must override Message::as_remote_envelop and Message::write_remote_result"),
+            MessageWrapErr::SerializationErr => write!(f, "Message failed to serialise"),
+        }
     }
 }
+
+impl Error for MessageWrapErr {}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum MessageUnwrapErr {
     NotTransmittable,
     DeserializationErr,
 }
+
+impl Display for MessageUnwrapErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            MessageUnwrapErr::NotTransmittable => write!(f, "Message deserialisation not supported, messages must override Message::as_remote_envelope, Message::from_remote_envelope, Message::read_remote_result, and Message::write_remote_result"),
+            MessageUnwrapErr::DeserializationErr => write!(f, "Message failed to deserialise"),
+        }
+    }
+}
+
+impl Error for MessageUnwrapErr {}
 
 pub trait Message: 'static + Sync + Send + Sized {
     type Result: 'static + Sync + Send;

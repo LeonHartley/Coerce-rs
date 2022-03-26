@@ -3,6 +3,7 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use crate::persistent::context::ActorPersistence;
 use futures::{Stream, StreamExt};
+use tokio::sync::oneshot::Sender;
 
 use crate::actor::supervised::Supervised;
 
@@ -21,6 +22,7 @@ pub struct ActorContext {
     boxed_parent_ref: Option<BoxedActorRef>,
     supervised: Option<Supervised>,
     system: Option<ActorSystem>,
+    on_actor_stopped: Option<Vec<Sender<()>>>,
 }
 
 impl Drop for ActorContext {
@@ -35,7 +37,7 @@ impl Drop for ActorContext {
 
         match self.status {
             ActorStatus::Starting => {
-                error!("actor panicked while starting");
+                debug!("actor failed to start, context dropped");
             }
             ActorStatus::Started => {
                 if self.system.is_some() && self.system().is_terminated() {
@@ -44,14 +46,24 @@ impl Drop for ActorContext {
                         &self.id()
                     );
                 } else {
-                    debug!("actor (id={}) has stopped unexpectedly", &self.id());
+                    debug!("actor (id={}) has stopped unexpectedly", self.id());
                 }
             }
             ActorStatus::Stopping => {
-                error!("actor panicked while stopping");
+                if self.system.is_some() && self.system().is_terminated() {
+                    trace!(
+                        "actor (id={}) has stopped due to system shutdown",
+                        &self.id()
+                    );
+                } else {
+                    debug!(
+                        "actor (id={}) was stopping but did not complete the stop procedure",
+                        self.id()
+                    );
+                }
             }
             ActorStatus::Stopped => {
-                trace!("actor (id={}) stopped, context dropped", &self.id());
+                debug!("actor (id={}) stopped, context dropped", self.id());
             }
         }
     }
@@ -70,6 +82,7 @@ impl ActorContext {
             supervised: None,
             persistence: None,
             boxed_parent_ref: None,
+            on_actor_stopped: None,
         }
     }
 
@@ -187,17 +200,29 @@ impl ActorContext {
         self.boxed_parent_ref = boxed_parent_ref;
         self
     }
+
+    pub fn add_on_stopped_handler(&mut self, event_handler: Sender<()>) {
+        if let Some(handlers) = &mut self.on_actor_stopped {
+            handlers.push(event_handler);
+        } else {
+            self.on_actor_stopped = Some(vec![event_handler]);
+        }
+    }
+
+    pub fn take_on_stopped_handlers(&mut self) -> Option<Vec<Sender<()>>> {
+        self.on_actor_stopped.take()
+    }
 }
 
-pub fn attach_stream<A, S, I, E, M, F>(
+pub fn attach_stream<S, T, R, E, A, M>(
     actor_ref: LocalActorRef<A>,
     stream: S,
     options: StreamAttachmentOptions,
-    message_converter: F,
+    message_converter: T,
 ) where
     A: Actor + Handler<M>,
-    S: 'static + Stream<Item = Result<I, E>> + Send,
-    F: 'static + Fn(I) -> Option<M> + Send,
+    S: 'static + Stream<Item = Result<R, E>> + Send,
+    T: 'static + Fn(R) -> Option<M> + Send,
     M: Message,
     S: Unpin,
 {

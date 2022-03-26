@@ -1,17 +1,24 @@
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
-use crate::actor::message::{ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler};
+use crate::actor::message::{
+    ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler, MessageUnwrapErr,
+    MessageWrapErr,
+};
 use crate::actor::system::ActorSystem;
 use crate::remote::RemoteActorRef;
 use log::error;
 
-use crate::actor::scheduler::ActorType::Tracked;
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use std::any::Any;
+use std::error::Error;
 
 use crate::actor::supervised::Terminated;
 use crate::remote::system::NodeId;
 use futures::SinkExt;
 use std::sync::Arc;
+use tokio::sync::mpsc::error::SendError;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
 
 pub mod context;
@@ -62,6 +69,12 @@ pub trait Actor: 'static + Send + Sync {
 #[async_trait]
 pub trait IntoActor: Actor + Sized {
     async fn into_actor(
+        self,
+        id: Option<ActorId>,
+        sys: &ActorSystem,
+    ) -> Result<LocalActorRef<Self>, ActorRefErr>;
+
+    async fn into_anon_actor(
         self,
         id: Option<ActorId>,
         sys: &ActorSystem,
@@ -264,6 +277,15 @@ impl<A: Actor> IntoActor for A {
             sys.new_anon_actor(self).await
         }
     }
+
+    async fn into_anon_actor(
+        self,
+        id: Option<ActorId>,
+        sys: &ActorSystem,
+    ) -> Result<LocalActorRef<Self>, ActorRefErr> {
+        sys.new_actor(id.map_or_else(|| new_actor_id(), |id| id), self, Anonymous)
+            .await
+    }
 }
 
 #[async_trait]
@@ -301,7 +323,7 @@ pub trait CoreActorRef: Any {
 
     async fn status(&self) -> Result<ActorStatus, ActorRefErr>;
 
-    async fn stop(&self) -> Result<ActorStatus, ActorRefErr>;
+    async fn stop(&self) -> Result<(), ActorRefErr>;
 
     fn notify_stop(&self) -> Result<(), ActorRefErr>;
 
@@ -346,14 +368,48 @@ impl<A: Actor> Clone for LocalActorRef<A> {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ActorRefErr {
     ActorUnavailable,
+    NotFound(ActorId),
     AlreadyExists(ActorId),
+    Serialisation(MessageWrapErr),
+    Deserialisation(MessageUnwrapErr),
+    Timeout {
+        time_taken_millis: u128,
+    },
+    StartChannelClosed,
+    InvalidRef,
+    ResultChannelClosed,
+    ResultSendFailed,
+    NotSupported {
+        actor_id: String,
+        message_type: String,
+        actor_type: String,
+    },
 }
 
 impl std::fmt::Display for ActorRefErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ActorRefErr::ActorUnavailable => write!(f, "actor unavailable"),
+            ActorRefErr::NotFound(id) => write!(f, "actor {} could not be found", &id),
             ActorRefErr::AlreadyExists(id) => write!(f, "actor {} already exists", &id),
+            ActorRefErr::Serialisation(err) => write!(f, "serialisation error ({})", &err),
+            ActorRefErr::Deserialisation(err) => write!(f, "deserialisation error ({})", &err),
+            ActorRefErr::Timeout { time_taken_millis } => {
+                write!(f, "timeout (time_taken_millis={})", time_taken_millis)
+            }
+            ActorRefErr::InvalidRef => write!(f, "failed to send message, ref is no longer valid"),
+            ActorRefErr::ResultSendFailed => write!(f, "failed to send result, channel closed"),
+            ActorRefErr::ResultChannelClosed => write!(f, "failed to read result, channel closed"),
+            ActorRefErr::NotSupported {
+                actor_id,
+                message_type,
+                actor_type,
+            } => write!(
+                f,
+                "no Handler<{}> implementation for actor (id={}, type={}) or the handler is not registered with the RemoteActorSystem",
+                message_type, actor_id, actor_type
+            ),
+            ActorRefErr::StartChannelClosed => write!(f, "actor failed to start, channel closed"),
         }
     }
 }
@@ -379,12 +435,12 @@ impl<A: Actor> LocalActorRef<A> {
                 }
                 Err(e) => {
                     error!(target: "ActorRef", "error receiving result, e={}", e);
-                    Err(ActorRefErr::ActorUnavailable)
+                    Err(ActorRefErr::ResultChannelClosed)
                 }
             },
-            Err(_e) => {
+            Err(e) => {
                 error!(target: "ActorRef", "error sending message");
-                Err(ActorRefErr::ActorUnavailable)
+                Err(ActorRefErr::InvalidRef)
             }
         }
     }
@@ -404,7 +460,7 @@ impl<A: Actor> LocalActorRef<A> {
 
         match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
             Ok(_) => Ok(()),
-            Err(_e) => Err(ActorRefErr::ActorUnavailable),
+            Err(_e) => Err(ActorRefErr::InvalidRef),
         }
     }
 
@@ -431,12 +487,18 @@ impl<A: Actor> LocalActorRef<A> {
         self.send(Status {}).await
     }
 
-    pub async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
-        self.send(Stop {}).await
+    pub async fn stop(&self) -> Result<(), ActorRefErr> {
+        let (tx, rx) = oneshot::channel();
+        let res = self.notify(Stop(Some(tx)));
+        if res.is_ok() {
+            rx.await.map_err(|_| ActorRefErr::ActorUnavailable)
+        } else {
+            res
+        }
     }
 
     pub fn notify_stop(&self) -> Result<(), ActorRefErr> {
-        self.notify(Stop {})
+        self.notify(Stop(None))
     }
 }
 
@@ -454,7 +516,7 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.status().await
     }
 
-    async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
+    async fn stop(&self) -> Result<(), ActorRefErr> {
         self.stop().await
     }
 
@@ -489,7 +551,7 @@ impl CoreActorRef for BoxedActorRef {
         self.0.status().await
     }
 
-    async fn stop(&self) -> Result<ActorStatus, ActorRefErr> {
+    async fn stop(&self) -> Result<(), ActorRefErr> {
         self.0.stop().await
     }
 

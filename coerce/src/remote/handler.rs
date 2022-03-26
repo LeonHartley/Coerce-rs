@@ -11,7 +11,7 @@ use crate::actor::context::ActorContext;
 
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
@@ -33,20 +33,11 @@ pub trait ActorHandler: 'static + Any + Sync + Send {
 
 #[async_trait]
 pub trait ActorMessageHandler: Any {
-    async fn handle(
-        &self,
-        actor: ActorId,
-        buffer: &[u8],
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
-    ) {
-        self.handle_attempt(actor, buffer, res, 1).await
-    }
-
     async fn handle_attempt(
         &self,
         actor: ActorId,
         buffer: &[u8],
-        res: tokio::sync::oneshot::Sender<Vec<u8>>,
+        res: tokio::sync::oneshot::Sender<Result<Vec<u8>, ActorRefErr>>,
         attempt: usize,
     );
 
@@ -193,7 +184,13 @@ impl<A: Actor, M: Message> ActorMessageHandler for RemoteActorMessageHandler<A, 
 where
     A: Handler<M>,
 {
-    async fn handle_attempt(&self, actor_id: ActorId, buffer: &[u8], res: Sender<Vec<u8>>, attempt: usize) {
+    async fn handle_attempt(
+        &self,
+        actor_id: ActorId,
+        buffer: &[u8],
+        res: Sender<Result<Vec<u8>, ActorRefErr>>,
+        attempt: usize,
+    ) {
         let actor = self.system.get_tracked_actor::<A>(actor_id.clone()).await;
         if let Some(actor) = actor {
             let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
@@ -203,22 +200,23 @@ where
                     if let Ok(result) = result {
                         match M::write_remote_result(result) {
                             Ok(buffer) => {
-                                if res.send(buffer).is_err() {
-                                    error!(target: "RemoteHandler", "failed to send message")
+                                let send_res = res.send(Ok(buffer));
+                                if let Err(_) = send_res {
+                                    error!(target: "RemoteHandler", "failed to send result back to sender");
                                 }
                             }
 
-                            Err(_) => {
-                                // TODO: send notification back to `res` sender
-                                error!(target: "RemoteHandler", "failed to encode message result")
+                            Err(e) => {
+                                error!(target: "RemoteHandler", "failed to encode message result");
+                                let _ = res.send(Err(ActorRefErr::Serialisation(e)));
                             }
                         }
                     }
                 }
 
-                Err(_) => {
-                    error!(target: "RemoteHandler", "failed to decode message ({})", M::type_name())
-                    // TODO: send notification back to `res` sender
+                Err(e) => {
+                    error!(target: "RemoteHandler", "failed to decode message ({})", M::type_name());
+                    let _ = res.send(Err(ActorRefErr::Deserialisation(e)));
                 }
             };
         } else {
@@ -227,15 +225,23 @@ where
 
             let next_attempt = attempt + 1;
             if next_attempt >= MAX_RETRIES {
-                error!("actor={} not found, exceeded max retries (attempts={})", &actor_id, attempt);
+                error!(
+                    "actor={} not found, exceeded max retries (attempts={})",
+                    &actor_id, attempt
+                );
 
-                // TODO: send notification back to `res` sender
+                let _ = res.send(Err(ActorRefErr::NotFound(actor_id)));
                 return;
             }
 
-            warn!("actor={} not found, retrying in {}ms (attempts={}, max={})", &actor_id, RETRY_DELAY_MILLIS, attempt, MAX_RETRIES);
+            warn!(
+                "actor={} not found, retrying in {}ms (attempts={}, max={})",
+                &actor_id, RETRY_DELAY_MILLIS, attempt, MAX_RETRIES
+            );
+
             tokio::time::sleep(Duration::from_millis(RETRY_DELAY_MILLIS)).await;
-            self.handle_attempt(actor_id, buffer, res, next_attempt).await;
+            self.handle_attempt(actor_id, buffer, res, next_attempt)
+                .await;
         }
     }
 
@@ -250,40 +256,40 @@ where
         let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
 
         match (actor, envelope) {
-            (Some(actor), Ok(message)) => {
-                match res {
-                    Some(res) => {
-                        let result = actor
-                            .send(message)
-                            .await
-                            .map(|result| M::write_remote_result(result));
-                        match result {
-                            Ok(Ok(result)) => {
-                                if res.send(Ok(result)).is_err() {
-                                    error!(target: "RemoteHandler", "failed to send message")
-                                } else {
-                                    trace!(target: "RemoteHandler", "handled message (actor_type={}, message_type={})", &actor_type, M::type_name());
-                                }
-                            }
-                            Ok(Err(e)) => {
-                                // TODO: send notification back to `res` sender
-                                error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
-                            }
-                            Err(_) => {
-                                // TODO: send notification back to `res` sender
-                                error!(target: "RemoteHandler", "failed to send message");
+            (Some(actor), Ok(message)) => match res {
+                Some(res) => {
+                    let result = actor
+                        .send(message)
+                        .await
+                        .map(|result| M::write_remote_result(result));
+                    match result {
+                        Ok(Ok(result)) => {
+                            if res.send(Ok(result)).is_err() {
+                                error!(target: "RemoteHandler", "failed to send message")
+                            } else {
+                                trace!(target: "RemoteHandler", "handled message (actor_type={}, message_type={})", &actor_type, M::type_name());
                             }
                         }
-                    }
-                    None => {
-                        trace!(target: "RemoteHandler", "no result consumer, notifying actor");
-                        let _res = actor.notify(message);
+                        Ok(Err(e)) => {
+                            error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
+                            let _ = res.send(Err(ActorRefErr::Serialisation(e)));
+                        }
+                        Err(e) => {
+                            error!(target: "RemoteHandler", "failed to send message");
+                            let _ = res.send(Err(e));
+                        }
                     }
                 }
-            }
+                None => {
+                    trace!(target: "RemoteHandler", "no result consumer, notifying actor");
+                    let _res = actor.notify(message);
+                }
+            },
             (_, Err(e)) => {
-                error!("error: {:?}", e);
-                // TODO: send notification back to `res` sender
+                error!("deserialisation error, {}", e);
+                if let Some(res) = res {
+                    let _ = res.send(Err(ActorRefErr::Deserialisation(e)));
+                }
             }
             (None, _) => {
                 error!(

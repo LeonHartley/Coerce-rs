@@ -4,17 +4,18 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
+use tokio::sync::oneshot::Sender;
 
 pub struct Status();
 
-pub struct Stop();
+pub struct Stop(pub Option<Sender<()>>);
 
 impl Message for Status {
     type Result = ActorStatus;
 }
 
 impl Message for Stop {
-    type Result = ActorStatus;
+    type Result = ();
 }
 
 #[async_trait]
@@ -29,10 +30,12 @@ where
 
 #[async_trait]
 impl<A: Actor> Handler<Stop> for A {
-    async fn handle(&mut self, _message: Stop, ctx: &mut ActorContext) -> ActorStatus {
-        ctx.set_status(Stopping);
+    async fn handle(&mut self, stop: Stop, ctx: &mut ActorContext) {
+        if let Some(sender) = stop.0 {
+            ctx.add_on_stopped_handler(sender);
+        }
 
-        Stopping
+        ctx.set_status(Stopping);
     }
 }
 
@@ -142,6 +145,12 @@ impl ActorLoop {
                         .await
                         .expect("de-register actor");
                 }
+            }
+        }
+
+        if let Some(on_stopped_handlers) = ctx.take_on_stopped_handlers() {
+            for sender in on_stopped_handlers {
+                let _ = sender.send(());
             }
         }
     }

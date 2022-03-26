@@ -1,4 +1,4 @@
-use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr};
+use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, LocalActorRef,
 };
@@ -114,8 +114,8 @@ impl<A: Actor> Sharded<A> {
         A: Handler<M>,
     {
         let message = match message.as_remote_envelope() {
-            Ok(Envelope::Remote(b)) => b,
-            _ => return Err(ActorRefErr::ActorUnavailable),
+            Ok(envelope) => envelope.into_bytes(),
+            Err(e) => return Err(ActorRefErr::Serialisation(e)),
         };
 
         let message_type = self
@@ -138,16 +138,15 @@ impl<A: Actor> Sharded<A> {
 
         let result = rx.await;
         if let Ok(result) = result {
-            let result = result
-                .map(|res| M::read_remote_result(res).map_err(|res| ActorRefErr::ActorUnavailable));
-            if let Ok(Ok(result)) = result {
-                Ok(result)
-            } else {
-                // TODO: Better errors
-                Err(ActorRefErr::ActorUnavailable)
+            let result = result.map(|res| {
+                M::read_remote_result(res).map_err(|res| ActorRefErr::Deserialisation(res))
+            });
+            match result {
+                Ok(res) => res,
+                Err(e) => Err(e),
             }
         } else {
-            Err(ActorRefErr::ActorUnavailable)
+            Err(ActorRefErr::ResultChannelClosed)
         }
     }
 }

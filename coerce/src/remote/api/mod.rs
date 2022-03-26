@@ -39,7 +39,11 @@ impl RemoteHttpApi {
     pub async fn start(self) {
         let app = self.router.route("/version", get(|| async { VERSION }));
 
-        info!("[node={}] http api listening on {}", &self.system.node_id(), &self.listen_addr);
+        info!(
+            "[node={}] http api listening on {}",
+            &self.system.node_id(),
+            &self.listen_addr
+        );
         axum::Server::bind(&self.listen_addr)
             .serve(app.into_make_service())
             .await

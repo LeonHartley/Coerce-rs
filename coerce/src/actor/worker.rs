@@ -102,9 +102,9 @@ impl<W: Actor + Clone> WorkerRefExt<W> for LocalActorRef<Worker<W>> {
         } else {
             match res.await {
                 Ok(res) => Ok(res),
-                Err(_e) => {
-                    error!(target: "WorkerRef", "error receiving result");
-                    Err(ActorRefErr::ActorUnavailable)
+                Err(e) => {
+                    error!(target: "WorkerRef", "error receiving result, {}", e);
+                    Err(ActorRefErr::ResultChannelClosed)
                 }
             }
         }

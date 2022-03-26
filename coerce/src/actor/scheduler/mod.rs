@@ -9,6 +9,7 @@ use crate::remote::system::RemoteActorSystem;
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::time::Instant;
 use uuid::Uuid;
 
 pub mod timer;
@@ -43,13 +44,25 @@ impl Actor for ActorScheduler {
     }
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {
-        trace!("scheduler stopping, total actors={}", self.actors.len());
+        debug!(
+            "scheduler stopping, total tracked actors={}",
+            self.actors.len()
+        );
 
-        // TODO: join all these stop() calls into a single future
-        for actor in self.actors.values() {
-            actor.stop().await;
-            trace!(target: "ActorScheduler", "stopping actor (id={})", &actor.actor_id());
+        let start_time = Instant::now();
+        let stop_results =
+            futures::future::join_all(self.actors.iter().map(|(id, actor)| async move {
+                debug!(target: "ActorScheduler", "stopping actor (id={})", &actor.actor_id());
+                (id.clone(), actor.stop().await)
+            }))
+            .await;
+
+        debug!(target: "ActorScheduler", "stopped {} actors in {}ms", stop_results.len(), start_time.elapsed().as_millis());
+        for stop_result in stop_results {
+            debug!(target: "ActorScheduler", "stopped actor (id={}, stop_successful={})", stop_result.0, stop_result.1.is_ok());
         }
+
+        debug!("scheduler stopped");
     }
 }
 
@@ -148,7 +161,11 @@ where
             .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));
 
         if let Some(remote) = self.remote.as_mut() {
-            debug!("[node={}] registering actor with remote registry, actor_id={}", remote.node_id(), &message.id);
+            debug!(
+                "[node={}] registering actor with remote registry, actor_id={}",
+                remote.node_id(),
+                &message.id
+            );
 
             remote.register_actor(message.id.clone(), None);
         }

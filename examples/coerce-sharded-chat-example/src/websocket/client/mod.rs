@@ -1,7 +1,7 @@
+use crate::actor::pubsub::ChatStreamEvent;
+use crate::actor::stream::{ChatMessage, Handshake};
 use coerce::actor::message::EnvelopeType::Remote;
 use coerce::actor::message::{EnvelopeType, Message};
-use coerce_sharded_chat_example::actor::pubsub::ChatStreamEvent;
-use coerce_sharded_chat_example::actor::stream::{ChatMessage, Handshake};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use std::time::Duration;
@@ -25,7 +25,7 @@ pub struct ChatClient {
 }
 
 impl ChatClient {
-    pub async fn connect(url: &'static str, name: &str) -> Result<ChatClient> {
+    pub async fn connect(url: &str, name: &str) -> Result<ChatClient> {
         let (mut socket, _) = connect_async(url).await?;
 
         let message = Handshake {
@@ -80,7 +80,10 @@ impl ChatClient {
                 }
             }
             Err(_) => {
-                error!("timeout");
+                error!(
+                    "timeout whilst attempting to read next message (client_name={})",
+                    &self.name
+                );
                 None
             }
         }

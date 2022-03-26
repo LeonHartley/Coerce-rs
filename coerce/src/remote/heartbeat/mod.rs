@@ -1,7 +1,9 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
+use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
+use crate::remote::actor::message::SetRemote;
 use crate::remote::cluster::node::NodeStatus::Healthy;
 use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
 use crate::remote::net::message::SessionEvent;
@@ -14,6 +16,7 @@ use chrono::{DateTime, Utc, MIN_DATETIME};
 use futures::future::Map;
 use futures::{future::join_all, FutureExt, TryFutureExt};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::future::Future;
 use std::ops::Add;
 use std::pin::Pin;
@@ -26,9 +29,10 @@ use uuid::Uuid;
 
 pub struct Heartbeat {
     config: Arc<HeartbeatConfig>,
-    system: RemoteActorSystem,
+    system: Option<RemoteActorSystem>,
     heartbeat_timer: Option<Timer>,
     last_heartbeat: Option<DateTime<Utc>>,
+    node_pings: HashMap<NodeId, NodePing>,
 }
 
 pub struct HeartbeatConfig {
@@ -36,6 +40,45 @@ pub struct HeartbeatConfig {
     pub ping_timeout: Duration,
     pub unhealthy_node_heartbeat_timeout: Duration,
     pub terminated_node_heartbeat_timeout: Duration,
+}
+
+impl Heartbeat {
+    pub async fn start(
+        node_tag: &str,
+        config: HeartbeatConfig,
+        sys: &ActorSystem,
+    ) -> LocalActorRef<Heartbeat> {
+        let config = Arc::new(config);
+        Heartbeat {
+            config,
+            system: None,
+            heartbeat_timer: None,
+            last_heartbeat: None,
+            node_pings: HashMap::new(),
+        }
+        .into_actor(Some(format!("heartbeat-{}", &node_tag)), sys)
+        .await
+        .expect("heartbeat actor")
+    }
+}
+
+#[async_trait]
+impl Handler<SetRemote> for Heartbeat {
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+        self.system = Some(message.0);
+
+        debug!(
+            "starting heartbeat timer (tick duration={} millis), node_id={}",
+            &self.config.interval.as_millis(),
+            self.system.as_ref().unwrap().node_id()
+        );
+
+        self.heartbeat_timer = Some(Timer::start(
+            self.actor_ref(ctx),
+            self.config.interval,
+            HeartbeatTick,
+        ));
+    }
 }
 
 impl Default for HeartbeatConfig {
@@ -49,25 +92,6 @@ impl Default for HeartbeatConfig {
     }
 }
 
-impl Heartbeat {
-    pub async fn start(
-        config: HeartbeatConfig,
-        remote_system: &RemoteActorSystem,
-    ) -> LocalActorRef<Heartbeat> {
-        let system = remote_system.clone();
-        let config = Arc::new(config);
-        Heartbeat {
-            config,
-            system,
-            heartbeat_timer: None,
-            last_heartbeat: None,
-        }
-        .into_actor(Some(format!("heartbeat-{}", &remote_system.node_tag())), &remote_system.actor_system())
-        .await
-        .expect("heartbeat actor")
-    }
-}
-
 #[derive(Clone)]
 struct HeartbeatTick;
 
@@ -77,34 +101,57 @@ impl Message for HeartbeatTick {
 
 impl TimerTick for HeartbeatTick {}
 
-#[async_trait]
-impl Actor for Heartbeat {
-    async fn started(&mut self, ctx: &mut ActorContext) {
-        trace!(
-            "starting heartbeat timer (tick duration={} millis), node_id={}",
-            &self.config.interval.as_millis(),
-            self.system.node_id()
-        );
+#[derive(Clone)]
+pub enum PingResult {
+    Ok(Pong, Duration, DateTime<Utc>),
+    Timeout,
+    Disconnected,
+    Err,
+}
 
-        self.heartbeat_timer = Some(Timer::start(
-            self.actor_ref(ctx),
-            self.config.interval,
-            HeartbeatTick,
-        ));
+impl PingResult {
+    pub fn is_ok(&self) -> bool {
+        match &self {
+            PingResult::Ok(..) => true,
+            _ => false,
+        }
+    }
+}
+
+pub struct NodePing(pub NodeId, pub PingResult);
+
+impl Message for NodePing {
+    type Result = ();
+}
+
+impl Actor for Heartbeat {}
+
+#[async_trait]
+impl Handler<NodePing> for Heartbeat {
+    async fn handle(&mut self, message: NodePing, ctx: &mut ActorContext) {
+        let _ = self.node_pings.insert(message.0, message);
     }
 }
 
 #[async_trait]
 impl Handler<HeartbeatTick> for Heartbeat {
     async fn handle(&mut self, _msg: HeartbeatTick, _ctx: &mut ActorContext) {
-        let node_tag = self.system.node_tag();
-        let current_node = self.system.node_id();
+        let system = self.system.as_ref().unwrap();
+
+        let node_tag = system.node_tag();
+        let current_node = system.node_id();
 
         let now = Instant::now();
-        trace!(target: "Heartbeat", "heartbeat tick, node_id={}, node_tag={}", &current_node, &node_tag);
+        let nodes = system.get_nodes().await;
 
-        let nodes = self.system.get_nodes().await;
-        let mut ping_futures = vec![];
+        debug!(target: "Heartbeat", "heartbeat tick, node_id={}, node_tag={}, nodes={}, healthy_nodes={}",
+            &current_node, &node_tag, &nodes.len(),
+            &nodes
+              .iter()
+              .filter(|n| n.status == NodeStatus::Healthy)
+              .count()
+        );
+
         let mut updates = vec![];
 
         for node in nodes {
@@ -116,10 +163,18 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 continue;
             }
 
-            ping_futures.push(ping_node(node, self.system.clone(), self.config.clone()))
-        }
+            if &node.status == &NodeStatus::Terminated {
+                continue;
+            }
 
-        updates.extend(join_all(ping_futures).await);
+            let node_id = node.id;
+            updates.push(update_node(
+                current_node,
+                node,
+                self.node_pings.get(&node_id).map(|r| r.1.clone()),
+                &self.config,
+            ));
+        }
 
         trace!(
             "current_node = {}, nodes: {:?}, heartbeat took {} ms",
@@ -138,99 +193,63 @@ impl Handler<HeartbeatTick> for Heartbeat {
             }
         });
 
-        let oldest_node = updates.first();
-        if let Some(oldest_node) = oldest_node {
-            if Some(oldest_node.id) != self.system.current_leader() {
-                self.system.update_leader(oldest_node.id);
-                info!(
-                    "[node={}] leader of cluster: {:?}, current_node_tag={}",
-                    self.system.node_id(), oldest_node, &node_tag
-                );
+        if self.last_heartbeat.is_some() {
+            let oldest_node = updates.first();
+            if let Some(oldest_node) = oldest_node {
+                if Some(oldest_node.id) != system.current_leader() {
+                    system.update_leader(oldest_node.id);
 
-                let id = oldest_node.id;
-                let system = self.system.clone();
-                tokio::spawn(async move {
-                    let system = system;
-                    let _ = PubSub::publish_locally(
-                        SystemTopic,
-                        SystemEvent::Cluster(LeaderChanged(id)),
-                        &system,
-                    )
-                    .await;
-                });
+                    info!(
+                        "[node={}] leader of cluster: {:?}, current_node_tag={}",
+                        system.node_id(),
+                        oldest_node,
+                        &node_tag
+                    );
+
+                    let id = oldest_node.id;
+                    let sys = system.clone();
+                    tokio::spawn(async move {
+                        let _ = PubSub::publish_locally(
+                            SystemTopic,
+                            SystemEvent::Cluster(LeaderChanged(id)),
+                            &sys,
+                        )
+                        .await;
+                    });
+                }
             }
         }
 
-        self.system.update_nodes(updates).await;
+        system.update_nodes(updates).await;
         self.last_heartbeat = Some(Utc::now())
     }
 }
 
-pub enum PingResult {
-    Ok(Pong),
-    Timeout,
-    Err(NodeRpcErr),
-}
-
-impl PingResult {
-    pub fn is_ok(&self) -> bool {
-        match &self {
-            PingResult::Ok(_) => true,
-            _ => false,
-        }
-    }
-}
-
-fn ping_rpc(
-    node: RemoteNodeState,
-    system: &RemoteActorSystem,
-    timeout: Duration,
-) -> impl Future<Output = (RemoteNodeState, PingResult)> + '_ {
-    let message_id = Uuid::new_v4();
-    let event = SessionEvent::Ping(Ping {
-        message_id: message_id.to_string(),
-        ..Ping::default()
-    });
-
-    tokio::time::timeout(
-        timeout,
-        system.node_rpc_proto::<Pong>(message_id, event, node.id),
-    )
-    .map(move |result| {
-        (
-            node,
-            match result {
-                Ok(res) => match res {
-                    Ok(pong) => PingResult::Ok(pong),
-                    Err(e) => PingResult::Err(e),
-                },
-                Err(_e) => PingResult::Timeout,
-            },
-        )
-    })
-}
-
-async fn ping_node(
-    node: RemoteNodeState,
-    system: RemoteActorSystem,
-    heartbeat_config: Arc<HeartbeatConfig>,
+fn update_node(
+    node_id: NodeId,
+    mut node: RemoteNodeState,
+    ping: Option<PingResult>,
+    heartbeat_config: &HeartbeatConfig,
 ) -> RemoteNodeState {
-    let start = Instant::now();
-    let (mut node, ping) = ping_rpc(node, &system, heartbeat_config.ping_timeout).await;
-    let ping_latency = start.elapsed();
-
-    if ping.is_ok() {
-        node.last_heartbeat = Some(Utc::now());
-        node.ping_latency = Some(ping_latency);
+    match &ping {
+        None => {}
+        Some(ping) => match ping {
+            PingResult::Ok(_pong, ping_latency, pong_received_at) => {
+                node.last_heartbeat = Some(*pong_received_at);
+                node.ping_latency = Some(*ping_latency);
+            }
+            PingResult::Timeout => {}
+            PingResult::Disconnected => {}
+            PingResult::Err => {}
+        },
     }
 
     node.status = node_status(
-        system.node_id(),
+        node_id,
         node.id,
         node.status,
         &node.last_heartbeat,
         ping,
-        ping_latency,
         &heartbeat_config,
     );
 
@@ -242,54 +261,70 @@ fn node_status(
     peer_node_id: NodeId,
     previous_status: NodeStatus,
     last_heartbeat: &Option<DateTime<Utc>>,
-    ping: PingResult,
-    ping_latency: Duration,
+    ping: Option<PingResult>,
     config: &HeartbeatConfig,
 ) -> NodeStatus {
     match ping {
-        PingResult::Ok(_) => {
-            if ping_latency > config.unhealthy_node_heartbeat_timeout {
-                warn!("[node={}] node_id={} took {}ms to respond to ping, marking as unhealthy", node_id, peer_node_id,
-                    ping_latency.as_millis());
+        Some(PingResult::Ok(_, ping_latency, pong_received_at)) => {
+            let time_since_ping = Utc::now() - pong_received_at;
+            if time_since_ping.to_std().unwrap() >= config.unhealthy_node_heartbeat_timeout
+                || ping_latency > config.unhealthy_node_heartbeat_timeout
+            {
+                warn!(
+                    "[node={}] node_id={} took {}ms to respond to ping, marking as unhealthy",
+                    node_id,
+                    peer_node_id,
+                    ping_latency.as_millis()
+                );
                 NodeStatus::Unhealthy
             } else {
                 if previous_status != NodeStatus::Healthy {
-                    info!( "[node={}] remote node_id={} is now healthy", node_id, peer_node_id);
+                    info!(
+                        "[node={}] remote node_id={} is now healthy",
+                        node_id, peer_node_id
+                    );
                 }
 
                 NodeStatus::Healthy
             }
         }
 
-        PingResult::Timeout => {
+        None => {
+            debug!("node_id={} has not pinged yet", peer_node_id);
+            NodeStatus::Joining
+        }
+
+        Some(PingResult::Timeout) | Some(PingResult::Disconnected) => {
             let terminated = last_heartbeat.map_or(true, |h| {
                 h.add(chrono::Duration::from_std(config.terminated_node_heartbeat_timeout).unwrap())
                     >= Utc::now()
             });
 
             if terminated {
-                error!(target: "Heartbeat", "node_id={} has never responded to ping or it has been longer than {} ms since last successful heartbeat, marking as terminated", node_id,
-                    config.terminated_node_heartbeat_timeout.as_millis());
+                error!(target: "Heartbeat", "node_id={} has never responded to ping or it has been longer than {} ms since last successful heartbeat, marking as terminated",
+                    peer_node_id, config.terminated_node_heartbeat_timeout.as_millis());
                 NodeStatus::Terminated
             } else {
-                warn!(target: "Heartbeat", "node_id={} did not respond to ping within {} ms, marking as unhealthy", node_id, config.ping_timeout.as_millis());
+                warn!(target: "Heartbeat", "node_id={} did not respond to ping within {} ms, marking as unhealthy",
+                    node_id, config.ping_timeout.as_millis());
+
                 NodeStatus::Unhealthy
             }
         }
 
-        PingResult::Err(e) => {
+        Some(PingResult::Err) => {
             if previous_status == NodeStatus::Unhealthy {
                 error!(
                     target: "Heartbeat",
-                    "error during ping rpc to node={}, error={}, marking node as terminated",
-                    node_id, e
+                    "error during ping rpc to node={}, marking node as terminated",
+                    node_id,
                 );
                 NodeStatus::Terminated
             } else {
                 error!(
                     target: "Heartbeat",
-                    "error during ping rpc to node={}, error={}, marking node as unhealthy",
-                    node_id, e
+                    "error during ping rpc to node={}, marking node as unhealthy",
+                    node_id,
                 );
                 NodeStatus::Unhealthy
             }

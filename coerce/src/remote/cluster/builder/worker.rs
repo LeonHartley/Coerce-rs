@@ -119,7 +119,7 @@ impl ClusterWorkerBuilder {
             let enter = span.enter();
 
             let client_ctx = self.system.clone();
-            let client = RemoteClient::new(seed_addr.clone(), None, client_ctx, Worker)
+            let client = RemoteClient::new(seed_addr.clone(), None, client_ctx, Worker, true)
                 .await
                 .expect("failed to connect to seed server");
 
@@ -127,8 +127,6 @@ impl ClusterWorkerBuilder {
 
             drop(enter);
             drop(span);
-
-            // tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }
 }

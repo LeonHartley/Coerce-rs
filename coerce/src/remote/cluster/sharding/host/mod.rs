@@ -192,15 +192,12 @@ impl Handler<StopShard> for ShardHost {
         //       need a way to defer it and return a remote result via oneshot channel
 
         let status = match self.hosted_shards.remove(&message.shard_id) {
-            None => Ok(ActorStatus::Stopped),
+            None => Ok(()),
             Some(shard) => shard.actor.stop().await,
         };
 
         match status {
-            Ok(status) => match status {
-                ActorStatus::Stopped => {}
-                _ => {}
-            },
+            Ok(_) => {}
             Err(_) => {}
         }
     }

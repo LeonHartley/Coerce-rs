@@ -67,8 +67,7 @@ impl CoordinatorSpawner {
         if let Some(coordinator) = self.coordinator.take() {
             let result = coordinator.stop().await;
             match result {
-                Ok(ActorStatus::Stopped) => true,
-                Ok(_) => false,
+                Ok(_) => true,
                 Err(_) => true,
             }
         } else {

@@ -57,13 +57,13 @@ impl Supervised {
             Some(parent_ref),
         );
 
-        self.children.insert(id, actor_ref.clone().into());
+        self.children.insert(id.clone(), actor_ref.clone().into());
 
         match rx.await {
             Ok(_) => Ok(actor_ref),
             Err(e) => {
-                error!("error spawning supervised actor {}", e);
-                Err(ActorRefErr::ActorUnavailable)
+                error!("error spawning supervised actor (id={}) {}", &id, e);
+                Err(ActorRefErr::StartChannelClosed)
             }
         }
     }

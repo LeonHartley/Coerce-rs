@@ -1,7 +1,8 @@
+use crate::actor::scheduler::timer::Timer;
 use crate::actor::LocalActorRef;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::client::connect::Disconnected;
-use crate::remote::net::client::{HandshakeAcknowledge, RemoteClient};
+use crate::remote::net::client::RemoteClient;
 use crate::remote::net::message::{timestamp_to_datetime, ClientEvent};
 use crate::remote::net::proto::network::Pong;
 use crate::remote::net::StreamReceiver;
@@ -31,6 +32,12 @@ impl ClientMessageReceiver {
             actor_ref,
         }
     }
+}
+
+pub struct HandshakeAcknowledge {
+    pub node_id: NodeId,
+    pub node_tag: String,
+    pub node_started_at: DateTime<Utc>,
 }
 
 #[async_trait]
@@ -94,16 +101,16 @@ impl StreamReceiver for ClientMessageReceiver {
             ClientEvent::Ping(_ping) => {}
             ClientEvent::Pong(pong) => {
                 match sys.pop_request(Uuid::from_str(&pong.message_id).unwrap()) {
-                    Some(res_tx) => res_tx
-                        .send(RemoteResponse::Ok(
+                    Some(res_tx) => {
+                        let _ = res_tx.send(RemoteResponse::Ok(
                             Pong {
                                 message_id: pong.message_id,
                                 ..Pong::default()
                             }
                             .write_to_bytes()
                             .expect("serialised pong"),
-                        ))
-                        .expect("send ping ok"),
+                        ));
+                    }
                     None => {
                         //                                          :P
                         warn!(target: "RemoteClient", "received unsolicited pong");

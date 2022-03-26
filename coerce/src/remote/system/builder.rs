@@ -1,5 +1,4 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::scheduler::ActorType::Anonymous;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorFactory};
 use crate::remote::actor::message::SetRemote;
@@ -20,6 +19,7 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::actor::scheduler::ActorType;
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::request::RemoteEntityRequest;
@@ -139,6 +139,18 @@ impl RemoteActorSystemBuilder {
         let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
         let registry_ref_clone = registry_ref.clone();
 
+        let heartbeat_ref = Heartbeat::start(
+            &system_tag,
+            HeartbeatConfig {
+                ..HeartbeatConfig::default()
+            },
+            &inner,
+        )
+        .await;
+
+        let heartbeat_ref_clone = heartbeat_ref.clone();
+        let heartbeat_ref = Some(heartbeat_ref);
+
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
             Some(
@@ -146,7 +158,7 @@ impl RemoteActorSystemBuilder {
                     .new_actor(
                         format!("PubSubMediator-{}", &system_tag),
                         mediator,
-                        Anonymous,
+                        ActorType::Anonymous,
                     )
                     .await
                     .expect("unable to start mediator actor"),
@@ -163,8 +175,8 @@ impl RemoteActorSystemBuilder {
             registry_ref,
             clients_ref,
             mediator_ref,
+            heartbeat_ref,
             raft: None,
-            heartbeat_ref: None,
             started_at: Utc::now(),
             config,
             current_leader: Arc::new(AtomicNodeId::new(if self.single_node_cluster {
@@ -177,16 +189,6 @@ impl RemoteActorSystemBuilder {
         let inner = Arc::new(core.clone());
         let system = RemoteActorSystem { inner };
 
-        core.heartbeat_ref = Some(
-            Heartbeat::start(
-                HeartbeatConfig {
-                    ..HeartbeatConfig::default()
-                },
-                &system,
-            )
-            .await,
-        );
-
         core.raft = None;
         core.inner.set_remote(system.clone());
 
@@ -195,6 +197,11 @@ impl RemoteActorSystemBuilder {
         };
 
         registry_ref_clone
+            .send(SetRemote(system.clone()))
+            .await
+            .expect("no system set");
+
+        heartbeat_ref_clone
             .send(SetRemote(system.clone()))
             .await
             .expect("no system set");

@@ -1,7 +1,8 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
 use crate::actor::{
-    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, LocalActorRef,
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, CoreActorRef,
+    LocalActorRef,
 };
 use crate::remote::actor::message::{
     ClientWrite, DeregisterClient, GetActorNode, GetNodes, RegisterActor, RegisterClient,
@@ -108,6 +109,10 @@ impl RemoteActorSystem {
         } else {
             None
         }
+    }
+
+    pub fn heartbeat_actor(&self) -> Option<&LocalActorRef<Heartbeat>> {
+        self.inner.heartbeat_ref.as_ref()
     }
 }
 
@@ -286,17 +291,17 @@ impl RemoteActorSystem {
         identifier: &str,
         actor_id: ActorId,
         buffer: &[u8],
-    ) -> Result<Vec<u8>, RemoteActorErr> {
+    ) -> Result<Vec<u8>, ActorRefErr> {
         let (tx, rx) = oneshot::channel();
         let handler = self.inner.config.message_handler(&identifier);
 
         if let Some(handler) = handler {
-            handler.handle(actor_id, buffer, tx).await;
+            handler.handle_attempt(actor_id, buffer, tx, 1).await;
         };
 
         match rx.await {
-            Ok(res) => Ok(res),
-            Err(_e) => Err(RemoteActorErr::ActorUnavailable),
+            Ok(res) => res,
+            Err(_e) => Err(ActorRefErr::ResultChannelClosed),
         }
     }
 
