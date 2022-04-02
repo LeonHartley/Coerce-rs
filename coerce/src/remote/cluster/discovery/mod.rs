@@ -2,8 +2,8 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::Actor;
 use crate::remote::actor::message::{NewClient, SetRemote};
-use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
-use crate::remote::net::client::ClientType;
+use crate::remote::cluster::node::{NodeIdentity, NodeStatus, RemoteNode};
+use crate::remote::net::client::{ClientType, RemoteClient};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -29,7 +29,13 @@ pub enum Seed {
     Nodes(Vec<RemoteNode>),
 }
 
+pub struct Forget(pub String);
+
 impl Message for Discover {
+    type Result = ();
+}
+
+impl Message for Forget {
     type Result = ();
 }
 
@@ -47,7 +53,12 @@ impl Handler<Discover> for NodeDiscovery {
 
         match message.seed {
             Seed::Addr(addr) => {
-                if let Some(seed_node) = self.get_node_identity(addr, &remote).await {
+                if self.discovered_nodes_by_addr.contains_key(&addr) {
+                    info!("node (addr={}) already discovered", &addr);
+                    return;
+                }
+
+                if let Some(seed_node) = self.get_node_identity(addr.clone(), &remote).await {
                     let mut discovered_nodes: HashMap<NodeId, Arc<NodeIdentity>> = HashMap::new();
                     discovered_nodes.insert(seed_node.node.id, seed_node.clone());
 
@@ -75,11 +86,27 @@ impl Handler<Discover> for NodeDiscovery {
                         ),
                         on_discovery_complete: message.on_discovery_complete,
                     });
+                } else {
+                    warn!(
+                        "[node={}] unable to identify node (addr={})",
+                        remote.node_id(),
+                        &addr
+                    );
+
+                    if let Some(discovery_complete) = message.on_discovery_complete {
+                        let _ = discovery_complete.send(());
+                    }
                 }
             }
 
             Seed::Nodes(nodes) => {
-                let current_nodes: HashSet<NodeId> = remote.get_nodes().await.into_iter().map(|n| n.id).collect();
+                let current_nodes: HashSet<NodeId> = remote
+                    .get_nodes()
+                    .await
+                    .into_iter()
+                    .filter(|n| n.status != NodeStatus::Terminated)
+                    .map(|n| n.id)
+                    .collect();
                 let node_count = nodes.len();
 
                 info!("discovering {} nodes", node_count);
@@ -96,6 +123,20 @@ impl Handler<Discover> for NodeDiscovery {
                     let _ = discovery_complete.send(());
                 }
             }
+        }
+    }
+}
+
+#[async_trait]
+impl Handler<Forget> for NodeDiscovery {
+    async fn handle(&mut self, message: Forget, _ctx: &mut ActorContext) {
+        if let Some(identity) = self.discovered_nodes_by_addr.remove(&message.0) {
+            debug!(
+                "forgetting node (addr={}, id={})",
+                &identity.node.addr, identity.node.id
+            );
+
+            self.discovered_nodes_by_id.remove(&identity.node.id);
         }
     }
 }
@@ -138,6 +179,7 @@ impl NodeDiscovery {
                 .get_nodes()
                 .await
                 .into_iter()
+                .filter(|n| n.status != NodeStatus::Terminated)
                 .map(|n| n.into())
                 .collect();
 
@@ -180,6 +222,7 @@ impl NodeDiscovery {
 
                 Some(identity)
             } else {
+                info!("unable to identify node");
                 None
             }
         } else {

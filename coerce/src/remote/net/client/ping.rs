@@ -11,6 +11,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::TimerTick;
 use crate::remote::actor::RemoteResponse;
+use crate::remote::cluster::discovery::Forget;
 use crate::remote::cluster::node::RemoteNodeState;
 use crate::remote::heartbeat::{NodePing, PingResult};
 use crate::remote::net::client::{ClientState, RemoteClient};
@@ -36,8 +37,18 @@ impl Handler<PingTick> for RemoteClient {
             match state {
                 ClientState::Connected(state) => state.identity.node.id,
                 _ => {
-                    if let Some(node) = &self.remote_node {
-                        let _ = heartbeat.notify(NodePing(node.id, PingResult::Disconnected));
+                    if let Some(node_id) = self.node_id {
+                        let _ = heartbeat.notify(NodePing(node_id, PingResult::Disconnected));
+                    }
+
+                    let _ = remote.node_discovery().notify(Forget(self.addr.clone()));
+                    if let Some(ping_timer) = self.ping_timer.take() {
+                        let _ = ping_timer.stop();
+
+                        debug!(
+                            "client disconnected (addr={}), stopped ping timer",
+                            &self.addr
+                        );
                     }
 
                     return;

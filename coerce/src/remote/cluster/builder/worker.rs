@@ -88,6 +88,7 @@ impl ClusterWorkerBuilder {
             });
 
             info!("discover_peers - waiting for discovery to complete");
+
             let _ = rx
                 .await
                 .expect(&format!("unable to discover nodes from addr={}", seed_addr));

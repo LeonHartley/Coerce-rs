@@ -5,7 +5,7 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::cluster::node::NodeStatus::Healthy;
-use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
+use crate::remote::cluster::node::{NodeStatus, RemoteNode, RemoteNodeState};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{Ping, Pong};
 use crate::remote::stream::pubsub::PubSub;
@@ -197,19 +197,23 @@ impl Handler<HeartbeatTick> for Heartbeat {
         info!("{:?}", updates);
 
         if self.last_heartbeat.is_some() {
-            let oldest_node = updates.first();
-            if let Some(oldest_node) = oldest_node {
-                if Some(oldest_node.id) != system.current_leader() {
-                    system.update_leader(oldest_node.id);
+            let oldest_healthy_node = updates
+                .iter()
+                .filter(|n| n.status != NodeStatus::Unhealthy || n.status != NodeStatus::Terminated)
+                .next();
+
+            if let Some(oldest_healthy_node) = oldest_healthy_node {
+                if Some(oldest_healthy_node.id) != system.current_leader() {
+                    system.update_leader(oldest_healthy_node.id);
 
                     info!(
                         "[node={}] leader of cluster: {:?}, current_node_tag={}",
                         system.node_id(),
-                        oldest_node,
+                        &oldest_healthy_node,
                         &node_tag
                     );
 
-                    let id = oldest_node.id;
+                    let id = oldest_healthy_node.id;
                     let sys = system.clone();
                     tokio::spawn(async move {
                         let _ = PubSub::publish_locally(
@@ -269,8 +273,18 @@ fn node_status(
 ) -> NodeStatus {
     match ping {
         Some(PingResult::Ok(_, ping_latency, pong_received_at)) => {
-            let time_since_ping = Utc::now() - pong_received_at;
-            if time_since_ping.to_std().unwrap() >= config.unhealthy_node_heartbeat_timeout
+            let time_since_ping = (Utc::now() - pong_received_at).to_std().unwrap();
+
+            if time_since_ping >= config.terminated_node_heartbeat_timeout {
+                error!(
+                    "[node={}] node_id={} has not pinged in {} millis, marking node as terminated",
+                    node_id,
+                    peer_node_id,
+                    time_since_ping.as_millis()
+                );
+
+                NodeStatus::Terminated
+            } else if time_since_ping >= config.unhealthy_node_heartbeat_timeout
                 || ping_latency > config.unhealthy_node_heartbeat_timeout
             {
                 warn!(
@@ -278,7 +292,7 @@ fn node_status(
                     node_id,
                     peer_node_id,
                     ping_latency.as_millis(),
-                    time_since_ping.num_milliseconds()
+                    time_since_ping.as_millis()
                 );
                 NodeStatus::Unhealthy
             } else {

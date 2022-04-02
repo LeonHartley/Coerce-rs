@@ -29,14 +29,15 @@ pub mod send;
 
 pub struct RemoteClient {
     addr: String,
+    node_id: Option<NodeId>,
     client_type: ClientType,
-    remote_node: Option<RemoteNode>,
     state: Option<ClientState>,
     stop: Option<oneshot::Sender<bool>>,
     write_buffer_bytes_total: usize,
     write_buffer: VecDeque<Vec<u8>>,
     on_identified_callbacks: Vec<Sender<Option<NodeIdentity>>>,
     on_handshake_ack_callbacks: Vec<Sender<()>>,
+    ping_timer: Option<Timer>,
 }
 
 pub struct RemoteClientRef {
@@ -59,7 +60,7 @@ impl RemoteClient {
         RemoteClient {
             addr,
             client_type,
-            remote_node: None,
+            node_id: None,
             stop: None,
             state: Some(ClientState::Idle {
                 connection_attempts: 0,
@@ -68,6 +69,7 @@ impl RemoteClient {
             write_buffer_bytes_total: 0,
             on_identified_callbacks: vec![],
             on_handshake_ack_callbacks: vec![],
+            ping_timer: None,
         }
         .into_anon_actor(actor_id, system.actor_system())
         .await
@@ -179,7 +181,6 @@ pub struct ConnectionState {
     handshake: HandshakeStatus,
     write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
     receive_task: JoinHandle<()>,
-    ping_timer: Option<Timer>,
 }
 
 pub enum HandshakeStatus {

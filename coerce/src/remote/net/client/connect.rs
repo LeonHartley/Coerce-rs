@@ -3,6 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::Timer;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::actor::message::ClientConnected;
+use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::net::client::ping::PingTick;
 use crate::remote::net::client::receive::{ClientMessageReceiver, HandshakeAcknowledge};
@@ -56,7 +57,7 @@ impl RemoteClient {
             ClientMessageReceiver::new(self.actor_ref(ctx), identity_tx),
         ));
 
-        let ping_timer = Some(Timer::start_immediately(
+        self.ping_timer = Some(Timer::start_immediately(
             self.actor_ref(ctx),
             Duration::from_millis(500),
             PingTick,
@@ -75,7 +76,6 @@ impl RemoteClient {
             handshake: HandshakeStatus::None,
             write,
             receive_task,
-            ping_timer,
         })
     }
 }
@@ -96,6 +96,7 @@ impl Handler<Connect> for RemoteClient {
                 let _ = callback.send(Some(connection_state.identity.clone()));
             }
 
+            self.node_id = Some(connection_state.identity.node.id);
             let client_actor_ref = self.actor_ref(ctx);
 
             let _ = ctx
@@ -113,9 +114,13 @@ impl Handler<Connect> for RemoteClient {
 
             debug!("RemoteClient connected to node (addr={})", &self.addr);
 
+            let _ = ctx.system().remote().node_discovery().notify(Discover {
+                seed: Seed::Addr(self.addr.clone()),
+                on_discovery_complete: None,
+            });
+
             self.flush_buffered_writes().await;
         } else {
-            warn!("RemoteClient failed to connect");
             while let Some(callback) = self.on_identified_callbacks.pop() {
                 let _ = callback.send(None);
             }
@@ -136,6 +141,8 @@ impl Handler<BeginHandshake> for RemoteClient {
         let remote = ctx.system().remote_owned();
         let node_id = remote.node_id();
         let node_tag = remote.node_tag().to_string();
+
+        connection.handshake = HandshakeStatus::Pending;
 
         trace!("writing handshake");
 
@@ -171,7 +178,8 @@ impl Handler<BeginHandshake> for RemoteClient {
         .await
         .expect("write handshake");
 
-        self.on_handshake_ack_callbacks.push(message.on_handshake_complete);
+        self.on_handshake_ack_callbacks
+            .push(message.on_handshake_complete);
     }
 }
 

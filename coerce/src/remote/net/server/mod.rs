@@ -229,7 +229,7 @@ impl StreamReceiver for SessionMessageReceiver {
                     sys.clone(),
                     msg,
                     self.session_id,
-                    self.sessions.clone(),
+                    self.session.clone(),
                 ));
             }
 
@@ -240,7 +240,7 @@ impl StreamReceiver for SessionMessageReceiver {
                     find_actor.actor_id,
                     self.session_id,
                     sys.clone(),
-                    self.sessions.clone(),
+                    self.session.clone(),
                 ));
             }
 
@@ -255,13 +255,13 @@ impl StreamReceiver for SessionMessageReceiver {
                     msg,
                     self.session_id,
                     sys.clone(),
-                    self.sessions.clone(),
+                    self.session.clone(),
                 ));
             }
 
             SessionEvent::Ping(ping) => {
                 trace!(target: "RemoteServer", "ping received, sending pong");
-                self.sessions
+                self.session
                     .send(SessionWrite(
                         self.session_id,
                         ClientEvent::Pong(Pong {
@@ -281,7 +281,7 @@ impl StreamReceiver for SessionMessageReceiver {
                     msg,
                     self.session_id,
                     sys.clone(),
-                    self.sessions.clone(),
+                    self.session.clone(),
                 ));
             }
 
@@ -321,7 +321,7 @@ async fn session_handshake(
     ctx: RemoteActorSystem,
     handshake: SessionHandshake,
     session_id: Uuid,
-    sessions: LocalActorRef<RemoteSessionStore>,
+    session: LocalActorRef<RemoteSession>,
 ) {
     let mut headers = HashMap::<String, String>::new();
     headers.insert("traceparent".to_owned(), handshake.trace_id);
@@ -377,7 +377,7 @@ async fn session_handshake(
 
     info!("[{}] discovered nodes", &session_id);
 
-    sessions
+    session
         .send(SessionWrite(session_id, ClientEvent::Handshake(response)))
         .await
         .expect("send session write (handshake)");
@@ -387,7 +387,7 @@ async fn session_handle_message(
     msg: MessageRequest,
     session_id: Uuid,
     ctx: RemoteActorSystem,
-    mut sessions: LocalActorRef<RemoteSessionStore>,
+    session: LocalActorRef<RemoteSession>,
 ) {
     let mut headers = HashMap::<String, String>::new();
     headers.insert("traceparent".to_owned(), msg.trace_id);
@@ -406,15 +406,7 @@ async fn session_handle_message(
         )
         .await
     {
-        Ok(buf) => {
-            send_result(
-                msg.message_id.parse().unwrap(),
-                buf,
-                session_id,
-                &mut sessions,
-            )
-            .await
-        }
+        Ok(buf) => send_result(msg.message_id.parse().unwrap(), buf, session_id, session).await,
         Err(e) => {
             error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &msg.actor_id, e);
             // TODO: Send error
@@ -427,7 +419,7 @@ async fn session_handle_lookup(
     id: ActorId,
     session_id: Uuid,
     ctx: RemoteActorSystem,
-    sessions: LocalActorRef<RemoteSessionStore>,
+    session: LocalActorRef<RemoteSession>,
 ) {
     let node_id = ctx.locate_actor_node(id.clone()).await;
     trace!(target: "RemoteSession", "sending actor lookup result: {:?}", node_id);
@@ -439,7 +431,7 @@ async fn session_handle_lookup(
     };
 
     match response.write_to_bytes() {
-        Ok(buf) => send_result(msg_id, buf, session_id, &sessions).await,
+        Ok(buf) => send_result(msg_id, buf, session_id, session).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }
@@ -450,7 +442,7 @@ async fn session_create_actor(
     msg: CreateActor,
     session_id: Uuid,
     ctx: RemoteActorSystem,
-    sessions: LocalActorRef<RemoteSessionStore>,
+    session: LocalActorRef<RemoteSession>,
 ) {
     let msg_id = msg.message_id.clone();
     let actor_id = if msg.actor_id.is_empty() {
@@ -464,7 +456,7 @@ async fn session_create_actor(
         .handle_create_actor(actor_id, msg.actor_type, msg.recipe, None)
         .await
     {
-        Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, &sessions).await,
+        Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, session).await,
         Err(_) => {
             error!(target: "RemoteSession", "failed to handle message, todo: send err");
         }
@@ -482,7 +474,7 @@ async fn send_result(
     msg_id: Uuid,
     res: Vec<u8>,
     session_id: Uuid,
-    sessions: &LocalActorRef<RemoteSessionStore>,
+    session: LocalActorRef<RemoteSession>,
 ) {
     trace!(target: "RemoteSession", "sending result");
 
@@ -492,7 +484,7 @@ async fn send_result(
         ..ClientResult::default()
     });
 
-    if sessions.send(SessionWrite(session_id, event)).await.is_ok() {
+    if session.send(SessionWrite(session_id, event)).await.is_ok() {
         trace!(target: "RemoteSession", "sent result successfully");
     } else {
         error!(target: "RemoteSession", "failed to send result");
