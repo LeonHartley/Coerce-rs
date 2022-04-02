@@ -1,4 +1,6 @@
 use coerce::actor::context::ActorContext;
+use opentelemetry::global;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
@@ -8,6 +10,8 @@ use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;
 use tokio::sync::oneshot::{channel, Sender};
 use tokio::time::Duration;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod util;
 
@@ -121,11 +125,12 @@ pub async fn test_pubsub_local() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 pub async fn test_pubsub_distributed() {
-    // util::create_trace_logger();
+    util::create_trace_logger();
 
     let sys = ActorSystem::new();
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
+        .with_id(1)
         .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;
@@ -133,6 +138,7 @@ pub async fn test_pubsub_distributed() {
     let sys = ActorSystem::new();
     let remote_b = RemoteActorSystem::builder()
         .with_actor_system(sys)
+        .with_id(2)
         .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;

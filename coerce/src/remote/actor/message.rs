@@ -1,6 +1,7 @@
 use crate::remote::actor::RemoteRequest;
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::system::{NodeId, RemoteActorSystem};
+use tokio::sync::oneshot::Sender;
 
 use crate::actor::message::Message;
 use crate::remote::net::client::{ClientType, RemoteClient};
@@ -34,21 +35,23 @@ impl Message for PopRequest {
     type Result = Option<RemoteRequest>;
 }
 
-pub struct Connect {
-    addr: String,
-    remote_node_id: Option<NodeId>,
-    client_type: ClientType,
+pub struct NewClient {
+    pub addr: String,
+    pub client_type: ClientType,
+    pub system: RemoteActorSystem,
 }
 
-pub struct RegisterClient(pub NodeId, pub LocalActorRef<RemoteClient>);
-
-impl Message for RegisterClient {
-    type Result = ();
+impl Message for NewClient {
+    type Result = Option<LocalActorRef<RemoteClient>>;
 }
 
-pub struct DeregisterClient(pub NodeId);
+pub struct ClientConnected {
+    pub addr: String,
+    pub remote_node_id: NodeId,
+    pub client_actor_ref: LocalActorRef<RemoteClient>,
+}
 
-impl Message for DeregisterClient {
+impl Message for ClientConnected {
     type Result = ();
 }
 

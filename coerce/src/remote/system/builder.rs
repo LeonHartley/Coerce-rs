@@ -1,6 +1,6 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorFactory};
+use crate::actor::{Actor, ActorFactory, IntoActor};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
     BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry,
@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::actor::scheduler::ActorType;
+use crate::remote::cluster::discovery::NodeDiscovery;
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::request::RemoteEntityRequest;
@@ -139,6 +140,11 @@ impl RemoteActorSystemBuilder {
         let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
         let registry_ref_clone = registry_ref.clone();
 
+        let discovery_ref = NodeDiscovery::default()
+            .into_anon_actor(Some(format!("RemoteClientRegistry-{}", system_tag)), &inner)
+            .await
+            .expect("unable to create NodeDiscovery actor");
+
         let heartbeat_ref = Heartbeat::start(
             &system_tag,
             HeartbeatConfig {
@@ -149,7 +155,6 @@ impl RemoteActorSystemBuilder {
         .await;
 
         let heartbeat_ref_clone = heartbeat_ref.clone();
-        let heartbeat_ref = Some(heartbeat_ref);
 
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
@@ -175,6 +180,7 @@ impl RemoteActorSystemBuilder {
             registry_ref,
             clients_ref,
             mediator_ref,
+            discovery_ref,
             heartbeat_ref,
             raft: None,
             started_at: Utc::now(),
@@ -201,7 +207,14 @@ impl RemoteActorSystemBuilder {
             .await
             .expect("no system set");
 
-        heartbeat_ref_clone
+        system
+            .heartbeat()
+            .send(SetRemote(system.clone()))
+            .await
+            .expect("no system set");
+
+        system
+            .node_discovery()
             .send(SetRemote(system.clone()))
             .await
             .expect("no system set");

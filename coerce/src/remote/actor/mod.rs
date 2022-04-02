@@ -20,7 +20,8 @@ pub mod handler;
 pub mod message;
 
 pub struct RemoteClientRegistry {
-    clients: HashMap<NodeId, LocalActorRef<RemoteClient>>,
+    node_addr_registry: HashMap<String, LocalActorRef<RemoteClient>>,
+    node_id_registry: HashMap<NodeId, LocalActorRef<RemoteClient>>,
 }
 
 pub struct RemoteRegistry {
@@ -154,20 +155,13 @@ impl RemoteClientRegistry {
         ctx.new_actor(
             format!("RemoteClientRegistry-{}", system_tag),
             RemoteClientRegistry {
-                clients: HashMap::new(),
+                node_addr_registry: HashMap::new(),
+                node_id_registry: HashMap::new(),
             },
             ActorType::Anonymous,
         )
         .await
         .expect("RemoteClientRegistry")
-    }
-
-    pub fn add_client(&mut self, node_id: NodeId, client: LocalActorRef<RemoteClient>) {
-        self.clients.insert(node_id, client);
-    }
-
-    pub fn remove_client(&mut self, node_id: NodeId) {
-        self.clients.remove(&node_id);
     }
 }
 

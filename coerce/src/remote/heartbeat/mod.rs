@@ -86,7 +86,7 @@ impl Default for HeartbeatConfig {
         Self {
             interval: Duration::from_millis(500),
             ping_timeout: Duration::from_secs(15),
-            unhealthy_node_heartbeat_timeout: Duration::from_millis(500),
+            unhealthy_node_heartbeat_timeout: Duration::from_millis(1500),
             terminated_node_heartbeat_timeout: Duration::from_secs(30),
         }
     }
@@ -144,7 +144,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
         let now = Instant::now();
         let nodes = system.get_nodes().await;
 
-        debug!(target: "Heartbeat", "heartbeat tick, node_id={}, node_tag={}, nodes={}, healthy_nodes={}",
+        trace!(target: "Heartbeat", "heartbeat tick, node_id={}, node_tag={}, nodes={}, healthy_nodes={}",
             &current_node, &node_tag, &nodes.len(),
             &nodes
               .iter()
@@ -158,6 +158,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
             if node.id == current_node {
                 let mut node = node;
                 node.status = NodeStatus::Healthy;
+                node.last_heartbeat = Some(Utc::now());
                 updates.push(node);
 
                 continue;
@@ -192,6 +193,8 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 ordering => ordering,
             }
         });
+
+        info!("{:?}", updates);
 
         if self.last_heartbeat.is_some() {
             let oldest_node = updates.first();
@@ -238,9 +241,9 @@ fn update_node(
                 node.last_heartbeat = Some(*pong_received_at);
                 node.ping_latency = Some(*ping_latency);
             }
-            PingResult::Timeout => {}
-            PingResult::Disconnected => {}
-            PingResult::Err => {}
+            PingResult::Timeout | PingResult::Disconnected | PingResult::Err => {
+                node.ping_latency = None;
+            }
         },
     }
 
@@ -271,10 +274,11 @@ fn node_status(
                 || ping_latency > config.unhealthy_node_heartbeat_timeout
             {
                 warn!(
-                    "[node={}] node_id={} took {}ms to respond to ping, marking as unhealthy",
+                    "[node={}] node_id={} took {}ms to respond to ping, marking as unhealthy - time_since_ping={} millis",
                     node_id,
                     peer_node_id,
-                    ping_latency.as_millis()
+                    ping_latency.as_millis(),
+                    time_since_ping.num_milliseconds()
                 );
                 NodeStatus::Unhealthy
             } else {
@@ -294,7 +298,7 @@ fn node_status(
             NodeStatus::Joining
         }
 
-        Some(PingResult::Timeout) | Some(PingResult::Disconnected) => {
+        Some(PingResult::Timeout) => {
             let terminated = last_heartbeat.map_or(true, |h| {
                 h.add(chrono::Duration::from_std(config.terminated_node_heartbeat_timeout).unwrap())
                     >= Utc::now()
@@ -311,6 +315,8 @@ fn node_status(
                 NodeStatus::Unhealthy
             }
         }
+
+        Some(PingResult::Disconnected) => NodeStatus::Terminated,
 
         Some(PingResult::Err) => {
             if previous_status == NodeStatus::Unhealthy {

@@ -1,12 +1,15 @@
+use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::network::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
-    MessageRequest, Ping, Pong, RaftRequest, SessionHandshake, StreamPublish,
+    Identify, MessageRequest, NodeIdentity, Ping, Pong, RaftRequest, SessionHandshake,
+    StreamPublish,
 };
 use crate::remote::net::StreamData;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use protobuf::{Message, ProtobufEnum, ProtobufError};
 
 pub enum ClientEvent {
+    Identity(NodeIdentity),
     Handshake(ClientHandshake),
     Result(ClientResult),
     Err(ClientErr),
@@ -16,6 +19,7 @@ pub enum ClientEvent {
 
 #[derive(Debug)]
 pub enum SessionEvent {
+    Identify(Identify),
     Ping(Ping),
     Pong(Pong),
     Handshake(SessionHandshake),
@@ -32,6 +36,9 @@ impl StreamData for ClientEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
+                Some(Event::Identity) => Some(ClientEvent::Identity(
+                    NodeIdentity::parse_from_bytes(message).unwrap(),
+                )),
                 Some(Event::Handshake) => Some(ClientEvent::Handshake(
                     ClientHandshake::parse_from_bytes(message).unwrap(),
                 )),
@@ -55,6 +62,7 @@ impl StreamData for ClientEvent {
 
     fn write_to_bytes(&self) -> Option<Vec<u8>> {
         let (event_id, message) = match &self {
+            ClientEvent::Identity(e) => (Event::Identity, e.write_to_bytes()),
             ClientEvent::Handshake(e) => (Event::Handshake, e.write_to_bytes()),
             ClientEvent::Result(e) => (Event::Result, e.write_to_bytes()),
             ClientEvent::Err(e) => (Event::Err, e.write_to_bytes()),
@@ -70,6 +78,9 @@ impl StreamData for SessionEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
             Some((event, message)) => match Event::from_i32(*event as i32) {
+                Some(Event::Identify) => Some(SessionEvent::Identify(
+                    Identify::parse_from_bytes(message).unwrap(),
+                )),
                 Some(Event::Handshake) => Some(SessionEvent::Handshake(
                     SessionHandshake::parse_from_bytes(message).unwrap(),
                 )),
@@ -94,9 +105,6 @@ impl StreamData for SessionEvent {
                 Some(Event::StreamPublish) => Some(SessionEvent::StreamPublish(
                     StreamPublish::parse_from_bytes(message).unwrap(),
                 )),
-                Some(Event::Raft) => Some(SessionEvent::Raft(
-                    RaftRequest::parse_from_bytes(message).unwrap(),
-                )),
                 Some(Event::Result) => Some(SessionEvent::Result(
                     ClientResult::parse_from_bytes(message).unwrap(),
                 )),
@@ -116,8 +124,9 @@ impl StreamData for SessionEvent {
             SessionEvent::FindActor(e) => (Event::FindActor, e.write_to_bytes()),
             SessionEvent::CreateActor(e) => (Event::CreateActor, e.write_to_bytes()),
             SessionEvent::StreamPublish(e) => (Event::StreamPublish, e.write_to_bytes()),
-            SessionEvent::Raft(e) => (Event::Raft, e.write_to_bytes()),
             SessionEvent::Result(e) => (Event::Result, e.write_to_bytes()),
+            SessionEvent::Identify(e) => (Event::Identify, e.write_to_bytes()),
+            _ => return None,
         };
 
         write_event(event_id, message)

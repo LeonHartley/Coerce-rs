@@ -30,20 +30,14 @@ impl TimerTick for PingTick {}
 impl Handler<PingTick> for RemoteClient {
     async fn handle(&mut self, _: PingTick, ctx: &mut ActorContext) {
         let remote = ctx.system().remote_owned();
-        let heartbeat = if remote.heartbeat_actor().is_none() {
-            // No heartbeat actor available, no need to ping
-            trace!("skipping ping tick, no heartbeat actor");
-            return;
-        } else {
-            remote.heartbeat_actor().unwrap().clone()
-        };
+        let heartbeat = remote.heartbeat().clone();
 
         let node_id = if let Some(state) = &self.state {
             match state {
-                ClientState::Connected(state) => state.node_id,
+                ClientState::Connected(state) => state.identity.node.id,
                 _ => {
-                    if let Some(node_id) = self.remote_node_id {
-                        let _ = heartbeat.notify(NodePing(node_id, PingResult::Disconnected));
+                    if let Some(node) = &self.remote_node {
+                        let _ = heartbeat.notify(NodePing(node.id, PingResult::Disconnected));
                     }
 
                     return;

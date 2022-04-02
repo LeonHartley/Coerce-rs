@@ -1,17 +1,18 @@
-use crate::remote::cluster::discovery::ClusterSeed;
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::client::ClientType::Worker;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::server::RemoteServer;
 use crate::remote::system::RemoteActorSystem;
 
+use crate::remote::actor::message::NewClient;
+use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::net::client::connect::Connect;
 use chrono::Utc;
+use tokio::sync::oneshot;
 use tokio::time::Duration;
 
 pub struct ClusterWorkerBuilder {
     server_listen_addr: String,
-    seed: Option<Box<dyn ClusterSeed + Send + Sync>>,
     seed_addr: Option<String>,
     system: RemoteActorSystem,
 }
@@ -19,24 +20,13 @@ pub struct ClusterWorkerBuilder {
 impl ClusterWorkerBuilder {
     pub fn new(system: RemoteActorSystem) -> ClusterWorkerBuilder {
         let server_listen_addr = "0.0.0.0:30101".to_owned();
-        let seed = None;
         let seed_addr = None;
 
         ClusterWorkerBuilder {
             server_listen_addr,
             system,
-            seed,
             seed_addr,
         }
-    }
-
-    pub fn with_seed<S: ClusterSeed>(mut self, seed: S) -> Self
-    where
-        S: 'static + Send + Sync,
-    {
-        self.seed = Some(Box::new(seed));
-
-        self
     }
 
     pub fn with_seed_addr<T: ToString>(mut self, seed_addr: T) -> Self {
@@ -81,52 +71,28 @@ impl ClusterWorkerBuilder {
             .expect("failed to start server");
 
         self.discover_peers().await;
+
         server
-
-        // let node_id = self.system.node_id();
-        // let sys = self.system.clone();
-
-        // tokio::spawn(async move {
-        //     let mut metrics = sys.raft().unwrap().core().metrics();
-        //     tokio::spawn(async move {
-        //         while metrics.changed().await.is_ok() {
-        //             info!("raft changed (node={}): {:?}", node_id, *metrics.borrow());
-        //         }
-        //     });
-        //
-        //     tokio::time::sleep(Duration::from_secs(1)).await;
-        //     let nodes = sys.get_nodes().await;
-        //
-        //     info!("registering nodes: {:?}, current={}", &nodes, node_id);
-        //
-        //     sys.raft()
-        //         .unwrap()
-        //         .core()
-        //         .initialize(
-        //             nodes
-        //                 .iter()
-        //                 .filter(|n| n.id != node_id)
-        //                 .map(|n| n.id)
-        //                 .collect(),
-        //         )
-        //         .await;
-        // })
     }
 
     async fn discover_peers(&mut self) {
         if let Some(seed_addr) = self.seed_addr.take() {
             let span = tracing::trace_span!("ClusterWorkerBuilder::discover_peers");
-            let enter = span.enter();
+            let _enter = span.enter();
 
-            let client_ctx = self.system.clone();
-            let client = RemoteClient::new(seed_addr.clone(), None, client_ctx, Worker, true)
+            let (tx, rx) = oneshot::channel();
+
+            let _ = self.system.node_discovery().notify(Discover {
+                seed: Seed::Addr(seed_addr.clone()),
+                on_discovery_complete: Some(tx),
+            });
+
+            info!("discover_peers - waiting for discovery to complete");
+            let _ = rx
                 .await
-                .expect("failed to connect to seed server");
+                .expect(&format!("unable to discover nodes from addr={}", seed_addr));
 
-            client.send(Connect::new(None)).await.expect("connect");
-
-            drop(enter);
-            drop(span);
+            info!("discover_peers - discovered peers successfully");
         }
     }
 }

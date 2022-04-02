@@ -85,7 +85,7 @@ impl RemoteClient {
                         match e {
                             RemoteClientErr::StreamErr(_e) => {
                                 warn!("node {} (addr={}) is unreachable but marked as connected, buffering message (total_buffered={})",
-                                    &state.node_id,
+                                    &state.identity.node.id,
                                     &self.addr,
                                     self.write_buffer.len());
 

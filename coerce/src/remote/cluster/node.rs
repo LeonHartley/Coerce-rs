@@ -39,6 +39,12 @@ pub struct RemoteNode {
     pub node_started_at: Option<DateTime<Utc>>,
 }
 
+#[derive(Clone)]
+pub struct NodeIdentity {
+    pub node: RemoteNode,
+    pub peers: Vec<RemoteNode>,
+}
+
 impl RemoteNodeStore {
     pub fn new(nodes: Vec<RemoteNode>) -> RemoteNodeStore {
         let mut table = HashRing::new();
@@ -120,6 +126,17 @@ impl RemoteNodeState {
             ping_latency: None,
             last_heartbeat: None,
             status: NodeStatus::Joining,
+        }
+    }
+}
+
+impl From<RemoteNodeState> for RemoteNode {
+    fn from(s: RemoteNodeState) -> Self {
+        Self {
+            id: s.id,
+            addr: s.addr,
+            tag: s.tag,
+            node_started_at: s.node_started_at,
         }
     }
 }

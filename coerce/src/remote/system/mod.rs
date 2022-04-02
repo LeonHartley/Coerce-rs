@@ -5,8 +5,8 @@ use crate::actor::{
     LocalActorRef,
 };
 use crate::remote::actor::message::{
-    ClientWrite, DeregisterClient, GetActorNode, GetNodes, RegisterActor, RegisterClient,
-    RegisterNode, RegisterNodes, UpdateNodes,
+    ClientWrite, GetActorNode, GetNodes, NewClient, RegisterActor, RegisterNode, RegisterNodes,
+    UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -16,7 +16,7 @@ use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::handler::{send_proto_result, RemoteActorMessageMarker};
-use crate::remote::net::client::RemoteClient;
+use crate::remote::net::client::{ClientType, RemoteClient, RemoteClientRef};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, CreateActor};
 use crate::remote::stream::mediator::StreamMediator;
@@ -33,6 +33,7 @@ use crate::remote::net::StreamData;
 use crate::remote::raft::RaftSystem;
 use protobuf::Message as ProtoMessage;
 
+use crate::remote::cluster::discovery::NodeDiscovery;
 use chrono::{DateTime, Utc};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -61,7 +62,8 @@ pub struct RemoteSystemCore {
     handler_ref: Arc<parking_lot::Mutex<RemoteHandler>>,
     registry_ref: LocalActorRef<RemoteRegistry>,
     clients_ref: LocalActorRef<RemoteClientRegistry>,
-    heartbeat_ref: Option<LocalActorRef<Heartbeat>>,
+    discovery_ref: LocalActorRef<NodeDiscovery>,
+    heartbeat_ref: LocalActorRef<Heartbeat>,
     mediator_ref: Option<LocalActorRef<StreamMediator>>,
     config: Arc<RemoteSystemConfig>,
     raft: Option<Arc<RaftSystem>>,
@@ -111,8 +113,12 @@ impl RemoteActorSystem {
         }
     }
 
-    pub fn heartbeat_actor(&self) -> Option<&LocalActorRef<Heartbeat>> {
-        self.inner.heartbeat_ref.as_ref()
+    pub fn heartbeat(&self) -> &LocalActorRef<Heartbeat> {
+        &self.inner.heartbeat_ref
+    }
+
+    pub fn client_registry(&self) -> &LocalActorRef<RemoteClientRegistry> {
+        &self.inner.clients_ref
     }
 }
 
@@ -379,37 +385,6 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn register_client(&self, node_id: NodeId, client: LocalActorRef<RemoteClient>) {
-        self.inner
-            .clients_ref
-            .send(RegisterClient(node_id, client))
-            .await
-            .unwrap()
-    }
-
-    pub async fn deregister_client(&self, node_id: NodeId) {
-        self.inner
-            .clients_ref
-            .send(DeregisterClient(node_id))
-            .await
-            .unwrap()
-    }
-
-    pub async fn register_nodes(&self, nodes: Vec<RemoteNode>) {
-        self.inner
-            .registry_ref
-            .send(RegisterNodes(nodes))
-            .await
-            .unwrap()
-    }
-
-    pub fn notify_register_nodes(&self, nodes: Vec<RemoteNode>) {
-        self.inner
-            .registry_ref
-            .notify(RegisterNodes(nodes))
-            .unwrap()
-    }
-
     pub fn register_actor(&self, actor_id: ActorId, node_id: Option<NodeId>) {
         self.inner
             .registry_ref
@@ -519,6 +494,18 @@ impl RemoteActorSystem {
         }
     }
 
+    pub async fn get_remote_client(&self, addr: String) -> Option<RemoteClientRef> {
+        self.client_registry()
+            .send(NewClient {
+                addr,
+                client_type: ClientType::Worker,
+                system: self.clone(),
+            })
+            .await
+            .expect("get client from RemoteClientRegistry")
+            .map(|client| RemoteClientRef::from(client))
+    }
+
     pub fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
         let mut handler = self.inner.handler_ref.lock();
         handler.push_request(id, RemoteRequest { res_tx });
@@ -527,6 +514,10 @@ impl RemoteActorSystem {
     pub fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
         let mut handler = self.inner.handler_ref.lock();
         handler.pop_request(id).map(|r| r.res_tx)
+    }
+
+    pub fn node_discovery(&self) -> &LocalActorRef<NodeDiscovery> {
+        &self.inner.discovery_ref
     }
 
     pub fn stream_mediator(&self) -> Option<&LocalActorRef<StreamMediator>> {

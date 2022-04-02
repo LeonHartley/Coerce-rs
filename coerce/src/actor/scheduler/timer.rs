@@ -10,6 +10,11 @@ use uuid::Uuid;
 
 pub trait TimerTick: Message {}
 
+enum TimerMode {
+    Notify,
+    Send,
+}
+
 pub struct Timer {
     stop: oneshot::Sender<bool>,
 }
@@ -26,7 +31,7 @@ impl Timer {
         T::Result: 'static + Sync + Send,
     {
         let (stop, stop_rx) = oneshot::channel();
-        tokio::spawn(timer_loop(tick, msg, actor, stop_rx, true));
+        tokio::spawn(timer_loop(tick, msg, actor, stop_rx, true, TimerMode::Send));
 
         Timer { stop }
     }
@@ -38,7 +43,14 @@ impl Timer {
         T::Result: 'static + Sync + Send,
     {
         let (stop, stop_rx) = oneshot::channel();
-        tokio::spawn(timer_loop(tick, msg, actor, stop_rx, false));
+        tokio::spawn(timer_loop(
+            tick,
+            msg,
+            actor,
+            stop_rx,
+            false,
+            TimerMode::Send,
+        ));
 
         Timer { stop }
     }
@@ -52,12 +64,13 @@ impl Timer {
     }
 }
 
-pub async fn timer_loop<A: Actor, T: TimerTick>(
+async fn timer_loop<A: Actor, T: TimerTick>(
     tick: Duration,
     msg: T,
     actor: LocalActorRef<A>,
     mut stop_rx: oneshot::Receiver<bool>,
     tick_immediately: bool,
+    mode: TimerMode,
 ) where
     A: Handler<T>,
     T: 'static + Clone + Sync + Send,
@@ -84,11 +97,19 @@ pub async fn timer_loop<A: Actor, T: TimerTick>(
 
         let now = Instant::now();
 
-        // TODO allow whether this is a send/notify to be configurable, at the moment
-        //      if the actor takes a while to process the msg, it may end up with a backlog of
-        //      timer ticks to work through, which may be undesirable
-        if actor.notify(msg.clone()).is_err() {
-            break;
+        match mode {
+            TimerMode::Notify => {
+                if actor.notify(msg.clone()).is_err() {
+                    break;
+                }
+            }
+            TimerMode::Send => {
+                if actor.send(msg.clone()).await.is_err() {
+                    break;
+                }
+
+                interval.reset();
+            }
         }
 
         trace!(target: "Timer", "{} - tick res received in {}ms", &timer_id, now.elapsed().as_millis());

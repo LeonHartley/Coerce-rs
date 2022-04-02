@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::Handler;
+use crate::actor::message::{Exec, Handler};
 use crate::remote::actor::message::{
-    ClientWrite, DeregisterClient, GetActorNode, GetNodes, PopRequest, PushRequest, RegisterActor,
-    RegisterClient, RegisterNode, RegisterNodes, SetRemote, UpdateNodes,
+    ClientConnected, ClientWrite, GetActorNode, GetNodes, NewClient, PopRequest, PushRequest,
+    RegisterActor, RegisterNode, RegisterNodes, SetRemote, UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -10,6 +10,7 @@ use crate::remote::actor::{
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::net::client::{ClientType, RemoteClient};
 use crate::remote::system::{NodeId, RemoteActorSystem};
+use std::collections::hash_map::Entry;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,6 +28,7 @@ use crate::remote::net::client::send::Write;
 use crate::remote::net::client::ClientType::Worker;
 use protobuf::Message;
 use std::time::Instant;
+use tokio::sync::oneshot;
 use uuid::Uuid;
 
 #[async_trait]
@@ -74,57 +76,6 @@ impl Handler<PopRequest> for RemoteHandler {
 }
 
 #[async_trait]
-impl Handler<RegisterClient> for RemoteClientRegistry {
-    async fn handle(&mut self, message: RegisterClient, _ctx: &mut ActorContext) {
-        self.add_client(message.0, message.1);
-
-        trace!(target: "RemoteRegistry", "client {} registered", message.0);
-    }
-}
-
-#[async_trait]
-impl Handler<RegisterNodes> for RemoteRegistry {
-    async fn handle(&mut self, message: RegisterNodes, _ctx: &mut ActorContext) {
-        let remote = self.system.as_ref().unwrap().clone();
-        let nodes = message.0;
-
-        let unregistered_nodes = nodes
-            .iter()
-            .filter(|node| node.id != remote.node_id() && !self.nodes.is_registered(node.id))
-            .map(|node| node.clone())
-            .collect::<Vec<RemoteNode>>();
-
-        trace!(target: "RemoteRegistry", "registering new nodes {:?}", &unregistered_nodes);
-
-        let current_nodes = self.nodes.get_all();
-
-        if !unregistered_nodes.is_empty() {
-            let connected_nodes =
-                connect_all(unregistered_nodes, current_nodes, remote.clone()).await;
-            for connected_node in connected_nodes {
-                self.register_node(connected_node);
-            }
-        }
-
-        for node in nodes {
-            let sys = remote.clone();
-            let node_id = node.id;
-            tokio::spawn(async move {
-                let sys = sys;
-                PubSub::publish_locally(
-                    SystemTopic,
-                    SystemEvent::Cluster(ClusterEvent::NodeAdded(node_id)),
-                    sys.actor_system().remote(),
-                )
-                .await;
-            });
-
-            self.nodes.add(node);
-        }
-    }
-}
-
-#[async_trait]
 impl Handler<RegisterNode> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterNode, ctx: &mut ActorContext) {
         if ctx.system().is_remote() {
@@ -133,7 +84,7 @@ impl Handler<RegisterNode> for RemoteRegistry {
                 SystemEvent::Cluster(ClusterEvent::NodeAdded(message.0.id)),
                 self.system.as_ref().unwrap(),
             )
-                .await;
+            .await;
         }
 
         self.register_node(message.0);
@@ -154,6 +105,43 @@ impl Handler<UpdateNodes> for RemoteRegistry {
 }
 
 #[async_trait]
+impl Handler<NewClient> for RemoteClientRegistry {
+    async fn handle(
+        &mut self,
+        message: NewClient,
+        _ctx: &mut ActorContext,
+    ) -> Option<LocalActorRef<RemoteClient>> {
+        let node_addr_entry = self.node_addr_registry.entry(message.addr.clone());
+        let entry = match node_addr_entry {
+            Entry::Vacant(vacant_entry) => vacant_entry,
+            Entry::Occupied(entry) => {
+                return {
+                    debug!("RemoteClient already exists for addr={}", &message.addr);
+                    let client = entry.get();
+                    Some(client.clone())
+                }
+            }
+        };
+
+        debug!("creating RemoteClient, addr={}", &message.addr);
+
+        let client_actor =
+            RemoteClient::new(message.addr.clone(), message.system, message.client_type).await;
+        debug!("created RemoteClient, addr={}", &message.addr);
+        entry.insert_entry(client_actor.clone());
+        Some(client_actor)
+    }
+}
+
+#[async_trait]
+impl Handler<ClientConnected> for RemoteClientRegistry {
+    async fn handle(&mut self, message: ClientConnected, _ctx: &mut ActorContext) {
+        self.node_id_registry
+            .insert(message.remote_node_id, message.client_actor_ref);
+    }
+}
+
+#[async_trait]
 impl Handler<ClientWrite> for RemoteClientRegistry {
     async fn handle(&mut self, message: ClientWrite, _ctx: &mut ActorContext) {
         let client_id = message.0;
@@ -163,21 +151,13 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
         //       to potentially improve throughput, whilst still maintaining
         //       message ordering
 
-        if let Some(client) = self.clients.get_mut(&client_id) {
+        if let Some(client) = self.node_id_registry.get_mut(&client_id) {
+            debug!(target: "RemoteClientRegistry", "writing data to client");
             client.send(Write(message)).await.expect("send client msg");
-            trace!(target: "RemoteRegistry", "writing data to client")
+            debug!(target: "RemoteClientRegistry", "written data to client");
         } else {
-            trace!(target: "RemoteRegistry", "client {} not found", &client_id);
+            warn!(target: "RemoteClientRegistry", "client {} not found", &client_id);
         }
-    }
-}
-
-#[async_trait]
-impl Handler<DeregisterClient> for RemoteClientRegistry {
-    async fn handle(&mut self, message: DeregisterClient, _ctx: &mut ActorContext) {
-        let node_id = message.0;
-        self.remove_client(node_id);
-        trace!(target: "RemoteRegistry", "removing client {}", &node_id);
     }
 }
 
@@ -336,40 +316,4 @@ impl Handler<StreamEvent<SystemTopic>> for RemoteRegistry {
             }
         }
     }
-}
-
-async fn connect_all(
-    nodes: Vec<RemoteNode>,
-    current_nodes: Vec<RemoteNodeState>,
-    system: RemoteActorSystem,
-) -> Vec<RemoteNode> {
-    debug!(
-        "discovered {} new nodes, currently active peers={}",
-        nodes.len(),
-        current_nodes.len()
-    );
-
-    let mut connected_nodes = vec![];
-    for node in nodes {
-        let addr = node.addr.to_string();
-        match RemoteClient::new(addr, Some(node.id), system.clone(), Worker, false).await {
-            Ok(client) => {
-                trace!(target: "RemoteRegistry", "connecting to node_id={}, addr={}", node.id, node.addr);
-                if let Some(node) = client
-                    .send(Connect::new(Some(current_nodes.clone())))
-                    .await
-                    .unwrap()
-                {
-                    connected_nodes.push(node);
-                } else {
-                    warn!(target: "RemoteRegistry", "failed to node_id={}, addr={}", node.id, node.addr);
-                }
-            }
-            Err(_) => {
-                warn!(target: "RemoteRegistry", "failed to create remoteclient actor for remote node (node_id={}, addr={})", node.id, node.addr);
-            }
-        }
-    }
-
-    connected_nodes
 }

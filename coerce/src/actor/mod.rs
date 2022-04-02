@@ -384,6 +384,7 @@ pub enum ActorRefErr {
         message_type: String,
         actor_type: String,
     },
+    NotImplemented,
 }
 
 impl std::fmt::Display for ActorRefErr {
@@ -410,6 +411,7 @@ impl std::fmt::Display for ActorRefErr {
                 message_type, actor_id, actor_type
             ),
             ActorRefErr::StartChannelClosed => write!(f, "actor failed to start, channel closed"),
+            ActorRefErr::NotImplemented => write!(f, "functionality is not yet implemented"),
         }
     }
 }

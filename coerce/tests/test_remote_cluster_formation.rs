@@ -134,13 +134,15 @@ pub async fn test_remote_cluster_workers() {
         .start()
         .await;
 
+    // let _ = tokio::time::sleep(Duration::from_secs(2)).await;
+
     let nodes_a = remote_c.get_nodes().await;
     let nodes_b = remote_2_c.get_nodes().await;
     let nodes_c = remote_3_c.get_nodes().await;
 
-    log::trace!("a: {:?}", &nodes_a);
-    log::trace!("b: {:?}", &nodes_b);
-    log::trace!("c: {:?}", &nodes_c);
+    log::info!("a: {:?}", &nodes_a);
+    log::info!("b: {:?}", &nodes_b);
+    log::info!("c: {:?}", &nodes_c);
 
     let nodes_a_in_b = nodes_a.iter().filter(|n| nodes_b.contains(n)).count();
     let nodes_a_in_c = nodes_a.iter().filter(|n| nodes_c.contains(n)).count();

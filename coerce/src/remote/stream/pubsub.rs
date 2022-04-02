@@ -62,7 +62,6 @@ impl PubSub {
         let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
         let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
         let _enter = span.enter();
-
         if let Some(mediator) = system.stream_mediator() {
             mediator
                 .send(Publish::<T> {

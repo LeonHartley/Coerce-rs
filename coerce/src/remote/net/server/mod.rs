@@ -12,9 +12,10 @@ use crate::remote::net::{receive_loop, StreamReceiver};
 
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::remote::actor::RemoteResponse;
+use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::network::{
-    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, Pong,
+    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, NodeIdentity, Pong,
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
@@ -27,8 +28,10 @@ use std::net::{SocketAddr, TcpListener};
 use std::pin::Pin;
 use std::str::FromStr;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use tokio::io;
 use tokio::net::TcpStream;
+use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
@@ -44,6 +47,7 @@ pub struct RemoteServer {
 pub struct SessionMessageReceiver {
     session_id: Uuid,
     sessions: LocalActorRef<RemoteSessionStore>,
+    session: LocalActorRef<RemoteSession>,
 }
 
 #[derive(Debug)]
@@ -62,10 +66,12 @@ impl SessionMessageReceiver {
     pub fn new(
         session_id: Uuid,
         sessions: LocalActorRef<RemoteSessionStore>,
+        session: LocalActorRef<RemoteSession>,
     ) -> SessionMessageReceiver {
         SessionMessageReceiver {
             session_id,
             sessions,
+            session,
         }
     }
 }
@@ -82,7 +88,7 @@ impl RemoteServer {
         addr: String,
         system: RemoteActorSystem,
     ) -> Result<(), tokio::io::Error> {
-        let listener = tokio::net::TcpListener::bind(addr).await?;
+        let listener = tokio::net::TcpListener::bind(&addr).await?;
 
         let session_store = system
             .actor_system()
@@ -95,7 +101,13 @@ impl RemoteServer {
             .unwrap();
 
         let token = CancellationToken::new();
-        tokio::spawn(server_loop(listener, system, session_store, token.clone()));
+        tokio::spawn(server_loop(
+            listener,
+            system,
+            session_store,
+            token.clone(),
+            addr,
+        ));
         self.cancellation_token = Some(token);
         Ok(())
     }
@@ -131,6 +143,7 @@ pub async fn server_loop(
     system: RemoteActorSystem,
     session_store: LocalActorRef<RemoteSessionStore>,
     cancellation_token: CancellationToken,
+    node_addr: String,
 ) {
     loop {
         match accept(&listener, cancellation_token.clone()).await {
@@ -143,15 +156,48 @@ pub async fn server_loop(
 
                 let session_id = Uuid::new_v4();
 
-                session_store
+                let session = session_store
                     .send(NewSession(RemoteSession::new(session_id, write)))
                     .await
                     .expect("new session registered");
 
+                let peers = system
+                    .get_nodes()
+                    .await
+                    .into_iter()
+                    .map(|node| RemoteNodeProto {
+                        node_id: node.id,
+                        addr: node.addr,
+                        tag: node.tag,
+                        node_started_at: node
+                            .node_started_at
+                            .as_ref()
+                            .map(datetime_to_timestamp)
+                            .into(),
+                        ..RemoteNodeProto::default()
+                    })
+                    .collect::<Vec<RemoteNodeProto>>();
+
+                session
+                    .send(SessionWrite(
+                        session_id,
+                        ClientEvent::Identity(NodeIdentity {
+                            node_id: system.node_id(),
+                            node_tag: system.node_tag().to_string(),
+                            addr: node_addr.clone(),
+                            node_started_at: Some(datetime_to_timestamp(system.started_at()))
+                                .into(),
+                            peers: peers.into(),
+                            ..Default::default()
+                        }),
+                    ))
+                    .await
+                    .expect("send session write");
+
                 let _session = tokio::spawn(receive_loop(
                     system.clone(),
                     read,
-                    SessionMessageReceiver::new(session_id, session_store.clone()),
+                    SessionMessageReceiver::new(session_id, session_store.clone(), session),
                 ));
             }
             Some(Err(e)) => error!(target: "RemoteServer", "error accepting client: {:?}", e),
@@ -168,6 +214,15 @@ impl StreamReceiver for SessionMessageReceiver {
 
     async fn on_receive(&mut self, msg: SessionEvent, sys: &RemoteActorSystem) {
         match msg {
+            SessionEvent::Identify(identify) => {
+                let session_id = self.session_id;
+                let system = sys.clone();
+                let session = self.session.clone();
+
+                trace!(target: "RemoteServer", "received identify from node (id={}, tag={}), session_id={}", &identify.source_node_id, &identify.source_node_tag, &self.session_id);
+
+                tokio::spawn(async move {});
+            }
             SessionEvent::Handshake(msg) => {
                 trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
                 tokio::spawn(session_handshake(
@@ -299,22 +354,33 @@ async fn session_handshake(
         });
     }
 
+    let nodes = handshake
+        .nodes
+        .into_iter()
+        .map(|n| {
+            let started_at = n.node_started_at.into_option().map(timestamp_to_datetime);
+            RemoteNode::new(n.node_id, n.addr, n.tag, started_at)
+        })
+        .collect();
+
+    let sys = ctx.clone();
+
+    info!("[{}] discovering nodes: {:?}", &session_id, &nodes);
+
+    let (tx, rx) = oneshot::channel();
+    let _ = sys.node_discovery().notify(Discover {
+        seed: Seed::Nodes(nodes),
+        on_discovery_complete: Some(tx),
+    });
+
+    let _ = rx.await.expect("unable to discover nodes");
+
+    info!("[{}] discovered nodes", &session_id);
+
     sessions
         .send(SessionWrite(session_id, ClientEvent::Handshake(response)))
         .await
         .expect("send session write (handshake)");
-
-    ctx.register_nodes(
-        handshake
-            .nodes
-            .into_iter()
-            .map(|n| {
-                let started_at = n.node_started_at.into_option().map(timestamp_to_datetime);
-                RemoteNode::new(n.node_id, n.addr, n.tag, started_at)
-            })
-            .collect(),
-    )
-    .await;
 }
 
 async fn session_handle_message(

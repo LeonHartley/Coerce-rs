@@ -2,11 +2,14 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::Timer;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
+use crate::remote::actor::message::ClientConnected;
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::net::client::ping::PingTick;
-use crate::remote::net::client::receive::ClientMessageReceiver;
+use crate::remote::net::client::receive::{ClientMessageReceiver, HandshakeAcknowledge};
 use crate::remote::net::client::send::write_bytes;
-use crate::remote::net::client::{ClientState, ClientType, ConnectionState, RemoteClient};
+use crate::remote::net::client::{
+    BeginHandshake, ClientState, ClientType, ConnectionState, HandshakeStatus, RemoteClient,
+};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
 use crate::remote::net::proto::network as proto;
@@ -17,16 +20,17 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::Sender;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-pub struct Connect {
-    pub outbound_seed_nodes: Option<Vec<RemoteNodeState>>,
-}
+pub struct Connect;
+
+pub struct OnConnect(pub Sender<(LocalActorRef<RemoteClient>, RemoteNode)>);
 
 impl RemoteClient {
     pub async fn connect(
         &mut self,
-        connect: Connect,
+        _connect: Connect,
         ctx: &mut ActorContext,
     ) -> Option<ConnectionState> {
         let span = tracing::trace_span!("RemoteClient::connect", address = self.addr.as_str());
@@ -41,32 +45,99 @@ impl RemoteClient {
         let (read, writer) = tokio::io::split(stream);
 
         let reader = FramedRead::new(read, NetworkCodec);
-        let mut writer = FramedWrite::new(writer, NetworkCodec);
+        let mut write = FramedWrite::new(writer, NetworkCodec);
 
-        let (handshake_tx, handshake_rx) = oneshot::channel();
+        let (identity_tx, identity_rx) = oneshot::channel();
+
+        let remote = ctx.system().remote_owned();
+        let receive_task = tokio::spawn(receive_loop(
+            remote.clone(),
+            reader,
+            ClientMessageReceiver::new(self.actor_ref(ctx), identity_tx),
+        ));
+
+        let ping_timer = Some(Timer::start_immediately(
+            self.actor_ref(ctx),
+            Duration::from_millis(500),
+            PingTick,
+        ));
+
+        let identity = match identity_rx.await {
+            Ok(identity) => identity,
+            Err(_) => {
+                warn!("no identity received (addr={})", &self.addr);
+                return None;
+            }
+        };
+
+        Some(ConnectionState {
+            identity,
+            handshake: HandshakeStatus::None,
+            write,
+            receive_task,
+            ping_timer,
+        })
+    }
+}
+
+pub struct Disconnected;
+
+const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
+
+#[async_trait]
+impl Handler<Connect> for RemoteClient {
+    async fn handle(&mut self, message: Connect, ctx: &mut ActorContext) {
+        let span = tracing::trace_span!("RemoteClient::connect", actor_id = ctx.id().as_str(),);
+
+        let _enter = span.enter();
+
+        if let Some(connection_state) = self.connect(message, ctx).await {
+            while let Some(callback) = self.on_identified_callbacks.pop() {
+                let _ = callback.send(Some(connection_state.identity.clone()));
+            }
+
+            let client_actor_ref = self.actor_ref(ctx);
+
+            let _ = ctx
+                .system()
+                .remote()
+                .client_registry()
+                .send(ClientConnected {
+                    addr: self.addr.clone(),
+                    remote_node_id: connection_state.identity.node.id,
+                    client_actor_ref,
+                })
+                .await;
+
+            self.state = Some(ClientState::Connected(connection_state));
+
+            debug!("RemoteClient connected to node (addr={})", &self.addr);
+
+            self.flush_buffered_writes().await;
+        } else {
+            warn!("RemoteClient failed to connect");
+            while let Some(callback) = self.on_identified_callbacks.pop() {
+                let _ = callback.send(None);
+            }
+
+            self.handle(Disconnected, ctx).await;
+        }
+    }
+}
+
+#[async_trait]
+impl Handler<BeginHandshake> for RemoteClient {
+    async fn handle(&mut self, message: BeginHandshake, ctx: &mut ActorContext) {
+        let mut connection = match &mut self.state {
+            Some(ClientState::Connected(connection)) => connection,
+            _ => return,
+        };
 
         let remote = ctx.system().remote_owned();
         let node_id = remote.node_id();
         let node_tag = remote.node_tag().to_string();
 
-        let receive_task = tokio::spawn(receive_loop(
-            remote.clone(),
-            reader,
-            ClientMessageReceiver::new(
-                self.remote_node_id.clone(),
-                handshake_tx,
-                self.actor_ref(ctx),
-            ),
-        ));
-
         trace!("writing handshake");
-
-        let trace_id = extract_trace_identifier(&span);
-
-        let seed_nodes = match connect.outbound_seed_nodes {
-            Some(seed_nodes) => seed_nodes.into_iter(),
-            None => remote.get_nodes().await.into_iter(),
-        };
 
         write_bytes(
             SessionEvent::Handshake(proto::SessionHandshake {
@@ -74,8 +145,10 @@ impl RemoteClient {
                 node_tag,
                 token: vec![],
                 client_type: self.client_type.into(),
-                trace_id,
-                nodes: seed_nodes
+                trace_id: String::new(),
+                nodes: message
+                    .seed_nodes
+                    .into_iter()
                     .map(|node| proto::RemoteNode {
                         node_id: node.id,
                         addr: node.addr,
@@ -93,84 +166,34 @@ impl RemoteClient {
             .write_to_bytes()
             .unwrap()
             .as_ref(),
-            &mut writer,
+            &mut connection.write,
         )
         .await
         .expect("write handshake");
 
-        trace!("waiting for handshake ack");
-        let handshake_ack = handshake_rx.await.expect("handshake ack");
-        let node_id = handshake_ack.node_id;
-        let node_tag = handshake_ack.node_tag;
-        let node_started_at = handshake_ack.node_started_at;
-        let write = writer;
-
-        let ping_timer = Some(Timer::start_immediately(
-            self.actor_ref(ctx),
-            Duration::from_millis(500),
-            PingTick,
-        ));
-
-        Some(ConnectionState {
-            node_id,
-            node_tag,
-            node_started_at,
-            write,
-            receive_task,
-            ping_timer,
-        })
+        self.on_handshake_ack_callbacks.push(message.on_handshake_complete);
     }
 }
-
-impl Connect {
-    pub fn new(outbound_seed_nodes: Option<Vec<RemoteNodeState>>) -> Self {
-        Self {
-            outbound_seed_nodes,
-        }
-    }
-}
-
-pub struct Disconnected;
-
-const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
 
 #[async_trait]
-impl Handler<Connect> for RemoteClient {
-    async fn handle(&mut self, message: Connect, ctx: &mut ActorContext) -> Option<RemoteNode> {
-        let register_node_upon_connection = self.register_node_upon_connect.is_none()
-            || self.register_node_upon_connect.take().unwrap() == true;
+impl Handler<HandshakeAcknowledge> for RemoteClient {
+    async fn handle(&mut self, message: HandshakeAcknowledge, _ctx: &mut ActorContext) {
+        info!(
+            "handshake acknowledged (addr={}, node_id={}, node_tag={})",
+            &self.addr, &message.node_id, &message.node_tag
+        );
 
-        if let Some(connection_state) = self.connect(message, ctx).await {
-            let remote = ctx.system().remote();
-            let node_id = connection_state.node_id;
+        match &mut self.state {
+            Some(ClientState::Connected(state)) => {
+                state.handshake = HandshakeStatus::Acknowledged(message);
 
-            let remote_node = RemoteNode::new(
-                connection_state.node_id,
-                self.addr.clone(),
-                connection_state.node_tag.clone(),
-                Some(connection_state.node_started_at),
-            );
-
-            if register_node_upon_connection {
-                remote.notify_register_node(remote_node.clone());
+                while let Some(callback) = self.on_handshake_ack_callbacks.pop() {
+                    let _ = callback.send(());
+                }
             }
-
-            remote.register_client(node_id, self.actor_ref(ctx)).await;
-            self.remote_node_id = Some(node_id);
-            self.state = Some(ClientState::Connected(connection_state));
-
-            debug!(
-                "RemoteClient connected to node (addr={}, node_id={})",
-                &self.addr, node_id
-            );
-
-            self.flush_buffered_writes().await;
-
-            Some(remote_node)
-        } else {
-            warn!("RemoteClient failed to connect");
-            self.handle(Disconnected, ctx).await;
-            None
+            _ => {
+                warn!("received handshakeack but the client connection state is invalid");
+            }
         }
     }
 }
@@ -225,13 +248,13 @@ impl Handler<Disconnected> for RemoteClient {
         let self_ref = self.actor_ref(ctx);
         tokio::spawn(async move {
             tokio::time::sleep(RECONNECT_DELAY).await;
-            let _res = self_ref.send(Connect::new(None)).await;
+            let _res = self_ref.send(Connect).await;
         });
     }
 }
 
 impl Message for Connect {
-    type Result = Option<RemoteNode>;
+    type Result = ();
 }
 
 impl Message for Disconnected {

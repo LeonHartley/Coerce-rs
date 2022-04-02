@@ -28,9 +28,10 @@ pub async fn test_tracing() -> Result<(), Box<dyn Error + Send + Sync + 'static>
     //     // .with_span_events(FmtSpan::FULL)
     //     .try_init()?;
 
-    let (tracer, _uninstall) = opentelemetry_jaeger::new_pipeline()
+    let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("coerce")
-        .install()?;
+        .install_simple()?;
+
     let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
     tracing_subscriber::registry()
         .with(opentelemetry)

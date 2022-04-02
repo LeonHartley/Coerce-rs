@@ -15,7 +15,7 @@ message RemoteNode {
 }
 
 enum Event {
-  Exit = 0;
+  Identify = 0;
   Handshake = 1;
   Result = 2;
   Err = 3;
@@ -27,11 +27,34 @@ enum Event {
   NotifyActor = 9;
   StreamPublish = 10;
   Raft = 11;
+  Identity = 12;
 }
 
 enum ClientType {
   Client = 0;
   Worker = 1;
+}
+
+message Identify {
+  uint64 source_node_id = 1;
+
+  string source_node_tag = 2;
+
+  string token = 3;
+}
+
+message NodeIdentity {
+  uint64 node_id = 1;
+
+  string node_tag = 2;
+
+  string addr = 3;
+
+  string application_version = 4;
+
+  google.protobuf.Timestamp node_started_at = 5;
+
+  repeated RemoteNode peers = 6;
 }
 
 message ClientHandshake {

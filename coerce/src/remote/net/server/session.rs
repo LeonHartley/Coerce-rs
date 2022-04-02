@@ -47,7 +47,7 @@ pub struct SessionWrite(pub Uuid, pub ClientEvent);
 pub struct SessionClosed(pub Uuid);
 
 impl Message for NewSession {
-    type Result = ();
+    type Result = LocalActorRef<RemoteSession>;
 }
 
 impl Message for SessionClosed {
@@ -60,17 +60,22 @@ impl Message for SessionWrite {
 
 #[async_trait]
 impl Handler<NewSession> for RemoteSessionStore {
-    async fn handle(&mut self, message: NewSession, ctx: &mut ActorContext) {
+    async fn handle(
+        &mut self,
+        message: NewSession,
+        ctx: &mut ActorContext,
+    ) -> LocalActorRef<RemoteSession> {
         let session_id = message.0.id;
         let session = message.0;
 
         let session_actor = ctx
-            .spawn(session_id.to_string(), session)
+            .spawn(format!("RemoteSession-{}", session_id.to_string()), session)
             .await
             .expect("unable to create session actor");
 
         trace!(target: "SessionStore", "new session {}", &session_id);
-        self.sessions.insert(session_id, session_actor);
+        self.sessions.insert(session_id, session_actor.clone());
+        session_actor
     }
 }
 

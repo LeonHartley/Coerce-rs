@@ -42,8 +42,9 @@ impl Drop for ActorContext {
             ActorStatus::Started => {
                 if self.system.is_some() && self.system().is_terminated() {
                     debug!(
-                        "actor (id={}) has stopped due to system shutdown",
-                        &self.id()
+                        "actor (id={}, type={}) has stopped due to system shutdown",
+                        &self.id(),
+                        self.boxed_ref.actor_type()
                     );
                 } else {
                     debug!("actor (id={}) has stopped unexpectedly", self.id());

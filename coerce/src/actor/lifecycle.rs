@@ -101,11 +101,17 @@ impl ActorLoop {
 
                 trace!(
                     target: "Actor",
-                    "[{}] recv {}",
+                    "[{}] received {}",
                     &actor_id, msg.name()
                 );
 
                 msg.handle(&mut actor, &mut ctx).await;
+
+                trace!(
+                    target: "Actor",
+                    "[{}] processed {}",
+                    &actor_id, msg.name()
+                );
 
                 if let Some(system) = &system {
                     system.metrics().increment_msgs_processed();
