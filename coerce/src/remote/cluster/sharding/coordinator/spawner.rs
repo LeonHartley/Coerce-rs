@@ -111,8 +111,15 @@ impl Handler<StreamEvent<SystemTopic>> for CoordinatorSpawner {
                 );
                 match msg.as_ref() {
                     SystemEvent::Cluster(event) => match event {
-                        &ClusterEvent::NodeAdded(node_id) => {}
-                        &ClusterEvent::NodeRemoved(node_id) => {}
+                        &ClusterEvent::NodeAdded(node_id) => {
+                            if let Some(coordinator) = &self.coordinator {
+                            }
+                        }
+                        &ClusterEvent::NodeRemoved(node_id) => {
+                            if let Some(coordinator) = &self.coordinator {
+
+                            }
+                        }
                         &ClusterEvent::LeaderChanged(leader_node_id) => {
                             info!(
                                 target: COORDINATOR_SPAWNER,

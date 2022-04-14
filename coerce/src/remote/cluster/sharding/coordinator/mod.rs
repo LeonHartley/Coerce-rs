@@ -13,6 +13,8 @@ use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::PersistErr;
 use crate::remote::RemoteActorRef;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::fmt::{Display, Formatter};
 
 pub mod allocation;
 pub mod spawner;
@@ -21,6 +23,7 @@ pub mod stream;
 
 pub type ShardId = u32;
 
+#[derive(Debug)]
 pub struct ShardHostState {
     pub node_id: NodeId,
     pub node_tag: String,
@@ -34,6 +37,8 @@ pub struct ShardCoordinator {
     hosts: HashMap<NodeId, ShardHostState>,
     shards: HashMap<ShardId, NodeId>,
 }
+
+pub struct HostDiscovered(NodeId);
 
 #[async_trait]
 impl PersistentActor for ShardCoordinator {
@@ -50,9 +55,7 @@ impl PersistentActor for ShardCoordinator {
         let node_id = remote.node_id();
         let node_tag = remote.node_tag().to_string();
 
-        self.hosts.insert(
-            node_id,
-            ShardHostState {
+        self.add_host(ShardHostState {
                 node_id,
                 node_tag,
                 shards: Default::default(),
@@ -63,12 +66,12 @@ impl PersistentActor for ShardCoordinator {
         // TODO: start a healthcheck actor/timer checking all allocated shards ensuring they're up,
         //       or rebalance/rehydrate if necessary
 
-        info!("shard coordinator started");
+        info!("shard coordinator started (shard_entity={})", &self.shard_entity);
+
         let potential_hosts = remote.get_nodes().await;
         for host in potential_hosts {
             if host.id != node_id {
-                self.hosts.insert(
-                    host.id,
+                self.add_host(
                     ShardHostState {
                         node_id: host.id,
                         node_tag: String::default(),

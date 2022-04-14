@@ -1,1 +1,1 @@
-cargo run --bin sharded-chat-client -- --websocket_url ws://localhost:31102 --name user2
+cargo run --bin sharded-chat-client -- --websocket_url ws://localhost:32102 --name user2

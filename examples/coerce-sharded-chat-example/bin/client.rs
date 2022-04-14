@@ -18,7 +18,7 @@ extern crate log;
 pub async fn main() {
     let matches = Command::new("coerce-sharded-chat-client")
         .version(env::var("CARGO_PKG_VERSION").unwrap_or(String::from("1")).as_str())
-        .arg(arg!(--name <NAME> "The host and port which Coerce will listen to connections from"))
+        .arg(arg!(--name <NAME> "The display name of the chat user tied to this connection"))
         .arg(arg!(--websocket_url <WEBSOCKET_URL> "The host and port which the sharded chat websockets will listen from"))
         .arg(arg!(--log_level [LOG_LEVEL] "The minimum level at which the application log will be filtered (default=INFO)"))
         .get_matches();

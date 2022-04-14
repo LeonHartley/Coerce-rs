@@ -50,7 +50,7 @@ impl ActorSystem {
         &self.scheduler
     }
 
-    pub fn current_system() -> ActorSystem {
+    pub fn global_system() -> ActorSystem {
         CURRENT_SYSTEM.clone()
     }
 

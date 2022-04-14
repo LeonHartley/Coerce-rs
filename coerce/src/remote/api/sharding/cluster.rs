@@ -43,6 +43,7 @@ pub struct Entity {
 #[derive(Serialize, Deserialize)]
 pub struct ShardStats {
     shard_id: ShardId,
+    node_id: NodeId,
     entity_count: u32,
     entities: Vec<Entity>,
 }
@@ -140,6 +141,7 @@ impl From<ShardActorStats> for ShardStats {
         Self {
             shard_id: s.shard_id,
             entity_count: s.entities.len() as u32,
+            node_id: s.node_id,
             entities: s
                 .entities
                 .into_iter()

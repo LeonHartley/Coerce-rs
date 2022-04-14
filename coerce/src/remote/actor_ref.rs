@@ -6,6 +6,7 @@ use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::MessageRequest;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::tracing::extract_trace_identifier;
+use std::fmt::{Debug, Formatter};
 
 use std::marker::PhantomData;
 
@@ -148,6 +149,15 @@ where
         });
 
         event
+    }
+}
+
+impl<A: Actor> Debug for RemoteActorRef<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(&format!("RemoteActorRef<{}>", A::type_name()))
+            .field("actor_id", &self.id)
+            .field("node_id", &self.node_id)
+            .finish()
     }
 }
 

@@ -11,6 +11,8 @@ use log::error;
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use std::any::Any;
 use std::error::Error;
+use std::fmt::{Debug, Formatter};
+use std::path::Display;
 
 use crate::actor::supervised::Terminated;
 use crate::remote::system::NodeId;
@@ -122,14 +124,14 @@ pub async fn new_actor<A: Actor>(actor: A) -> Result<LocalActorRef<A>, ActorRefE
 where
     A: 'static + Sync + Send,
 {
-    ActorSystem::current_system().new_tracked_actor(actor).await
+    ActorSystem::global_system().new_tracked_actor(actor).await
 }
 
 pub async fn get_actor<A: Actor>(id: ActorId) -> Option<LocalActorRef<A>>
 where
     A: 'static + Sync + Send,
 {
-    ActorSystem::current_system().get_tracked_actor(id).await
+    ActorSystem::global_system().get_tracked_actor(id).await
 }
 
 pub(crate) enum Ref<A: Actor> {
@@ -148,6 +150,15 @@ impl<A: Actor> Clone for Ref<A> {
 
 pub struct ActorRef<A: Actor> {
     inner_ref: Ref<A>,
+}
+
+impl<A: Actor> Debug for ActorRef<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.inner_ref {
+            Ref::Local(local_ref) => local_ref.fmt(f),
+            Ref::Remote(remote_ref) => remote_ref.fmt(f),
+        }
+    }
 }
 
 impl<A: Actor> ActorRef<A> {
@@ -347,6 +358,15 @@ pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,
     pub system_id: Option<Uuid>,
     sender: tokio::sync::mpsc::UnboundedSender<MessageHandler<A>>,
+}
+
+impl<A: Actor> Debug for LocalActorRef<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(&format!("LocalActorRef<{}>", A::type_name()))
+            .field("actor_id", &self.id)
+            .field("system_id", &self.system_id)
+            .finish()
+    }
 }
 
 impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef {

@@ -116,7 +116,7 @@ impl RemoteActorSystemBuilder {
 
         let mut inner = match self.inner {
             Some(ctx) => ctx,
-            None => ActorSystem::current_system(),
+            None => ActorSystem::global_system(),
         };
 
         let mut handlers = RemoteActorHandlerBuilder::new(inner.clone());
