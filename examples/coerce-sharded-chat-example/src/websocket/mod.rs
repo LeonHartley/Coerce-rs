@@ -18,7 +18,7 @@ use uuid::Uuid;
 pub mod client;
 
 async fn handle_connection(
-    peer_addr: IpAddr,
+    peer_addr: SocketAddr,
     stream: TcpStream,
     actor_system: ActorSystem,
     sharding: Sharding<ChatStreamFactory>,
@@ -42,7 +42,7 @@ async fn handle_connection(
 }
 
 async fn accept_connection(
-    peer: IpAddr,
+    peer: SocketAddr,
     stream: TcpStream,
     system: ActorSystem,
     sharding: Sharding<ChatStreamFactory>,
@@ -63,7 +63,7 @@ pub async fn start<S: ToSocketAddrs>(
     let mut listener = TcpListener::bind(addr).await.expect("websocket listen");
 
     while let Ok((stream, _)) = listener.accept().await {
-        let peer_address = stream.peer_addr().unwrap().ip();
+        let peer_address = stream.peer_addr().unwrap();
 
         debug!("websocket connection from peer_addr: {}", peer_address);
         tokio::spawn(accept_connection(

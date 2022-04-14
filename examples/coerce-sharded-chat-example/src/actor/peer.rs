@@ -11,7 +11,7 @@ use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
-use std::net::IpAddr;
+use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tungstenite::Message as WebSocketMessage;
@@ -21,7 +21,7 @@ pub type WebSocketWriter = SplitSink<WebSocketStream<TcpStream>, WebSocketMessag
 
 pub struct Peer {
     name: String,
-    client_address: IpAddr,
+    client_address: SocketAddr,
     websocket_reader: Option<WebSocketReader>,
     websocket_writer: WebSocketWriter,
     stream_subscriptions: Vec<Subscription>,
@@ -32,7 +32,7 @@ pub struct Peer {
 impl Peer {
     pub fn new(
         name: String,
-        client_address: IpAddr,
+        client_address: SocketAddr,
         websocket_reader: WebSocketReader,
         websocket_writer: WebSocketWriter,
         chat_stream_sharding: Sharding<ChatStreamFactory>,

@@ -99,6 +99,8 @@ async fn allocate(
 ) -> AllocateShardResult {
     hosts.sort_by(|h1, h2| h1.shards.len().cmp(&h2.shards.len()));
 
+    debug!(target: "ShardCoordinator", "shard#{} allocating - available nodes={}", shard_id, hosts.len());
+
     if let Some(host) = hosts.first_mut() {
         let node_id = host.node_id;
 

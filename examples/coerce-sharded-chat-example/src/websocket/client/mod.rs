@@ -1,3 +1,4 @@
+use crate::actor::peer::{JoinChat, SendChatMessage};
 use crate::actor::pubsub::ChatStreamEvent;
 use crate::actor::stream::{ChatMessage, Handshake};
 use coerce::actor::message::EnvelopeType::Remote;
@@ -18,7 +19,7 @@ pub type WebSocketWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>,
 
 pub struct ChatClient {
     name: String,
-    websocket_messages: Receiver<WebSocketMessage>,
+    websocket_messages: Option<Receiver<WebSocketMessage>>,
     websocket_writer: WebSocketWriter,
     is_connected: bool,
     read_task: JoinHandle<()>,
@@ -63,14 +64,25 @@ impl ChatClient {
             name,
             websocket_writer,
             is_connected: false,
-            websocket_messages: receiver,
+            websocket_messages: Some(receiver),
             read_task,
         })
     }
 
+    pub fn take_reader(&mut self) -> Option<Receiver<WebSocketMessage>> {
+        self.websocket_messages.take()
+    }
+
     pub async fn read<M: Message>(&mut self) -> Option<M> {
-        let message =
-            tokio::time::timeout(Duration::from_secs(3), self.websocket_messages.recv()).await;
+        if self.websocket_messages.is_none() {
+            return None;
+        }
+
+        let message = tokio::time::timeout(
+            Duration::from_secs(3),
+            self.websocket_messages.as_mut().unwrap().recv(),
+        )
+        .await;
         match message {
             Ok(message) => {
                 if let Some(message) = message {
@@ -98,6 +110,31 @@ impl ChatClient {
             .send(WebSocketMessage::Binary(buffer))
             .await
             .unwrap();
+    }
+
+    pub async fn join_chat(&mut self, stream_name: String) {
+        self.write(
+            0,
+            JoinChat {
+                stream_name,
+                join_token: None,
+            },
+        )
+        .await;
+    }
+
+    pub async fn chat(&mut self, chat_stream: String, message: String) {
+        self.write(
+            1,
+            SendChatMessage {
+                chat_stream,
+                message: ChatMessage {
+                    sender: String::default(),
+                    message,
+                },
+            },
+        )
+        .await;
     }
 }
 

@@ -194,8 +194,6 @@ impl Handler<HeartbeatTick> for Heartbeat {
             }
         });
 
-        info!("{:?}", updates);
-
         if self.last_heartbeat.is_some() {
             let oldest_healthy_node = updates
                 .iter()
