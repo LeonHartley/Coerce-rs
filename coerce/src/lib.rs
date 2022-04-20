@@ -13,3 +13,5 @@ extern crate log;
 pub mod actor;
 pub mod persistent;
 pub mod remote;
+
+pub(crate) const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

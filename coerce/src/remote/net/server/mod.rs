@@ -19,6 +19,7 @@ use crate::remote::net::proto::network::{
     RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
 };
 use crate::remote::stream::mediator::PublishRaw;
+use crate::CARGO_PKG_VERSION;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use futures::future::FutureExt;
 use opentelemetry::global;
@@ -184,6 +185,10 @@ pub async fn server_loop(
                         ClientEvent::Identity(NodeIdentity {
                             node_id: system.node_id(),
                             node_tag: system.node_tag().to_string(),
+                            application_version: format!(
+                                "pkg_version={},protocol_version=1",
+                                &CARGO_PKG_VERSION
+                            ),
                             addr: node_addr.clone(),
                             node_started_at: Some(datetime_to_timestamp(system.started_at()))
                                 .into(),

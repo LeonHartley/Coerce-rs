@@ -386,7 +386,8 @@ impl RemoteActorSystem {
     }
 
     pub fn register_actor(&self, actor_id: ActorId, node_id: Option<NodeId>) {
-        self.inner
+        let _ = self
+            .inner
             .registry_ref
             .notify(RegisterActor::new(actor_id, node_id));
     }
@@ -400,7 +401,7 @@ impl RemoteActorSystem {
     }
 
     pub fn notify_register_node(&self, node: RemoteNode) {
-        self.inner.registry_ref.notify(RegisterNode(node));
+        let _ = self.inner.registry_ref.notify(RegisterNode(node));
     }
 
     pub async fn get_nodes(&self) -> Vec<RemoteNodeState> {

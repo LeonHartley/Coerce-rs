@@ -4,6 +4,8 @@ use crate::actor::Actor;
 use crate::remote::actor::message::{NewClient, SetRemote};
 use crate::remote::cluster::node::{NodeIdentity, NodeStatus, RemoteNode};
 use crate::remote::net::client::{ClientType, RemoteClient};
+use crate::remote::stream::pubsub::PubSub;
+use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -136,7 +138,22 @@ impl Handler<Forget> for NodeDiscovery {
                 &identity.node.addr, identity.node.id
             );
 
-            self.discovered_nodes_by_id.remove(&identity.node.id);
+            let node = self.discovered_nodes_by_id.remove(&identity.node.id);
+            if let Some(node) = node {
+                if let Some(system) = self.remote_system.as_ref() {
+                    let system = system.clone();
+                    let node = Arc::new(node.node.clone());
+
+                    let _ = tokio::spawn(async move {
+                        PubSub::publish_locally(
+                            SystemTopic,
+                            SystemEvent::Cluster(ClusterEvent::NodeRemoved(node)),
+                            &system,
+                        )
+                        .await;
+                    });
+                }
+            }
         }
     }
 }
@@ -169,9 +186,9 @@ impl NodeDiscovery {
 
     pub async fn register_node(&self, remote: &RemoteActorSystem, node: RemoteNode) {
         let node_addr = node.addr.clone();
-        remote.register_node(node.clone()).await;
-
         if let Some(client) = remote.get_remote_client(node_addr).await {
+            remote.register_node(node.clone()).await;
+
             let seed_nodes = self
                 .remote_system
                 .as_ref()

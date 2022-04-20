@@ -97,11 +97,12 @@ impl Supervised {
                 trace!("actor stopped ({}, status={:?})", actor_id, &status);
                 self.children.remove(&actor_id);
             } else {
-                warn!(
-                    "failed to stop child actor_id={}, err={}",
-                    actor_id,
-                    stop_result.unwrap_err()
-                );
+                match stop_result.unwrap_err() {
+                    ActorRefErr::InvalidRef => {}
+                    e => {
+                        warn!("failed to stop child actor_id={}, err={}", actor_id, e);
+                    }
+                }
             }
         }
     }

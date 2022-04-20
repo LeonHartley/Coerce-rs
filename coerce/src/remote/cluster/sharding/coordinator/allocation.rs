@@ -5,7 +5,9 @@ use crate::actor::message::{
 use crate::actor::{ActorId, ActorRef, LocalActorRef};
 use crate::persistent::{PersistentActor, Recover};
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
-use crate::remote::cluster::sharding::host::{ShardAllocated, ShardAllocator, ShardHost};
+use crate::remote::cluster::sharding::host::{
+    ShardAllocated, ShardAllocator, ShardHost, ShardReallocating,
+};
 use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::cluster::sharding::proto::sharding::{
     AllocateShardResult_AllocateShardErr, AllocateShardResult_Type,
@@ -42,22 +44,19 @@ impl ShardCoordinator {
             .map(|n| n.shards.iter().copied().collect())
     }
 
-    async fn allocate_shard(
+    pub async fn allocate_shard(
         &mut self,
-        shard: AllocateShard,
+        shard_id: ShardId,
         ctx: &mut ActorContext,
     ) -> AllocateShardResult {
-        let shard_entry = self.shards.entry(shard.shard_id);
+        let shard_entry = self.shards.entry(shard_id);
 
         match shard_entry {
-            Entry::Occupied(node) => {
-                AllocateShardResult::AlreadyAllocated(shard.shard_id, *node.get())
-            }
+            Entry::Occupied(node) => AllocateShardResult::AlreadyAllocated(shard_id, *node.get()),
             Entry::Vacant(vacant) => {
                 allocate(
-                    ctx.actor_ref(),
-                    shard.shard_id,
-                    self.hosts.values_mut().collect(),
+                    shard_id,
+                    self.hosts.values_mut().filter(|n| n.is_ready()).collect(),
                     vacant,
                 )
                 .await
@@ -73,11 +72,12 @@ impl Handler<AllocateShard> for ShardCoordinator {
         message: AllocateShard,
         ctx: &mut ActorContext,
     ) -> AllocateShardResult {
-        if self.persist(&message, ctx).await.is_ok() {
-            self.allocate_shard(message, ctx).await
-        } else {
-            warn!(target: "ShardCoordinator", "error persisting a `AllocateShard`, shard_id={}", message.shard_id);
-            AllocateShardResult::Err(AllocateShardErr::Persistence)
+        match self.persist(&message, ctx).await {
+            Ok(_) => self.allocate_shard(message.shard_id, ctx).await,
+            Err(e) => {
+                warn!(target: "ShardCoordinator", "error persisting a `AllocateShard`, shard_id={}, err={}", message.shard_id, e);
+                AllocateShardResult::Err(AllocateShardErr::Persistence)
+            }
         }
     }
 }
@@ -87,16 +87,17 @@ impl Recover<AllocateShard> for ShardCoordinator {
     async fn recover(&mut self, message: AllocateShard, ctx: &mut ActorContext) {
         trace!(target: "ShardCoordinator", "recovered `AllocateShard`, shard_id={}", message.shard_id);
 
-        self.allocate_shard(message, ctx).await;
+        self.allocate_shard(message.shard_id, ctx).await;
     }
 }
 
 async fn allocate(
-    coordinator: LocalActorRef<ShardCoordinator>,
     shard_id: ShardId,
     mut hosts: Vec<&mut ShardHostState>,
     shard_entry: VacantEntry<'_, ShardId, NodeId>,
 ) -> AllocateShardResult {
+    // TODO: weighted ordering - shards with more entities should have a higher weight, the more shards*
+
     hosts.sort_by(|h1, h2| h1.shards.len().cmp(&h2.shards.len()));
 
     debug!(target: "ShardCoordinator", "shard#{} allocating - available nodes={:#?}", shard_id, &hosts);
@@ -109,7 +110,6 @@ async fn allocate(
         shard_entry.insert(node_id);
         if host.shards.insert(shard_id) {
             tokio::spawn(broadcast_allocation(
-                coordinator,
                 shard_id,
                 host.node_id,
                 hosts.iter().map(|h| h.actor.clone()).collect(),
@@ -122,8 +122,7 @@ async fn allocate(
     }
 }
 
-async fn broadcast_allocation(
-    _coordinator: LocalActorRef<ShardCoordinator>,
+pub async fn broadcast_allocation(
     shard_id: ShardId,
     node_id: NodeId,
     hosts: Vec<ActorRef<ShardHost>>,
@@ -145,6 +144,27 @@ async fn broadcast_allocation(
                 host.send(ShardAllocated(shard_id, node_id)).await
             });
         }
+    }
+
+    let _results = join_all(futures).await;
+    trace!(target: "ShardCoordinator", "broadcast to all nodes complete");
+}
+
+pub async fn broadcast_reallocation(shard_id: ShardId, hosts: Vec<ActorRef<ShardHost>>) {
+    trace!(target: "ShardCoordinator", "shard reallocating (shard=#{}), broadcasting to all shard hosts", shard_id);
+    let mut futures = vec![];
+
+    for host in hosts {
+        futures.push(async move {
+            let host = host;
+
+            trace!(
+                "emitting ShardReallocating to node_id={}",
+                host.node_id().unwrap_or(0)
+            );
+
+            host.send(ShardReallocating(shard_id)).await
+        });
     }
 
     let _results = join_all(futures).await;

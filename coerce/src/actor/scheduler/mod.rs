@@ -202,9 +202,9 @@ where
         });
 
         if let Some(remote) = &self.remote {
-            info!(target: "ActorScheduler", "[node={}] GetActor(actor_id={}) actor_found={}", remote.node_id(), &message.id, actor_ref.is_some())
+            debug!(target: "ActorScheduler", "[node={}] GetActor(actor_id={}) actor_found={}", remote.node_id(), &message.id, actor_ref.is_some())
         } else {
-            info!(target: "ActorScheduler", "[no-remote-attached] GetActor(actor_id={}) actor_found={}", &message.id, actor_ref.is_some())
+            debug!(target: "ActorScheduler", "[no-remote-attached] GetActor(actor_id={}) actor_found={}", &message.id, actor_ref.is_some())
         }
 
         actor_ref

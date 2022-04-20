@@ -3,7 +3,12 @@ use crate::remote::net::proto::network::{
 };
 use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::Topic;
+use std::sync::Arc;
 
+use crate::remote::cluster::node::RemoteNode;
+use crate::remote::net::client::receive::parse_proto_node;
+use crate::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
+use crate::remote::net::proto::network as proto;
 use crate::remote::system::NodeId;
 use protobuf::{Message, ProtobufEnum, ProtobufError};
 
@@ -11,8 +16,8 @@ pub struct SystemTopic;
 
 #[derive(Debug)]
 pub enum ClusterEvent {
-    NodeAdded(NodeId),
-    NodeRemoved(NodeId),
+    NodeAdded(Arc<RemoteNode>),
+    NodeRemoved(Arc<RemoteNode>),
     LeaderChanged(NodeId),
 }
 
@@ -31,13 +36,33 @@ impl Topic for SystemTopic {
 
 impl From<NewNodeEvent> for SystemEvent {
     fn from(message: NewNodeEvent) -> Self {
-        SystemEvent::Cluster(ClusterEvent::NodeAdded(message.get_node_id()))
+        let node = message.node.unwrap();
+
+        SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(RemoteNode {
+            id: node.node_id,
+            addr: node.addr,
+            tag: node.tag,
+            node_started_at: node
+                .node_started_at
+                .into_option()
+                .map(|d| timestamp_to_datetime(d)),
+        })))
     }
 }
 
 impl From<NodeRemovedEvent> for SystemEvent {
     fn from(message: NodeRemovedEvent) -> Self {
-        SystemEvent::Cluster(ClusterEvent::NodeRemoved(message.get_node_id()))
+        let node = message.node.unwrap();
+
+        SystemEvent::Cluster(ClusterEvent::NodeRemoved(Arc::new(RemoteNode {
+            id: node.node_id,
+            addr: node.addr,
+            tag: node.tag,
+            node_started_at: node
+                .node_started_at
+                .into_option()
+                .map(|d| timestamp_to_datetime(d)),
+        })))
     }
 }
 impl From<LeaderChangedEvent> for SystemEvent {
@@ -70,17 +95,17 @@ impl StreamData for SystemEvent {
     fn write_to_bytes(&self) -> Option<Vec<u8>> {
         match self {
             SystemEvent::Cluster(cluster) => match cluster {
-                ClusterEvent::NodeAdded(node_id) => {
+                ClusterEvent::NodeAdded(node) => {
                     let event = NewNodeEvent {
-                        node_id: *node_id,
+                        node: Some(get_proto_node(node.as_ref())).into(),
                         ..NewNodeEvent::default()
                     };
 
                     write_event(SysEvent::ClusterNewNode, event.write_to_bytes())
                 }
-                ClusterEvent::NodeRemoved(node_id) => {
+                ClusterEvent::NodeRemoved(node) => {
                     let event = NodeRemovedEvent {
-                        node_id: *node_id,
+                        node: Some(get_proto_node(node.as_ref())).into(),
                         ..NodeRemovedEvent::default()
                     };
 
@@ -97,6 +122,21 @@ impl StreamData for SystemEvent {
             },
         }
     }
+}
+
+fn get_proto_node(node: &RemoteNode) -> proto::RemoteNode {
+    proto::RemoteNode {
+        node_id: node.id,
+        addr: node.addr.clone(),
+        tag: node.tag.clone(),
+        node_started_at: node
+            .node_started_at
+            .as_ref()
+            .map(datetime_to_timestamp)
+            .into(),
+        ..proto::RemoteNode::default()
+    }
+    .into()
 }
 
 fn write_event(system_event: SysEvent, message: Result<Vec<u8>, ProtobufError>) -> Option<Vec<u8>> {

@@ -92,13 +92,7 @@ impl Handler<Connect> for RemoteClient {
         let _enter = span.enter();
 
         if let Some(connection_state) = self.connect(message, ctx).await {
-            while let Some(callback) = self.on_identified_callbacks.pop() {
-                let _ = callback.send(Some(connection_state.identity.clone()));
-            }
-
-            self.node_id = Some(connection_state.identity.node.id);
             let client_actor_ref = self.actor_ref(ctx);
-
             let _ = ctx
                 .system()
                 .remote()
@@ -109,6 +103,12 @@ impl Handler<Connect> for RemoteClient {
                     client_actor_ref,
                 })
                 .await;
+
+            while let Some(callback) = self.on_identified_callbacks.pop() {
+                let _ = callback.send(Some(connection_state.identity.clone()));
+            }
+
+            self.node_id = Some(connection_state.identity.node.id);
 
             self.state = Some(ClientState::Connected(connection_state));
 

@@ -7,7 +7,7 @@ use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
 use crate::remote::cluster::sharding::coordinator::stats::GetShardingStats;
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
-use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
+use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost, StopShard};
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::builder::RemoteActorHandlerBuilder;
@@ -156,6 +156,7 @@ pub fn sharding(builder: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHand
         .with_handler::<ShardCoordinator, AllocateShard>("ShardCoordinator.AllocateShard")
         .with_handler::<ShardCoordinator, GetShardingStats>("ShardCoordinator.GetShardingStats")
         .with_handler::<ShardHost, ShardAllocated>("ShardHost.ShardAllocated")
+        .with_handler::<ShardHost, StopShard>("ShardHost.StopShard")
         .with_handler::<Shard, RemoteEntityRequest>("Shard.RemoteEntityRequest")
         .with_handler::<Shard, GetShardStats>("Shard.GetShardStats")
 }

@@ -133,7 +133,7 @@ impl StreamReceiver for ClientMessageReceiver {
     }
 }
 
-fn parse_proto_node(n: proto::network::RemoteNode) -> RemoteNode {
+pub fn parse_proto_node(n: proto::network::RemoteNode) -> RemoteNode {
     RemoteNode {
         id: n.get_node_id(),
         addr: n.addr,
@@ -142,7 +142,7 @@ fn parse_proto_node(n: proto::network::RemoteNode) -> RemoteNode {
     }
 }
 
-fn parse_proto_node_identity(n: &proto::network::NodeIdentity) -> RemoteNode {
+pub fn parse_proto_node_identity(n: &proto::network::NodeIdentity) -> RemoteNode {
     RemoteNode {
         id: n.get_node_id(),
         addr: n.addr.clone(),

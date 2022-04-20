@@ -1,6 +1,7 @@
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::Handler;
 use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef};
+use crate::remote::cluster::sharding::coordinator::discovery::{NodeDiscovered, NodeForgotten};
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::{LeaderAllocated, ShardHost};
 use crate::remote::stream::pubsub::{PubSub, StreamEvent, Subscription};
@@ -86,7 +87,7 @@ impl Actor for CoordinatorSpawner {
                 self.start_coordinator(ctx).await;
             }
         } else {
-            info!(
+            debug!(
                 target: COORDINATOR_SPAWNER,
                 "[node={}] no leader allocated", self.node_id
             );
@@ -105,23 +106,28 @@ impl Handler<StreamEvent<SystemTopic>> for CoordinatorSpawner {
     async fn handle(&mut self, message: StreamEvent<SystemTopic>, ctx: &mut ActorContext) {
         match message {
             StreamEvent::Receive(msg) => {
-                info!(
+                debug!(
                     target: COORDINATOR_SPAWNER,
                     "[node={}] received system event - {:?}", self.node_id, msg
                 );
+
                 match msg.as_ref() {
                     SystemEvent::Cluster(event) => match event {
-                        &ClusterEvent::NodeAdded(node_id) => {
+                        ClusterEvent::NodeAdded(node) => {
                             if let Some(coordinator) = &self.coordinator {
+                                let _ = coordinator.notify(NodeDiscovered(node.clone()));
                             }
                         }
-                        &ClusterEvent::NodeRemoved(node_id) => {
-                            if let Some(coordinator) = &self.coordinator {
 
+                        ClusterEvent::NodeRemoved(node) => {
+                            if let Some(coordinator) = &self.coordinator {
+                                let _ = coordinator.notify(NodeForgotten(node.clone()));
                             }
                         }
-                        &ClusterEvent::LeaderChanged(leader_node_id) => {
-                            info!(
+
+                        ClusterEvent::LeaderChanged(leader_node_id) => {
+                            let leader_node_id = *leader_node_id;
+                            debug!(
                                 target: COORDINATOR_SPAWNER,
                                 "[node={}] Leader changed, leader_node_id={}",
                                 self.node_id,

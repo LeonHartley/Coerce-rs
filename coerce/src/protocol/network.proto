@@ -175,13 +175,13 @@ enum SystemEvent {
 }
 
 message NewNodeEvent {
-  uint64 node_id = 1;
+  RemoteNode node = 1;
 
   string trace_id = 2;
 }
 
 message NodeRemovedEvent {
-  uint64 node_id = 1;
+  RemoteNode node = 1;
 
   string trace_id = 2;
 }

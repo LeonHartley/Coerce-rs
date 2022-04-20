@@ -126,12 +126,10 @@ impl RemoteClientRef {
 
         let (tx, rx) = oneshot::channel();
 
-        info!("notify beginhandshake");
         if let Err(e) = self.client.notify(BeginHandshake {
             seed_nodes,
             on_handshake_complete: tx,
         }) {
-            info!("err beginhandshake");
             Err(e)
         } else {
             await_timeout(REMOTE_CLIENT_HANDSHAKE_TIMEOUT, rx).await

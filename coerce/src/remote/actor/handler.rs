@@ -1,34 +1,26 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Exec, Handler};
+use crate::actor::message::Handler;
 use crate::remote::actor::message::{
     ClientConnected, ClientWrite, GetActorNode, GetNodes, NewClient, PopRequest, PushRequest,
-    RegisterActor, RegisterNode, RegisterNodes, SetRemote, UpdateNodes,
+    RegisterActor, RegisterNode, SetRemote, UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
 };
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
-use crate::remote::net::client::{ClientType, RemoteClient};
-use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::net::client::RemoteClient;
 use std::collections::hash_map::Entry;
-
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, FindActor};
 
 use crate::actor::{Actor, ActorId, LocalActorRef};
+use crate::remote::net::client::send::Write;
 use crate::remote::stream::pubsub::{PubSub, StreamEvent};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::tracing::extract_trace_identifier;
-
-use crate::remote::net::client::connect::Connect;
-use crate::remote::net::client::send::Write;
-use crate::remote::net::client::ClientType::Worker;
 use protobuf::Message;
-use std::time::Instant;
-use tokio::sync::oneshot;
 use uuid::Uuid;
 
 #[async_trait]
@@ -81,7 +73,7 @@ impl Handler<RegisterNode> for RemoteRegistry {
         if ctx.system().is_remote() {
             PubSub::publish_locally(
                 SystemTopic,
-                SystemEvent::Cluster(ClusterEvent::NodeAdded(message.0.id)),
+                SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(message.0.clone()))),
                 self.system.as_ref().unwrap(),
             )
             .await;
@@ -145,19 +137,20 @@ impl Handler<ClientConnected> for RemoteClientRegistry {
 #[async_trait]
 impl Handler<ClientWrite> for RemoteClientRegistry {
     async fn handle(&mut self, message: ClientWrite, _ctx: &mut ActorContext) {
-        let client_id = message.0;
+        let node_id = message.0;
         let message = message.1;
 
         // TODO: we could open multiple clients per node and use some routing mechanism
         //       to potentially improve throughput, whilst still maintaining
         //       message ordering
 
-        if let Some(client) = self.node_id_registry.get_mut(&client_id) {
-            debug!(target: "RemoteClientRegistry", "writing data to client");
+        if let Some(client) = self.node_id_registry.get_mut(&node_id) {
+            debug!(target: "RemoteClientRegistry", "emitting message ({:?}) to node_id={}", &message, &node_id);
             client.send(Write(message)).await.expect("send client msg");
             debug!(target: "RemoteClientRegistry", "written data to client");
         } else {
-            warn!(target: "RemoteClientRegistry", "client {} not found", &client_id);
+            // TODO: should we buffer the message incase the client will eventually exist
+            warn!(target: "RemoteClientRegistry", "attempted to write message to node_id={} but no client was registered (message={:?})", &node_id, &message);
         }
     }
 }

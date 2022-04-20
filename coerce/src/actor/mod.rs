@@ -9,16 +9,12 @@ use crate::remote::RemoteActorRef;
 use log::error;
 
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
-use std::any::Any;
-use std::error::Error;
-use std::fmt::{Debug, Formatter};
-use std::path::Display;
-
 use crate::actor::supervised::Terminated;
 use crate::remote::system::NodeId;
 use futures::SinkExt;
+use std::any::Any;
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use uuid::Uuid;
@@ -443,8 +439,8 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
-        let message_type = msg.name();
-        let actor_type = A::type_name();
+        // let message_type = msg.name();
+        // let actor_type = A::type_name();
         // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
         // let _enter = span.enter();
 
@@ -471,14 +467,14 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
-        let message_type = msg.name();
-        let span = tracing::span!(
-            tracing::Level::TRACE,
-            "LocalActorRef::notify",
-            message_type = message_type
-        );
-
-        let _enter = span.enter();
+        // let message_type = msg.name();
+        // let span = tracing::span!(
+        //     tracing::Level::TRACE,
+        //     "LocalActorRef::notify",
+        //     message_type = message_type
+        // );
+        //
+        // let _enter = span.enter();
 
         match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
             Ok(_) => Ok(()),

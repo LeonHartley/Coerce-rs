@@ -1,6 +1,5 @@
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 
 pub struct ActorSystemMetrics {
     total_messages_processed: AtomicU64,

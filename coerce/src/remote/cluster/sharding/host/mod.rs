@@ -90,8 +90,10 @@ impl Message for GetCoordinator {
 
 pub struct ShardAllocated(pub ShardId, pub NodeId);
 
+pub struct ShardReallocating(pub ShardId);
+
 pub struct StopShard {
-    shard_id: ShardId,
+    pub shard_id: ShardId,
 }
 
 pub struct StartEntity {
@@ -144,6 +146,10 @@ impl Handler<ShardAllocated> for ShardHost {
         let shard_actor_id = shard_actor_id(&self.shard_entity, shard_id);
 
         if node_id == remote.node_id() {
+            if self.remote_shards.contains_key(&shard_id) {
+                let _ = self.remote_shards.remove(&shard_id);
+            }
+
             if ctx.boxed_child_ref(&shard_actor_id).is_some() {
                 return;
             }
@@ -163,6 +169,10 @@ impl Handler<ShardAllocated> for ShardHost {
             self.hosted_shards
                 .insert(shard_id, ShardState { actor: shard });
         } else {
+            // if self.hosted_shards.contains_key(&shard_id) {
+            //     // log an error or a warning?
+            // }
+
             let shard_actor =
                 RemoteActorRef::new(shard_actor_id, node_id, ctx.system().remote_owned()).into();
 
@@ -181,6 +191,13 @@ impl Handler<ShardAllocated> for ShardHost {
                 self.handle(request, ctx).await;
             }
         }
+    }
+}
+
+#[async_trait]
+impl Handler<ShardReallocating> for ShardHost {
+    async fn handle(&mut self, message: ShardReallocating, ctx: &mut ActorContext) {
+        let _ = self.remote_shards.remove(&message.0);
     }
 }
 
@@ -205,6 +222,10 @@ impl Handler<StopShard> for ShardHost {
 
 pub fn shard_actor_id(shard_entity: &String, shard_id: ShardId) -> ActorId {
     format!("{}-Shard#{}", &shard_entity, shard_id)
+}
+
+impl Message for ShardReallocating {
+    type Result = ();
 }
 
 impl Message for ShardAllocated {

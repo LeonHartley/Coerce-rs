@@ -7,6 +7,7 @@ use crate::remote::net::proto::network::{
 use crate::remote::net::StreamData;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use protobuf::{Message, ProtobufEnum, ProtobufError};
+use std::fmt::Debug;
 
 pub enum ClientEvent {
     Identity(NodeIdentity),

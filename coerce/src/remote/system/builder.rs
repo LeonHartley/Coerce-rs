@@ -141,7 +141,7 @@ impl RemoteActorSystemBuilder {
         let registry_ref_clone = registry_ref.clone();
 
         let discovery_ref = NodeDiscovery::default()
-            .into_anon_actor(Some(format!("RemoteClientRegistry-{}", system_tag)), &inner)
+            .into_anon_actor(Some(format!("NodeDiscovery-{}", system_tag)), &inner)
             .await
             .expect("unable to create NodeDiscovery actor");
 
@@ -153,8 +153,6 @@ impl RemoteActorSystemBuilder {
             &inner,
         )
         .await;
-
-        let heartbeat_ref_clone = heartbeat_ref.clone();
 
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
