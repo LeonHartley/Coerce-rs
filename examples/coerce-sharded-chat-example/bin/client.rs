@@ -1,18 +1,16 @@
 use chrono::Local;
 use clap::{arg, Command};
-use coerce_sharded_chat_example::actor::peer::{JoinChat, SendChatMessage};
-use coerce_sharded_chat_example::actor::stream::ChatMessage;
+
 use coerce_sharded_chat_example::websocket::client::ChatClient;
-use futures::StreamExt;
 use std::env;
 use std::io::Write;
-use std::str::{FromStr, Split};
+use std::str::FromStr;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::Receiver;
 use tokio_tungstenite::tungstenite::Message;
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 #[tokio::main]
 pub async fn main() {
@@ -73,6 +71,18 @@ async fn process_command(line: String, client: &mut ChatClient, current_chat: &m
             client.join_chat(stream_name.clone()).await;
             current_chat.replace(stream_name);
         }
+        Some("/spam") => {
+            if let Some(current_chat) = current_chat {
+                let mut i = 0;
+                loop {
+                    client
+                        .chat(current_chat.to_string(), format!("{}", i))
+                        .await;
+
+                    i += 1;
+                }
+            }
+        }
 
         _ => {
             error!("invalid command, commands available: /join <stream name>");
@@ -81,20 +91,12 @@ async fn process_command(line: String, client: &mut ChatClient, current_chat: &m
 }
 
 fn setup_logging(log_level: &str) {
-    let _ = env_logger::Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] {} - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"),
-                record.level(),
-                record.target(),
-                record.args(),
-            )
-        })
-        .filter(
-            None,
-            log::LevelFilter::from_str(log_level).expect("valid log level"),
-        )
-        .try_init();
+    tracing_subscriber::fmt()
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(true)
+        .with_thread_names(true)
+        .with_ansi(false)
+        .with_max_level(tracing::Level::from_str(log_level).unwrap())
+        .init();
 }

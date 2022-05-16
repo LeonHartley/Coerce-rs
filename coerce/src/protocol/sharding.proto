@@ -16,6 +16,14 @@ message ShardAllocated {
   RemoteShard shard = 1;
 }
 
+message ShardReallocating {
+  uint32 shard_id = 1;
+}
+
+message StopShard {
+  uint32 shard_id = 1;
+}
+
 message AllocateShardResult {
   enum Type {
     ALLOCATED = 0;

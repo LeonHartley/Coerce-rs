@@ -28,7 +28,7 @@ impl<M: StreamData> Handler<Write<M>> for RemoteClient {
 
 impl RemoteClient {
     pub async fn flush_buffered_writes(&mut self) {
-        let mut connection_state = match &mut self.state {
+        let connection_state = match &mut self.state {
             Some(ClientState::Connected(connection_state)) => connection_state,
             _ => return,
         };

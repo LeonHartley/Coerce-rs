@@ -4,22 +4,21 @@ Coerce-rs is an asynchronous (async/await) Actor runtime and distributed system 
 extremely simple yet powerful actor-based distributed system development. With minimal code, you can build a highly
 scalable, fault-tolerant modern actor-driven application.
 
-
-
 ## Features
 
-- Actors
-    - Supervision / child spawning
-    - Location-transparent ActorRef types (ActorRef may comprise of a LocalActorRef or a RemoteActorRef)
+### Actors
+ - Type-safe actors
+ - Supervision / child spawning
+ - Location-transparent `ActorRef<A>` types (ActorRef may comprise of a `LocalActorRef<A>` or a `RemoteActorRef<A>`)
+ - Metrics available out of the box
 
-- Remoting
-    - Communicate with an actor from anywhere in the cluster
-    - Actors can be deployed locally or to other remote nodes
-    - Protobuf network protocol
-    - Actor-driven networking layer
+## Remoting
+  - Communicate with an actor from anywhere in the cluster
+  - Actors can be deployed locally or to other remote nodes
+  - Protobuf network protocol
+  - Actor-driven networking layer
 
-
-### Distributed sharding
+### Distributed Sharding
 
 - Actor IDs can resolve to specific shards, which can be spread across a cluster of Coerce nodes
 - Automatic load balancing, shards will be fairly allocated across the cluster
@@ -38,7 +37,7 @@ scalable, fault-tolerant modern actor-driven application.
 
 ### HTTP API
 
-- Easily accessible statistics and information useful for diagnosis
+- Easily accessible metrics and information useful for diagnosis
 
 # How to build
 Building Coerce is easy. All you need is the latest Rust stable or nightly installed, along with Cargo.

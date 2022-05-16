@@ -1,10 +1,8 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
+use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::ActorId;
 use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::ShardHost;
+
 use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::NodeId;

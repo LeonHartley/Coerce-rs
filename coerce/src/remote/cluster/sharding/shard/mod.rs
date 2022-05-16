@@ -1,8 +1,6 @@
-use crate::actor::context::{ActorContext, ActorStatus};
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
-use crate::actor::system::ActorSystem;
+use crate::actor::context::ActorContext;
+use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
@@ -86,6 +84,10 @@ struct ShardStateSnapshot {
 
 #[async_trait]
 impl PersistentActor for Shard {
+    fn persistence_key(&self, ctx: &ActorContext) -> String {
+        ctx.id().to_owned()
+    }
+
     fn configure(types: &mut JournalTypes<Self>) {
         types
             .snapshot::<ShardStateSnapshot>("ShardStateSnapshot")
@@ -133,14 +135,14 @@ impl TimerTick for PassivationTimerTick {}
 impl Shard {
     async fn start_entity(
         &mut self,
-        actor_id: ActorId,
+        actor_id: &ActorId,
         recipe: &Vec<u8>,
         ctx: &mut ActorContext,
         is_recovering: bool,
     ) -> Result<BoxedActorRef, ActorRefErr> {
         let entity = self
             .handler
-            .create(Some(actor_id.clone()), recipe.clone(), Some(ctx))
+            .create(Some(actor_id.clone()), recipe.clone(), Some(ctx), None)
             .await;
 
         self.entities.insert(
@@ -154,14 +156,15 @@ impl Shard {
         );
 
         if !is_recovering && self.persistent_entities && entity.is_ok() {
-            self.persist(
-                &StartEntity {
-                    actor_id,
-                    recipe: recipe.clone(),
-                },
-                ctx,
-            )
-            .await;
+            let _persist_res = self
+                .persist(
+                    &StartEntity {
+                        actor_id: actor_id.clone(),
+                        recipe: recipe.clone(),
+                    },
+                    ctx,
+                )
+                .await;
         }
 
         entity.map(|entity| {
@@ -185,15 +188,22 @@ impl Shard {
             .collect();
 
         for entity in entities {
-            self.start_entity(entity.actor_id, &entity.recipe, ctx, true)
-                .await;
+            if let Err(e) = self
+                .start_entity(&entity.actor_id, &entity.recipe, ctx, true)
+                .await
+            {
+                warn!(
+                    "unable to start recovered entity (actor_id={}, shard_id={}, error={})",
+                    &entity.actor_id, &self.shard_id, e
+                )
+            }
         }
     }
 }
 
 #[async_trait]
 impl Handler<PassivationTimerTick> for Shard {
-    async fn handle(&mut self, message: PassivationTimerTick, ctx: &mut ActorContext) {}
+    async fn handle(&mut self, _message: PassivationTimerTick, _ctx: &mut ActorContext) {}
 }
 
 #[async_trait]
@@ -204,7 +214,7 @@ impl Handler<StartEntity> for Shard {
         */
 
         let _res = self
-            .start_entity(message.actor_id, message.recipe.as_ref(), ctx, false)
+            .start_entity(&message.actor_id, message.recipe.as_ref(), ctx, false)
             .await;
     }
 }
@@ -261,18 +271,16 @@ impl Handler<EntityRequest> for Shard {
                           starting should be buffered and emitted once the Shard receives confirmation that the actor was created
                 */
                 Some(recipe) => match self
-                    .start_entity(actor_id, recipe.as_ref(), ctx, false)
+                    .start_entity(&actor_id, recipe.as_ref(), ctx, false)
                     .await
                 {
                     Ok(actor) => actor,
                     Err(_err) => {
-                        // TODO: Send actor could not be created err
                         result_channel.map(|m| m.send(Err(ActorRefErr::ActorUnavailable)));
                         return;
                     }
                 },
                 None => {
-                    // TODO: send actor doesnt exist (and cannot be created) err
                     result_channel.map(|m| m.send(Err(ActorRefErr::NotFound(actor_id))));
                     return;
                 }
@@ -315,22 +323,21 @@ impl Handler<RemoteEntityRequest> for Shard {
 
         let system = ctx.system().remote_owned();
         tokio::spawn(async move {
-            match rx.await {
-                Ok(bytes) => match bytes {
-                    Ok(result) => {
-                        let message_id = request_id.to_string();
-                        let result = SessionEvent::Result(ClientResult {
-                            message_id,
-                            result,
-                            ..Default::default()
-                        });
+            if let Ok(Ok(result)) = rx.await {
+                let message_id = request_id.to_string();
+                let result = SessionEvent::Result(ClientResult {
+                    message_id,
+                    result,
+                    ..Default::default()
+                });
 
-                        system.node_rpc_raw(request_id, result, origin_node).await;
-                    }
-                    _ => {}
-                },
-                Err(_) => {}
-            };
+                if let Err(e) = system.node_rpc_raw(request_id, result, origin_node).await {
+                    error!(
+                        "error whilst sending result to target node (node_id={}, request_id={}) error: {}",
+                        &origin_node, &request_id, &e
+                    );
+                }
+            }
         });
     }
 }
@@ -382,7 +389,7 @@ impl Recover<RemoveEntity> for Shard {
 
 #[async_trait]
 impl RecoverSnapshot<ShardStateSnapshot> for Shard {
-    async fn recover(&mut self, snapshot: ShardStateSnapshot, ctx: &mut ActorContext) {
+    async fn recover(&mut self, snapshot: ShardStateSnapshot, _ctx: &mut ActorContext) {
         trace!(
             "shard#{} recovered {} entities",
             &snapshot.shard_id,
@@ -428,7 +435,7 @@ impl Snapshot for ShardStateSnapshot {
         let proto = proto::ShardStateSnapshot::parse_from_bytes(&b);
 
         proto.map_or_else(
-            |e| Err(MessageUnwrapErr::DeserializationErr),
+            |_e| Err(MessageUnwrapErr::DeserializationErr),
             |s| {
                 Ok(Self {
                     entities: s

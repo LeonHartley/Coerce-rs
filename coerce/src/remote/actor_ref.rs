@@ -65,7 +65,7 @@ where
 
         match request {
             Some(request) => {
-                self.system.send_message(self.node_id, request).await;
+                self.system.notify_node(self.node_id, request).await;
                 Ok(())
             }
 
@@ -92,7 +92,7 @@ where
 
         match event {
             Some(event) => {
-                self.system.send_message(self.node_id, event).await;
+                self.system.notify_node(self.node_id, event).await;
                 match res_rx.await {
                     Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
                         Ok(res) => Ok(res),

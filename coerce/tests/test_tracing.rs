@@ -8,12 +8,13 @@ struct TracingActor;
 
 impl Actor for TracingActor {}
 
+#[tracing::instrument]
 async fn app() {
     let sys = ActorSystem::new();
 
     for i in 0..10 {
         let actor_id = format!("actor-id-{}", i);
-        tracing::info!(message = "starting actor", actor_id = actor_id.as_str());
+        tracing::info!(actor_id = actor_id.as_str(), message = "starting actor",);
 
         TracingActor
             .into_actor(Some(format!("actor-id-{}", i)), &sys)

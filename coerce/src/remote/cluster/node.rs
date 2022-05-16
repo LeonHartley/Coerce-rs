@@ -5,7 +5,7 @@ use hashring::HashRing;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub struct RemoteNodeStore {
     nodes: HashMap<NodeId, RemoteNodeState>,

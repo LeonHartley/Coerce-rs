@@ -14,7 +14,7 @@ use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
-use tokio::time::Duration;
+
 use util::*;
 
 #[derive(Serialize, Deserialize)]
@@ -41,7 +41,7 @@ impl ActorFactory for TestActorFactory {
     type Recipe = TestActorRecipe;
 
     async fn create(&self, _recipe: Self::Recipe) -> Result<TestActor, ActorCreationErr> {
-        log::trace!("recipe create :D");
+        tracing::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(TestActor {
             status: None,
@@ -72,7 +72,7 @@ impl ActorFactory for EchoActorFactory {
     type Recipe = EchoActorRecipe;
 
     async fn create(&self, _recipe: Self::Recipe) -> Result<EchoActor, ActorCreationErr> {
-        log::trace!("recipe create :D");
+        tracing::trace!("recipe create :D");
         // could do some mad shit like look in the db for the user data etc, if fails - fail the actor creation
         Ok(EchoActor {})
     }
@@ -140,9 +140,9 @@ pub async fn test_remote_cluster_workers() {
     let nodes_b = remote_2_c.get_nodes().await;
     let nodes_c = remote_3_c.get_nodes().await;
 
-    log::info!("a: {:?}", &nodes_a);
-    log::info!("b: {:?}", &nodes_b);
-    log::info!("c: {:?}", &nodes_c);
+    tracing::info!("a: {:?}", &nodes_a);
+    tracing::info!("b: {:?}", &nodes_b);
+    tracing::info!("c: {:?}", &nodes_c);
 
     let nodes_a_in_b = nodes_a.iter().filter(|n| nodes_b.contains(n)).count();
     let nodes_a_in_c = nodes_a.iter().filter(|n| nodes_c.contains(n)).count();

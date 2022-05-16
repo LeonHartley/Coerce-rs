@@ -1,17 +1,14 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorRef, ActorRefErr, LocalActorRef};
+use crate::actor::{ActorRef, ActorRefErr, LocalActorRef};
 use crate::remote::api::sharding::ShardingApi;
-use crate::remote::cluster::sharding::coordinator::stats::{
-    GetShardingStats, NodeStats, ShardingStats,
-};
+use crate::remote::cluster::sharding::coordinator::stats::{GetShardingStats, NodeStats};
 use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::stats::RemoteShard;
 use crate::remote::cluster::sharding::host::{shard_actor_id, GetCoordinator};
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::stats::ShardStats as ShardActorStats;
 use crate::remote::cluster::sharding::shard::Shard;
-use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::system::NodeId;
 use crate::remote::RemoteActorRef;
 use axum::extract::Path;
 use axum::response::IntoResponse;
@@ -86,16 +83,23 @@ impl Handler<GetClusterStats> for ShardingApi {
                 let self_node_id = remote.node_id();
                 for shard in sharding_stats.shards {
                     let actor_id = shard_actor_id(&message.entity_type, shard.shard_id);
-                    shards.push(if shard.node_id == self_node_id {
-                        remote
-                            .actor_system()
-                            .get_tracked_actor(actor_id)
-                            .await
-                            .unwrap()
-                            .into()
+
+                    let shard_actor_ref = if shard.node_id == self_node_id {
+                        let local_actor = remote.actor_system().get_tracked_actor(actor_id).await;
+                        if let Some(actor) = local_actor {
+                            actor.into()
+                        } else {
+                            warn!(
+                                "could not find local shard actor (actor_id={})",
+                                shard_actor_id(&message.entity_type, shard.shard_id)
+                            );
+                            continue;
+                        }
                     } else {
                         RemoteActorRef::<Shard>::new(actor_id, shard.node_id, remote.clone()).into()
-                    });
+                    };
+
+                    shards.push(shard_actor_ref);
                 }
 
                 let nodes: Vec<ShardingNode> =
@@ -106,7 +110,7 @@ impl Handler<GetClusterStats> for ShardingApi {
                 let shards: Vec<ShardStats> =
                     results.into_iter().map(|s| s.unwrap().into()).collect();
 
-                tx.send(Some(ShardingClusterStats {
+                let _ = tx.send(Some(ShardingClusterStats {
                     entity_type: sharding_stats.entity_type,
                     total_shards: sharding_stats.total_shards,
                     total_nodes: nodes.len() as u32,

@@ -1,23 +1,21 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::Timer;
-use crate::actor::{Actor, IntoActor, LocalActorRef};
+use crate::actor::{Actor, LocalActorRef};
 use crate::remote::actor::message::ClientConnected;
 use crate::remote::cluster::discovery::{Discover, Seed};
-use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
+use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::client::ping::PingTick;
 use crate::remote::net::client::receive::{ClientMessageReceiver, HandshakeAcknowledge};
 use crate::remote::net::client::send::write_bytes;
 use crate::remote::net::client::{
-    BeginHandshake, ClientState, ClientType, ConnectionState, HandshakeStatus, RemoteClient,
+    BeginHandshake, ClientState, ConnectionState, HandshakeStatus, RemoteClient,
 };
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
 use crate::remote::net::proto::network as proto;
 use crate::remote::net::{receive_loop, StreamData};
-use crate::remote::system::{NodeId, RemoteActorSystem};
-use crate::remote::tracing::extract_trace_identifier;
-use std::sync::Arc;
+
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
@@ -46,7 +44,7 @@ impl RemoteClient {
         let (read, writer) = tokio::io::split(stream);
 
         let reader = FramedRead::new(read, NetworkCodec);
-        let mut write = FramedWrite::new(writer, NetworkCodec);
+        let write = FramedWrite::new(writer, NetworkCodec);
 
         let (identity_tx, identity_rx) = oneshot::channel();
 
@@ -135,7 +133,10 @@ impl Handler<BeginHandshake> for RemoteClient {
     async fn handle(&mut self, message: BeginHandshake, ctx: &mut ActorContext) {
         let mut connection = match &mut self.state {
             Some(ClientState::Connected(connection)) => connection,
-            _ => return,
+            _ => {
+                error!("dropping handshake, connection is not open");
+                return;
+            }
         };
 
         let remote = ctx.system().remote_owned();
@@ -209,15 +210,19 @@ impl Handler<HandshakeAcknowledge> for RemoteClient {
 #[async_trait]
 impl Handler<Disconnected> for RemoteClient {
     async fn handle(&mut self, _msg: Disconnected, ctx: &mut ActorContext) {
-        // TODO: try to connect again, if fails after {n} attempts with a timeout,
-        //       we should quarantine the node and ensuring the node no longer
-        //       participates in cluster activities/sharding
-
-        warn!(
-            "RemoteClient connection to node (addr={}) closed/failed, retrying in {}ms",
-            &self.addr,
-            RECONNECT_DELAY.as_millis()
-        );
+        if let Some(true) = self.state.as_ref().map(|n| n.is_connected()) {
+            warn!(
+                "RemoteClient connection to node (addr={}) , retrying in {}ms",
+                &self.addr,
+                RECONNECT_DELAY.as_millis()
+            );
+        } else {
+            warn!(
+                "failed to connect to node (addr={}) retrying in {}ms",
+                &self.addr,
+                RECONNECT_DELAY.as_millis()
+            );
+        }
 
         let state = match self.state.take().unwrap() {
             ClientState::Idle {

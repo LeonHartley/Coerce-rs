@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 
-use crate::actor::metrics::ActorSystemMetrics;
 use crate::persistent::journal::provider::StorageProvider;
 use uuid::Uuid;
 
@@ -22,11 +21,10 @@ pub struct ActorSystem {
     remote: Option<RemoteActorSystem>,
     persistence: Option<Persistence>,
     is_terminated: Arc<AtomicBool>,
-    metrics: Arc<ActorSystemMetrics>,
 }
 
-impl ActorSystem {
-    pub fn new() -> ActorSystem {
+impl Default for ActorSystem {
+    fn default() -> Self {
         let system_id = Uuid::new_v4();
         ActorSystem {
             system_id,
@@ -34,8 +32,13 @@ impl ActorSystem {
             remote: None,
             persistence: None,
             is_terminated: Arc::new(AtomicBool::new(false)),
-            metrics: Arc::new(ActorSystemMetrics::new()),
         }
+    }
+}
+
+impl ActorSystem {
+    pub fn new() -> ActorSystem {
+        Self::default()
     }
 
     pub fn new_persistent<S: StorageProvider>(storage_provider: S) -> ActorSystem {
@@ -65,18 +68,11 @@ impl ActorSystem {
     }
 
     pub fn remote_owned(&self) -> RemoteActorSystem {
-        self.remote
-            .as_ref()
-            .map(|s| s.clone())
-            .expect("this ActorSytem is not setup for remoting")
+        self.remote().clone()
     }
 
     pub fn is_remote(&self) -> bool {
         self.remote.is_some()
-    }
-
-    pub fn metrics(&self) -> &ActorSystemMetrics {
-        self.metrics.as_ref()
     }
 
     pub async fn new_tracked_actor<A: Actor>(
@@ -136,7 +132,7 @@ impl ActorSystem {
 
         match rx.await {
             Ok(_) => Ok(actor_ref),
-            Err(e) => {
+            Err(_e) => {
                 error!(
                     "actor not started, actor_id={}, type={}",
                     &id,
@@ -155,7 +151,7 @@ impl ActorSystem {
         info!("shutting down");
 
         self.is_terminated.store(true, Relaxed);
-        self.scheduler.stop().await;
+        let _ = self.scheduler.stop().await;
         info!("shutdown complete");
     }
 

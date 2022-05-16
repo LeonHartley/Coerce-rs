@@ -10,61 +10,72 @@ use axum::{Json, Router};
 
 impl Routes for LocalActorRef<ShardingApi> {
     fn routes(&self, mut router: Router) -> Router {
-        let actor_ref = self.clone();
-        router = router.route(
-            "/sharding",
-            get(|| async move {
-                let actor_ref = actor_ref;
-                Json(
-                    actor_ref
-                        .send(GetShardTypes)
-                        .await
-                        .expect("unable to get shard types"),
-                )
-            }),
-        );
-
-        let actor_ref = self.clone();
-        router = router.route(
-            "/sharding/cluster/stats/:entity",
-            get(move |path| get_sharding_stats(actor_ref, path)),
-        );
-
-        let actor_ref = self.clone();
-        router = router.route(
-            "/sharding/node/stats/:entity",
-            get({
-                async fn get_stats(
-                    Path(entity): Path<String>,
-                    actor_ref: LocalActorRef<ShardingApi>,
-                ) -> impl IntoResponse {
+        router
+            .route("/sharding", {
+                let actor_ref = self.clone();
+                get(|| async move {
+                    let actor_ref = actor_ref;
                     Json(
                         actor_ref
-                            .send(GetStats(entity))
+                            .send(GetShardTypes)
                             .await
-                            .expect("unable to get stats"),
+                            .expect("unable to get shard types"),
                     )
-                }
+                })
+            })
+            .route("/sharding/cluster/stats/:entity", {
+                let actor_ref = self.clone();
+                get(move |path| get_sharding_stats(actor_ref, path))
+            })
+            .route("/sharding/node/stats/:entity", {
+                let actor_ref = self.clone();
+                get({
+                    async fn get_stats(
+                        Path(entity): Path<String>,
+                        actor_ref: LocalActorRef<ShardingApi>,
+                    ) -> impl IntoResponse {
+                        Json(
+                            actor_ref
+                                .send(GetStats(entity))
+                                .await
+                                .expect("unable to get stats"),
+                        )
+                    }
 
-                let actor_ref = actor_ref;
-                move |path| get_stats(path, actor_ref)
-            }),
-        );
+                    let actor_ref = actor_ref;
+                    move |path| get_stats(path, actor_ref)
+                })
+            })
+            .route("/sharding/node/rebalance/:entity", {
+                let actor_ref = self.clone();
+                get({
+                    async fn get_stats(
+                        Path(entity): Path<String>,
+                        actor_ref: LocalActorRef<ShardingApi>,
+                    ) -> impl IntoResponse {
+                        Json(
+                            actor_ref
+                                .send(GetStats(entity))
+                                .await
+                                .expect("unable to get stats"),
+                        )
+                    }
 
-        let actor_ref = self.clone();
-        router = router.route(
-            "/sharding/node/stats/all",
-            get(|| async move {
-                let actor_ref = actor_ref;
-                Json(
-                    actor_ref
-                        .send(GetAllStats)
-                        .await
-                        .expect("unable to get shard types"),
-                )
-            }),
-        );
-
-        router
+                    let actor_ref = actor_ref;
+                    move |path| get_stats(path, actor_ref)
+                })
+            })
+            .route("/sharding/node/stats/all", {
+                let actor_ref = self.clone();
+                get(|| async move {
+                    let actor_ref = actor_ref;
+                    Json(
+                        actor_ref
+                            .send(GetAllStats)
+                            .await
+                            .expect("unable to get shard types"),
+                    )
+                })
+            })
     }
 }

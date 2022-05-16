@@ -3,15 +3,16 @@ use crate::actor::scheduler::ActorType::Tracked;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, BoxedActorRef,
-    CoreActorRef,
+    CoreActorRef, LocalActorRef,
 };
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 
 use crate::actor::context::ActorContext;
 
 use std::any::{Any, TypeId};
+use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
@@ -22,6 +23,7 @@ pub trait ActorHandler: 'static + Any + Sync + Send {
         actor_id: Option<String>,
         raw_recipe: Vec<u8>,
         supervisor_ctx: Option<&mut ActorContext>,
+        system: Option<&ActorSystem>,
     ) -> Result<BoxedActorRef, ActorRefErr>;
 
     fn new_boxed(&self) -> BoxedActorHandler;
@@ -109,7 +111,6 @@ where
     F: Send + Sync,
     A: Send + Sync,
 {
-    system: ActorSystem,
     factory: F,
     marker: RemoteActorMarker<A>,
 }
@@ -119,13 +120,9 @@ where
     A: 'static + Send + Sync,
     F: 'static + Send + Sync,
 {
-    pub fn new(system: ActorSystem, factory: F) -> RemoteActorHandler<A, F> {
+    pub fn new(factory: F) -> RemoteActorHandler<A, F> {
         let marker = RemoteActorMarker::new();
-        RemoteActorHandler {
-            system,
-            factory,
-            marker,
-        }
+        RemoteActorHandler { factory, marker }
     }
 }
 
@@ -140,8 +137,9 @@ where
         actor_id: Option<ActorId>,
         recipe: Vec<u8>,
         supervisor_ctx: Option<&mut ActorContext>,
+        system: Option<&ActorSystem>,
     ) -> Result<BoxedActorRef, ActorRefErr> {
-        let system = self.system.clone();
+        let system = system.clone();
         let actor_id = actor_id.unwrap_or_else(|| new_actor_id());
 
         let recipe = F::Recipe::read_from_bytes(recipe);
@@ -150,7 +148,12 @@ where
                 let actor_ref = if let Some(supervisor_ctx) = supervisor_ctx {
                     supervisor_ctx.spawn(actor_id, state).await
                 } else {
-                    system.new_actor(actor_id, state, Tracked).await
+                    system
+                        .expect(
+                            "ActorSystem ref should be provided if there is no `supervisor_ctx`",
+                        )
+                        .new_actor(actor_id, state, Tracked)
+                        .await
                 };
 
                 actor_ref.map(|a| BoxedActorRef::from(a))
@@ -164,7 +167,6 @@ where
 
     fn new_boxed(&self) -> BoxedActorHandler {
         Box::new(Self {
-            system: self.system.clone(),
             marker: RemoteActorMarker::new(),
             factory: self.factory.clone(),
         })
@@ -176,6 +178,54 @@ where
 
     fn actor_type_name(&self) -> &'static str {
         A::type_name()
+    }
+}
+
+struct ActorRefCache {
+    inner: parking_lot::Mutex<HashMap<ActorId, BoxedActorRef>>,
+}
+
+impl ActorRefCache {
+    pub fn new() -> Self {
+        ActorRefCache {
+            inner: parking_lot::Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn add(&self, actor_id: &ActorId, actor_ref: BoxedActorRef) {
+        self.inner.lock().insert(actor_id.to_string(), actor_ref);
+    }
+
+    pub fn get(&self, actor_id: &ActorId) -> Option<BoxedActorRef> {
+        self.inner.lock().get(actor_id).cloned()
+    }
+}
+
+// TODO: We should apply some limiting to this, over time this could grow
+//       - move to somewhere that wont require a mutex
+lazy_static! {
+    static ref ACTOR_REF_CACHE: ActorRefCache = ActorRefCache::new();
+}
+
+async fn get_actor_ref<A: Actor>(
+    system: &ActorSystem,
+    actor_id: &ActorId,
+) -> Option<LocalActorRef<A>> {
+    if let Some(boxed_ref) = ACTOR_REF_CACHE.get(actor_id) {
+        let actor_ref = boxed_ref.as_actor();
+        if let Some(actor_ref) = actor_ref {
+            if actor_ref.is_valid() {
+                return Some(actor_ref);
+            }
+        }
+    }
+
+    if let Some(actor_ref) = system.get_tracked_actor::<A>(actor_id.to_string()).await {
+        ACTOR_REF_CACHE.add(actor_id, BoxedActorRef::from(actor_ref.clone()));
+
+        Some(actor_ref)
+    } else {
+        None
     }
 }
 
@@ -191,7 +241,7 @@ where
         res: Sender<Result<Vec<u8>, ActorRefErr>>,
         attempt: usize,
     ) {
-        let actor = self.system.get_tracked_actor::<A>(actor_id.clone()).await;
+        let actor = get_actor_ref::<A>(&self.system, &actor_id).await;
         if let Some(actor) = actor {
             let envelope = M::from_envelope(Envelope::Remote(buffer.to_vec()));
             match envelope {
@@ -220,7 +270,7 @@ where
                 }
             };
         } else {
-            const RETRY_DELAY_MILLIS: u64 = 100;
+            const RETRY_DELAY_MILLIS: u64 = 10;
             const MAX_RETRIES: usize = 10;
 
             let next_attempt = attempt + 1;
@@ -287,6 +337,7 @@ where
             },
             (_, Err(e)) => {
                 error!("deserialisation error, {}", e);
+
                 if let Some(res) = res {
                     let _ = res.send(Err(ActorRefErr::Deserialisation(e)));
                 }

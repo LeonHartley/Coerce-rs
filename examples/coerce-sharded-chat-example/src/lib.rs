@@ -8,7 +8,7 @@ extern crate coerce_macros;
 extern crate serde;
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 pub mod actor;
 pub mod app;

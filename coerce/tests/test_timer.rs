@@ -62,11 +62,11 @@ pub async fn test_timer() {
     let mut previous_tick = None;
     for tick in &ticks_after_stopping {
         if let Some(previous_tick) = previous_tick {
-            log::info!("{}", tick.duration_since(previous_tick).as_secs());
+            tracing::info!("{}", tick.duration_since(previous_tick).as_secs());
             assert!(tick.duration_since(previous_tick).as_secs() as u64 >= TICK_DURATION);
         } else {
             previous_tick = Some(*tick);
-            log::info!("{}", tick.duration_since(start).as_secs());
+            tracing::info!("{}", tick.duration_since(start).as_secs());
             assert!(tick.duration_since(start).as_secs() as u64 >= TICK_DURATION);
         }
     }

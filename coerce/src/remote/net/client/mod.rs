@@ -4,23 +4,23 @@ use std::time::{Duration, Instant};
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
+
 use tokio::sync::oneshot::{Receiver, Sender};
 use tokio::task::JoinHandle;
-use tokio::time::error::Elapsed;
+
 use tokio_util::codec::FramedWrite;
 
-use crate::actor::context::{ActorContext, ActorStatus};
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::Timer;
-use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, IntoActor, LocalActorRef};
-use crate::remote::cluster::node::{NodeIdentity, RemoteNode, RemoteNodeState};
+
+use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef};
+use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Connect;
 use crate::remote::net::client::receive::HandshakeAcknowledge;
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::proto::network as proto;
-use crate::remote::system::{NodeId, RemoteActorErr, RemoteActorSystem};
+use crate::remote::system::{NodeId, RemoteActorSystem};
 
 pub mod connect;
 pub mod ping;
@@ -95,7 +95,7 @@ impl Message for Identify {
 
 #[async_trait]
 impl Handler<Identify> for RemoteClient {
-    async fn handle(&mut self, message: Identify, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: Identify, _ctx: &mut ActorContext) {
         match &self.state {
             Some(ClientState::Connected(state)) => {
                 let _ = message.callback.send(Some(state.identity.clone()));

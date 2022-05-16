@@ -17,12 +17,10 @@ impl ClusterApi {
 
 impl Routes for ClusterApi {
     fn routes(&self, router: Router) -> Router {
-        let mut router = router;
-        let system = self.system.clone();
-        router = router.route("/cluster/nodes", get(move || get_nodes(system)));
-
-        let system = self.system.clone();
-        router.route("/node/metrics", get(move || get_metrics(system)))
+        router.route("/cluster/nodes", {
+            let system = self.system.clone();
+            get(move || get_nodes(system))
+        })
     }
 }
 
@@ -67,33 +65,15 @@ async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
     let leader_node_tag = if leader_node == Some(system.node_id()) {
         Some(system.node_tag().to_string())
     } else {
-        if let Some(node) = nodes.iter().filter(|n| Some(n.id) == leader_node).next() {
-            Some(node.tag.clone())
-        } else {
-            None
-        }
+        nodes
+            .iter()
+            .find(|n| Some(n.id) == leader_node)
+            .map(|node| node.tag.clone())
     };
 
     Json(ClusterNodes {
         leader_node,
         leader_node_tag,
         nodes,
-    })
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ActorSystemMetrics {
-    pub total_messages_processed: u64,
-    pub total_actors_started: u64,
-    pub total_actors_stopped: u64,
-}
-
-async fn get_metrics(system: RemoteActorSystem) -> impl IntoResponse {
-    let metrics = system.actor_system().metrics();
-
-    Json(ActorSystemMetrics {
-        total_messages_processed: metrics.get_msgs_processed(),
-        total_actors_started: metrics.get_actors_started(),
-        total_actors_stopped: metrics.get_actors_stopped(),
     })
 }

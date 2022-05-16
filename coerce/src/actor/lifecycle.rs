@@ -1,9 +1,11 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
+use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
+use std::time::Instant;
 use tokio::sync::oneshot::Sender;
 
 pub struct Status();
@@ -67,9 +69,7 @@ impl ActorLoop {
 
         actor.started(&mut ctx).await;
 
-        if let Some(system) = &system {
-            system.metrics().increment_actors_started();
-        }
+        ActorMetrics::incr_actor_created(A::type_name());
 
         match ctx.get_status() {
             Stopping => return,
@@ -90,11 +90,14 @@ impl ActorLoop {
 
         while let Some(mut msg) = receiver.recv().await {
             {
+                let msg_type = msg.name();
+                let actor_type = A::type_name();
+
                 let span = tracing::trace_span!(
                     "Actor::handle",
                     actor_id = ctx.id().as_str(),
-                    actor_type_name = A::type_name(),
-                    message_type = msg.name()
+                    actor_type_name = actor_type,
+                    message_type = &msg_type
                 );
 
                 let _enter = span.enter();
@@ -112,10 +115,6 @@ impl ActorLoop {
                     "[{}] processed {}",
                     &actor_id, msg.name()
                 );
-
-                if let Some(system) = &system {
-                    system.metrics().increment_msgs_processed();
-                }
             }
 
             match ctx.get_status() {
@@ -135,10 +134,6 @@ impl ActorLoop {
         actor.stopped(&mut ctx).await;
 
         ctx.set_status(Stopped);
-
-        if let Some(system) = &system {
-            system.metrics().increment_actors_stopped();
-        }
 
         if actor_type.is_tracked() {
             if let Some(system) = system.take() {

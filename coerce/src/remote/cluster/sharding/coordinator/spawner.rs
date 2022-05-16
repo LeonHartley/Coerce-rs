@@ -1,13 +1,12 @@
-use crate::actor::context::{ActorContext, ActorStatus};
+use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
-use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef};
+use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::cluster::sharding::coordinator::discovery::{NodeDiscovered, NodeForgotten};
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::{LeaderAllocated, ShardHost};
-use crate::remote::stream::pubsub::{PubSub, StreamEvent, Subscription};
+use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::NodeId;
-use std::sync::Arc;
 
 pub struct CoordinatorSpawner {
     node_id: NodeId,
@@ -102,54 +101,47 @@ impl Actor for CoordinatorSpawner {
 }
 
 #[async_trait]
-impl Handler<StreamEvent<SystemTopic>> for CoordinatorSpawner {
-    async fn handle(&mut self, message: StreamEvent<SystemTopic>, ctx: &mut ActorContext) {
-        match message {
-            StreamEvent::Receive(msg) => {
-                debug!(
-                    target: COORDINATOR_SPAWNER,
-                    "[node={}] received system event - {:?}", self.node_id, msg
-                );
+impl Handler<Receive<SystemTopic>> for CoordinatorSpawner {
+    async fn handle(&mut self, message: Receive<SystemTopic>, ctx: &mut ActorContext) {
+        debug!(
+            target: COORDINATOR_SPAWNER,
+            "[node={}] received system event - {:?}", self.node_id, &message.0
+        );
 
-                match msg.as_ref() {
-                    SystemEvent::Cluster(event) => match event {
-                        ClusterEvent::NodeAdded(node) => {
-                            if let Some(coordinator) = &self.coordinator {
-                                let _ = coordinator.notify(NodeDiscovered(node.clone()));
-                            }
-                        }
-
-                        ClusterEvent::NodeRemoved(node) => {
-                            if let Some(coordinator) = &self.coordinator {
-                                let _ = coordinator.notify(NodeForgotten(node.clone()));
-                            }
-                        }
-
-                        ClusterEvent::LeaderChanged(leader_node_id) => {
-                            let leader_node_id = *leader_node_id;
-                            debug!(
-                                target: COORDINATOR_SPAWNER,
-                                "[node={}] Leader changed, leader_node_id={}",
-                                self.node_id,
-                                leader_node_id,
-                            );
-
-                            if leader_node_id == self.node_id && self.coordinator.is_none() {
-                                self.start_coordinator(ctx).await;
-                            } else if self.stop_coordinator().await {
-                                trace!(
-                                    target: COORDINATOR_SPAWNER,
-                                    "[node={}] stopped coordinator",
-                                    self.node_id
-                                );
-                            }
-
-                            self.local_shard_host.notify(LeaderAllocated);
-                        }
-                    },
+        match message.0.as_ref() {
+            SystemEvent::Cluster(event) => match event {
+                ClusterEvent::NodeAdded(node) => {
+                    if let Some(coordinator) = &self.coordinator {
+                        let _ = coordinator.notify(NodeDiscovered(node.clone()));
+                    }
                 }
-            }
-            StreamEvent::Err => {}
+
+                ClusterEvent::NodeRemoved(node) => {
+                    if let Some(coordinator) = &self.coordinator {
+                        let _ = coordinator.notify(NodeForgotten(node.clone()));
+                    }
+                }
+
+                ClusterEvent::LeaderChanged(leader_node_id) => {
+                    let leader_node_id = *leader_node_id;
+                    debug!(
+                        target: COORDINATOR_SPAWNER,
+                        "[node={}] Leader changed, leader_node_id={}", self.node_id, leader_node_id,
+                    );
+
+                    if leader_node_id == self.node_id && self.coordinator.is_none() {
+                        self.start_coordinator(ctx).await;
+                    } else if self.stop_coordinator().await {
+                        trace!(
+                            target: COORDINATOR_SPAWNER,
+                            "[node={}] stopped coordinator",
+                            self.node_id
+                        );
+                    }
+
+                    self.local_shard_host.notify(LeaderAllocated);
+                }
+            },
         }
     }
 }

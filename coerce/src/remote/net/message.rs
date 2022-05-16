@@ -1,4 +1,3 @@
-use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::network::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
     Identify, MessageRequest, NodeIdentity, Ping, Pong, RaftRequest, SessionHandshake,
@@ -8,6 +7,7 @@ use crate::remote::net::StreamData;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use protobuf::{Message, ProtobufEnum, ProtobufError};
 use std::fmt::Debug;
+use std::sync::Arc;
 
 pub enum ClientEvent {
     Identity(NodeIdentity),
@@ -28,7 +28,7 @@ pub enum SessionEvent {
     CreateActor(CreateActor),
     RegisterActor(ActorAddress),
     FindActor(FindActor),
-    StreamPublish(StreamPublish),
+    StreamPublish(Arc<StreamPublish>),
     Result(ClientResult),
     Raft(RaftRequest),
 }
@@ -103,9 +103,9 @@ impl StreamData for SessionEvent {
                 Some(Event::RegisterActor) => Some(SessionEvent::RegisterActor(
                     ActorAddress::parse_from_bytes(message).unwrap(),
                 )),
-                Some(Event::StreamPublish) => Some(SessionEvent::StreamPublish(
+                Some(Event::StreamPublish) => Some(SessionEvent::StreamPublish(Arc::new(
                     StreamPublish::parse_from_bytes(message).unwrap(),
-                )),
+                ))),
                 Some(Event::Result) => Some(SessionEvent::Result(
                     ClientResult::parse_from_bytes(message).unwrap(),
                 )),

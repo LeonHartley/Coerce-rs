@@ -1,5 +1,6 @@
 pub mod actor;
 pub mod context;
+pub mod inspect;
 pub mod journal;
 
 pub use actor::*;

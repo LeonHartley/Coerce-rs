@@ -1,13 +1,15 @@
 [package]
 name = "coerce-sharded-chat-example"
 version = "0.1.0"
-edition = "2021"
+edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 coerce = { path = "../../coerce" }
 coerce-macros = { path = "../../coerce/macros" }
+coerce-redis = { path = "../../providers/coerce-redis" }
+
 tokio = { version = "1.17", features = ["full"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
@@ -17,11 +19,14 @@ tokio-tungstenite = { version = "0.16", features = ["stream", "connect"] }
 futures = { version = "0.3"}
 futures-io = { version = "0.3"}
 futures-util = { version = "0.3" }
-env_logger = { version = "0.9"}
-log = { version = "0.4" }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
 chrono = { version = "0.4" }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 clap = { version = "3.1.6" }
+metrics-util= "0.12.0"
+metrics-exporter-prometheus = "0.9.0"
+env_logger = "0.9"
 
 [[bin]]
 name = "sharded-chat-server"

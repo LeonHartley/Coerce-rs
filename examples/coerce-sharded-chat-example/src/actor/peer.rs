@@ -1,19 +1,19 @@
-use crate::actor::pubsub::{ChatStreamEvent, ChatStreamTopic};
+use crate::actor::pubsub::{ChatReceive, ChatStreamTopic};
 use crate::actor::stream::{
     ChatMessage, ChatStream, ChatStreamFactory, CreateChatStream, Join, JoinResult,
 };
 use coerce::actor::context::{attach_stream, ActorContext, StreamAttachmentOptions};
 use coerce::actor::message::EnvelopeType::Remote;
 use coerce::actor::message::{Handler, Message};
-use coerce::actor::{Actor, ActorRefErr, CoreActorRef};
+use coerce::actor::{Actor, CoreActorRef};
 use coerce::remote::cluster::sharding::{Sharded, Sharding};
-use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription};
+use coerce::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::WebSocketStream;
 use tungstenite::Message as WebSocketMessage;
 
 pub type WebSocketReader = SplitStream<WebSocketStream<TcpStream>>;
@@ -123,25 +123,22 @@ impl Handler<ClientEvent> for Peer {
 }
 
 #[async_trait]
-impl Handler<StreamEvent<ChatStreamTopic>> for Peer {
-    async fn handle(&mut self, message: StreamEvent<ChatStreamTopic>, _ctx: &mut ActorContext) {
-        match message {
-            StreamEvent::Receive(chat_stream_event) => match chat_stream_event.as_ref() {
-                ChatStreamEvent::Message(chat_message) => {
-                    let sender = chat_message.sender.clone();
-                    let message = chat_message.message.clone();
+impl Handler<Receive<ChatStreamTopic>> for Peer {
+    async fn handle(&mut self, message: Receive<ChatStreamTopic>, _ctx: &mut ActorContext) {
+        match message.0.as_ref() {
+            ChatReceive::Message(chat_message) => {
+                let sender = chat_message.sender.clone();
+                let message = chat_message.message.clone();
 
-                    trace!(
-                        "user={} received chat message {} from {}",
-                        &self.name,
-                        &message,
-                        &sender
-                    );
+                trace!(
+                    "user={} received chat message {} from {}",
+                    &self.name,
+                    &message,
+                    &sender
+                );
 
-                    self.write(None, ChatMessage { sender, message }).await;
-                }
-            },
-            StreamEvent::Err => {}
+                self.write(None, ChatMessage { sender, message }).await;
+            }
         }
     }
 }
@@ -212,7 +209,7 @@ impl Handler<JoinChat> for Peer {
 
 #[async_trait]
 impl Handler<SendChatMessage> for Peer {
-    async fn handle(&mut self, message: SendChatMessage, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SendChatMessage, _ctx: &mut ActorContext) {
         if let Some((chat_stream, _)) = self.chat_streams.get(&message.chat_stream) {
             let mut message = message.message;
             message.sender = self.name.clone();

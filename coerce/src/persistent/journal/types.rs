@@ -21,8 +21,8 @@ pub struct JournalTypes<A: PersistentActor> {
     recoverable_snapshots: HashMap<String, RecoveryHandlerRef<A>>,
 }
 
-impl<A: PersistentActor> JournalTypes<A> {
-    pub fn new() -> Self {
+impl<A: PersistentActor> Default for JournalTypes<A> {
+    fn default() -> Self {
         let message_type_map = HashMap::new();
         let snapshot_type_map = HashMap::new();
         let recoverable_messages = HashMap::new();
@@ -90,7 +90,7 @@ pub(crate) fn init_journal_types<A: PersistentActor>() -> Arc<JournalTypes<A>> {
         return types;
     }
 
-    let mut types = JournalTypes::new();
+    let mut types = JournalTypes::default();
     A::configure(&mut types);
 
     let types = Arc::new(types);

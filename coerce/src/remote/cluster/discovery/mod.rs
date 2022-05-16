@@ -1,9 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::Actor;
-use crate::remote::actor::message::{NewClient, SetRemote};
+use crate::remote::actor::message::SetRemote;
 use crate::remote::cluster::node::{NodeIdentity, NodeStatus, RemoteNode};
-use crate::remote::net::client::{ClientType, RemoteClient};
 use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
@@ -43,7 +42,7 @@ impl Message for Forget {
 
 #[async_trait]
 impl Handler<SetRemote> for NodeDiscovery {
-    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
         self.remote_system = Some(message.0);
     }
 }
@@ -205,11 +204,18 @@ impl NodeDiscovery {
                 Ok(_) => {
                     info!(
                         "successfully discovered peer (addr={}, id={}, tag={}, started_at={:?})",
-                        node.addr, node.id, node.tag, node.node_started_at
+                        &node.addr, &node.id, &node.tag, &node.node_started_at
+                    );
+
+                    PubSub::publish_locally(
+                        SystemTopic,
+                        SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(node))),
+                        remote,
                     )
+                    .await;
                 }
                 Err(e) => {
-                    info!("error while attempting to handshake with node - {} (addr={}, id={}, tag={}, started_at={:?})",
+                    error!("error while attempting to handshake with node - {} (addr={}, id={}, tag={}, started_at={:?})",
                        e, node.addr, node.id, node.tag, node.node_started_at);
                 }
             }

@@ -71,7 +71,7 @@ where
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
-        let (snapshot, messages) = load_journal::<A>(&persistence_key, ctx).await;
+        let (snapshot, messages) = load_journal::<A>(persistence_key.clone(), ctx).await;
 
         trace!(
             "persistent actor ({}) recovered {} snapshot(s) and {} message(s)",
@@ -81,12 +81,12 @@ where
         );
 
         if let Some(snapshot) = snapshot {
-            snapshot.recover(&mut self, ctx).await;
+            snapshot.recover(self, ctx).await;
         }
 
         if let Some(messages) = messages {
             for message in messages {
-                message.recover(&mut self, ctx).await;
+                message.recover(self, ctx).await;
             }
         }
 
@@ -94,7 +94,6 @@ where
     }
 
     async fn stopped(&mut self, ctx: &mut ActorContext) {
-        // Try to persist a snapshot.
         trace!("persistent actor stopped");
 
         self.stopped(ctx).await
@@ -102,7 +101,7 @@ where
 }
 
 async fn load_journal<A: PersistentActor>(
-    persistence_key: &String,
+    persistence_key: String,
     ctx: &mut ActorContext,
 ) -> (
     Option<RecoveredPayload<A>>,

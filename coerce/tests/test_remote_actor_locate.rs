@@ -9,11 +9,9 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
-use crate::util::create_trace_logger;
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::RemoteActorSystem;
-use tokio::time::Duration;
 
 #[coerce_test]
 pub async fn test_remote_actor_locate_node_locally() {

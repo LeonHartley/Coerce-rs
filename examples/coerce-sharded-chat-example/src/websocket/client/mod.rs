@@ -1,5 +1,5 @@
 use crate::actor::peer::{JoinChat, SendChatMessage};
-use crate::actor::pubsub::ChatStreamEvent;
+
 use crate::actor::stream::{ChatMessage, Handshake};
 use coerce::actor::message::EnvelopeType::Remote;
 use coerce::actor::message::{EnvelopeType, Message};
@@ -10,7 +10,7 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
-use tokio::time::error::Elapsed;
+
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::{Message as WebSocketMessage, Result};
 
@@ -27,7 +27,7 @@ pub struct ChatClient {
 
 impl ChatClient {
     pub async fn connect(url: &str, name: &str) -> Result<ChatClient> {
-        let (mut socket, _) = connect_async(url).await?;
+        let (socket, _) = connect_async(url).await?;
 
         let message = Handshake {
             name: name.to_string(),
@@ -43,7 +43,7 @@ impl ChatClient {
 
         let (sender, receiver) = mpsc::channel::<WebSocketMessage>(128);
         let read_task = tokio::spawn(async move {
-            let mut sender = sender;
+            let sender = sender;
             loop {
                 match websocket_reader.next().await {
                     Some(msg) => match msg {

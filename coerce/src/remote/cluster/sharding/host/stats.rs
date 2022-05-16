@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{ActorRef, ActorRefErr, LocalActorRef};
+use crate::actor::{ActorRefErr, LocalActorRef};
 use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::{ShardHost, ShardState};
+use crate::remote::cluster::sharding::host::ShardHost;
 use crate::remote::cluster::sharding::shard::stats::{GetShardStats, ShardStats};
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::NodeId;

@@ -2,16 +2,10 @@ pub mod cluster;
 pub mod metrics;
 pub mod sharding;
 
-use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
-use axum::response::IntoResponse;
 use axum::routing::get;
-use axum::{Json, Router};
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use axum::Router;
 use std::net::SocketAddr;
-use std::ops::Deref;
 
 pub struct RemoteHttpApi {
     pub system: RemoteActorSystem,
@@ -28,7 +22,7 @@ impl RemoteHttpApi {
         }
     }
 
-    pub fn routes<R>(mut self, mut route: &R) -> Self
+    pub fn routes<R>(mut self, route: &R) -> Self
     where
         R: Routes,
     {
@@ -56,8 +50,3 @@ pub trait Routes {
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-// basic handler that responds with a static string
-async fn version() -> &'static str {
-    VERSION
-}

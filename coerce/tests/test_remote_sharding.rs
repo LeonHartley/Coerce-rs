@@ -1,9 +1,8 @@
 use crate::util::{
     GetStatusRequest, GetStatusResponse, SetStatusRequest, TestActor, TestActorStatus,
 };
-use crate::TestActorStatus::Active;
-use coerce::actor::lifecycle::Stop;
-use coerce::actor::message::{Envelope, Message};
+
+use coerce::actor::message::Message;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{
     Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorRef, IntoActor, LocalActorRef,
@@ -13,16 +12,16 @@ use coerce::persistent::{ConfigurePersistence, Persistence};
 use coerce::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
 };
-use coerce::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
-use coerce::remote::cluster::sharding::host::request::EntityRequest;
+use coerce::remote::cluster::sharding::coordinator::{
+    ShardCoordinator, ShardHostState, ShardHostStatus, ShardId,
+};
+
 use coerce::remote::cluster::sharding::host::stats::GetStats;
-use coerce::remote::cluster::sharding::host::{ShardHost, StartEntity};
+use coerce::remote::cluster::sharding::host::ShardHost;
 use coerce::remote::cluster::sharding::Sharding;
+use coerce::remote::handler::{ActorHandler, RemoteActorHandler};
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
-use std::sync::Arc;
-use std::time::Instant;
-use tokio::sync::oneshot;
 
 pub mod util;
 
@@ -79,6 +78,7 @@ async fn create_shard_coordinator<T: Actor>(
         node_tag,
         shards: Default::default(),
         actor: shard_host,
+        status: ShardHostStatus::Ready,
     });
 
     let shard_coordinator = shard_coordinator
@@ -94,6 +94,9 @@ pub async fn test_shard_coordinator_shard_allocation() {
     const SHARD_ID: u32 = 1;
 
     util::create_trace_logger();
+
+    let handler = RemoteActorHandler::<TestActor, TestActorFactory>::new(TestActorFactory {});
+
     let sys = ActorSystem::new().add_persistence(Persistence::from(InMemoryStorageProvider::new()));
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
@@ -103,11 +106,15 @@ pub async fn test_shard_coordinator_shard_allocation() {
         .build()
         .await;
 
-    let shard_host: ActorRef<ShardHost> = ShardHost::new(TestActor::type_name().to_string(), None)
-        .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
-        .await
-        .expect("ShardHost start")
-        .into();
+    let shard_host: ActorRef<ShardHost> = ShardHost::new(
+        TestActor::type_name().to_string(),
+        handler.new_boxed(),
+        None,
+    )
+    .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
+    .await
+    .expect("ShardHost start")
+    .into();
 
     let shard_coordinator = create_shard_coordinator::<TestActor>(
         &remote,
@@ -133,11 +140,15 @@ pub async fn test_shard_coordinator_shard_allocation() {
         .expect("get host stats");
     let _ = shard_host.unwrap_local().stop().await;
 
-    let shard_host: ActorRef<ShardHost> = ShardHost::new(TestActor::type_name().to_string(), None)
-        .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
-        .await
-        .expect("ShardHost start")
-        .into();
+    let shard_host: ActorRef<ShardHost> = ShardHost::new(
+        TestActor::type_name().to_string(),
+        handler.new_boxed(),
+        None,
+    )
+    .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
+    .await
+    .expect("ShardHost start")
+    .into();
 
     let shard_coordinator = create_shard_coordinator::<TestActor>(
         &remote,
@@ -206,7 +217,8 @@ pub async fn test_shard_host_actor_request() {
 
     let (remote, server) = create_system(persistence.clone()).await;
 
-    let sharding = Sharding::<TestActorFactory>::start(remote.clone()).await;
+    let sharding =
+        Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
     let sharded_actor = sharding.get("leon".to_string(), Some(TestActorRecipe));
 
     sharded_actor
@@ -229,7 +241,8 @@ pub async fn test_shard_host_actor_request() {
     let (remote, _server) = create_system(persistence.clone()).await;
 
     let expected_status = TestActorStatus::Active;
-    let sharding = Sharding::<TestActorFactory>::start(remote.clone()).await;
+    let sharding =
+        Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
 
     // create a reference to the sharded actor without specifying a recipe, which stops the sharding internals from creating the actor if it isn't already running
     let sharded_actor = sharding.get("leon".to_string(), None);

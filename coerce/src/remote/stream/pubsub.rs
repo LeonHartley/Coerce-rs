@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::system::ActorSystem;
+
 use crate::actor::{Actor, LocalActorRef};
 use crate::remote::net::StreamData;
 use crate::remote::stream::mediator::{Publish, Reach, Subscribe, SubscribeErr};
@@ -26,10 +26,7 @@ pub trait Topic: 'static + Send + Sync {
     }
 }
 
-pub enum StreamEvent<T: Topic> {
-    Receive(Arc<T::Message>),
-    Err,
-}
+pub struct Receive<T: Topic>(pub Arc<T::Message>);
 
 impl PubSub {
     pub async fn subscribe<A: Actor, T: Topic>(
@@ -37,7 +34,7 @@ impl PubSub {
         ctx: &ActorContext,
     ) -> Result<Subscription, SubscribeErr>
     where
-        A: Handler<StreamEvent<T>>,
+        A: Handler<Receive<T>>,
     {
         let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
         let span = tracing::debug_span!(
@@ -63,7 +60,7 @@ impl PubSub {
         let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
         let _enter = span.enter();
         if let Some(mediator) = system.stream_mediator() {
-            mediator
+            let _ = mediator
                 .send(Publish::<T> {
                     topic,
                     message,
@@ -84,7 +81,7 @@ impl PubSub {
         if let Some(mediator) = system.stream_mediator() {
             let reach = Reach::Local;
 
-            mediator
+            let _ = mediator
                 .send(Publish {
                     topic,
                     message,
@@ -98,40 +95,40 @@ impl PubSub {
     }
 }
 
-impl<T: Topic> Clone for StreamEvent<T> {
+impl<T: Topic> Clone for Receive<T> {
     fn clone(&self) -> Self {
-        match &self {
-            StreamEvent::Receive(msg) => StreamEvent::Receive(msg.clone()),
-            StreamEvent::Err => StreamEvent::Err,
-        }
+        Self(self.0.clone())
     }
 }
 
-impl<T: Topic> Message for StreamEvent<T> {
+impl<T: Topic> Message for Receive<T> {
     type Result = ();
 }
 
 #[async_trait]
-pub trait TopicEmitter: Send + Sync {
-    async fn emit_serialised(&mut self, key: &str, bytes: Vec<u8>);
+pub trait TopicEmitter: 'static + Any + Send + Sync {
+    async fn emit_serialised(&self, key: &str, bytes: Vec<u8>);
 
-    async fn emit(&mut self, key: &str, msg: Arc<dyn Any + Sync + Send>);
+    async fn emit(&self, key: &str, msg: Arc<dyn Any + Sync + Send>);
 
-    fn into_any(self: Box<Self>) -> Box<dyn Any>;
+    fn as_any(&self) -> &dyn Any;
+
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+#[derive(Default)]
 pub struct TopicSubscriberStore<T: Topic> {
-    channels: HashMap<String, broadcast::Sender<StreamEvent<T>>>,
+    channels: HashMap<String, broadcast::Sender<Receive<T>>>,
 }
 
 impl<T: Topic> TopicSubscriberStore<T> {
     pub fn new() -> Self {
-        TopicSubscriberStore {
-            channels: HashMap::new(),
+        Self {
+            channels: Default::default(),
         }
     }
 
-    pub fn receiver(&mut self, key: &str) -> broadcast::Receiver<StreamEvent<T>> {
+    pub fn receiver(&mut self, key: &str) -> broadcast::Receiver<Receive<T>> {
         match self.channels.get(key) {
             Some(channel) => channel.subscribe(),
             None => {
@@ -143,31 +140,24 @@ impl<T: Topic> TopicSubscriberStore<T> {
         }
     }
 
-    pub fn broadcast(&mut self, key: &str, msg: Arc<T::Message>) {
-        match self.channels.get_mut(key) {
+    pub fn broadcast(&self, key: &str, msg: Arc<T::Message>) {
+        match self.channels.get(key) {
             Some(sender) => {
-                sender.send(StreamEvent::Receive(msg));
+                sender.send(Receive(msg));
             }
-            None => trace!(
-                target: &format!("PubSub-topic-{}-{}", T::topic_name(), key),
-                "no subscribers, message will not be sent"
-            ),
-        }
-    }
-
-    pub fn broadcast_err(&mut self, key: &str) {
-        match self.channels.get_mut(key) {
-            Some(sender) => {
-                sender.send(StreamEvent::Err);
+            None => {
+                trace!(
+                    "no subscribers, message will not be sent (topic={})",
+                    T::topic_name()
+                )
             }
-            None => (),
         }
     }
 }
 
 #[async_trait]
-impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
-    async fn emit_serialised(&mut self, key: &str, bytes: Vec<u8>) {
+impl<T: Topic + 'static> TopicEmitter for TopicSubscriberStore<T> {
+    async fn emit_serialised(&self, key: &str, bytes: Vec<u8>) {
         let topic_data = format!("{}-{}", T::topic_name(), &key);
         let span = tracing::debug_span!(
             "PubSub::emit",
@@ -181,17 +171,21 @@ impl<T: Topic> TopicEmitter for TopicSubscriberStore<T> {
             let message = Arc::new(message);
             self.broadcast(key, message);
         } else {
-            self.broadcast_err(key)
+            // log err, possibly notify the sender?
         }
     }
 
-    async fn emit(&mut self, key: &str, msg: Arc<dyn Any + Sync + Send>) {
+    async fn emit(&self, key: &str, msg: Arc<dyn Any + Sync + Send>) {
         let msg = msg.downcast::<T::Message>().unwrap();
 
         self.broadcast(key, msg);
     }
 
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
@@ -216,11 +210,11 @@ impl Drop for Subscription {
 
 impl Subscription {
     pub(crate) fn new<A: Actor, T: Topic>(
-        topic_receiver: broadcast::Receiver<StreamEvent<T>>,
+        topic_receiver: broadcast::Receiver<Receive<T>>,
         receiver_ref: LocalActorRef<A>,
     ) -> Subscription
     where
-        A: Handler<StreamEvent<T>>,
+        A: Handler<Receive<T>>,
     {
         let task_handle = Some(tokio::spawn(async move {
             let receiver_ref = receiver_ref;

@@ -1,21 +1,18 @@
 use crate::actor::pubsub::ChatStreamTopic;
 use crate::actor::stream::{ChatMessage, ChatStream, ChatStreamFactory, Join};
 use crate::websocket::start;
-use chrono::Local;
+
 use coerce::actor::system::ActorSystem;
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::RemoteHttpApi;
-use coerce::remote::cluster::sharding::coordinator::allocation::AllocateShard;
-use coerce::remote::cluster::sharding::coordinator::ShardCoordinator;
-use coerce::remote::cluster::sharding::host::request::RemoteEntityRequest;
-use coerce::remote::cluster::sharding::shard::Shard;
+
 use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
-use log::LevelFilter;
-use std::io::Write;
+
+use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::task::JoinHandle;
@@ -26,6 +23,12 @@ pub struct ShardedChatConfig {
     pub remote_seed_addr: Option<String>,
     pub websocket_listen_addr: String,
     pub cluster_api_listen_addr: String,
+    pub persistence_config: ShardedChatPersistence,
+}
+
+pub enum ShardedChatPersistence {
+    Redis { host: Option<String> },
+    InMemory,
 }
 
 pub struct ShardedChat {
@@ -38,7 +41,7 @@ pub struct ShardedChat {
 impl ShardedChat {
     pub async fn start(config: ShardedChatConfig) -> ShardedChat {
         let system = create_actor_system(&config).await;
-        let sharding = Sharding::start(system.clone()).await;
+        let sharding = Sharding::start("ChatStream".to_string(), system.clone()).await;
         let listen_task = tokio::spawn(start(
             config.websocket_listen_addr,
             system.actor_system().clone(),
@@ -46,7 +49,7 @@ impl ShardedChat {
         ));
 
         let cluster_api = ClusterApi::new(system.clone());
-        let sharding_api = ShardingApi::new()
+        let sharding_api = ShardingApi::default()
             .attach(&sharding)
             .start(system.actor_system())
             .await;
@@ -82,7 +85,14 @@ impl ShardedChat {
 }
 
 async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
-    let system = ActorSystem::new_persistent(InMemoryStorageProvider::new());
+    let redis = RedisStorageProvider::connect(RedisStorageConfig {
+        address: "127.0.0.1:6379".to_string(),
+        key_prefix: "".to_string(),
+        use_key_hashtags: false,
+    })
+    .await;
+
+    let system = ActorSystem::new_persistent(redis);
     let remote_system = RemoteActorSystemBuilder::new()
         .with_id(config.node_id)
         .with_tag(format!("chat-server-{}", &config.node_id))

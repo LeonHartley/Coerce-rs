@@ -68,9 +68,7 @@ impl RemoteSystemConfig {
 
     pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String> {
         let marker = RemoteActorMessageMarker::<A, M>::new();
-        self.handler_types
-            .get(&marker.id())
-            .map(|name| name.clone())
+        self.handler_types.get(&marker.id()).cloned()
     }
 
     pub fn actor_name<A: Actor>(&self, marker: RemoteActorMarker<A>) -> Option<String>
@@ -86,7 +84,7 @@ impl RemoteSystemConfig {
             .map(|handler| handler.new_boxed())
     }
 
-    pub fn actor_handler(&self, key: &String) -> Option<BoxedActorHandler> {
+    pub fn actor_handler(&self, key: &str) -> Option<BoxedActorHandler> {
         self.actor_handlers
             .get(key)
             .map(|handler| handler.new_boxed())

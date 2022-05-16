@@ -10,7 +10,6 @@ use crate::remote::net::codec::NetworkCodec;
 use futures::StreamExt;
 use protobuf::Message;
 use tokio_util::codec::FramedRead;
-use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
 
 pub mod client;
 pub mod codec;

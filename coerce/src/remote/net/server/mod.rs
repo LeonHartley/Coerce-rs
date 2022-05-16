@@ -10,7 +10,7 @@ use crate::remote::net::server::session::{
 };
 use crate::remote::net::{receive_loop, StreamReceiver};
 
-use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
+use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
@@ -20,22 +20,22 @@ use crate::remote::net::proto::network::{
 };
 use crate::remote::stream::mediator::PublishRaw;
 use crate::CARGO_PKG_VERSION;
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+
 use futures::future::FutureExt;
 use opentelemetry::global;
 use protobuf::Message;
 use std::collections::HashMap;
-use std::net::{SocketAddr, TcpListener};
-use std::pin::Pin;
+use std::net::SocketAddr;
+
 use std::str::FromStr;
-use std::task::{Context, Poll};
-use std::time::Duration;
+use std::sync::Arc;
+
 use tokio::io;
-use tokio::net::TcpStream;
+
 use tokio::sync::oneshot;
-use tokio::task::JoinHandle;
+
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
+use tokio_util::sync::CancellationToken;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
@@ -220,9 +220,9 @@ impl StreamReceiver for SessionMessageReceiver {
     async fn on_receive(&mut self, msg: SessionEvent, sys: &RemoteActorSystem) {
         match msg {
             SessionEvent::Identify(identify) => {
-                let session_id = self.session_id;
-                let system = sys.clone();
-                let session = self.session.clone();
+                let _session_id = self.session_id;
+                let _system = sys.clone();
+                let _session = self.session.clone();
 
                 trace!(target: "RemoteServer", "received identify from node (id={}, tag={}), session_id={}", &identify.source_node_id, &identify.source_node_tag, &self.session_id);
 
@@ -468,7 +468,7 @@ async fn session_create_actor(
     }
 }
 
-async fn session_stream_publish(msg: StreamPublish, sys: RemoteActorSystem) {
+async fn session_stream_publish(msg: Arc<StreamPublish>, sys: RemoteActorSystem) {
     // TODO: node should acknowledge the message
     if let Some(mediator) = sys.stream_mediator() {
         mediator.notify::<PublishRaw>(msg.into()).unwrap()

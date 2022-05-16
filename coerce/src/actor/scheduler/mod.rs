@@ -40,7 +40,7 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {
     async fn started(&mut self, _ctx: &mut ActorContext) {
-        log::trace!(target: "ActorScheduler", "started on system {}", self.system_id);
+        tracing::trace!(target: "ActorScheduler", "started on system {}", self.system_id);
     }
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {
@@ -57,7 +57,7 @@ impl Actor for ActorScheduler {
             }))
             .await;
 
-        debug!(target: "ActorScheduler", "stopped {} actors in {}ms", stop_results.len(), start_time.elapsed().as_millis());
+        debug!(target: "ActorScheduler", "stopped {} actors in {:?}", stop_results.len(), start_time.elapsed());
         for stop_result in stop_results {
             debug!(target: "ActorScheduler", "stopped actor (id={}, stop_successful={})", stop_result.0, stop_result.1.is_ok());
         }
@@ -195,7 +195,7 @@ where
         message: GetActor<A>,
         _ctx: &mut ActorContext,
     ) -> Option<LocalActorRef<A>> {
-        let actor_ref = self.actors.get(&message.id).map_or(None, |actor| {
+        let actor_ref = self.actors.get(&message.id).and_then(|actor| {
             (&actor.0.as_any())
                 .downcast_ref::<LocalActorRef<A>>()
                 .map(|s| s.clone())
@@ -235,13 +235,13 @@ where
     } else {
         0
     };
-
-    tracing::trace_span!(
-        "ActorScheduler::start_actor",
-        actor_id = actor_id,
-        actor_type_name = actor_type_name,
-        node_id = node_id,
-    );
+    //
+    // tracing::trace_span!(
+    //     "ActorScheduler::start_actor",
+    //     actor_id = actor_id,
+    //     actor_type_name = actor_type_name,
+    //     node_id = node_id,
+    // );
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 

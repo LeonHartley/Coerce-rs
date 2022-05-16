@@ -1,8 +1,6 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
-use crate::actor::{ActorId, ActorRef, LocalActorRef};
+use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::{ActorId, ActorRef};
 use crate::persistent::{PersistentActor, Recover};
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
 use crate::remote::cluster::sharding::host::{
@@ -14,9 +12,9 @@ use crate::remote::cluster::sharding::proto::sharding::{
 };
 use crate::remote::system::NodeId;
 use futures::future::join_all;
-use protobuf::{Message as ProtoMessage, SingularPtrField};
+use protobuf::Message as ProtoMessage;
 use std::collections::hash_map::{DefaultHasher, Entry, VacantEntry};
-use std::convert::TryInto;
+
 use std::hash::{Hash, Hasher};
 
 pub struct AllocateShard {
@@ -47,7 +45,7 @@ impl ShardCoordinator {
     pub async fn allocate_shard(
         &mut self,
         shard_id: ShardId,
-        ctx: &mut ActorContext,
+        _ctx: &mut ActorContext,
     ) -> AllocateShardResult {
         let shard_entry = self.shards.entry(shard_id);
 
@@ -132,7 +130,9 @@ pub async fn broadcast_allocation(
 
     for host in hosts.into_iter() {
         if host.node_id() == Some(node_id) {
-            host.send(ShardAllocated(shard_id, node_id)).await;
+            if let Err(_e) = host.send(ShardAllocated(shard_id, node_id)).await {
+                warn!("")
+            }
         } else {
             futures.push(async move {
                 let host = host;
@@ -141,7 +141,13 @@ pub async fn broadcast_allocation(
                     "emitting ShardAllocated to node_id={}",
                     host.node_id().unwrap_or(0)
                 );
-                host.send(ShardAllocated(shard_id, node_id)).await
+
+                if let Err(_e) = host.send(ShardAllocated(shard_id, node_id)).await {
+                    error!(
+                        "error attempting to send `ShardAllocated({}, {})` to {}",
+                        shard_id, node_id, &host
+                    )
+                }
             });
         }
     }

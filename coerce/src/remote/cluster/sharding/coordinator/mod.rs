@@ -1,22 +1,18 @@
 use crate::actor::context::ActorContext;
 
-use crate::actor::{ActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorRef, LocalActorRef, ScheduledNotify};
 use crate::persistent::journal::types::JournalTypes;
-use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
+use crate::persistent::PersistentActor;
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::host::ShardHost;
 
 use crate::remote::system::NodeId;
 
-use crate::actor::message::Message;
-use crate::persistent::journal::snapshot::Snapshot;
-use crate::persistent::journal::PersistErr;
-use crate::remote::cluster::node::RemoteNode;
+use crate::remote::cluster::node::NodeStatus::{Healthy, Joining};
+use crate::remote::cluster::sharding::coordinator::balancing::Rebalance;
 use crate::remote::RemoteActorRef;
 use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::sync::Arc;
+use std::time::Duration;
 
 pub mod allocation;
 pub mod balancing;
@@ -36,7 +32,7 @@ pub struct ShardHostState {
     pub status: ShardHostStatus,
 }
 
-#[derive(Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum ShardHostStatus {
     Starting,
     Ready,
@@ -49,7 +45,10 @@ pub struct ShardCoordinator {
     hosts: HashMap<NodeId, ShardHostState>,
     shards: HashMap<ShardId, NodeId>,
     reallocating_shards: HashSet<ShardId>,
+    scheduled_rebalance: Option<ScheduledRebalance>,
 }
+
+type ScheduledRebalance = ScheduledNotify<ShardCoordinator, Rebalance>;
 
 #[async_trait]
 impl PersistentActor for ShardCoordinator {
@@ -95,7 +94,11 @@ impl PersistentActor for ShardCoordinator {
                         remote.clone(),
                     )
                     .into(),
-                    status: ShardHostStatus::Ready/*TODO:starting..ready upon host acknowledgement*/,
+                    status: if host.status == Healthy || host.status == Joining {
+                        ShardHostStatus::Ready
+                    } else {
+                        ShardHostStatus::Unavailable
+                    },
                 });
             }
         }
@@ -113,7 +116,19 @@ impl ShardCoordinator {
             hosts: Default::default(),
             shards: Default::default(),
             reallocating_shards: Default::default(),
+            scheduled_rebalance: None,
         }
+    }
+
+    pub fn schedule_full_rebalance(&mut self, ctx: &ActorContext) {
+        if let Some(scheduled_rebalance) = self.scheduled_rebalance.take() {
+            scheduled_rebalance.cancel();
+        }
+
+        self.scheduled_rebalance = Some(
+            self.actor_ref(ctx)
+                .scheduled_notify(Rebalance::All, Duration::from_millis(500)),
+        );
     }
 
     pub fn add_host(&mut self, host: ShardHostState) {

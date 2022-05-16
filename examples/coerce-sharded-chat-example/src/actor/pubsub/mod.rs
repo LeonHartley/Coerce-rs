@@ -3,7 +3,7 @@ use coerce::remote::net::StreamData;
 use coerce::remote::stream::pubsub::Topic;
 
 #[derive(Serialize, Deserialize)]
-pub enum ChatStreamEvent {
+pub enum ChatReceive {
     Message(ChatMessage),
 }
 
@@ -11,7 +11,7 @@ pub enum ChatStreamEvent {
 pub struct ChatStreamTopic(pub String);
 
 impl Topic for ChatStreamTopic {
-    type Message = ChatStreamEvent;
+    type Message = ChatReceive;
 
     fn topic_name() -> &'static str {
         "ChatStream"
@@ -22,7 +22,7 @@ impl Topic for ChatStreamTopic {
     }
 }
 
-impl StreamData for ChatStreamEvent {
+impl StreamData for ChatReceive {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         serde_json::from_slice(&data).unwrap()
     }

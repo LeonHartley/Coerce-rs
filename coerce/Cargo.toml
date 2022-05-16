@@ -45,7 +45,7 @@ metrics = "0.18.0"
 #trust-dns-client = { version = "0.19" }
 
 [dev-dependencies]
-env_logger = "0.7.1"
+env_logger = "0.9"
 coerce-macros = { path = "./macros" }
 tracing-subscriber = "0.3.9"
 opentelemetry-jaeger = "0.16.0"

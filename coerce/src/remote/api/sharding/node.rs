@@ -26,6 +26,9 @@ pub struct GetStats(pub String);
 pub struct GetAllStats;
 
 #[derive(Serialize, Deserialize)]
+pub struct RebalanceEntity(pub String);
+
+#[derive(Serialize, Deserialize)]
 pub struct Stats {
     entity: String,
     total_shards: usize,

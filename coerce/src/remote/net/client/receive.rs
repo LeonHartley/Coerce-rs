@@ -1,5 +1,5 @@
 use crate::actor::message::Message;
-use crate::actor::scheduler::timer::Timer;
+
 use crate::actor::LocalActorRef;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
@@ -9,11 +9,11 @@ use crate::remote::net::message::{timestamp_to_datetime, ClientEvent};
 use crate::remote::net::proto::network::Pong;
 use crate::remote::net::{proto, StreamReceiver};
 use crate::remote::system::{NodeId, RemoteActorSystem};
-use chrono::{DateTime, NaiveDateTime, Utc};
-use protobuf::{Clear, Message as ProtoMessage};
-use std::fmt::{Debug, Formatter};
+use chrono::{DateTime, Utc};
+use protobuf::Message as ProtoMessage;
+
 use std::str::FromStr;
-use tokio::sync::oneshot;
+
 use tokio::sync::oneshot::Sender;
 use uuid::Uuid;
 
@@ -128,7 +128,7 @@ impl StreamReceiver for ClientMessageReceiver {
         }
     }
 
-    async fn on_close(&mut self, sys: &RemoteActorSystem) {
+    async fn on_close(&mut self, _sys: &RemoteActorSystem) {
         let _ = self.actor_ref.send(Disconnected).await;
     }
 }

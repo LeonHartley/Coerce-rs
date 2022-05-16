@@ -1,7 +1,5 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
+use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWrapErr};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, IntoActor, Receiver};
 use futures::FutureExt;

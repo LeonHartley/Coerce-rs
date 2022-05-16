@@ -46,7 +46,7 @@
 //
 //     let mut server = RemoteServer::new();
 //     match server.start("localhost:30101".to_string(), remote).await {
-//         Ok(_) => log::trace!("started!"),
+//         Ok(_) => tracing::trace!("started!"),
 //         Err(_e) => panic!("failed to start server"),
 //     }
 //

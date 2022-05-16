@@ -1,19 +1,15 @@
 use crate::actor::peer::Peer;
-use crate::actor::stream::{ChatMessage, ChatStream, ChatStreamFactory, Handshake};
-use coerce::actor::message::{EnvelopeType, Message};
+use crate::actor::stream::{ChatStreamFactory, Handshake};
+use coerce::actor::message::Message;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::IntoActor;
 use coerce::remote::cluster::sharding::Sharding;
-use futures_util::{SinkExt, StreamExt};
-use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
+use futures_util::StreamExt;
+use std::net::SocketAddr;
+
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio_tungstenite::accept_async;
-use tungstenite::{
-    Error::{ConnectionClosed, Protocol, Utf8},
-    Message as WebSocketMessage,
-};
-use uuid::Uuid;
+use tungstenite::Error::{ConnectionClosed, Protocol, Utf8};
 
 pub mod client;
 
@@ -25,7 +21,7 @@ async fn handle_connection(
 ) -> Result<(), tungstenite::Error> {
     let stream = accept_async(stream).await;
     if let Ok(stream) = stream {
-        let (mut writer, mut reader) = stream.split();
+        let (writer, mut reader) = stream.split();
         let handshake = reader.next().await;
         if let Some(Ok(handshake)) = handshake {
             let handshake: Handshake =
@@ -60,7 +56,7 @@ pub async fn start<S: ToSocketAddrs>(
     system: ActorSystem,
     sharding: Sharding<ChatStreamFactory>,
 ) {
-    let mut listener = TcpListener::bind(addr).await.expect("websocket listen");
+    let listener = TcpListener::bind(addr).await.expect("websocket listen");
 
     while let Ok((stream, _)) = listener.accept().await {
         let peer_address = stream.peer_addr().unwrap();

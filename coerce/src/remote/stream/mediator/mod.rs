@@ -6,31 +6,34 @@ use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::StreamPublish;
 use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::{
-    StreamEvent, Subscription, Topic, TopicEmitter, TopicSubscriberStore,
+    Receive, Subscription, Topic, TopicEmitter, TopicSubscriberStore,
 };
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
+use std::any::Any;
+use std::borrow::{Borrow, BorrowMut};
 
-use std::collections::HashMap;
+use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 pub struct MediatorTopic(Box<dyn TopicEmitter>);
 
+#[derive(Default)]
 pub struct StreamMediator {
     remote: Option<RemoteActorSystem>,
+    nodes: HashSet<NodeId>,
     topics: HashMap<String, MediatorTopic>,
+    system_subscription: Option<Subscription>,
 }
 
 impl StreamMediator {
     pub fn new() -> StreamMediator {
-        StreamMediator {
-            remote: None,
-            topics: HashMap::new(),
-        }
+        Self::default()
     }
 
     fn remote(&self) -> &RemoteActorSystem {
-        &self
-            .remote
+        self.remote
             .as_ref()
             .expect("StreamMediator remote actor system not set")
     }
@@ -91,31 +94,71 @@ impl Message for PublishRaw {
     type Result = ();
 }
 
-impl Reach {
-    pub fn remote_publish(&self) -> bool {
-        match &self {
-            Self::Local => false,
-            Self::Cluster => true,
-        }
-    }
-}
-
 impl StreamMediator {
     pub fn add_topic<T: Topic>(&mut self) -> &mut Self {
-        let subscriber_store = TopicSubscriberStore::<T>::new();
-        let topic = MediatorTopic(Box::new(subscriber_store));
-
-        let topic_name = T::topic_name().to_string();
-        trace!("adding topic: {}", &topic_name);
-        self.topics.insert(topic_name, topic);
+        let topic = MediatorTopic::new::<T>();
+        self.topics.insert(T::topic_name().to_string(), topic);
         self
+    }
+
+    pub fn subscribe<A: Actor, T: Topic>(
+        &mut self,
+        topic: T,
+        receiver_ref: LocalActorRef<A>,
+    ) -> Result<Subscription, SubscribeErr>
+    where
+        A: Handler<Receive<T>>,
+    {
+        let topic_key = &topic.key();
+        let receiver = match self.topics.entry(T::topic_name().to_string()) {
+            Entry::Occupied(occupied) => occupied.into_mut(),
+            Entry::Vacant(vacant_entry) => {
+                let topic = MediatorTopic::new::<T>();
+                vacant_entry.insert(topic)
+            }
+        };
+
+        if let Some(topic) = receiver.subscriber_store_mut() {
+            let receiver = topic.receiver(topic_key);
+            let subscription = Subscription::new(receiver, receiver_ref);
+
+            Ok(subscription)
+        } else {
+            Err(SubscribeErr::Err)
+        }
     }
 }
 
 #[async_trait]
 impl Handler<SetRemote> for StreamMediator {
-    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         self.remote = Some(message.0);
+        self.system_subscription = Some(self.subscribe(SystemTopic, self.actor_ref(ctx)).unwrap())
+    }
+}
+
+#[async_trait]
+impl Handler<Receive<SystemTopic>> for StreamMediator {
+    async fn handle(&mut self, message: Receive<SystemTopic>, _ctx: &mut ActorContext) {
+        match message.0.as_ref() {
+            SystemEvent::Cluster(cluster_event) => match cluster_event {
+                ClusterEvent::NodeAdded(new_node) => {
+                    if new_node.id != self.remote().node_id() {
+                        self.nodes.insert(new_node.id);
+                    }
+                }
+                ClusterEvent::NodeRemoved(removed_node) => {
+                    // TODO: instead of just removing a node when
+                    //       we receive notification that a node was removed from the cluster,
+                    //       we could potentially start buffering any messages that have been published
+                    //       with a configurable TTL so that if/when the node rejoins the cluster,
+                    //       it will receive any messages it may have missed.
+
+                    let _ = self.nodes.remove(&removed_node.id);
+                }
+                _ => {}
+            },
+        }
     }
 }
 
@@ -127,49 +170,36 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
         _ctx: &mut ActorContext,
     ) -> Result<(), PublishErr> {
         let msg = Arc::new(message.message);
-        if let Some(topic) = self.topics.get_mut(T::topic_name()) {
+        if let Some(topic) = self.topics.get(T::topic_name()) {
             topic.0.emit(&message.topic.key(), msg.clone()).await;
         }
 
-        if message.reach.remote_publish() {
+        if message.reach.remote_publish() && !self.nodes.is_empty() {
             match msg.write_to_bytes() {
                 Some(bytes) => {
                     let remote = self.remote().clone();
-                    let nodes = remote.get_nodes().await;
+                    let topic = T::topic_name().to_string();
+                    let key = message.topic.key();
+                    let nodes: Vec<NodeId> = self.nodes.iter().copied().collect();
 
-                    debug!("notifying {} nodes", nodes.len());
-
-                    if !nodes.is_empty() {
-                        let topic = T::topic_name().to_string();
-                        let key = message.topic.key();
-
-                        tokio::spawn(async move {
-                            let message = bytes;
-                            let publish = StreamPublish {
-                                topic,
-                                message,
-                                key,
-                                ..StreamPublish::default()
-                            };
-
-                            let node_count = nodes.len();
-                            for node in nodes {
-                                if node.id != remote.node_id() {
-                                    remote
-                                        .send_message(
-                                            node.id,
-                                            SessionEvent::StreamPublish(publish.clone()),
-                                        )
-                                        .await;
-                                }
-                            }
-
-                            debug!("notified {} nodes", node_count);
+                    tokio::spawn(async move {
+                        let message = bytes;
+                        let publish = Arc::new(StreamPublish {
+                            topic,
+                            message,
+                            key,
+                            ..StreamPublish::default()
                         });
-                    } else {
-                        debug!("no nodes to notify");
-                    }
 
+                        let node_count = nodes.len();
+                        for node in nodes {
+                            let _ = remote
+                                .notify_node(node, SessionEvent::StreamPublish(publish.clone()))
+                                .await;
+                        }
+
+                        debug!("notified {} nodes", node_count);
+                    });
                     Ok(())
                 }
                 None => Err(PublishErr::SerializationErr),
@@ -180,16 +210,31 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
     }
 }
 
-impl From<StreamPublish> for PublishRaw {
-    fn from(s: StreamPublish) -> Self {
-        let topic = s.topic;
-        let key = s.key;
-        let message = s.message;
+impl From<Arc<StreamPublish>> for PublishRaw {
+    fn from(s: Arc<StreamPublish>) -> Self {
+        match Arc::<StreamPublish>::try_unwrap(s) {
+            Ok(p) => {
+                let topic = p.topic;
+                let key = p.key;
+                let message = p.message;
 
-        Self {
-            topic,
-            key,
-            message,
+                Self {
+                    topic,
+                    key,
+                    message,
+                }
+            }
+            Err(s) => {
+                let topic = s.topic.clone();
+                let key = s.key.clone();
+                let message = s.message.clone();
+
+                Self {
+                    topic,
+                    key,
+                    message,
+                }
+            }
         }
     }
 }
@@ -197,7 +242,7 @@ impl From<StreamPublish> for PublishRaw {
 #[async_trait]
 impl Handler<PublishRaw> for StreamMediator {
     async fn handle(&mut self, message: PublishRaw, _ctx: &mut ActorContext) {
-        if let Some(topic) = self.topics.get_mut(&message.topic) {
+        if let Some(topic) = self.topics.get(&message.topic) {
             topic.0.emit_serialised(&message.key, message.message).await;
         } else {
             trace!("no topic: {}", &message.topic)
@@ -208,32 +253,37 @@ impl Handler<PublishRaw> for StreamMediator {
 #[async_trait]
 impl<A: Actor, T: Topic> Handler<Subscribe<A, T>> for StreamMediator
 where
-    A: Handler<StreamEvent<T>>,
+    A: Handler<Receive<T>>,
 {
     async fn handle(
         &mut self,
         message: Subscribe<A, T>,
         _ctx: &mut ActorContext,
     ) -> Result<Subscription, SubscribeErr> {
-        let subscription = if let Some(topic) = self.topics.remove(T::topic_name()) {
-            let topic = topic.0.into_any().downcast::<TopicSubscriberStore<T>>();
+        self.subscribe(message.topic, message.receiver_ref)
+    }
+}
 
-            if let Ok(mut topic) = topic {
-                let receiver = topic.receiver(&message.topic.key());
-                let subscription = Subscription::new(receiver, message.receiver_ref);
+impl Reach {
+    pub fn remote_publish(&self) -> bool {
+        match &self {
+            Self::Local => false,
+            Self::Cluster => true,
+        }
+    }
+}
 
-                self.topics
-                    .insert(T::topic_name().to_string(), MediatorTopic(topic));
+impl MediatorTopic {
+    pub fn new<T: Topic>() -> Self {
+        let subscriber_store = TopicSubscriberStore::<T>::new();
+        MediatorTopic(Box::new(subscriber_store))
+    }
 
-                Some(subscription)
-            } else {
-                error!("incorrect topic subscriber store type, unable to add back");
-                None
-            }
-        } else {
-            None
-        };
+    pub fn subscriber_store_mut<T: Topic>(&mut self) -> Option<&mut TopicSubscriberStore<T>> {
+        self.0.as_any_mut().downcast_mut()
+    }
 
-        subscription.map_or(Err(SubscribeErr::Err), |s| Ok(s))
+    pub fn subscriber_store<T: Topic>(&mut self) -> Option<&TopicSubscriberStore<T>> {
+        self.0.as_any().downcast_ref()
     }
 }

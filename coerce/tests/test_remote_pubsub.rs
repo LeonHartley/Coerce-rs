@@ -1,17 +1,13 @@
 use coerce::actor::context::ActorContext;
-use opentelemetry::global;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
 
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::Actor;
 use coerce::remote::net::StreamData;
-use coerce::remote::stream::pubsub::{PubSub, StreamEvent, Subscription, Topic};
+use coerce::remote::stream::pubsub::{PubSub, Receive, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;
 use tokio::sync::oneshot::{channel, Sender};
 use tokio::time::Duration;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod util;
 
@@ -56,22 +52,17 @@ impl Actor for TestStreamConsumer {
 }
 
 #[async_trait]
-impl Handler<StreamEvent<StatusStream>> for TestStreamConsumer {
-    async fn handle(&mut self, message: StreamEvent<StatusStream>, _ctx: &mut ActorContext) {
-        match message {
-            StreamEvent::Receive(msg) => {
-                log::info!("received msg: {:?}", &msg);
+impl Handler<Receive<StatusStream>> for TestStreamConsumer {
+    async fn handle(&mut self, message: Receive<StatusStream>, _ctx: &mut ActorContext) {
+        tracing::info!("received msg: {:?}", &message.0);
 
-                self.received_stream_messages += 1;
+        self.received_stream_messages += 1;
 
-                if self.received_stream_messages == self.expected_stream_messages {
-                    self.on_completion
-                        .take()
-                        .unwrap()
-                        .send(self.received_stream_messages);
-                }
-            }
-            StreamEvent::Err => {}
+        if self.received_stream_messages == self.expected_stream_messages {
+            self.on_completion
+                .take()
+                .unwrap()
+                .send(self.received_stream_messages);
         }
     }
 }

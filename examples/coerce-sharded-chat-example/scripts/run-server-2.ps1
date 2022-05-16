@@ -1,0 +1,1 @@
+cargo run --release --bin sharded-chat-server -- --node_id 2 --remote_listen_addr localhost:32101 --websocket_listen_addr  localhost:32102 --cluster_api_listen_addr 0.0.0.0:32103 --remote_seed_addr localhost:31101 --log_level DEBUG --metrics_exporter_listen_addr 0.0.0.0:32104

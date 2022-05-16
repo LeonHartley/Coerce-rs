@@ -4,19 +4,20 @@ use crate::actor::message::{
     ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler, MessageUnwrapErr,
     MessageWrapErr,
 };
-use crate::actor::system::ActorSystem;
-use crate::remote::RemoteActorRef;
-use log::error;
-
+use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::actor::supervised::Terminated;
+use crate::actor::system::ActorSystem;
 use crate::remote::system::NodeId;
-use futures::SinkExt;
+use crate::remote::RemoteActorRef;
 use std::any::Any;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
+use std::marker::PhantomData;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
+use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub mod context;
@@ -157,6 +158,15 @@ impl<A: Actor> Debug for ActorRef<A> {
     }
 }
 
+impl<A: Actor> Display for ActorRef<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.inner_ref {
+            Ref::Local(local_ref) => local_ref.fmt(f),
+            Ref::Remote(remote_ref) => remote_ref.fmt(f),
+        }
+    }
+}
+
 impl<A: Actor> ActorRef<A> {
     pub fn actor_id(&self) -> &ActorId {
         match &self.inner_ref {
@@ -182,7 +192,7 @@ impl<A: Actor> Clone for ActorRef<A> {
 }
 
 #[async_trait]
-trait MessageReceiver<M: Message>: 'static + Send + Sync {
+pub trait MessageReceiver<M: Message>: 'static + Send + Sync {
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
 }
 
@@ -243,17 +253,11 @@ impl<A: Actor> ActorRef<A> {
     }
 
     pub fn is_local(&self) -> bool {
-        match &self.inner_ref {
-            &Ref::Local(_) => true,
-            _ => false,
-        }
+        matches!(&self.inner_ref, &Ref::Local(_))
     }
 
     pub fn is_remote(&self) -> bool {
-        match &self.inner_ref {
-            &Ref::Remote(_) => true,
-            _ => false,
-        }
+        matches!(&self.inner_ref, &Ref::Remote(_))
     }
 
     pub fn unwrap_remote(self) -> RemoteActorRef<A> {
@@ -290,7 +294,7 @@ impl<A: Actor> IntoActor for A {
         id: Option<ActorId>,
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
-        sys.new_actor(id.map_or_else(|| new_actor_id(), |id| id), self, Anonymous)
+        sys.new_actor(id.map_or_else(new_actor_id, |id| id), self, Anonymous)
             .await
     }
 }
@@ -302,7 +306,7 @@ impl<A: Actor> IntoChild for A {
         id: Option<ActorId>,
         ctx: &mut ActorContext,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
-        ctx.spawn(id.unwrap_or_else(|| new_actor_id()), self).await
+        ctx.spawn(id.unwrap_or_else(new_actor_id), self).await
     }
 }
 
@@ -444,6 +448,8 @@ impl<A: Actor> LocalActorRef<A> {
         // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
         // let _enter = span.enter();
 
+        ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
             Ok(_) => match rx.await {
@@ -451,15 +457,9 @@ impl<A: Actor> LocalActorRef<A> {
                     tracing::trace!("recv result");
                     Ok(res)
                 }
-                Err(e) => {
-                    error!(target: "ActorRef", "error receiving result, e={}", e);
-                    Err(ActorRefErr::ResultChannelClosed)
-                }
+                Err(e) => Err(ActorRefErr::ResultChannelClosed),
             },
-            Err(e) => {
-                error!(target: "ActorRef", "error sending message");
-                Err(ActorRefErr::InvalidRef)
-            }
+            Err(_e) => Err(ActorRefErr::InvalidRef),
         }
     }
 
@@ -475,6 +475,8 @@ impl<A: Actor> LocalActorRef<A> {
         // );
         //
         // let _enter = span.enter();
+
+        ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
 
         match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
             Ok(_) => Ok(()),
@@ -509,10 +511,14 @@ impl<A: Actor> LocalActorRef<A> {
         let (tx, rx) = oneshot::channel();
         let res = self.notify(Stop(Some(tx)));
         if res.is_ok() {
-            rx.await.map_err(|_| ActorRefErr::ActorUnavailable)
+            rx.await.map_err(|_| ActorRefErr::InvalidRef)
         } else {
             res
         }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        !self.sender.is_closed()
     }
 
     pub fn notify_stop(&self) -> Result<(), ActorRefErr> {
@@ -587,6 +593,47 @@ impl CoreActorRef for BoxedActorRef {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+pub struct ScheduledNotify<A: Actor, M: Message> {
+    cancellation_token: CancellationToken,
+    _a: PhantomData<A>,
+    _m: PhantomData<M>,
+}
+
+impl<A: Actor, M: Message> ScheduledNotify<A, M> {
+    pub fn new(cancellation_token: CancellationToken) -> Self {
+        ScheduledNotify {
+            cancellation_token,
+            _a: PhantomData,
+            _m: PhantomData,
+        }
+    }
+
+    pub fn cancel(&self) {
+        self.cancellation_token.cancel();
+    }
+}
+
+impl<A: Actor> LocalActorRef<A> {
+    pub fn scheduled_notify<M: Message>(&self, message: M, delay: Duration) -> ScheduledNotify<A, M>
+    where
+        A: Handler<M>,
+    {
+        let actor_ref = self.clone();
+        let cancellation_token = CancellationToken::new();
+        let cancellation_token_clone = cancellation_token.clone();
+        let _join_handle = tokio::spawn(async move {
+            tokio::select! {
+                _ = cancellation_token_clone.cancelled() => { }
+                _ = tokio::time::sleep(delay) => {
+                    let _ = actor_ref.notify(message);
+                }
+            }
+        });
+
+        ScheduledNotify::new(cancellation_token)
     }
 }
 

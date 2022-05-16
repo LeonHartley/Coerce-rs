@@ -6,10 +6,12 @@ use crate::remote::cluster::sharding::coordinator::{
     ShardCoordinator, ShardHostState, ShardHostStatus,
 };
 use crate::remote::cluster::sharding::host::ShardHost;
-use crate::remote::system::NodeId;
+
+use crate::actor::Actor;
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub struct NodeDiscovered(pub Arc<RemoteNode>);
 
@@ -28,7 +30,13 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
     async fn handle(&mut self, message: NodeDiscovered, ctx: &mut ActorContext) {
         let new_node = message.0;
         match self.hosts.entry(new_node.id) {
-            Entry::Occupied(_) => {}
+            Entry::Occupied(mut node) => {
+                let node = node.get_mut();
+                if node.status != ShardHostStatus::Ready {
+                    node.status = ShardHostStatus::Ready;
+                    self.schedule_full_rebalance(ctx);
+                }
+            }
             Entry::Vacant(vacant_entry) => {
                 let remote = ctx.system().remote_owned();
 
@@ -43,8 +51,10 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
                         remote,
                     )
                     .into(),
-                    status: ShardHostStatus::Ready,
+                    status: ShardHostStatus::Ready/*TODO: shard hosts may not be immediately ready*/,
                 });
+
+                self.schedule_full_rebalance(ctx);
             }
         }
     }
@@ -54,7 +64,10 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
 impl Handler<NodeForgotten> for ShardCoordinator {
     async fn handle(&mut self, message: NodeForgotten, ctx: &mut ActorContext) {
         match self.hosts.entry(message.0.id) {
-            Entry::Occupied(_) => self.handle(Rebalance::Node(message.0.id), ctx).await,
+            Entry::Occupied(_) => {
+                self.handle(Rebalance::NodeUnavailable(message.0.id), ctx)
+                    .await
+            }
             Entry::Vacant(_) => {}
         }
     }

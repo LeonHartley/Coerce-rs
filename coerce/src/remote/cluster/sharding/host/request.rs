@@ -1,18 +1,15 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
+use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr};
 use crate::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
 };
-use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
-use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost};
+
+use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost, ShardState};
 use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
-use crate::remote::RemoteActorRef;
-use bytes::Bytes;
+
 use protobuf::{Message as ProtoMessage, SingularPtrField};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -36,35 +33,46 @@ pub struct RemoteEntityRequest {
     pub origin_node: NodeId,
 }
 
+impl ShardHost {
+    pub fn handle_request(&self, message: EntityRequest, shard_state: &mut ShardState) {
+        match shard_state {
+            ShardState::Starting { request_buffer } => request_buffer.push(message),
+
+            ShardState::Ready(actor) => {
+                let actor = actor.clone();
+                tokio::spawn(async move {
+                    let actor_id = message.actor_id.clone();
+                    let message_type = message.message_type.clone();
+
+                    let result = actor.send(message).await;
+                    if !result.is_ok() {
+                        error!(
+                            "failed to deliver EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
+                            &actor_id, &message_type, shard_id
+                        );
+                    } else {
+                        trace!(
+                            "delivered EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
+                            &actor_id,
+                            message_type,
+                            shard_id
+                        );
+                    }
+                });
+            }
+        }
+    }
+}
+
 #[async_trait]
 impl Handler<EntityRequest> for ShardHost {
     async fn handle(&mut self, message: EntityRequest, ctx: &mut ActorContext) {
         let shard_id = self.allocator.allocate(&message.actor_id);
 
-        if let Some(shard) = self.hosted_shards.get(&shard_id) {
-            let actor = shard.actor.clone();
-            tokio::spawn(async move {
-                let actor_id = message.actor_id.clone();
-                let message_type = message.message_type.clone();
-
-                let result = actor.send(message).await;
-                if !result.is_ok() {
-                    error!(
-                        "failed to deliver EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
-                        &actor_id, &message_type, shard_id
-                    );
-                } else {
-                    trace!(
-                        "delivered EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
-                        &actor_id,
-                        message_type,
-                        shard_id
-                    );
-                }
-            });
+        if let Some(shard) = self.hosted_shards.get_mut(&shard_id) {
+            self.handle_request(message, shard);
         } else if let Some(shard) = self.remote_shards.get(&shard_id) {
             let shard_ref = shard.clone();
-
             tokio::spawn(remote_entity_request(
                 shard_ref,
                 message,
@@ -74,7 +82,7 @@ impl Handler<EntityRequest> for ShardHost {
             let leader = self.get_coordinator(&ctx).await;
 
             let buffered_requests = self.requests_pending_shard_allocation.entry(shard_id);
-            let mut buffered_requests = buffered_requests.or_insert_with(|| vec![]);
+            let buffered_requests = buffered_requests.or_insert_with(|| vec![]);
             buffered_requests.push(message);
 
             debug!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})", shard_id, buffered_requests.len());
@@ -196,7 +204,7 @@ impl Message for RemoteEntityRequest {
         };
 
         proto.write_to_bytes().map_or_else(
-            |e| Err(MessageWrapErr::SerializationErr),
+            |_e| Err(MessageWrapErr::SerializationErr),
             |bytes| Ok(Envelope::Remote(bytes)),
         )
     }

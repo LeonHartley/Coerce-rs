@@ -4,28 +4,25 @@ use crate::actor::scheduler::timer::{Timer, TimerTick};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::actor::message::SetRemote;
-use crate::remote::cluster::node::NodeStatus::Healthy;
-use crate::remote::cluster::node::{NodeStatus, RemoteNode, RemoteNodeState};
-use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::{Ping, Pong};
+
+use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
+
+use crate::remote::net::proto::network::Pong;
 use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::ClusterEvent::LeaderChanged;
-use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
-use crate::remote::system::{NodeId, NodeRpcErr, RemoteActorSystem};
+use crate::remote::stream::system::{SystemEvent, SystemTopic};
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc, MIN_DATETIME};
-use futures::future::Map;
-use futures::{future::join_all, FutureExt, TryFutureExt};
+
+use futures::FutureExt;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::future::Future;
+
 use std::ops::Add;
-use std::pin::Pin;
+
 use std::sync::Arc;
-use std::task::{Context, Poll};
+
 use std::time::{Duration, Instant};
-use tokio::time::error::Elapsed;
-use tokio::time::Timeout;
-use uuid::Uuid;
 
 pub struct Heartbeat {
     config: Arc<HeartbeatConfig>,
@@ -128,7 +125,7 @@ impl Actor for Heartbeat {}
 
 #[async_trait]
 impl Handler<NodePing> for Heartbeat {
-    async fn handle(&mut self, message: NodePing, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: NodePing, _ctx: &mut ActorContext) {
         let _ = self.node_pings.insert(message.0, message);
     }
 }

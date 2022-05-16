@@ -1,5 +1,5 @@
 use crate::util::{GetStatusRequest, SetStatusRequest, TestActor, TestActorStatus};
-use axum::routing::get;
+
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
@@ -12,7 +12,6 @@ use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::RemoteActorSystem;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use tokio::signal::ctrl_c;
 
 mod util;
 
@@ -31,7 +30,7 @@ struct TestActorFactory {}
 struct TestActorRecipe;
 
 impl ActorRecipe for TestActorRecipe {
-    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(_bytes: Vec<u8>) -> Option<Self> {
         Some(Self)
     }
 
@@ -44,7 +43,7 @@ impl ActorFactory for TestActorFactory {
     type Actor = TestActor;
     type Recipe = TestActorRecipe;
 
-    async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr> {
+    async fn create(&self, _recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr> {
         Ok(TestActor {
             status: None,
             counter: 0,
@@ -83,9 +82,10 @@ pub async fn test_remote_api_routes() {
     }
 
     let (remote, _server) = create_system(persistence).await;
-    let sharding = Sharding::<TestActorFactory>::start(remote.clone()).await;
+    let sharding =
+        Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
     let cluster_api = ClusterApi::new(remote.clone());
-    let sharding_api = ShardingApi::new()
+    let sharding_api = ShardingApi::default()
         .attach(&sharding)
         .start(remote.actor_system())
         .await;
@@ -101,7 +101,7 @@ pub async fn test_remote_api_routes() {
     );
 
     let sharded_actor = sharding.get("leon".to_string(), Some(TestActorRecipe));
-    let res = sharded_actor
+    let _res = sharded_actor
         .send(SetStatusRequest {
             status: TestActorStatus::Active,
         })

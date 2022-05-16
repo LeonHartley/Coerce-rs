@@ -8,7 +8,7 @@ use crate::remote::actor::{
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
-use crate::remote::raft::RaftSystem;
+
 use crate::remote::stream::mediator::StreamMediator;
 use crate::remote::stream::system::SystemTopic;
 use crate::remote::system::{AtomicNodeId, NodeId, RemoteActorSystem, RemoteSystemCore};
@@ -21,10 +21,7 @@ use std::sync::Arc;
 
 use crate::actor::scheduler::ActorType;
 use crate::remote::cluster::discovery::NodeDiscovery;
-use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
-use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
-use crate::remote::cluster::sharding::host::request::RemoteEntityRequest;
-use crate::remote::cluster::sharding::shard::Shard;
+
 use crate::remote::cluster::sharding::sharding;
 use chrono::Utc;
 use uuid::Uuid;
@@ -267,10 +264,7 @@ impl RemoteActorHandlerBuilder {
     where
         F: 'static + ActorFactory + Send + Sync,
     {
-        let handler = Box::new(RemoteActorHandler::<F::Actor, F>::new(
-            self.system.clone(),
-            factory,
-        ));
+        let handler = Box::new(RemoteActorHandler::<F::Actor, F>::new(factory));
 
         self.actors
             .insert(String::from(F::Actor::type_name()), handler);

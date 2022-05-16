@@ -1,7 +1,6 @@
 use crate::remote::actor::RemoteRequest;
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::system::{NodeId, RemoteActorSystem};
-use tokio::sync::oneshot::Sender;
 
 use crate::actor::message::Message;
 use crate::remote::net::client::{ClientType, RemoteClient};

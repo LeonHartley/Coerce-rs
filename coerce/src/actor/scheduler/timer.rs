@@ -1,7 +1,7 @@
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, LocalActorRef};
-use log::trace;
 use std::ops::Add;
+use tracing::trace;
 
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot;

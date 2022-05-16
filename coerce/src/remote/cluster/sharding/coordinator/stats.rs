@@ -1,13 +1,10 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
-use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
+use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::stats::RemoteShard;
 use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::system::NodeId;
 use protobuf::Message as ProtoMessage;
-use std::collections::HashMap;
 
 pub struct GetShardingStats;
 
@@ -66,7 +63,7 @@ impl Message for GetShardingStats {
     fn from_remote_envelope(bytes: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::GetShardingStats::parse_from_bytes(&bytes).map_or_else(
             |_| Err(MessageUnwrapErr::DeserializationErr),
-            |m| Ok(GetShardingStats),
+            |_m| Ok(GetShardingStats),
         )
     }
 

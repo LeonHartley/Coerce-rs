@@ -119,6 +119,11 @@ impl<A: PersistentActor> Journal<A> {
             )
             .await;
 
+        info!(
+            "persisted message, persistence_id={}, message_type={}",
+            &self.persistence_id,
+            M::type_name()
+        );
         self.last_sequence_id = sequence;
         Ok(())
     }

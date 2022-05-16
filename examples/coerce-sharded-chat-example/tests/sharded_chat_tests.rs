@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use chrono::Local;
 use coerce_sharded_chat_example::actor::peer::{JoinChat, SendChatMessage};
@@ -7,12 +7,13 @@ use coerce_sharded_chat_example::actor::stream::ChatMessage;
 use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig};
 use coerce_sharded_chat_example::websocket::client::ChatClient;
 use env_logger::Builder;
-use log::LevelFilter;
+use futures_util::future::join_all;
 use std::io::Write;
 use std::str::FromStr;
-use std::time::Duration;
-use tokio::signal::ctrl_c;
-use tokio::time::sleep;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 6)]
 pub async fn test_sharded_chat_join_and_chat() {
@@ -32,6 +33,8 @@ pub async fn test_sharded_chat_join_and_chat() {
         remote_seed_addr: Some("localhost:31101".to_string()),
         websocket_listen_addr: "localhost:32102".to_string(),
         cluster_api_listen_addr: "0.0.0.0:32103".to_string(),
+        redis_persistence_enabled: false,
+        redis_persistence_host: None,
     };
 
     let _sharded_chat_1 = ShardedChat::start(sharded_chat_config).await;
@@ -65,7 +68,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         )
         .await;
 
-    log::info!("reading chatmsgs");
+    info!("reading chatmsgs");
     let welcome_message_a = client_a.read::<ChatMessage>().await.unwrap();
     let welcome_message_b = client_b.read::<ChatMessage>().await.unwrap();
 
@@ -78,7 +81,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         &welcome_message_b.message
     );
 
-    log::info!("asserted welcome msgs");
+    info!("asserted welcome msgs");
 
     client_b
         .write(
@@ -155,28 +158,88 @@ pub async fn test_sharded_chat_join_and_chat() {
     // ctrl_c().await;
 }
 
+#[ignore]
+#[tokio::test(flavor = "multi_thread", worker_threads = 200)]
+pub async fn stress_test_sharded_chat_servers() {
+    logger();
+
+    let nodes = vec![
+        "ws://localhost:31102",
+        "ws://localhost:32102",
+        "ws://localhost:33102",
+        "ws://localhost:34102",
+    ];
+
+    let chat_stream_count = 10000;
+    let connections = Arc::new(AtomicU64::new(0));
+
+    let mut tasks = vec![];
+    for (i, node) in nodes.iter().enumerate() {
+        for n in 0..1000 {
+            let connections = connections.clone();
+            tasks.push(async move {
+                connections.clone().fetch_add(1, Relaxed);
+
+                let client_name = format!("client-{}-{}", i, n);
+                let mut client = ChatClient::connect(node, &client_name)
+                    .await
+                    .expect("connect");
+
+                for c in 0..chat_stream_count {
+                    client
+                        .write(
+                            0,
+                            JoinChat {
+                                stream_name: format!("chat-stream-{}", c),
+                                join_token: None,
+                            },
+                        )
+                        .await;
+                }
+
+                loop {
+                    for c in 0..chat_stream_count {
+                        client
+                            .write(
+                                1,
+                                SendChatMessage {
+                                    chat_stream: format!("chat-stream-{}", c),
+                                    message: ChatMessage {
+                                        sender: "".to_string(),
+                                        message: "hi".to_string(),
+                                    },
+                                },
+                            )
+                            .await;
+                    }
+                }
+            });
+        }
+    }
+
+    let _ = join_all(tasks).await;
+    info!(
+        "{} connections created and joined {} chat streams",
+        connections.load(Relaxed),
+        chat_stream_count
+    );
+}
+
 pub fn logger() {
-    if Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] {} - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"),
-                record.level(),
-                record.target(),
-                record.args(),
-            )
-        })
-        .filter(
-            None,
-            LevelFilter::from_str(
+    tracing_subscriber::fmt()
+        // .with_file(true)
+        .compact()
+        .with_target(true)
+        .with_thread_names(true)
+        .with_span_events(FmtSpan::NONE)
+        .with_ansi(false)
+        .with_max_level(
+            tracing::Level::from_str(
                 std::env::var("LOG_LEVEL")
                     .map_or(String::from("OFF"), |s| s)
                     .as_str(),
             )
-            .expect("invalid `LOG_LEVEL` environment variable"),
+            .unwrap(),
         )
-        .try_init()
-        .is_err()
-    {}
+        .init();
 }

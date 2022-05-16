@@ -537,6 +537,310 @@ impl ::protobuf::reflect::ProtobufValue for ShardAllocated {
 }
 
 #[derive(PartialEq,Clone,Default)]
+pub struct ShardReallocating {
+    // message fields
+    pub shard_id: u32,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a ShardReallocating {
+    fn default() -> &'a ShardReallocating {
+        <ShardReallocating as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ShardReallocating {
+    pub fn new() -> ShardReallocating {
+        ::std::default::Default::default()
+    }
+
+    // uint32 shard_id = 1;
+
+
+    pub fn get_shard_id(&self) -> u32 {
+        self.shard_id
+    }
+    pub fn clear_shard_id(&mut self) {
+        self.shard_id = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_shard_id(&mut self, v: u32) {
+        self.shard_id = v;
+    }
+}
+
+impl ::protobuf::Message for ShardReallocating {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint32()?;
+                    self.shard_id = tmp;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.shard_id != 0 {
+            my_size += ::protobuf::rt::value_size(1, self.shard_id, ::protobuf::wire_format::WireTypeVarint);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if self.shard_id != 0 {
+            os.write_uint32(1, self.shard_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> ShardReallocating {
+        ShardReallocating::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+                "shard_id",
+                |m: &ShardReallocating| { &m.shard_id },
+                |m: &mut ShardReallocating| { &mut m.shard_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ShardReallocating>(
+                "ShardReallocating",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static ShardReallocating {
+        static instance: ::protobuf::rt::LazyV2<ShardReallocating> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(ShardReallocating::new)
+    }
+}
+
+impl ::protobuf::Clear for ShardReallocating {
+    fn clear(&mut self) {
+        self.shard_id = 0;
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for ShardReallocating {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ShardReallocating {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct StopShard {
+    // message fields
+    pub shard_id: u32,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a StopShard {
+    fn default() -> &'a StopShard {
+        <StopShard as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl StopShard {
+    pub fn new() -> StopShard {
+        ::std::default::Default::default()
+    }
+
+    // uint32 shard_id = 1;
+
+
+    pub fn get_shard_id(&self) -> u32 {
+        self.shard_id
+    }
+    pub fn clear_shard_id(&mut self) {
+        self.shard_id = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_shard_id(&mut self, v: u32) {
+        self.shard_id = v;
+    }
+}
+
+impl ::protobuf::Message for StopShard {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint32()?;
+                    self.shard_id = tmp;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.shard_id != 0 {
+            my_size += ::protobuf::rt::value_size(1, self.shard_id, ::protobuf::wire_format::WireTypeVarint);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if self.shard_id != 0 {
+            os.write_uint32(1, self.shard_id)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> StopShard {
+        StopShard::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+                "shard_id",
+                |m: &StopShard| { &m.shard_id },
+                |m: &mut StopShard| { &mut m.shard_id },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<StopShard>(
+                "StopShard",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static StopShard {
+        static instance: ::protobuf::rt::LazyV2<StopShard> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(StopShard::new)
+    }
+}
+
+impl ::protobuf::Clear for StopShard {
+    fn clear(&mut self) {
+        self.shard_id = 0;
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for StopShard {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for StopShard {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
 pub struct AllocateShardResult {
     // message fields
     pub result_type: AllocateShardResult_Type,
@@ -3396,43 +3700,46 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\x07no\
     de_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0:\0\"H\n\x0eShardAllocated\x124\
     \n\x05shard\x18\x01\x20\x01(\x0b2\x1c.coerce.sharding.RemoteShardR\x05sh\
-    ardB\0:\0\"\xf0\x02\n\x13AllocateShardResult\x12L\n\x0bresult_type\x18\
-    \x01\x20\x01(\x0e2).coerce.sharding.AllocateShardResult.TypeR\nresultTyp\
-    eB\0\x12>\n\nallocation\x18\x02\x20\x01(\x0b2\x1c.coerce.sharding.Remote\
-    ShardR\nallocationB\0\x12I\n\x03err\x18\x03\x20\x01(\x0e25.coerce.shardi\
-    ng.AllocateShardResult.AllocateShardErrR\x03errB\0\"J\n\x04Type\x12\r\n\
-    \tALLOCATED\x10\0\x12\x15\n\x11ALREADY_ALLOCATED\x10\x01\x12\x11\n\rNOT_\
-    ALLOCATED\x10\x02\x12\x07\n\x03ERR\x10\x03\x1a\0\"2\n\x10AllocateShardEr\
-    r\x12\x0b\n\x07UNKNOWN\x10\0\x12\x0f\n\x0bPERSISTENCE\x10\x01\x1a\0:\0\"\
-    \xa6\x02\n\x13RemoteEntityRequest\x12\x1f\n\nrequest_id\x18\x01\x20\x01(\
-    \tR\trequestIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\
-    \0\x12#\n\x0cmessage_type\x18\x03\x20\x01(\tR\x0bmessageTypeB\0\x12\x1a\
-    \n\x07message\x18\x04\x20\x01(\x0cR\x07messageB\0\x12E\n\x06recipe\x18\
-    \x05\x20\x01(\x0b2+.coerce.sharding.RemoteEntityRequest.RecipeR\x06recip\
-    eB\0\x12!\n\x0borigin_node\x18\x06\x20\x01(\x04R\noriginNodeB\0\x1a$\n\
-    \x06Recipe\x12\x18\n\x06recipe\x18\x01\x20\x01(\x0cR\x06recipeB\0:\0:\0\
-    \"F\n\x0bStartEntity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07actorI\
-    dB\0\x12\x18\n\x06recipe\x18\x02\x20\x01(\x0cR\x06recipeB\0:\0\"0\n\x0fP\
-    assivateEntity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0:\
-    \0\"-\n\x0cRemoveEntity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07act\
-    orIdB\0:\0\"\x94\x02\n\x12ShardStateSnapshot\x12\x1b\n\x08shard_id\x18\
-    \x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\x04\
-    R\x06nodeIdB\0\x12H\n\x08entities\x18\x03\x20\x03(\x0b2*.coerce.sharding\
-    .ShardStateSnapshot.EntityR\x08entitiesB\0\x1az\n\x06Entity\x12\x1b\n\
-    \x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x18\n\x06recipe\x18\
-    \x02\x20\x01(\x0cR\x06recipeB\0\x127\n\x06status\x18\x03\x20\x01(\x0e2\
-    \x1d.coerce.sharding.EntityStatusR\x06statusB\0:\0:\0\"\x14\n\x10GetShar\
-    dingStats:\0\"K\n\tNodeStats\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\
-    \x06nodeIdB\0\x12!\n\x0bshard_count\x18\x02\x20\x01(\x04R\nshardCountB\0\
-    :\0\"\xc5\x01\n\rShardingStats\x12!\n\x0bentity_type\x18\x01\x20\x01(\tR\
-    \nentityTypeB\0\x12#\n\x0ctotal_shards\x18\x02\x20\x01(\x04R\x0btotalSha\
-    rdsB\0\x126\n\x06shards\x18\x03\x20\x03(\x0b2\x1c.coerce.sharding.Remote\
-    ShardR\x06shardsB\0\x122\n\x05nodes\x18\x04\x20\x03(\x0b2\x1a.coerce.sha\
-    rding.NodeStatsR\x05nodesB\0:\0\"\x11\n\rGetShardStats:\0\"d\n\nShardSta\
-    ts\x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\x07\
-    node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1c\n\x08entities\x18\x03\
-    \x20\x03(\tR\x08entitiesB\0:\0*,\n\x0cEntityStatus\x12\n\n\x06ACTIVE\x10\
-    \0\x12\x0e\n\nPASSIVATED\x10\x01\x1a\0B\0b\x06proto3\
+    ardB\0:\0\"2\n\x11ShardReallocating\x12\x1b\n\x08shard_id\x18\x01\x20\
+    \x01(\rR\x07shardIdB\0:\0\"*\n\tStopShard\x12\x1b\n\x08shard_id\x18\x01\
+    \x20\x01(\rR\x07shardIdB\0:\0\"\xf0\x02\n\x13AllocateShardResult\x12L\n\
+    \x0bresult_type\x18\x01\x20\x01(\x0e2).coerce.sharding.AllocateShardResu\
+    lt.TypeR\nresultTypeB\0\x12>\n\nallocation\x18\x02\x20\x01(\x0b2\x1c.coe\
+    rce.sharding.RemoteShardR\nallocationB\0\x12I\n\x03err\x18\x03\x20\x01(\
+    \x0e25.coerce.sharding.AllocateShardResult.AllocateShardErrR\x03errB\0\"\
+    J\n\x04Type\x12\r\n\tALLOCATED\x10\0\x12\x15\n\x11ALREADY_ALLOCATED\x10\
+    \x01\x12\x11\n\rNOT_ALLOCATED\x10\x02\x12\x07\n\x03ERR\x10\x03\x1a\0\"2\
+    \n\x10AllocateShardErr\x12\x0b\n\x07UNKNOWN\x10\0\x12\x0f\n\x0bPERSISTEN\
+    CE\x10\x01\x1a\0:\0\"\xa6\x02\n\x13RemoteEntityRequest\x12\x1f\n\nreques\
+    t_id\x18\x01\x20\x01(\tR\trequestIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\
+    \x01(\tR\x07actorIdB\0\x12#\n\x0cmessage_type\x18\x03\x20\x01(\tR\x0bmes\
+    sageTypeB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\x07messageB\0\x12\
+    E\n\x06recipe\x18\x05\x20\x01(\x0b2+.coerce.sharding.RemoteEntityRequest\
+    .RecipeR\x06recipeB\0\x12!\n\x0borigin_node\x18\x06\x20\x01(\x04R\norigi\
+    nNodeB\0\x1a$\n\x06Recipe\x12\x18\n\x06recipe\x18\x01\x20\x01(\x0cR\x06r\
+    ecipeB\0:\0:\0\"F\n\x0bStartEntity\x12\x1b\n\x08actor_id\x18\x01\x20\x01\
+    (\tR\x07actorIdB\0\x12\x18\n\x06recipe\x18\x02\x20\x01(\x0cR\x06recipeB\
+    \0:\0\"0\n\x0fPassivateEntity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\
+    \x07actorIdB\0:\0\"-\n\x0cRemoveEntity\x12\x1b\n\x08actor_id\x18\x01\x20\
+    \x01(\tR\x07actorIdB\0:\0\"\x94\x02\n\x12ShardStateSnapshot\x12\x1b\n\
+    \x08shard_id\x18\x01\x20\x01(\rR\x07shardIdB\0\x12\x19\n\x07node_id\x18\
+    \x02\x20\x01(\x04R\x06nodeIdB\0\x12H\n\x08entities\x18\x03\x20\x03(\x0b2\
+    *.coerce.sharding.ShardStateSnapshot.EntityR\x08entitiesB\0\x1az\n\x06En\
+    tity\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x18\n\
+    \x06recipe\x18\x02\x20\x01(\x0cR\x06recipeB\0\x127\n\x06status\x18\x03\
+    \x20\x01(\x0e2\x1d.coerce.sharding.EntityStatusR\x06statusB\0:\0:\0\"\
+    \x14\n\x10GetShardingStats:\0\"K\n\tNodeStats\x12\x19\n\x07node_id\x18\
+    \x01\x20\x01(\x04R\x06nodeIdB\0\x12!\n\x0bshard_count\x18\x02\x20\x01(\
+    \x04R\nshardCountB\0:\0\"\xc5\x01\n\rShardingStats\x12!\n\x0bentity_type\
+    \x18\x01\x20\x01(\tR\nentityTypeB\0\x12#\n\x0ctotal_shards\x18\x02\x20\
+    \x01(\x04R\x0btotalShardsB\0\x126\n\x06shards\x18\x03\x20\x03(\x0b2\x1c.\
+    coerce.sharding.RemoteShardR\x06shardsB\0\x122\n\x05nodes\x18\x04\x20\
+    \x03(\x0b2\x1a.coerce.sharding.NodeStatsR\x05nodesB\0:\0\"\x11\n\rGetSha\
+    rdStats:\0\"d\n\nShardStats\x12\x1b\n\x08shard_id\x18\x01\x20\x01(\rR\
+    \x07shardIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\
+    \x12\x1c\n\x08entities\x18\x03\x20\x03(\tR\x08entitiesB\0:\0*,\n\x0cEnti\
+    tyStatus\x12\n\n\x06ACTIVE\x10\0\x12\x0e\n\nPASSIVATED\x10\x01\x1a\0B\0b\
+    \x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

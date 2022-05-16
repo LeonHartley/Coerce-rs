@@ -1,9 +1,13 @@
-use crate::actor::pubsub::{ChatStreamEvent, ChatStreamTopic};
+use crate::actor::pubsub::{ChatReceive, ChatStreamTopic};
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::{Actor, ActorCreationErr, ActorFactory, ActorRecipe};
-use coerce::remote::net::StreamData;
-use coerce::remote::stream::pubsub::{PubSub, Topic};
+use coerce::persistent::journal::snapshot::Snapshot;
+use coerce::persistent::journal::types::JournalTypes;
+use coerce::persistent::journal::PersistErr;
+use coerce::persistent::{PersistentActor, Recover, RecoverSnapshot};
+
+use coerce::remote::stream::pubsub::PubSub;
 
 pub struct ChatStream {
     name: String,
@@ -13,7 +17,24 @@ pub struct ChatStream {
     topic: ChatStreamTopic,
 }
 
-impl Actor for ChatStream {}
+#[async_trait]
+impl PersistentActor for ChatStream {
+    fn persistence_key(&self, _ctx: &ActorContext) -> String {
+        format!("ChatStream-{}", &self.name)
+    }
+
+    fn configure(types: &mut JournalTypes<Self>) {
+        types.message::<ChatMessage>("ChatMessage");
+    }
+
+    async fn post_recovery(&mut self, _ctx: &mut ActorContext) {
+        info!(
+            "ChatStream (name={}) recovered {} chat messages",
+            &self.name,
+            self.messages.len()
+        );
+    }
+}
 
 #[derive(Clone)]
 pub struct ChatStreamFactory;
@@ -62,18 +83,9 @@ impl Handler<Join> for ChatStream {
             &message.peer_name, &self.name
         );
 
-        let message_history = self
-            .messages
-            .iter()
-            .rev()
-            .take(100)
-            .rev()
-            .cloned()
-            .collect();
-
         JoinResult::Ok {
             creator: self.creator.clone(),
-            message_history,
+            message_history: self.messages.clone(),
             token: self.join_token.clone(),
         }
     }
@@ -82,19 +94,21 @@ impl Handler<Join> for ChatStream {
 #[async_trait]
 impl Handler<ChatMessage> for ChatStream {
     async fn handle(&mut self, message: ChatMessage, ctx: &mut ActorContext) {
-        self.messages.push(message.clone());
+        if self.persist(&message, ctx).await.is_ok() {
+            self.messages.push(message.clone());
 
-        info!(
-            "user {} said \"{}\" (chat_stream={}), history={:?}",
-            &message.sender, &message.message, self.name, &self.messages
-        );
+            info!(
+                "user {} said \"{}\" (chat_stream={})",
+                &message.sender, &message.message, self.name
+            );
 
-        PubSub::publish(
-            self.topic.clone(),
-            ChatStreamEvent::Message(message),
-            ctx.system().remote(),
-        )
-        .await;
+            PubSub::publish(
+                self.topic.clone(),
+                ChatReceive::Message(message),
+                ctx.system().remote(),
+            )
+            .await;
+        }
     }
 }
 
@@ -112,6 +126,13 @@ impl ActorFactory for ChatStreamFactory {
             join_token: "todo: join-token".to_string(),
             topic: ChatStreamTopic(recipe.name),
         })
+    }
+}
+
+#[async_trait]
+impl Recover<ChatMessage> for ChatStream {
+    async fn recover(&mut self, message: ChatMessage, ctx: &mut ActorContext) {
+        self.messages.push(message);
     }
 }
 

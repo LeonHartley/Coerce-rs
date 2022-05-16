@@ -1,4 +1,4 @@
-use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Handler, Message};
 use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, LocalActorRef,
 };
@@ -7,7 +7,9 @@ use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
 use crate::remote::cluster::sharding::coordinator::stats::GetShardingStats;
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
-use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost, StopShard};
+use crate::remote::cluster::sharding::host::{
+    ShardAllocated, ShardHost, ShardReallocating, StopShard,
+};
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::builder::RemoteActorHandlerBuilder;
@@ -42,16 +44,21 @@ pub struct Sharded<A: Actor> {
 }
 
 impl<A: ActorFactory> Sharding<A> {
-    pub async fn start(system: RemoteActorSystem) -> Self {
-        let shard_entity = A::Actor::type_name().to_string();
+    pub async fn start(shard_entity: String, system: RemoteActorSystem) -> Self {
         let coordinator_spawner_actor_id = Some(format!(
             "ShardCoordinator-{}-Spawner-{}",
             &shard_entity,
             system.node_id()
         ));
+
         let host_actor_id = Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()));
 
-        let host = ShardHost::new(shard_entity.clone(), None)
+        let actor_handler = system
+            .config()
+            .actor_handler(A::Actor::type_name())
+            .expect("actor factory not supported");
+
+        let host = ShardHost::new(shard_entity.clone(), actor_handler, None)
             .into_actor(host_actor_id, system.actor_system())
             .await
             .expect("create ShardHost actor");
@@ -96,7 +103,7 @@ impl<A: ActorFactory> Sharding<A> {
     where
         ShardHost: Handler<M>,
     {
-        self.core.host.notify(message)
+        self.core.notify_host(message)
     }
 
     pub fn shard_host(&self) -> &LocalActorRef<ShardHost> {
@@ -105,6 +112,19 @@ impl<A: ActorFactory> Sharding<A> {
 
     pub fn shard_entity(&self) -> &String {
         &self.core.shard_entity
+    }
+
+    pub fn coordinator_spawner(&self) -> &LocalActorRef<CoordinatorSpawner> {
+        &self.core.coordinator_spawner
+    }
+}
+
+impl ShardingCore {
+    pub fn notify_host<M: Message>(&self, message: M) -> Result<(), ActorRefErr>
+    where
+        ShardHost: Handler<M>,
+    {
+        self.host.notify(message)
     }
 }
 
@@ -128,7 +148,7 @@ impl<A: Actor> Sharded<A> {
         let (tx, rx) = oneshot::channel();
 
         let actor_id = self.actor_id.clone();
-        self.sharding.host.notify(EntityRequest {
+        let _res = self.sharding.notify_host(EntityRequest {
             actor_id,
             message_type,
             message,
@@ -138,9 +158,8 @@ impl<A: Actor> Sharded<A> {
 
         let result = rx.await;
         if let Ok(result) = result {
-            let result = result.map(|res| {
-                M::read_remote_result(res).map_err(|res| ActorRefErr::Deserialisation(res))
-            });
+            let result =
+                result.map(|res| M::read_remote_result(res).map_err(ActorRefErr::Deserialisation));
             match result {
                 Ok(res) => res,
                 Err(e) => Err(e),
@@ -156,6 +175,7 @@ pub fn sharding(builder: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHand
         .with_handler::<ShardCoordinator, AllocateShard>("ShardCoordinator.AllocateShard")
         .with_handler::<ShardCoordinator, GetShardingStats>("ShardCoordinator.GetShardingStats")
         .with_handler::<ShardHost, ShardAllocated>("ShardHost.ShardAllocated")
+        .with_handler::<ShardHost, ShardReallocating>("ShardHost.ShardReallocating")
         .with_handler::<ShardHost, StopShard>("ShardHost.StopShard")
         .with_handler::<Shard, RemoteEntityRequest>("Shard.RemoteEntityRequest")
         .with_handler::<Shard, GetShardStats>("Shard.GetShardStats")

@@ -1,12 +1,11 @@
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, CoreActorRef,
     LocalActorRef,
 };
 use crate::remote::actor::message::{
-    ClientWrite, GetActorNode, GetNodes, NewClient, RegisterActor, RegisterNode, RegisterNodes,
-    UpdateNodes,
+    ClientWrite, GetActorNode, GetNodes, NewClient, RegisterActor, RegisterNode, UpdateNodes,
 };
 use crate::remote::actor::{
     RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
@@ -15,8 +14,8 @@ use crate::remote::actor::{
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
-use crate::remote::handler::{send_proto_result, RemoteActorMessageMarker};
-use crate::remote::net::client::{ClientType, RemoteClient, RemoteClientRef};
+use crate::remote::handler::send_proto_result;
+use crate::remote::net::client::{ClientType, RemoteClientRef};
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, CreateActor};
 use crate::remote::stream::mediator::StreamMediator;
@@ -24,7 +23,7 @@ use crate::remote::system::builder::RemoteActorSystemBuilder;
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use serde::Serialize;
 use std::sync::Arc;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::oneshot;
 
 use crate::actor::context::ActorContext;
 
@@ -38,9 +37,8 @@ use chrono::{DateTime, Utc};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::sync::atomic::AtomicI64;
-use std::sync::atomic::Ordering::{Relaxed, SeqCst};
-use std::time::Instant;
-use tokio::sync::oneshot::error::RecvError;
+use std::sync::atomic::Ordering::SeqCst;
+
 use uuid::Uuid;
 
 pub mod builder;
@@ -279,7 +277,7 @@ impl RemoteActorSystem {
         self.push_request(message_id, res_tx);
 
         trace!(target: "NodeRpc", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
-        self.send_message(node_id, event).await;
+        self.notify_node(node_id, event).await;
 
         trace!(target: "NodeRpc", "message_id={}, waiting for result", &message_id);
         match res_rx.await {
@@ -299,7 +297,7 @@ impl RemoteActorSystem {
         buffer: &[u8],
     ) -> Result<Vec<u8>, ActorRefErr> {
         let (tx, rx) = oneshot::channel();
-        let handler = self.inner.config.message_handler(&identifier);
+        let handler = self.inner.config.message_handler(identifier);
 
         if let Some(handler) = handler {
             handler.handle_attempt(actor_id, buffer, tx, 1).await;
@@ -327,14 +325,19 @@ impl RemoteActorSystem {
             }
         }
 
-        let actor_id = actor_id.map_or_else(|| new_actor_id(), |id| id);
+        let actor_id = actor_id.map_or_else(new_actor_id, |id| id);
 
         trace!(target: "ActorDeploy", "creating actor (actor_id={})", &actor_id);
         let handler = self.inner.config.actor_handler(&actor_type);
 
         if let Some(handler) = handler {
             let actor_ref = handler
-                .create(Some(actor_id.clone()), raw_recipe, supervisor_ctx)
+                .create(
+                    Some(actor_id.clone()),
+                    raw_recipe,
+                    supervisor_ctx,
+                    Some(self.actor_system()),
+                )
                 .await;
 
             match actor_ref {
@@ -376,13 +379,11 @@ impl RemoteActorSystem {
     }
 
     pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader> {
-        match self.handler_name::<A, M>() {
-            Some(handler_type) => Some(RemoteMessageHeader {
+        self.handler_name::<A, M>()
+            .map(|handler_type| RemoteMessageHeader {
                 actor_id: id.clone(),
                 handler_type,
-            }),
-            None => None,
-        }
+            })
     }
 
     pub fn register_actor(&self, actor_id: ActorId, node_id: Option<NodeId>) {
@@ -416,7 +417,7 @@ impl RemoteActorSystem {
             .unwrap()
     }
 
-    pub async fn send_message(&self, node_id: NodeId, message: SessionEvent) {
+    pub async fn notify_node(&self, node_id: NodeId, message: SessionEvent) {
         self.inner
             .clients_ref
             .send(ClientWrite(node_id, message))
@@ -440,7 +441,7 @@ impl RemoteActorSystem {
                         .inner
                         .get_tracked_actor(actor_id)
                         .await
-                        .map(|actor_ref| ActorRef::from(actor_ref))
+                        .map(ActorRef::from)
                 } else {
                     Some(ActorRef::from(RemoteActorRef::new(
                         actor_id,
@@ -504,7 +505,7 @@ impl RemoteActorSystem {
             })
             .await
             .expect("get client from RemoteClientRegistry")
-            .map(|client| RemoteClientRef::from(client))
+            .map(RemoteClientRef::from)
     }
 
     pub fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {

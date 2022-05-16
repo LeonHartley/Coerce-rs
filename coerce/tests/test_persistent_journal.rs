@@ -1,6 +1,6 @@
 use coerce::actor::context::ActorContext;
 
-use coerce::actor::message::{Handler, MessageUnwrapErr};
+use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::IntoActor;
 

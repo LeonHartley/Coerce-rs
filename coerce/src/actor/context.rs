@@ -1,9 +1,11 @@
 use crate::actor::message::{Handler, Message};
+use crate::actor::metrics::ActorMetrics;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use crate::persistent::context::ActorPersistence;
 use futures::{Stream, StreamExt};
 use tokio::sync::oneshot::Sender;
+use tracing::field::{Field, Visit};
 
 use crate::actor::supervised::Supervised;
 
@@ -34,6 +36,8 @@ impl Drop for ActorContext {
         if let Some(mut supervised) = self.supervised.take() {
             tokio::spawn(async move { supervised.stop_all().await });
         }
+
+        ActorMetrics::incr_actor_stopped(self.boxed_ref.0.actor_type());
 
         match self.status {
             ActorStatus::Starting => {

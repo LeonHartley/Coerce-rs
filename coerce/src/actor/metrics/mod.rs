@@ -1,58 +1,56 @@
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
-pub struct ActorSystemMetrics {
-    total_messages_processed: AtomicU64,
-    total_actors_started: AtomicU64,
-    total_actors_stopped: AtomicU64,
-}
+pub const METRIC_ACTOR_CREATED: &str = "coerce_actor_created";
+pub const METRIC_ACTOR_STOPPED: &str = "coerce_actor_stopped";
+pub const METRIC_ACTOR_MESSAGES_SENT_TOTAL: &str = "coerce_actor_msg_sent_total";
+pub const METRIC_ACTOR_MESSAGE_WAIT_TIME: &str = "coerce_actor_msg_wait_time";
+pub const METRIC_ACTOR_MESSAGE_PROCESSING_TIME: &str = "coerce_actor_msg_processing_time";
+pub const METRIC_ACTOR_MESSAGES_PROCESSED_TOTAL: &str = "coerce_actor_msg_processed_total";
 
-impl ActorSystemMetrics {
-    pub fn new() -> ActorSystemMetrics {
-        ActorSystemMetrics {
-            total_messages_processed: AtomicU64::new(0),
-            total_actors_started: AtomicU64::new(0),
-            total_actors_stopped: AtomicU64::new(0),
-        }
+pub const LABEL_ACTOR_TYPE: &str = "actor_type";
+pub const LABEL_MESSAGE_TYPE: &str = "msg_type";
+
+pub struct ActorMetrics;
+
+impl ActorMetrics {
+    #[inline]
+    pub fn incr_actor_created(actor_type: &'static str) {
+        increment_counter!(METRIC_ACTOR_CREATED,
+            LABEL_ACTOR_TYPE => actor_type,
+        );
     }
 
     #[inline]
-    pub fn get_msgs_processed(&self) -> u64 {
-        get(&self.total_messages_processed)
+    pub fn incr_actor_stopped(actor_type: &'static str) {
+        increment_counter!(METRIC_ACTOR_STOPPED,
+            LABEL_ACTOR_TYPE => actor_type,
+        );
     }
 
     #[inline]
-    pub fn get_actors_started(&self) -> u64 {
-        get(&self.total_actors_started)
+    pub fn incr_messages_sent(actor_type: &'static str, msg_type: &'static str) {
+        increment_counter!(METRIC_ACTOR_MESSAGES_SENT_TOTAL,
+            LABEL_ACTOR_TYPE => actor_type,
+            LABEL_MESSAGE_TYPE => msg_type
+        );
     }
 
     #[inline]
-    pub fn get_actors_stopped(&self) -> u64 {
-        get(&self.total_actors_stopped)
+    pub fn incr_messages_processed(
+        actor_type: &'static str,
+        msg_type: &'static str,
+        wait_time: Duration,
+        processing_time: Duration,
+    ) {
+        increment_counter!(METRIC_ACTOR_MESSAGES_PROCESSED_TOTAL,
+            LABEL_ACTOR_TYPE => actor_type,
+            LABEL_MESSAGE_TYPE => msg_type
+        );
+
+        histogram!(METRIC_ACTOR_MESSAGE_WAIT_TIME, wait_time, LABEL_ACTOR_TYPE => actor_type,
+            LABEL_MESSAGE_TYPE => msg_type);
+
+        histogram!(METRIC_ACTOR_MESSAGE_PROCESSING_TIME, processing_time, LABEL_ACTOR_TYPE => actor_type,
+            LABEL_MESSAGE_TYPE => msg_type)
     }
-
-    #[inline]
-    pub fn increment_msgs_processed(&self) {
-        incr(&self.total_messages_processed);
-    }
-
-    #[inline]
-    pub fn increment_actors_started(&self) {
-        incr(&self.total_actors_started);
-    }
-
-    #[inline]
-    pub fn increment_actors_stopped(&self) {
-        incr(&self.total_actors_stopped);
-    }
-}
-
-#[inline]
-fn get(number: &AtomicU64) -> u64 {
-    number.load(Relaxed)
-}
-
-#[inline]
-fn incr(number: &AtomicU64) {
-    let _previous = number.fetch_add(1, Ordering::Relaxed);
 }

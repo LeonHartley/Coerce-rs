@@ -1,15 +1,14 @@
 use chrono::Local;
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::{Handler, Message, MessageUnwrapErr};
+use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 use coerce_macros::JsonMessage;
 use env_logger::Builder;
-use log::LevelFilter;
 use serde::Serialize;
+use std::borrow::Borrow;
 use std::io::Write;
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
+use tracing::Level;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TestActorStatus {
@@ -123,22 +122,16 @@ lazy_static::lazy_static! {
 }
 
 pub fn create_trace_logger() {
-    if Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] {} - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"),
-                record.level(),
-                record.target(),
-                record.args(),
-            )
-        })
-        .filter(
-            None,
-            LevelFilter::from_str(&LOG_LEVEL).expect("invalid `LOG_LEVEL` environment variable"),
+    tracing_subscriber::fmt()
+        // enable everything
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(true)
+        .with_thread_names(true)
+        .with_ansi(false)
+        .with_max_level(
+            Level::from_str(&LOG_LEVEL.as_str()).expect("invalid `LOG_LEVEL` environment variable"),
         )
-        .try_init()
-        .is_err()
-    {}
+        // sets this to be the default, global collector for this application.
+        .init();
 }
