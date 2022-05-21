@@ -74,7 +74,6 @@ pub async fn test_pubsub_local() {
     let sys = ActorSystem::new();
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
-        .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;
 
@@ -122,7 +121,6 @@ pub async fn test_pubsub_distributed() {
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_id(1)
-        .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;
 
@@ -130,7 +128,6 @@ pub async fn test_pubsub_distributed() {
     let remote_b = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_id(2)
-        .with_distributed_streams(|s| s.add_topic::<StatusStream>())
         .build()
         .await;
 
@@ -138,6 +135,7 @@ pub async fn test_pubsub_distributed() {
         .clone()
         .cluster_worker()
         .listen_addr("localhost:30101")
+        .with_seed_addr("localhost:30102")
         .start()
         .await;
 

@@ -53,7 +53,7 @@ type ScheduledRebalance = ScheduledNotify<ShardCoordinator, Rebalance>;
 #[async_trait]
 impl PersistentActor for ShardCoordinator {
     fn persistence_key(&self, _ctx: &ActorContext) -> String {
-        format!("ShardCoordinator-{}", &self.shard_entity)
+        format!("{}-ShardCoordinator", &self.shard_entity)
     }
 
     fn configure(types: &mut JournalTypes<Self>) {

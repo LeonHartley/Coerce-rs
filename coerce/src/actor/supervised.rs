@@ -107,12 +107,6 @@ impl Supervised {
         }
     }
 
-    pub fn notify_parent_stopped(&self) {
-        for child in &self.children {
-            child.1.notify_parent_terminated();
-        }
-    }
-
     pub async fn on_child_stopped(&mut self, id: &ActorId) {
         if let Some(_) = self.children.remove(id) {
             trace!("child actor (id={}) stopped", id);

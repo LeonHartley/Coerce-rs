@@ -11,6 +11,7 @@ use futures::future::join_all;
 
 use std::mem;
 use std::time::Instant;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum Rebalance {
@@ -70,7 +71,7 @@ impl ShardCoordinator {
                 let shard_host_actor = shard_host.actor.clone();
 
                 shard_reallocation_tasks.push(async move {
-                    let result = shard_host_actor.send(StopShard { shard_id: shard }).await;
+                    let result = shard_host_actor.send(StopShard { shard_id: shard, request_id: Uuid::new_v4() }).await;
                     match result {
                         Ok(_) => {
                             let _ = self_ref.send(AllocateShard { shard_id: shard }).await;

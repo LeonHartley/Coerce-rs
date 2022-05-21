@@ -340,8 +340,6 @@ pub trait CoreActorRef: Any {
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr>;
 
-    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr>;
-
     fn as_any(&self) -> &dyn Any;
 }
 
@@ -552,10 +550,6 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.notify(Terminated(id))
     }
 
-    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr> {
-        Ok(())
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -585,10 +579,6 @@ impl CoreActorRef for BoxedActorRef {
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
         self.0.notify_child_terminated(id)
-    }
-
-    fn notify_parent_terminated(&self) -> Result<(), ActorRefErr> {
-        Ok(())
     }
 
     fn as_any(&self) -> &dyn Any {

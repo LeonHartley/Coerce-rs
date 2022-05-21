@@ -328,14 +328,18 @@ async fn session_handshake(
     session_id: Uuid,
     session: LocalActorRef<RemoteSession>,
 ) {
-    let mut headers = HashMap::<String, String>::new();
-    headers.insert("traceparent".to_owned(), handshake.trace_id);
-    let span = tracing::trace_span!("RemoteServer::Handshake");
-    span.set_parent(global::get_text_map_propagator(|propagator| {
-        propagator.extract(&mut headers)
-    }));
+    // let mut headers = HashMap::<String, String>::new();
+    // headers.insert("traceparent".to_owned(), handshake.trace_id);
+    // let span = tracing::trace_span!("RemoteServer::Handshake");
+    // span.set_parent(global::get_text_map_propagator(|propagator| {
+    //     propagator.extract(&mut headers)
+    // }));
+    // let _enter = span.enter();
 
-    let _enter = span.enter();
+    debug!(
+        "received SessionHandshake (request_id={})",
+        &handshake.trace_id
+    );
 
     let nodes = ctx.get_nodes().await;
     let mut response = ClientHandshake {
@@ -370,7 +374,10 @@ async fn session_handshake(
 
     let sys = ctx.clone();
 
-    info!("[{}] discovering nodes: {:?}", &session_id, &nodes);
+    info!(
+        "[{}] discovering nodes: {:?}, request_id={}",
+        &session_id, &nodes, &handshake.trace_id
+    );
 
     let (tx, rx) = oneshot::channel();
     let _ = sys.node_discovery().notify(Discover {
@@ -380,12 +387,20 @@ async fn session_handshake(
 
     let _ = rx.await.expect("unable to discover nodes");
 
-    info!("[{}] discovered nodes", &session_id);
+    info!(
+        "[{}] discovered nodes, request_id={}",
+        &session_id, &handshake.trace_id
+    );
 
     session
         .send(SessionWrite(session_id, ClientEvent::Handshake(response)))
         .await
         .expect("send session write (handshake)");
+
+    info!(
+        "[{}] written handshake ack, request_id={}",
+        &session_id, &handshake.trace_id
+    );
 }
 
 async fn session_handle_message(

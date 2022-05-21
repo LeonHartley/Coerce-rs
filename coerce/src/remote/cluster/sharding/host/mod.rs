@@ -1,9 +1,11 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::{Actor, ActorId, ActorRef, IntoActor, LocalActorRef};
+use crate::actor::{
+    Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef, IntoActor, LocalActorRef,
+};
 use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
-use crate::remote::cluster::sharding::host::request::EntityRequest;
+use crate::remote::cluster::sharding::host::request::{handle_request, EntityRequest};
 use crate::remote::cluster::sharding::proto::sharding as proto;
 
 use crate::remote::cluster::sharding::shard::Shard;
@@ -12,14 +14,21 @@ use crate::remote::RemoteActorRef;
 use protobuf::Message as ProtoMessage;
 
 use crate::remote::actor::BoxedActorHandler;
+use futures::FutureExt;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
+use uuid::Uuid;
 
 pub mod request;
 pub mod stats;
 
 pub enum ShardState {
-    Starting { request_buffer: Vec<EntityRequest> },
+    Starting {
+        request_buffer: Vec<EntityRequest>,
+        stop_requested: bool,
+    },
     Ready(LocalActorRef<Shard>),
+    Stopping,
 }
 
 pub struct ShardHost {
@@ -93,8 +102,22 @@ pub struct ShardReallocating(pub ShardId);
 
 pub struct ShardReady(pub ShardId, pub LocalActorRef<Shard>);
 
+impl Message for ShardReady {
+    type Result = ();
+}
+
+pub struct ShardStopped {
+    shard_id: ShardId,
+    stopped_successfully: bool,
+}
+
+impl Message for ShardStopped {
+    type Result = ();
+}
+
 pub struct StopShard {
     pub shard_id: ShardId,
+    pub request_id: Uuid,
 }
 
 pub struct StartEntity {
@@ -108,6 +131,15 @@ pub struct RemoveEntity {
 
 pub struct PassivateEntity {
     pub actor_id: String,
+}
+
+impl ShardState {
+    pub fn actor_ref(&self) -> Option<LocalActorRef<Shard>> {
+        match self {
+            ShardState::Ready(actor_ref) => Some(actor_ref.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[async_trait]
@@ -158,28 +190,25 @@ impl Handler<ShardAllocated> for ShardHost {
             let system = ctx.system().clone();
             let handler = self.actor_handler.new_boxed();
 
-            let shard = Shard::new(shard_id, handler, true)
-                .into_actor(Some(shard_actor_id), &system)
-                .await
-                .expect("create shard actor");
+            let self_ref = self.actor_ref(ctx);
+            tokio::spawn(async move {
+                let shard = Shard::new(shard_id, handler, true)
+                    .into_actor(Some(shard_actor_id), &system)
+                    .await
+                    .expect("create shard actor");
 
-            ctx.attach_child_ref(shard.clone().into());
+                self_ref.notify(ShardReady(shard_id, shard))
+            });
 
-            // let self_ref = self.actor_ref(ctx);
-            // tokio::spawn(async move {
-            //     let shard = Shard::new(shard_id, handler, true)
-            //         .into_actor(Some(shard_actor_id), &system)
-            //         .await
-            //         .expect("create shard actor");
-            //
-            //     self_ref.notify(ShardStarted(shard_id, shard))
-            // });
-            // self.hosted_shards
-            //     .insert(shard_id, ShardState::Starting { request_buffer: vec![] });
+            self.hosted_shards.insert(
+                shard_id,
+                ShardState::Starting {
+                    request_buffer: vec![],
+                    stop_requested: false,
+                },
+            );
 
             debug!("local shard#{} allocated to node={}", message.0, message.1);
-            self.hosted_shards
-                .insert(shard_id, ShardState::Ready(shard));
         } else {
             // if self.hosted_shards.contains_key(&shard_id) {
             //     // log an error or a warning?
@@ -206,21 +235,52 @@ impl Handler<ShardAllocated> for ShardHost {
     }
 }
 
+#[async_trait]
 impl Handler<ShardReady> for ShardHost {
     async fn handle(&mut self, message: ShardReady, ctx: &mut ActorContext) {
+        let shard_id = message.0;
+        let actor_ref = message.1;
+
         let shard_state = self
             .hosted_shards
-            .insert(message.0, ShardState::Ready(message.1.clone()));
+            .insert(shard_id, ShardState::Ready(actor_ref.clone()));
+
+        ctx.attach_child_ref(actor_ref.clone().into());
+
         match shard_state {
-            Some(ShardState::Starting { request_buffer }) => {
-                for request in request_buffer {
-                    self.handle_request(request, &mut ShardState::Ready(message.1.clone()))
-                        .await;
+            Some(ShardState::Starting {
+                request_buffer,
+                stop_requested,
+            }) => {
+                if stop_requested {
+                    // TODO: move the request buffer over to `requests_pending_shard_allocation`
+                    self.stop_shard(shard_id, actor_ref, ctx);
+                } else {
+                    let mut shard_state = ShardState::Ready(actor_ref);
+                    for request in request_buffer {
+                        handle_request(request, shard_id, &mut shard_state);
+                    }
                 }
             }
+
             _ => {}
         }
-        ctx.attach_child_ref(shard.clone().into());
+    }
+}
+
+impl ShardHost {
+    fn stop_shard(&self, shard_id: ShardId, actor_ref: LocalActorRef<Shard>, ctx: &ActorContext) {
+        let shard_host = self.actor_ref(ctx);
+
+        tokio::spawn(async move {
+            let result = actor_ref.stop().await;
+            let _ = shard_host.notify(ShardStopped {
+                shard_id,
+                stopped_successfully: result.is_ok(),
+            });
+
+            // TODO: send `ShardStopped` result back to the sending node (if it was remote)
+        });
     }
 }
 
@@ -233,29 +293,42 @@ impl Handler<ShardReallocating> for ShardHost {
 
 #[async_trait]
 impl Handler<StopShard> for ShardHost {
-    async fn handle(&mut self, message: StopShard, _ctx: &mut ActorContext) {
-        // TODO: having the shard host wait for the shard to stop
-        //       will hurt throughput of other shards during re-balancing,
-        //       need a way to defer it and return a remote result via oneshot channel
+    async fn handle(&mut self, message: StopShard, ctx: &mut ActorContext) {
+        let shard_id = message.shard_id;
+        let shard_entry = self.hosted_shards.entry(shard_id);
+        match shard_entry {
+            Entry::Occupied(mut shard_entry) => {
+                match shard_entry.insert(ShardState::Stopping) {
+                    ShardState::Starting {
+                        mut stop_requested, ..
+                    } => {
+                        // actor has requested to be started so we can't stop it yet, once the actor
+                        // has finished starting, we can then stop it.
+                        stop_requested = true;
+                    }
 
-        let status = match self.hosted_shards.remove(&message.shard_id) {
-            None => Ok(()),
-            Some(shard) => shard.actor.stop().await,
-        };
+                    ShardState::Ready(actor_ref) => self.stop_shard(shard_id, actor_ref, ctx),
 
-        match status {
-            Ok(_) => {}
-            Err(_) => {}
+                    ShardState::Stopping => {
+                        // shard already stopping
+                    }
+                }
+            }
+            Entry::Vacant(_) => {}
         }
     }
 }
 
-pub fn shard_actor_id(shard_entity: &String, shard_id: ShardId) -> ActorId {
-    format!("{}-Shard#{}", &shard_entity, shard_id)
+#[async_trait]
+impl Handler<ShardStopped> for ShardHost {
+    async fn handle(&mut self, message: ShardStopped, _ctx: &mut ActorContext) {
+        self.hosted_shards.remove(&message.shard_id);
+        info!("shard#{} stopped", message.shard_id);
+    }
 }
 
-impl Message for ShardReady {
-    type Result = ();
+pub fn shard_actor_id(shard_entity: &String, shard_id: ShardId) -> ActorId {
+    format!("{}-Shard-{}", &shard_entity, shard_id)
 }
 
 impl Message for ShardAllocated {
@@ -345,6 +418,7 @@ impl Message for StopShard {
         proto::StopShard::parse_from_bytes(&b)
             .map(|r| Self {
                 shard_id: r.shard_id,
+                request_id: Uuid::new_v4(),
             })
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }

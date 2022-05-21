@@ -23,7 +23,7 @@ pub struct ShardedChatConfig {
     pub remote_seed_addr: Option<String>,
     pub websocket_listen_addr: String,
     pub cluster_api_listen_addr: String,
-    pub persistence_config: ShardedChatPersistence,
+    pub persistence: ShardedChatPersistence,
 }
 
 pub enum ShardedChatPersistence {
@@ -97,7 +97,6 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
         .with_id(config.node_id)
         .with_tag(format!("chat-server-{}", &config.node_id))
         .with_actor_system(system)
-        .with_distributed_streams(|s| s.add_topic::<ChatStreamTopic>())
         .with_handlers(|handlers| {
             handlers
                 .with_actor(ChatStreamFactory)

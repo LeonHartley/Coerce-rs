@@ -9,6 +9,7 @@ use std::borrow::Borrow;
 use std::io::Write;
 use std::str::FromStr;
 use tracing::Level;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TestActorStatus {
@@ -95,7 +96,6 @@ impl Handler<GetCounterRequest> for TestActor {
     }
 }
 
-#[async_trait]
 impl Actor for TestActor {}
 
 #[derive(Serialize, Deserialize)]
@@ -107,7 +107,6 @@ impl EchoActor {
     }
 }
 
-#[async_trait]
 impl Actor for EchoActor {}
 
 #[async_trait]
@@ -122,16 +121,17 @@ lazy_static::lazy_static! {
 }
 
 pub fn create_trace_logger() {
-    tracing_subscriber::fmt()
+    let _ = tracing_subscriber::fmt()
         // enable everything
         .with_file(true)
         .with_line_number(true)
         .with_target(true)
         .with_thread_names(true)
+        .with_span_events(FmtSpan::NONE)
         .with_ansi(false)
         .with_max_level(
             Level::from_str(&LOG_LEVEL.as_str()).expect("invalid `LOG_LEVEL` environment variable"),
         )
         // sets this to be the default, global collector for this application.
-        .init();
+        .try_init();
 }

@@ -9,7 +9,8 @@ use crate::remote::net::client::ping::PingTick;
 use crate::remote::net::client::receive::{ClientMessageReceiver, HandshakeAcknowledge};
 use crate::remote::net::client::send::write_bytes;
 use crate::remote::net::client::{
-    BeginHandshake, ClientState, ConnectionState, HandshakeStatus, RemoteClient,
+    BeginHandshake, ClientState, ConnectionState, HandshakeAckCallback, HandshakeStatus,
+    RemoteClient,
 };
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
@@ -139,48 +140,73 @@ impl Handler<BeginHandshake> for RemoteClient {
             }
         };
 
-        let remote = ctx.system().remote_owned();
-        let node_id = remote.node_id();
-        let node_tag = remote.node_tag().to_string();
+        match &connection.handshake {
+            &HandshakeStatus::Acknowledged(_) => {
+                let _ = message.on_handshake_complete.send(());
+            }
 
-        connection.handshake = HandshakeStatus::Pending;
+            &HandshakeStatus::Pending => {
+                self.on_handshake_ack_callbacks.push(HandshakeAckCallback {
+                    request_id: message.request_id,
+                    callback: message.on_handshake_complete,
+                });
+            }
 
-        trace!("writing handshake");
+            _ => {
+                let remote = ctx.system().remote_owned();
+                let node_id = remote.node_id();
+                let node_tag = remote.node_tag().to_string();
 
-        write_bytes(
-            SessionEvent::Handshake(proto::SessionHandshake {
-                node_id,
-                node_tag,
-                token: vec![],
-                client_type: self.client_type.into(),
-                trace_id: String::new(),
-                nodes: message
-                    .seed_nodes
-                    .into_iter()
-                    .map(|node| proto::RemoteNode {
-                        node_id: node.id,
-                        addr: node.addr,
-                        tag: node.tag,
-                        node_started_at: node
-                            .node_started_at
-                            .as_ref()
-                            .map(datetime_to_timestamp)
-                            .into(),
-                        ..proto::RemoteNode::default()
+                connection.handshake = HandshakeStatus::Pending;
+
+                debug!(
+                    "writing client handshake (client_addr={}, request_id={})",
+                    &self.addr, &message.request_id
+                );
+
+                write_bytes(
+                    SessionEvent::Handshake(proto::SessionHandshake {
+                        node_id,
+                        node_tag,
+                        token: vec![],
+                        client_type: self.client_type.into(),
+                        trace_id: message.request_id.to_string(),
+                        nodes: message
+                            .seed_nodes
+                            .into_iter()
+                            .map(|node| proto::RemoteNode {
+                                node_id: node.id,
+                                addr: node.addr,
+                                tag: node.tag,
+                                node_started_at: node
+                                    .node_started_at
+                                    .as_ref()
+                                    .map(datetime_to_timestamp)
+                                    .into(),
+                                ..proto::RemoteNode::default()
+                            })
+                            .collect(),
+                        ..proto::SessionHandshake::default()
                     })
-                    .collect(),
-                ..proto::SessionHandshake::default()
-            })
-            .write_to_bytes()
-            .unwrap()
-            .as_ref(),
-            &mut connection.write,
-        )
-        .await
-        .expect("write handshake");
+                    .write_to_bytes()
+                    .unwrap()
+                    .as_ref(),
+                    &mut connection.write,
+                )
+                .await
+                .expect("write handshake");
 
-        self.on_handshake_ack_callbacks
-            .push(message.on_handshake_complete);
+                debug!(
+                    "written client handshake (client_addr={}, request_id={})",
+                    &self.addr, &message.request_id
+                );
+
+                self.on_handshake_ack_callbacks.push(HandshakeAckCallback {
+                    request_id: message.request_id,
+                    callback: message.on_handshake_complete,
+                });
+            }
+        }
     }
 }
 
@@ -197,11 +223,16 @@ impl Handler<HandshakeAcknowledge> for RemoteClient {
                 state.handshake = HandshakeStatus::Acknowledged(message);
 
                 while let Some(callback) = self.on_handshake_ack_callbacks.pop() {
-                    let _ = callback.send(());
+                    debug!(
+                        "ack callback executed (request_id={}, client_addr={})",
+                        callback.request_id, &self.addr
+                    );
+
+                    let _ = callback.callback.send(());
                 }
             }
             _ => {
-                warn!("received handshakeack but the client connection state is invalid");
+                warn!("received HandshakeAck but the client connection state is invalid, addr={}, node_id={}", &self.addr, message.node_id);
             }
         }
     }

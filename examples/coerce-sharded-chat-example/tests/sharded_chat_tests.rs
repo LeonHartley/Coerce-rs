@@ -4,7 +4,7 @@ extern crate tracing;
 use chrono::Local;
 use coerce_sharded_chat_example::actor::peer::{JoinChat, SendChatMessage};
 use coerce_sharded_chat_example::actor::stream::ChatMessage;
-use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig};
+use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig, ShardedChatPersistence};
 use coerce_sharded_chat_example::websocket::client::ChatClient;
 use env_logger::Builder;
 use futures_util::future::join_all;
@@ -25,6 +25,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         remote_seed_addr: None,
         websocket_listen_addr: "localhost:31102".to_string(),
         cluster_api_listen_addr: "0.0.0.0:3000".to_string(),
+        persistence: ShardedChatPersistence::InMemory,
     };
 
     let sharded_chat_config_2 = ShardedChatConfig {
@@ -33,8 +34,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         remote_seed_addr: Some("localhost:31101".to_string()),
         websocket_listen_addr: "localhost:32102".to_string(),
         cluster_api_listen_addr: "0.0.0.0:32103".to_string(),
-        redis_persistence_enabled: false,
-        redis_persistence_host: None,
+        persistence: ShardedChatPersistence::InMemory,
     };
 
     let _sharded_chat_1 = ShardedChat::start(sharded_chat_config).await;

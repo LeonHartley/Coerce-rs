@@ -95,12 +95,6 @@ impl Message for PublishRaw {
 }
 
 impl StreamMediator {
-    pub fn add_topic<T: Topic>(&mut self) -> &mut Self {
-        let topic = MediatorTopic::new::<T>();
-        self.topics.insert(T::topic_name().to_string(), topic);
-        self
-    }
-
     pub fn subscribe<A: Actor, T: Topic>(
         &mut self,
         topic: T,
@@ -119,11 +113,22 @@ impl StreamMediator {
         };
 
         if let Some(topic) = receiver.subscriber_store_mut() {
+            info!(
+                "actor_id={} subscribing to topic {} (key=\"{}\")",
+                receiver_ref.id,
+                T::topic_name().to_string(),
+                &topic_key
+            );
             let receiver = topic.receiver(topic_key);
             let subscription = Subscription::new(receiver, receiver_ref);
-
             Ok(subscription)
         } else {
+            error!(
+                "actor_id={} failed to subscribe to topic {} (key=\"{}\")",
+                &receiver_ref.id,
+                T::topic_name().to_string(),
+                &topic_key
+            );
             Err(SubscribeErr::Err)
         }
     }
@@ -146,6 +151,12 @@ impl Handler<Receive<SystemTopic>> for StreamMediator {
                     if new_node.id != self.remote().node_id() {
                         self.nodes.insert(new_node.id);
                     }
+
+                    info!(
+                        "[node={}] node added (node_id={})",
+                        self.remote().node_id(),
+                        new_node.id
+                    );
                 }
                 ClusterEvent::NodeRemoved(removed_node) => {
                     // TODO: instead of just removing a node when
@@ -155,6 +166,11 @@ impl Handler<Receive<SystemTopic>> for StreamMediator {
                     //       it will receive any messages it may have missed.
 
                     let _ = self.nodes.remove(&removed_node.id);
+                    info!(
+                        "[node={}] node removed (node_id={})",
+                        self.remote().node_id(),
+                        removed_node.id
+                    );
                 }
                 _ => {}
             },

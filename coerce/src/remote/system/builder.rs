@@ -38,7 +38,6 @@ pub struct RemoteActorSystemBuilder {
 impl RemoteActorSystemBuilder {
     pub fn new() -> RemoteActorSystemBuilder {
         let mut mediator = StreamMediator::new();
-        mediator.add_topic::<SystemTopic>();
 
         RemoteActorSystemBuilder {
             node_id: None,
@@ -83,22 +82,6 @@ impl RemoteActorSystemBuilder {
     pub fn with_actor_system(mut self, sys: ActorSystem) -> Self {
         self.inner = Some(sys);
 
-        self
-    }
-
-    pub fn with_distributed_streams<F>(mut self, f: F) -> Self
-    where
-        F: 'static + (FnOnce(&mut StreamMediator) -> &mut StreamMediator),
-    {
-        let mediator = if let Some(mediator) = &mut self.mediator {
-            mediator
-        } else {
-            let mediator = StreamMediator::new();
-            self.mediator = Some(mediator);
-            self.mediator.as_mut().unwrap()
-        };
-
-        f(mediator);
         self
     }
 

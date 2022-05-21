@@ -9,6 +9,7 @@ use tokio::sync::oneshot::{Receiver, Sender};
 use tokio::task::JoinHandle;
 
 use tokio_util::codec::FramedWrite;
+use uuid::Uuid;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
@@ -36,8 +37,13 @@ pub struct RemoteClient {
     write_buffer_bytes_total: usize,
     write_buffer: VecDeque<Vec<u8>>,
     on_identified_callbacks: Vec<Sender<Option<NodeIdentity>>>,
-    on_handshake_ack_callbacks: Vec<Sender<()>>,
+    on_handshake_ack_callbacks: Vec<HandshakeAckCallback>,
     ping_timer: Option<Timer>,
+}
+
+struct HandshakeAckCallback {
+    request_id: Uuid,
+    callback: Sender<()>,
 }
 
 pub struct RemoteClientRef {
@@ -107,10 +113,14 @@ impl Handler<Identify> for RemoteClient {
     }
 }
 
+const REMOTE_CLIENT_HANDSHAKE_TIMEOUT: Duration =
+    Duration::from_secs(3 /*TODO: pull this from config*/);
+const REMOTE_CLIENT_HANDSHAKE_MAX_ATTEMPTS: usize = 5;
+
 impl RemoteClientRef {
     pub async fn identify(&self) -> Result<Option<NodeIdentity>, ActorRefErr> {
         const REMOTE_CLIENT_IDENTIFY_TIMEOUT: Duration =
-            Duration::from_secs(3 /*TODO: pull this from config*/);
+            Duration::from_secs(1 /*TODO: pull this from config*/);
 
         let (tx, rx) = oneshot::channel();
         if let Err(e) = self.client.notify(Identify { callback: tx }) {
@@ -120,14 +130,35 @@ impl RemoteClientRef {
         }
     }
 
-    pub async fn handshake(&self, seed_nodes: Vec<RemoteNode>) -> Result<(), ActorRefErr> {
-        const REMOTE_CLIENT_HANDSHAKE_TIMEOUT: Duration =
-            Duration::from_secs(3 /*TODO: pull this from config*/);
+    pub async fn handshake(
+        &self,
+        request_id: Uuid,
+        seed_nodes: Vec<RemoteNode>,
+    ) -> Result<(), ActorRefErr> {
+        let start = Instant::now();
+        for _attempt in 0..REMOTE_CLIENT_HANDSHAKE_MAX_ATTEMPTS {
+            match self.handshake_attempt(request_id, seed_nodes.clone()).await {
+                Err(ActorRefErr::Timeout { .. }) => continue,
 
+                result => return result,
+            }
+        }
+
+        Err(ActorRefErr::Timeout {
+            time_taken_millis: start.elapsed().as_millis(),
+        })
+    }
+
+    async fn handshake_attempt(
+        &self,
+        request_id: Uuid,
+        seed_nodes: Vec<RemoteNode>,
+    ) -> Result<(), ActorRefErr> {
         let (tx, rx) = oneshot::channel();
 
         if let Err(e) = self.client.notify(BeginHandshake {
-            seed_nodes,
+            request_id,
+            seed_nodes: seed_nodes.clone(),
             on_handshake_complete: tx,
         }) {
             Err(e)
@@ -200,6 +231,7 @@ pub enum ClientType {
 }
 
 pub struct BeginHandshake {
+    request_id: uuid::Uuid,
     seed_nodes: Vec<RemoteNode>,
     on_handshake_complete: Sender<()>,
 }

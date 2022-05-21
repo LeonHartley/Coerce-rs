@@ -1,7 +1,7 @@
 use chrono::Local;
 use clap::{arg, Command};
 use coerce::remote::system::NodeId;
-use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig};
+use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig, ShardedChatPersistence};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
 use std::env;
@@ -96,8 +96,7 @@ fn configure_application() -> ShardedChatConfig {
     //     )
     //     .try_init();
 
-    let redis_persistence_enabled = true;
-    let redis_persistence_host = "127.0.0.1:"
+    let redis_persistence_host = "127.0.0.1:6379";
 
     ShardedChatConfig {
         node_id,
@@ -105,5 +104,8 @@ fn configure_application() -> ShardedChatConfig {
         remote_seed_addr,
         websocket_listen_addr,
         cluster_api_listen_addr,
+        persistence: ShardedChatPersistence::Redis {
+            host: Some(redis_persistence_host.to_string()),
+        },
     }
 }

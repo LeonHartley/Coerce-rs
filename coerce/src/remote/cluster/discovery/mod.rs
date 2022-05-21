@@ -10,6 +10,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::oneshot::Sender;
+use uuid::Uuid;
 
 #[derive(Default)]
 pub struct NodeDiscovery {
@@ -199,12 +200,13 @@ impl NodeDiscovery {
                 .map(|n| n.into())
                 .collect();
 
-            let handshake_result = client.handshake(seed_nodes).await;
+            let request_id = Uuid::new_v4();
+            let handshake_result = client.handshake(request_id, seed_nodes).await;
             match handshake_result {
                 Ok(_) => {
                     info!(
-                        "successfully discovered peer (addr={}, id={}, tag={}, started_at={:?})",
-                        &node.addr, &node.id, &node.tag, &node.node_started_at
+                        "successfully discovered peer (addr={}, id={}, tag={}, started_at={:?}, request_id={})",
+                        &node.addr, &node.id, &node.tag, &node.node_started_at, &request_id,
                     );
 
                     PubSub::publish_locally(
@@ -215,8 +217,9 @@ impl NodeDiscovery {
                     .await;
                 }
                 Err(e) => {
-                    error!("error while attempting to handshake with node - {} (addr={}, id={}, tag={}, started_at={:?})",
-                       e, node.addr, node.id, node.tag, node.node_started_at);
+                    error!("error while attempting to handshake with node (from node={}) - {} (addr={}, id={}, tag={}, started_at={:?}), request_id={}",
+                       remote.node_id(), e, node.addr, node.id, node.tag, node.node_started_at, request_id,
+                    );
                 }
             }
         }

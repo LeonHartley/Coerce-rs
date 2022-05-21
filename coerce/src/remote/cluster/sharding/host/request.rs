@@ -10,6 +10,7 @@ use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
+use crate::remote::cluster::sharding::coordinator::ShardId;
 use protobuf::{Message as ProtoMessage, SingularPtrField};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -33,34 +34,33 @@ pub struct RemoteEntityRequest {
     pub origin_node: NodeId,
 }
 
-impl ShardHost {
-    pub fn handle_request(&self, message: EntityRequest, shard_state: &mut ShardState) {
-        match shard_state {
-            ShardState::Starting { request_buffer } => request_buffer.push(message),
+pub fn handle_request(message: EntityRequest, shard_id: ShardId, shard_state: &mut ShardState) {
+    match shard_state {
+        ShardState::Starting { request_buffer, .. } => request_buffer.push(message),
 
-            ShardState::Ready(actor) => {
-                let actor = actor.clone();
-                tokio::spawn(async move {
-                    let actor_id = message.actor_id.clone();
-                    let message_type = message.message_type.clone();
+        ShardState::Ready(actor) => {
+            let actor = actor.clone();
+            tokio::spawn(async move {
+                let actor_id = message.actor_id.clone();
+                let message_type = message.message_type.clone();
 
-                    let result = actor.send(message).await;
-                    if !result.is_ok() {
-                        error!(
-                            "failed to deliver EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
-                            &actor_id, &message_type, shard_id
-                        );
-                    } else {
-                        trace!(
-                            "delivered EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
-                            &actor_id,
-                            message_type,
-                            shard_id
-                        );
-                    }
-                });
-            }
+                let result = actor.send(message).await;
+                if !result.is_ok() {
+                    error!(
+                        "failed to deliver EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
+                        &actor_id, &message_type, shard_id,
+                    );
+                } else {
+                    trace!(
+                        "delivered EntityRequest (actor_id={}, type={}) to shard (shard_id={})",
+                        &actor_id,
+                        message_type,
+                        shard_id,
+                    );
+                }
+            });
         }
+        ShardState::Stopping => {}
     }
 }
 
@@ -70,7 +70,7 @@ impl Handler<EntityRequest> for ShardHost {
         let shard_id = self.allocator.allocate(&message.actor_id);
 
         if let Some(shard) = self.hosted_shards.get_mut(&shard_id) {
-            self.handle_request(message, shard);
+            handle_request(message, shard_id, shard);
         } else if let Some(shard) = self.remote_shards.get(&shard_id) {
             let shard_ref = shard.clone();
             tokio::spawn(remote_entity_request(

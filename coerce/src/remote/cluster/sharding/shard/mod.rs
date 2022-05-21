@@ -140,22 +140,7 @@ impl Shard {
         ctx: &mut ActorContext,
         is_recovering: bool,
     ) -> Result<BoxedActorRef, ActorRefErr> {
-        let entity = self
-            .handler
-            .create(Some(actor_id.clone()), recipe.clone(), Some(ctx), None)
-            .await;
-
-        self.entities.insert(
-            actor_id.clone(),
-            Entity {
-                actor_id: actor_id.clone(),
-                recipe: recipe.clone(),
-                status: EntityStatus::Active,
-                last_request: Utc::now(),
-            },
-        );
-
-        if !is_recovering && self.persistent_entities && entity.is_ok() {
+        if !is_recovering && self.persistent_entities {
             let _persist_res = self
                 .persist(
                     &StartEntity {
@@ -167,16 +152,39 @@ impl Shard {
                 .await;
         }
 
-        entity.map(|entity| {
-            debug!(
-                "spawned entity, registered it as a child of Shard#{}, hosted_entities={}",
-                self.shard_id,
-                &ctx.supervised_mut().unwrap().children.len()
-            );
+        let entity = self
+            .handler
+            .create(Some(actor_id.clone()), recipe.clone(), Some(ctx), None)
+            .await;
 
-            ctx.attach_child_ref(entity.clone());
-            entity
-        })
+        match &entity {
+            Ok(_) => {
+                self.entities.insert(
+                    actor_id.clone(),
+                    Entity {
+                        actor_id: actor_id.clone(),
+                        recipe: recipe.clone(),
+                        status: EntityStatus::Active,
+                        last_request: Utc::now(),
+                    },
+                );
+
+                debug!(
+                    "spawned entity as a child of Shard#{}, actor_id={}, total_hosted_entities={}",
+                    &self.shard_id,
+                    &actor_id,
+                    &ctx.supervised_mut().unwrap().children.len()
+                );
+            }
+            Err(e) => {
+                error!(
+                    "failed to spawn entity as a child of Shard#{}, actor_id={}, error={}",
+                    &self.shard_id, &actor_id, e
+                )
+            }
+        }
+
+        entity
     }
 
     async fn recover_entities(&mut self, ctx: &mut ActorContext) {
