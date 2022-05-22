@@ -426,7 +426,11 @@ async fn session_handle_message(
         )
         .await
     {
-        Ok(buf) => send_result(msg.message_id.parse().unwrap(), buf, session_id, session).await,
+        Ok(buf) => {
+            if msg.requires_response {
+                send_result(msg.message_id.parse().unwrap(), buf, session_id, session).await;
+            }
+        }
         Err(e) => {
             error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &msg.actor_id, e);
             // TODO: Send error

@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 #[derive(Default)]
 pub struct NodeDiscovery {
+    discovering_nodes: HashSet<NodeId>,
     discovered_nodes_by_addr: HashMap<String, Arc<NodeIdentity>>,
     discovered_nodes_by_id: HashMap<NodeId, Arc<NodeIdentity>>,
     remote_system: Option<RemoteActorSystem>,
@@ -57,6 +58,11 @@ impl Handler<Discover> for NodeDiscovery {
             Seed::Addr(addr) => {
                 if self.discovered_nodes_by_addr.contains_key(&addr) {
                     info!("node (addr={}) already discovered", &addr);
+
+                    if let Some(on_discovery_complete) = message.on_discovery_complete {
+                        let _ = on_discovery_complete.send(());
+                    }
+
                     return;
                 }
 
@@ -114,8 +120,10 @@ impl Handler<Discover> for NodeDiscovery {
                 info!("discovering {} nodes", node_count);
 
                 for node in nodes {
-                    if !current_nodes.contains(&node.id) {
-                        self.register_node(&remote, node).await;
+                    if !current_nodes.contains(&node.id)
+                        && !self.discovering_nodes.contains(&node.id)
+                    {
+                        tokio::spawn(discover_node(node, remote.clone()));
                     }
                 }
 
@@ -158,6 +166,77 @@ impl Handler<Forget> for NodeDiscovery {
     }
 }
 
+struct NodeDiscovered {
+    node: RemoteNode,
+    successful: bool,
+}
+
+impl Message for NodeDiscovered {
+    type Result = ();
+}
+
+#[async_trait]
+impl Handler<NodeDiscovered> for NodeDiscovery {
+    async fn handle(&mut self, message: NodeDiscovered, ctx: &mut ActorContext) {
+        let remote = self.remote_system.as_ref().unwrap();
+        if message.successful {
+            if self.discovering_nodes.remove(&message.node.id) {
+                PubSub::publish_locally(
+                    SystemTopic,
+                    SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(message.node))),
+                    remote,
+                )
+                .await;
+            }
+        } else {
+            // retry handshake etc?
+        }
+    }
+}
+
+async fn discover_node(node: RemoteNode, system: RemoteActorSystem) {
+    let node_addr = node.addr.clone();
+    if let Some(client) = system.get_remote_client(node_addr).await {
+        system.register_node(node.clone()).await;
+
+        let seed_nodes = system
+            .get_nodes()
+            .await
+            .into_iter()
+            .filter(|n| n.status != NodeStatus::Terminated)
+            .map(|n| n.into())
+            .collect();
+
+        let request_id = Uuid::new_v4();
+        let handshake_result = client.handshake(request_id, seed_nodes).await;
+        let successful = handshake_result.is_ok();
+        match handshake_result {
+            Ok(_) => {
+                info!(
+                    "successfully discovered peer (addr={}, id={}, tag={}, started_at={:?}, request_id={})",
+                    &node.addr, &node.id, &node.tag, &node.node_started_at, &request_id,
+                );
+
+                PubSub::publish_locally(
+                    SystemTopic,
+                    SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(node.clone()))),
+                    &system,
+                )
+                .await;
+            }
+            Err(e) => {
+                error!("error while attempting to handshake with node (from node={}) - {} (addr={}, id={}, tag={}, started_at={:?}), request_id={}",
+                   system.node_id(), e, node.addr, node.id, node.tag, node.node_started_at, request_id,
+                );
+            }
+        }
+
+        let _ = system
+            .node_discovery()
+            .notify(NodeDiscovered { node, successful });
+    }
+}
+
 impl NodeDiscovery {
     async fn discover_nodes(
         &mut self,
@@ -180,47 +259,6 @@ impl NodeDiscovery {
                     }
                 }
                 _ => continue,
-            }
-        }
-    }
-
-    pub async fn register_node(&self, remote: &RemoteActorSystem, node: RemoteNode) {
-        let node_addr = node.addr.clone();
-        if let Some(client) = remote.get_remote_client(node_addr).await {
-            remote.register_node(node.clone()).await;
-
-            let seed_nodes = self
-                .remote_system
-                .as_ref()
-                .unwrap()
-                .get_nodes()
-                .await
-                .into_iter()
-                .filter(|n| n.status != NodeStatus::Terminated)
-                .map(|n| n.into())
-                .collect();
-
-            let request_id = Uuid::new_v4();
-            let handshake_result = client.handshake(request_id, seed_nodes).await;
-            match handshake_result {
-                Ok(_) => {
-                    info!(
-                        "successfully discovered peer (addr={}, id={}, tag={}, started_at={:?}, request_id={})",
-                        &node.addr, &node.id, &node.tag, &node.node_started_at, &request_id,
-                    );
-
-                    PubSub::publish_locally(
-                        SystemTopic,
-                        SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(node))),
-                        remote,
-                    )
-                    .await;
-                }
-                Err(e) => {
-                    error!("error while attempting to handshake with node (from node={}) - {} (addr={}, id={}, tag={}, started_at={:?}), request_id={}",
-                       remote.node_id(), e, node.addr, node.id, node.tag, node.node_started_at, request_id,
-                    );
-                }
             }
         }
     }

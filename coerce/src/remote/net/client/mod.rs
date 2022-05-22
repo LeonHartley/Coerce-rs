@@ -138,7 +138,12 @@ impl RemoteClientRef {
         let start = Instant::now();
         for _attempt in 0..REMOTE_CLIENT_HANDSHAKE_MAX_ATTEMPTS {
             match self.handshake_attempt(request_id, seed_nodes.clone()).await {
-                Err(ActorRefErr::Timeout { .. }) => continue,
+                Err(ActorRefErr::Timeout { .. }) => {
+                    warn!(
+                        "handshake request to node (addr={}) timed out",
+                        &self.client.id
+                    );
+                }
 
                 result => return result,
             }

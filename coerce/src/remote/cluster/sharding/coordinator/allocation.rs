@@ -70,6 +70,10 @@ impl Handler<AllocateShard> for ShardCoordinator {
         message: AllocateShard,
         ctx: &mut ActorContext,
     ) -> AllocateShardResult {
+        if let Some(entry) = self.shards.get(&message.shard_id) {
+            return AllocateShardResult::AlreadyAllocated(message.shard_id, *entry);
+        }
+
         match self.persist(&message, ctx).await {
             Ok(_) => self.allocate_shard(message.shard_id, ctx).await,
             Err(e) => {

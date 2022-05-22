@@ -61,7 +61,7 @@ where
         let _enter = span.enter();
 
         let id = Uuid::new_v4();
-        let request = self.create_request(msg, extract_trace_identifier(&span), id);
+        let request = self.create_request(msg, extract_trace_identifier(&span), id, false);
 
         match request {
             Some(request) => {
@@ -69,7 +69,7 @@ where
                 Ok(())
             }
 
-            None => Err(ActorRefErr::ActorUnavailable),
+            None => Err(ActorUnavailable),
         }
     }
 
@@ -85,7 +85,7 @@ where
         let _enter = span.enter();
 
         let id = Uuid::new_v4();
-        let event = self.create_request(msg, extract_trace_identifier(&span), id);
+        let event = self.create_request(msg, extract_trace_identifier(&span), id, true);
 
         let (res_tx, res_rx) = oneshot::channel();
         self.system.push_request(id, res_tx);
@@ -127,23 +127,26 @@ where
         msg: Envelope<Msg>,
         trace_id: String,
         id: Uuid,
+        requires_response: bool,
     ) -> Option<SessionEvent>
     where
         Msg: 'static + Send + Sync,
     {
-        let message_bytes = match msg {
+        let message = match msg {
             Envelope::Remote(b) => b,
             _ => return None,
         };
 
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
+            let handler_type = header.handler_type;
+            let actor_id = header.actor_id;
             SessionEvent::NotifyActor(MessageRequest {
                 message_id: id.to_string(),
-                handler_type: header.handler_type,
-                actor_id: header.actor_id,
+                handler_type,
+                actor_id,
                 trace_id,
-                message: message_bytes,
-                requires_response: false,
+                message,
+                requires_response,
                 ..MessageRequest::default()
             })
         });
