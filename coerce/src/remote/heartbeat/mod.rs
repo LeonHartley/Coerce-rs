@@ -16,13 +16,14 @@ use chrono::{DateTime, Utc, MIN_DATETIME};
 
 use futures::FutureExt;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use std::ops::Add;
 
 use std::sync::Arc;
 
 use std::time::{Duration, Instant};
+use tokio::sync::oneshot::Sender;
 
 pub struct Heartbeat {
     config: Arc<HeartbeatConfig>,
@@ -30,6 +31,7 @@ pub struct Heartbeat {
     heartbeat_timer: Option<Timer>,
     last_heartbeat: Option<DateTime<Utc>>,
     node_pings: HashMap<NodeId, NodePing>,
+    on_next_leader_changed: VecDeque<Sender<()>>,
 }
 
 pub struct HeartbeatConfig {
@@ -52,6 +54,7 @@ impl Heartbeat {
             heartbeat_timer: None,
             last_heartbeat: None,
             node_pings: HashMap::new(),
+            on_next_leader_changed: VecDeque::new(),
         }
         .into_actor(Some(format!("heartbeat-{}", &node_tag)), sys)
         .await
@@ -121,12 +124,25 @@ impl Message for NodePing {
     type Result = ();
 }
 
+pub struct OnLeaderChanged(pub Sender<()>);
+
 impl Actor for Heartbeat {}
+
+impl Message for OnLeaderChanged {
+    type Result = ();
+}
 
 #[async_trait]
 impl Handler<NodePing> for Heartbeat {
     async fn handle(&mut self, message: NodePing, _ctx: &mut ActorContext) {
         let _ = self.node_pings.insert(message.0, message);
+    }
+}
+
+#[async_trait]
+impl Handler<OnLeaderChanged> for Heartbeat {
+    async fn handle(&mut self, message: OnLeaderChanged, _ctx: &mut ActorContext)  {
+        self.on_next_leader_changed.push_back(message.0);
     }
 }
 
@@ -149,6 +165,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
               .count()
         );
 
+        let mut new_leader_id = None;
         let mut updates = vec![];
 
         for node in nodes {
@@ -197,33 +214,50 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 .filter(|n| n.status != NodeStatus::Unhealthy || n.status != NodeStatus::Terminated)
                 .next();
 
-            if let Some(oldest_healthy_node) = oldest_healthy_node {
-                if Some(oldest_healthy_node.id) != system.current_leader() {
-                    system.update_leader(oldest_healthy_node.id);
+            match oldest_healthy_node {
+                None => {}
+                Some(oldest_healthy_node) => {
+                    if Some(oldest_healthy_node.id) != system.current_leader() {
+                        info!(
+                            "[node={}] leader of cluster: {:?}, current_node_tag={}",
+                            system.node_id(),
+                            oldest_healthy_node,
+                            &node_tag
+                        );
 
-                    info!(
-                        "[node={}] leader of cluster: {:?}, current_node_tag={}",
-                        system.node_id(),
-                        &oldest_healthy_node,
-                        &node_tag
-                    );
-
-                    let id = oldest_healthy_node.id;
-                    let sys = system.clone();
-                    tokio::spawn(async move {
-                        let _ = PubSub::publish_locally(
-                            SystemTopic,
-                            SystemEvent::Cluster(LeaderChanged(id)),
-                            &sys,
-                        )
-                        .await;
-                    });
+                        new_leader_id = Some(oldest_healthy_node.id)
+                    }
                 }
             }
         }
 
         system.update_nodes(updates).await;
-        self.last_heartbeat = Some(Utc::now())
+        self.last_heartbeat = Some(Utc::now());
+
+        if let Some(new_leader_id) = new_leader_id {
+            self.update_leader(new_leader_id);
+        }
+    }
+}
+
+impl Heartbeat {
+    fn update_leader(
+        &mut self,
+        node_id: NodeId,
+    ) {
+        let system = self.system.as_ref().unwrap();
+        system.update_leader(node_id);
+
+        let sys = system.clone();
+        tokio::spawn(async move {
+            let _ =
+                PubSub::publish_locally(SystemTopic, SystemEvent::Cluster(LeaderChanged(node_id)), &sys)
+                    .await;
+        });
+
+        while let Some(on_leader_changed_cb) = self.on_next_leader_changed.pop_front() {
+            let _ = on_leader_changed_cb.send(());
+        }
     }
 }
 
