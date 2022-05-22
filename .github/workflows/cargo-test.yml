@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - master
+      - feature/**
 name: coerce-rs tests
 
 jobs:
