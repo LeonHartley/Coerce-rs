@@ -110,6 +110,7 @@ impl Handler<NewClient> for RemoteClientRegistry {
 
         let client_actor =
             RemoteClient::new(message.addr.clone(), message.system, message.client_type).await;
+
         debug!("created RemoteClient, addr={}", &message.addr);
         entry.insert(client_actor.clone());
 

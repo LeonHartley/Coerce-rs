@@ -108,7 +108,6 @@ impl Handler<Connect> for RemoteClient {
             }
 
             self.node_id = Some(connection_state.identity.node.id);
-
             self.state = Some(ClientState::Connected(connection_state));
 
             debug!("RemoteClient connected to node (addr={})", &self.addr);

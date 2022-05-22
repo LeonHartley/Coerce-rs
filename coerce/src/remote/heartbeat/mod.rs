@@ -31,7 +31,7 @@ pub struct Heartbeat {
     heartbeat_timer: Option<Timer>,
     last_heartbeat: Option<DateTime<Utc>>,
     node_pings: HashMap<NodeId, NodePing>,
-    on_next_leader_changed: VecDeque<Sender<()>>,
+    on_next_leader_changed: VecDeque<Sender<NodeId>>,
 }
 
 pub struct HeartbeatConfig {
@@ -124,7 +124,7 @@ impl Message for NodePing {
     type Result = ();
 }
 
-pub struct OnLeaderChanged(pub Sender<()>);
+pub struct OnLeaderChanged(pub Sender<NodeId>);
 
 impl Actor for Heartbeat {}
 
@@ -141,7 +141,7 @@ impl Handler<NodePing> for Heartbeat {
 
 #[async_trait]
 impl Handler<OnLeaderChanged> for Heartbeat {
-    async fn handle(&mut self, message: OnLeaderChanged, _ctx: &mut ActorContext)  {
+    async fn handle(&mut self, message: OnLeaderChanged, _ctx: &mut ActorContext) {
         self.on_next_leader_changed.push_back(message.0);
     }
 }
@@ -241,22 +241,22 @@ impl Handler<HeartbeatTick> for Heartbeat {
 }
 
 impl Heartbeat {
-    fn update_leader(
-        &mut self,
-        node_id: NodeId,
-    ) {
+    fn update_leader(&mut self, node_id: NodeId) {
         let system = self.system.as_ref().unwrap();
         system.update_leader(node_id);
 
         let sys = system.clone();
         tokio::spawn(async move {
-            let _ =
-                PubSub::publish_locally(SystemTopic, SystemEvent::Cluster(LeaderChanged(node_id)), &sys)
-                    .await;
+            let _ = PubSub::publish_locally(
+                SystemTopic,
+                SystemEvent::Cluster(LeaderChanged(node_id)),
+                &sys,
+            )
+            .await;
         });
 
         while let Some(on_leader_changed_cb) = self.on_next_leader_changed.pop_front() {
-            let _ = on_leader_changed_cb.send(());
+            let _ = on_leader_changed_cb.send(node_id);
         }
     }
 }

@@ -1,8 +1,10 @@
 use coerce::actor::context::ActorContext;
+use tokio::sync::oneshot;
 
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::Actor;
+use coerce::remote::heartbeat::OnLeaderChanged;
 use coerce::remote::net::StreamData;
 use coerce::remote::stream::pubsub::{PubSub, Receive, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;
@@ -135,7 +137,6 @@ pub async fn test_pubsub_distributed() {
         .clone()
         .cluster_worker()
         .listen_addr("localhost:30101")
-        .with_seed_addr("localhost:30102")
         .start()
         .await;
 
@@ -171,6 +172,15 @@ pub async fn test_pubsub_distributed() {
         })
         .await
         .unwrap();
+
+    let (tx, on_leader_changed_a) = channel();
+    let _ = remote.heartbeat().notify(OnLeaderChanged(tx));
+
+    let (tx, on_leader_changed_b) = channel();
+    let _ = remote_b.heartbeat().notify(OnLeaderChanged(tx));
+
+    let _ = on_leader_changed_a.await;
+    let _ = on_leader_changed_b.await;
 
     // Publish 5 messages on the first server
     for _ in 0..5 {

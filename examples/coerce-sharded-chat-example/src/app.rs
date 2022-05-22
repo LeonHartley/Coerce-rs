@@ -12,6 +12,7 @@ use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
 
+use coerce::persistent::{ConfigurePersistence, Persistence};
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -85,14 +86,18 @@ impl ShardedChat {
 }
 
 async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
-    let redis = RedisStorageProvider::connect(RedisStorageConfig {
-        address: "127.0.0.1:6379".to_string(),
-        key_prefix: "".to_string(),
-        use_key_hashtags: false,
-    })
-    .await;
+    let system = ActorSystem::new().add_persistence(match &config.persistence {
+        ShardedChatPersistence::Redis { host: Some(host) } => Persistence::from(
+            RedisStorageProvider::connect(RedisStorageConfig {
+                address: host.to_string(),
+                key_prefix: "".to_string(),
+                use_key_hashtags: false,
+            })
+            .await,
+        ),
+        _ => Persistence::from(InMemoryStorageProvider::new()),
+    });
 
-    let system = ActorSystem::new_persistent(redis);
     let remote_system = RemoteActorSystemBuilder::new()
         .with_id(config.node_id)
         .with_tag(format!("chat-server-{}", &config.node_id))

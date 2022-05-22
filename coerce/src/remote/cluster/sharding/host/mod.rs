@@ -183,32 +183,35 @@ impl Handler<ShardAllocated> for ShardHost {
                 let _ = self.remote_shards.remove(&shard_id);
             }
 
-            if ctx.boxed_child_ref(&shard_actor_id).is_some() {
-                return;
-            }
-
-            let system = ctx.system().clone();
+            let self_ref = self.actor_ref(ctx);
             let handler = self.actor_handler.new_boxed();
 
-            let self_ref = self.actor_ref(ctx);
-            tokio::spawn(async move {
-                let shard = Shard::new(shard_id, handler, true)
-                    .into_actor(Some(shard_actor_id), &system)
-                    .await
-                    .expect("create shard actor");
+            let hosted_shard_entry = self.hosted_shards.entry(shard_id);
+            match hosted_shard_entry {
+                Entry::Occupied(_) => {
+                    // already allocated locally
+                }
 
-                self_ref.notify(ShardReady(shard_id, shard))
-            });
+                Entry::Vacant(hosted_shard_entry) => {
+                    let system = ctx.system().clone();
 
-            self.hosted_shards.insert(
-                shard_id,
-                ShardState::Starting {
-                    request_buffer: vec![],
-                    stop_requested: false,
-                },
-            );
+                    tokio::spawn(async move {
+                        let shard = Shard::new(shard_id, handler, true)
+                            .into_actor(Some(shard_actor_id), &system)
+                            .await
+                            .expect("create shard actor");
 
-            debug!("local shard#{} allocated to node={}", message.0, message.1);
+                        self_ref.notify(ShardReady(shard_id, shard))
+                    });
+
+                    hosted_shard_entry.insert(ShardState::Starting {
+                        request_buffer: vec![],
+                        stop_requested: false,
+                    });
+
+                    debug!("local shard#{} allocated to node={}", message.0, message.1);
+                }
+            }
         } else {
             // if self.hosted_shards.contains_key(&shard_id) {
             //     // log an error or a warning?
@@ -268,22 +271,6 @@ impl Handler<ShardReady> for ShardHost {
     }
 }
 
-impl ShardHost {
-    fn stop_shard(&self, shard_id: ShardId, actor_ref: LocalActorRef<Shard>, ctx: &ActorContext) {
-        let shard_host = self.actor_ref(ctx);
-
-        tokio::spawn(async move {
-            let result = actor_ref.stop().await;
-            let _ = shard_host.notify(ShardStopped {
-                shard_id,
-                stopped_successfully: result.is_ok(),
-            });
-
-            // TODO: send `ShardStopped` result back to the sending node (if it was remote)
-        });
-    }
-}
-
 #[async_trait]
 impl Handler<ShardReallocating> for ShardHost {
     async fn handle(&mut self, message: ShardReallocating, _ctx: &mut ActorContext) {
@@ -316,6 +303,22 @@ impl Handler<StopShard> for ShardHost {
             }
             Entry::Vacant(_) => {}
         }
+    }
+}
+
+impl ShardHost {
+    fn stop_shard(&self, shard_id: ShardId, actor_ref: LocalActorRef<Shard>, ctx: &ActorContext) {
+        let shard_host = self.actor_ref(ctx);
+
+        tokio::spawn(async move {
+            let result = actor_ref.stop().await;
+            let _ = shard_host.notify(ShardStopped {
+                shard_id,
+                stopped_successfully: result.is_ok(),
+            });
+
+            // TODO: send `ShardStopped` result back to the sending node (if it was remote)
+        });
     }
 }
 

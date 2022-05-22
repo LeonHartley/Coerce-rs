@@ -11,7 +11,9 @@ extern crate coerce_macros;
 
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
+use coerce::remote::heartbeat::OnLeaderChanged;
 use coerce::remote::system::RemoteActorSystem;
+use tokio::sync::oneshot::channel;
 
 #[coerce_test]
 pub async fn test_remote_actor_locate_node_locally() {
@@ -76,6 +78,15 @@ pub async fn test_remote_actor_locate_remotely() {
         .with_seed_addr("localhost:30101")
         .start()
         .await;
+
+    let (tx, on_leader_changed_a) = channel();
+    let _ = remote_a.heartbeat().notify(OnLeaderChanged(tx));
+
+    let (tx, on_leader_changed_b) = channel();
+    let _ = remote_b.heartbeat().notify(OnLeaderChanged(tx));
+
+    let _ = on_leader_changed_a.await;
+    let _ = on_leader_changed_b.await;
 
     let locate_before_creation_a = remote_a.locate_actor_node("leon".to_string()).await;
     let locate_before_creation_b = remote_b.locate_actor_node("leon".to_string()).await;

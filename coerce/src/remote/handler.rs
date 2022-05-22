@@ -299,7 +299,7 @@ where
         &self,
         actor: &BoxedActorRef,
         buffer: &[u8],
-        res: Option<oneshot::Sender<Result<Vec<u8>, ActorRefErr>>>,
+        res: Option<Sender<Result<Vec<u8>, ActorRefErr>>>,
     ) {
         let actor_type = actor.actor_type();
         let actor = actor.as_actor::<A>();

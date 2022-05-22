@@ -232,6 +232,9 @@ pub async fn test_shard_host_actor_request() {
         .await
         .expect("get status");
 
+    let expected_status = TestActorStatus::Active;
+    assert_eq!(res, GetStatusResponse::Ok(expected_status));
+
     // stop the system, and start a new one (sharing the same persistence backplane)
 
     let mut server = server;
@@ -240,7 +243,6 @@ pub async fn test_shard_host_actor_request() {
 
     let (remote, _server) = create_system(persistence.clone()).await;
 
-    let expected_status = TestActorStatus::Active;
     let sharding =
         Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
 
@@ -252,6 +254,5 @@ pub async fn test_shard_host_actor_request() {
         })
         .await;
 
-    assert_eq!(res, GetStatusResponse::Ok(expected_status));
     assert_eq!(res_after_system_restart.is_ok(), true);
 }

@@ -12,8 +12,10 @@ extern crate coerce_macros;
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
+use tokio::sync::oneshot::channel;
 
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
+use coerce::remote::heartbeat::OnLeaderChanged;
 
 use util::*;
 
@@ -134,7 +136,9 @@ pub async fn test_remote_cluster_workers() {
         .start()
         .await;
 
-    // let _ = tokio::time::sleep(Duration::from_secs(2)).await;
+    let (tx, on_leader_changed_c) = channel();
+    let _ = remote_3_c.heartbeat().notify(OnLeaderChanged(tx));
+    let _ = on_leader_changed_c.await;
 
     let nodes_a = remote_c.get_nodes().await;
     let nodes_b = remote_2_c.get_nodes().await;
