@@ -28,7 +28,7 @@ impl Handler<GetShardStats> for Shard {
         ShardStats {
             shard_id,
             node_id,
-            entities: self.entities.keys().cloned().collect(),
+            entities: self.entities.keys().map(|e| e.to_string()).collect(),
         }
     }
 }

@@ -98,17 +98,17 @@ impl ActorSystem {
         actor_type: ActorType,
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let actor_type_name = A::type_name();
-        let span = tracing::trace_span!(
-            "ActorSystem::new_actor",
-            actor_type = match actor_type {
-                ActorType::Anonymous => "Anonymous",
-                _ => "Tracked",
-            },
-            actor_type_name = actor_type_name,
-            actor_id = id.as_str(),
-        );
-
-        let _enter = span.enter();
+        // let span = tracing::trace_span!(
+        //     "ActorSystem::new_actor",
+        //     actor_type = match actor_type {
+        //         ActorType::Anonymous => "Anonymous",
+        //         _ => "Tracked",
+        //     },
+        //     actor_type_name = actor_type_name,
+        //     actor_id = id.as_str(),
+        // );
+        //
+        // let _enter = span.enter();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         let actor_ref = start_actor(
@@ -157,12 +157,12 @@ impl ActorSystem {
 
     pub async fn get_tracked_actor<A: Actor>(&self, id: ActorId) -> Option<LocalActorRef<A>> {
         let actor_type_name = A::type_name();
-        let span = tracing::trace_span!(
-            "ActorSystem::get_tracked_actor",
-            actor_id = id.as_str(),
-            actor_type_name
-        );
-        let _enter = span.enter();
+        // let span = tracing::trace_span!(
+        //     "ActorSystem::get_tracked_actor",
+        //     actor_id = id.as_str(),
+        //     actor_type_name
+        // );
+        // let _enter = span.enter();
 
         match self.scheduler.send(GetActor::new(id)).await {
             Ok(a) => a,

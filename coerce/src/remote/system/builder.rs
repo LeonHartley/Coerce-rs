@@ -91,8 +91,8 @@ impl RemoteActorSystemBuilder {
     }
 
     pub async fn build(self) -> RemoteActorSystem {
-        let span = tracing::trace_span!("RemoteActorSystemBuilder::build");
-        let _enter = span.enter();
+        // let span = tracing::trace_span!("RemoteActorSystemBuilder::build");
+        // let _enter = span.enter();
 
         let mut inner = match self.inner {
             Some(ctx) => ctx,

@@ -72,6 +72,7 @@ where
 }
 
 pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
+    addr: String,
     mut system: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
     mut receiver: R,
@@ -85,10 +86,12 @@ pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
                 Some(msg) => {
                     receiver.on_receive(msg, &system).await;
                 }
-                None => warn!(target: "RemoteReceive", "error decoding msg"),
+                None => {
+                    warn!(target: "RemoteReceive", "failed to decode message from addr={}", &addr)
+                }
             },
-            Err(_) => {
-                error!(target: "RemoteReceive", "error receiving msg");
+            Err(e) => {
+                warn!(target: "RemoteReceive", "stream connection lost (addr={}) - error: {}", &addr, e);
                 break;
             }
         }

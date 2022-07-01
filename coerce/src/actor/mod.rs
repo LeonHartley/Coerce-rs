@@ -94,13 +94,13 @@ pub enum ActorCreationErr {
 }
 
 pub trait ActorRecipe: Sized {
-    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self>;
+    fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self>;
 
     fn write_to_bytes(&self) -> Option<Vec<u8>>;
 }
 
 impl ActorRecipe for () {
-    fn read_from_bytes(_: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(_: &Vec<u8>) -> Option<Self> {
         Some(())
     }
 
@@ -398,15 +398,15 @@ pub enum ActorRefErr {
     ResultChannelClosed,
     ResultSendFailed,
     NotSupported {
-        actor_id: String,
+        actor_id: ActorId,
         message_type: String,
         actor_type: String,
     },
     NotImplemented,
 }
 
-impl std::fmt::Display for ActorRefErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for ActorRefErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             ActorRefErr::ActorUnavailable => write!(f, "actor unavailable"),
             ActorRefErr::NotFound(id) => write!(f, "actor {} could not be found", &id),

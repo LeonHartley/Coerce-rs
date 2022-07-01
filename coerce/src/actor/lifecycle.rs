@@ -92,15 +92,15 @@ impl ActorLoop {
             {
                 let msg_type = msg.name();
                 let actor_type = A::type_name();
-
-                let span = tracing::trace_span!(
-                    "Actor::handle",
-                    actor_id = ctx.id().as_str(),
-                    actor_type_name = actor_type,
-                    message_type = &msg_type
-                );
-
-                let _enter = span.enter();
+                //
+                // let span = tracing::trace_span!(
+                //     "Actor::handle",
+                //     actor_id = ctx.id().as_str(),
+                //     actor_type_name = actor_type,
+                //     message_type = &msg_type
+                // );
+                //
+                // let _enter = span.enter();
 
                 trace!(
                     target: "Actor",

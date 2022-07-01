@@ -55,13 +55,13 @@ where
         A: Handler<Msg>,
         Msg: 'static + Send + Sync,
     {
-        let message_type = Msg::type_name();
-        let actor_type = A::type_name();
-        let span = tracing::trace_span!("RemoteActorRef::notify", actor_type, message_type);
-        let _enter = span.enter();
+        // let message_type = Msg::type_name();
+        // let actor_type = A::type_name();
+        // let span = tracing::trace_span!("RemoteActorRef::notify", actor_type, message_type);
+        // let _enter = span.enter();
 
         let id = Uuid::new_v4();
-        let request = self.create_request(msg, extract_trace_identifier(&span), id, false);
+        let request = self.create_request(msg, String::new(), id, false);
 
         match request {
             Some(request) => {
@@ -81,11 +81,11 @@ where
     {
         let message_type = Msg::type_name();
         let actor_type = A::type_name();
-        let span = tracing::trace_span!("RemoteActorRef::send", actor_type, message_type);
-        let _enter = span.enter();
+        // let span = tracing::trace_span!("RemoteActorRef::send", actor_type, message_type);
+        // let _enter = span.enter();
 
         let id = Uuid::new_v4();
-        let event = self.create_request(msg, extract_trace_identifier(&span), id, true);
+        let event = self.create_request(msg, String::new(), id, true);
 
         let (res_tx, res_rx) = oneshot::channel();
         self.system.push_request(id, res_tx);
@@ -105,7 +105,7 @@ where
                         error!(target: "RemoteActorRef", "failed to receive result, e={}", e);
                         Err(ActorRefErr::ResultChannelClosed)
                     }
-                    Ok(RemoteResponse::Err(_e)) => {
+                    Ok(RemoteResponse::Err(e)) => {
                         // TODO: return custom error
                         Err(ActorUnavailable)
                     }

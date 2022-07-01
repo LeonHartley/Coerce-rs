@@ -23,6 +23,7 @@ use coerce::remote::handler::{ActorHandler, RemoteActorHandler};
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
 
+mod sharding;
 pub mod util;
 
 #[macro_use]
@@ -37,7 +38,7 @@ extern crate coerce_macros;
 pub struct TestActorRecipe;
 
 impl ActorRecipe for TestActorRecipe {
-    fn read_from_bytes(_bytes: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(_bytes: &Vec<u8>) -> Option<Self> {
         Some(Self)
     }
 
@@ -125,7 +126,10 @@ pub async fn test_shard_coordinator_shard_allocation() {
     .await;
 
     let allocation = shard_coordinator
-        .send(AllocateShard { shard_id: SHARD_ID })
+        .send(AllocateShard {
+            shard_id: SHARD_ID,
+            rebalancing: false,
+        })
         .await;
 
     let initial_allocation = allocation.expect("shard allocation");
@@ -159,7 +163,10 @@ pub async fn test_shard_coordinator_shard_allocation() {
     .await;
 
     let allocation = shard_coordinator
-        .send(AllocateShard { shard_id: SHARD_ID })
+        .send(AllocateShard {
+            shard_id: SHARD_ID,
+            rebalancing: false,
+        })
         .await;
 
     let allocation_after_restart = allocation.expect("shard allocation");
@@ -217,11 +224,12 @@ pub async fn test_shard_host_actor_request() {
 
     let (remote, server) = create_system(persistence.clone()).await;
 
-    let sharding =
-        Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
+    let sharding = Sharding::<TestActorFactory>::builder(remote.clone())
+        .build()
+        .await;
     let sharded_actor = sharding.get("leon".to_string(), Some(TestActorRecipe));
 
-    sharded_actor
+    let _ = sharded_actor
         .send(SetStatusRequest {
             status: TestActorStatus::Active,
         })
@@ -243,8 +251,9 @@ pub async fn test_shard_host_actor_request() {
 
     let (remote, _server) = create_system(persistence.clone()).await;
 
-    let sharding =
-        Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
+    let sharding = Sharding::<TestActorFactory>::builder(remote.clone())
+        .build()
+        .await;
 
     // create a reference to the sharded actor without specifying a recipe, which stops the sharding internals from creating the actor if it isn't already running
     let sharded_actor = sharding.get("leon".to_string(), None);

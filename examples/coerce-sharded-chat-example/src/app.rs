@@ -4,15 +4,15 @@ use crate::websocket::start;
 
 use coerce::actor::system::ActorSystem;
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
+use coerce::persistent::{ConfigurePersistence, Persistence};
 use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
+use coerce::remote::api::system::SystemApi;
 use coerce::remote::api::RemoteHttpApi;
-
 use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
 
-use coerce::persistent::{ConfigurePersistence, Persistence};
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -42,7 +42,11 @@ pub struct ShardedChat {
 impl ShardedChat {
     pub async fn start(config: ShardedChatConfig) -> ShardedChat {
         let system = create_actor_system(&config).await;
-        let sharding = Sharding::start("ChatStream".to_string(), system.clone()).await;
+        let sharding = Sharding::builder(system.clone())
+            .with_entity_type("ChatStream")
+            .build()
+            .await;
+
         let listen_task = tokio::spawn(start(
             config.websocket_listen_addr,
             system.actor_system().clone(),
@@ -50,6 +54,7 @@ impl ShardedChat {
         ));
 
         let cluster_api = ClusterApi::new(system.clone());
+        let system_api = SystemApi::new(system.clone());
         let sharding_api = ShardingApi::default()
             .attach(&sharding)
             .start(system.actor_system())
@@ -62,6 +67,7 @@ impl ShardedChat {
             )
             .routes(&cluster_api)
             .routes(&sharding_api)
+            .routes(&system_api)
             .start(),
         );
 
@@ -74,14 +80,20 @@ impl ShardedChat {
     }
 
     pub async fn stop(&mut self) {
+        info!("shutting down");
+
         self.system.actor_system().shutdown().await;
         if let Some(listen_task) = self.listen_task.take() {
+            info!("aborted TCP listen task");
             listen_task.abort();
         }
 
         if let Some(cluster_api_listen_task) = self.cluster_api_listen_task.take() {
+            info!("aborted HTTP listen task");
             cluster_api_listen_task.abort();
         }
+
+        info!("shutdown complete");
     }
 }
 

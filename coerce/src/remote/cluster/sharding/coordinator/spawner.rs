@@ -49,8 +49,8 @@ impl CoordinatorSpawner {
 
                 debug!(
                     target: COORDINATOR_SPAWNER,
-                    "[node={}] started shard coordinator for entity type={}",
-                    self.node_id,
+                    node_id = self.node_id,
+                    "started shard coordinator for entity type={}",
                     &self.shard_entity
                 );
             }

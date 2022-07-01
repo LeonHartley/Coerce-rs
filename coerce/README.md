@@ -4,22 +4,21 @@ Coerce-rs is an asynchronous (async/await) Actor runtime and distributed system 
 extremely simple yet powerful actor-based distributed system development. With minimal code, you can build a highly
 scalable, fault-tolerant modern actor-driven application.
 
-
-
 ## Features
 
-- Actors
-  - Supervision / child spawning
-  - Location-transparent ActorRef types (ActorRef may comprise of a LocalActorRef or a RemoteActorRef)
+### Actors
+- Type-safe actors
+- Supervision / child spawning
+- Location-transparent `ActorRef<A>` types (ActorRef may comprise of a `LocalActorRef<A>` or a `RemoteActorRef<A>`)
+- Metrics available out of the box
 
-- Remoting
-  - Communicate with an actor from anywhere in the cluster
-  - Actors can be deployed locally or to other remote nodes
-  - Protobuf network protocol
-  - Actor-driven networking layer
+## Remoting
+- Communicate with an actor from anywhere in the cluster
+- Actors can be deployed locally or to other remote nodes
+- Protobuf network protocol
+- Actor-driven networking layer
 
-
-### Distributed sharding
+### Distributed Sharding
 
 - Actor IDs can resolve to specific shards, which can be spread across a cluster of Coerce nodes
 - Automatic load balancing, shards will be fairly allocated across the cluster
@@ -38,7 +37,7 @@ scalable, fault-tolerant modern actor-driven application.
 
 ### HTTP API
 
-- Easily accessible statistics and information useful for diagnosis
+- Easily accessible metrics and information useful for diagnosis
 
 # How to build
 Building Coerce is easy. All you need is the latest Rust stable or nightly installed, along with Cargo.
@@ -59,7 +58,7 @@ cargo test
 
 # ActorSystem
 
-Every actor belongs to an ActorSystem. 
+Every actor belongs to an ActorSystem.
 
 ### async/await Actors
 
@@ -95,27 +94,27 @@ impl Actor for EchoActor {}
 pub struct EchoMessage(String);
 
 impl Message for EchoMessage {
-    type Result = String;
+  type Result = String;
 }
 
 #[async_trait]
 impl Handler<EchoMessage> for EchoActor {
-    async fn handle(
-        &mut self,
-        message: EchoMessage,
-        _ctx: &mut ActorContext,
-    ) -> String {
-        message.0.clone()
-    }
+  async fn handle(
+    &mut self,
+    message: EchoMessage,
+    _ctx: &mut ActorContext,
+  ) -> String {
+    message.0.clone()
+  }
 }
 
 pub async fn run() {
-    let mut actor = new_actor(EchoActor {}).await.unwrap();
+  let mut actor = new_actor(EchoActor {}).await.unwrap();
 
-    let hello_world = "hello, world".to_string();
-    let result = actor.send(EchoMessage(hello_world.clone())).await;
+  let hello_world = "hello, world".to_string();
+  let result = actor.send(EchoMessage(hello_world.clone())).await;
 
-    assert_eq!(result, Ok(hello_world));
+  assert_eq!(result, Ok(hello_world));
 }
 ```
 
@@ -130,7 +129,7 @@ impl Actor for EchoActor {}
 pub struct EchoMessage(String);
 
 impl Message for EchoMessage {
-    type Result = String;
+  type Result = String;
 }
 
 pub struct PrintTimer(String);
@@ -139,21 +138,21 @@ impl TimerTick for PrintTimer {}
 
 #[async_trait]
 impl Handler<PrintTimer> for EchoActor {
-    async fn handle(&mut self, msg: PrintTimer, _ctx: &mut ActorContext) {
-        println!("{}", msg.0);
-    }
+  async fn handle(&mut self, msg: PrintTimer, _ctx: &mut ActorContext) {
+    println!("{}", msg.0);
+  }
 }
 
 pub async fn run() {
-    let mut actor = new_actor(EchoActor {}).await.unwrap();
-    let hello_world = "hello world!".to_string();
+  let mut actor = new_actor(EchoActor {}).await.unwrap();
+  let hello_world = "hello world!".to_string();
 
-    // print "hello world!" every 5 seconds
-    let timer = Timer::start(actor.clone(), Duration::from_secs(5), TimerTick(hello_world));
+  // print "hello world!" every 5 seconds
+  let timer = Timer::start(actor.clone(), Duration::from_secs(5), TimerTick(hello_world));
 
-    // timer is stopped when handle is out of scope or can be stopped manually by calling `.stop()`
-    sleep(Duration::from_secs(20)).await;
-    timer.stop();
+  // timer is stopped when handle is out of scope or can be stopped manually by calling `.stop()`
+  sleep(Duration::from_secs(20)).await;
+  timer.stop();
 }
 ```
 

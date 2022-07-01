@@ -37,6 +37,7 @@ fn compile_proto<I: Iterator<Item = (&'static str, &'static str)>>(protobuf_file
         protobuf_codegen_pure::Codegen::new()
             .customize(Customize {
                 gen_mod_rs: Some(true),
+
                 ..Default::default()
             })
             .out_dir(file.1)

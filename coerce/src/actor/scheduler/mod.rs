@@ -223,18 +223,18 @@ where
     A: 'static + Send + Sync,
 {
     let actor_id_clone = id.clone();
-    let actor_id = actor_id_clone.as_str();
+    // let actor_id = actor_id_clone.as_str();
     let actor_type_name = A::type_name();
 
-    let node_id = if let Some(system) = &system {
-        if system.is_remote() {
-            system.remote().node_id()
-        } else {
-            0
-        }
-    } else {
-        0
-    };
+    // let node_id = if let Some(system) = &system {
+    //     if system.is_remote() {
+    //         system.remote().node_id()
+    //     } else {
+    //         0
+    //     }
+    // } else {
+    //     0
+    // };
     //
     // tracing::trace_span!(
     //     "ActorScheduler::start_actor",
@@ -262,6 +262,6 @@ where
     });
 
     let actor_id = actor_id_clone.as_str();
-    tracing::trace!(message = "started actor", actor_id, actor_type_name);
+    trace!(message = "started actor", actor_id, actor_type_name);
     actor_ref
 }

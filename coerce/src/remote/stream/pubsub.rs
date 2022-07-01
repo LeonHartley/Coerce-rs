@@ -36,13 +36,13 @@ impl PubSub {
     where
         A: Handler<Receive<T>>,
     {
-        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
-        let span = tracing::debug_span!(
-            "PubSub::subscribe",
-            actor_type_name = A::type_name(),
-            topic = topic_data.as_str()
-        );
-        let _enter = span.enter();
+        // let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
+        // let span = tracing::debug_span!(
+        //     "PubSub::subscribe",
+        //     actor_type_name = A::type_name(),
+        //     topic = topic_data.as_str()
+        // );
+        // let _enter = span.enter();
 
         let system = ctx.system().remote();
         if let Some(mediator) = system.stream_mediator() {
@@ -56,9 +56,9 @@ impl PubSub {
     }
 
     pub async fn publish<T: Topic>(topic: T, message: T::Message, system: &RemoteActorSystem) {
-        let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
-        let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
-        let _enter = span.enter();
+        // let topic_data = format!("{}-{}", T::topic_name(), &topic.key());
+        // let span = tracing::debug_span!("PubSub::publish", topic = topic_data.as_str());
+        // let _enter = span.enter();
         if let Some(mediator) = system.stream_mediator() {
             let _ = mediator
                 .send(Publish::<T> {
@@ -158,14 +158,14 @@ impl<T: Topic> TopicSubscriberStore<T> {
 #[async_trait]
 impl<T: Topic + 'static> TopicEmitter for TopicSubscriberStore<T> {
     async fn emit_serialised(&self, key: &str, bytes: Vec<u8>) {
-        let topic_data = format!("{}-{}", T::topic_name(), &key);
-        let span = tracing::debug_span!(
-            "PubSub::emit",
-            topic = topic_data.as_str(),
-            message_length = bytes.len()
-        );
-
-        let _enter = span.enter();
+        // let topic_data = format!("{}-{}", T::topic_name(), &key);
+        // let span = tracing::debug_span!(
+        //     "PubSub::emit",
+        //     topic = topic_data.as_str(),
+        //     message_length = bytes.len()
+        // );
+        //
+        // let _enter = span.enter();
 
         if let Some(message) = T::Message::read_from_bytes(bytes) {
             let message = Arc::new(message);

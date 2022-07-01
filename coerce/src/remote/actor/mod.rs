@@ -2,7 +2,7 @@ use crate::remote::cluster::node::RemoteNodeStore;
 
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{scheduler::ActorType, Actor, ActorId, LocalActorRef};
+use crate::actor::{scheduler::ActorType, Actor, ActorId, ActorRefErr, LocalActorRef};
 use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
@@ -29,6 +29,12 @@ pub struct RemoteRegistry {
     actors: HashMap<ActorId, NodeId>,
     system: Option<RemoteActorSystem>,
     system_event_subscription: Option<Subscription>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct SystemCapabilities {
+    pub actors: Vec<String>,
+    pub messages: Vec<String>,
 }
 
 pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
@@ -93,6 +99,16 @@ impl RemoteSystemConfig {
     pub fn heartbeat_config(&self) -> &HeartbeatConfig {
         &self.heartbeat_config
     }
+
+    pub fn get_capabilities(&self) -> SystemCapabilities {
+        let mut actors: Vec<String> = self.actor_types.values().map(|a| a.clone()).collect();
+        actors.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
+        let mut messages: Vec<String> = self.handler_types.values().map(|a| a.clone()).collect();
+        messages.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
+        SystemCapabilities { actors, messages }
+    }
 }
 
 pub struct RemoteHandler {
@@ -107,6 +123,10 @@ impl RemoteHandler {
     pub fn pop_request(&mut self, message_id: Uuid) -> Option<RemoteRequest> {
         self.requests.remove(&message_id)
     }
+
+    pub fn inflight_request_count(&self) -> usize {
+        self.requests.len()
+    }
 }
 
 pub struct RemoteRequest {
@@ -116,7 +136,7 @@ pub struct RemoteRequest {
 #[derive(Debug)]
 pub enum RemoteResponse {
     Ok(Vec<u8>),
-    Err(Vec<u8>),
+    Err(ActorRefErr),
 }
 
 impl RemoteResponse {
@@ -134,7 +154,7 @@ impl RemoteResponse {
         }
     }
 
-    pub fn into_result(self) -> Result<Vec<u8>, Vec<u8>> {
+    pub fn into_result(self) -> Result<Vec<u8>, ActorRefErr> {
         match self {
             RemoteResponse::Ok(buff) => Ok(buff),
             RemoteResponse::Err(buff) => Err(buff),
@@ -143,8 +163,6 @@ impl RemoteResponse {
 }
 
 impl Actor for RemoteRegistry {}
-
-impl Actor for RemoteHandler {}
 
 impl Actor for RemoteClientRegistry {}
 

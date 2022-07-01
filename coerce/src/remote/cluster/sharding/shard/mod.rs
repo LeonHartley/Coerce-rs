@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-
+use crate::actor::scheduler::timer::{Timer, TimerTick};
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
@@ -14,27 +14,25 @@ use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::handler::ActorHandler;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::ClientResult;
-
-use crate::actor::scheduler::timer::{Timer, TimerTick};
 use crate::remote::system::NodeId;
 use chrono::{DateTime, Utc};
 use protobuf::Message as ProtoMessage;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::Sender;
 
+pub(crate) mod passivation;
 pub(crate) mod stats;
 
 pub struct Shard {
     shard_id: ShardId,
     handler: BoxedActorHandler,
     persistent_entities: bool,
-    entity_passivation: bool,
-    entity_passivation_tick: Duration,
-    entity_passivation_timeout: Duration,
-    entity_passivation_timer: Option<Timer>,
     recovered_snapshot: bool,
-    entities: HashMap<String, Entity>,
+    entity_passivation: bool,
+    entities: HashMap<Arc<String>, Entity>,
 }
 
 impl Shard {
@@ -44,35 +42,46 @@ impl Shard {
             handler,
             persistent_entities,
             entities: HashMap::new(),
-            entity_passivation: false,
-            entity_passivation_timeout: Duration::from_secs(60),
-            entity_passivation_tick: Duration::from_secs(10),
-            entity_passivation_timer: None,
             recovered_snapshot: false,
+            entity_passivation: true,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
-enum EntityStatus {
-    Active,
+impl Drop for Shard {
+    fn drop(&mut self) {
+        info!("shard#{} dropped", self.shard_id);
+    }
+}
+
+#[derive(Clone)]
+enum EntityState {
+    Idle,
+    Active(BoxedActorRef),
     Passivated,
 }
 
-impl EntityStatus {
+impl EntityState {
     pub fn is_active(&self) -> bool {
         match &self {
-            EntityStatus::Active => true,
+            EntityState::Active(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_actor_ref(&self) -> Option<BoxedActorRef> {
+        match &self {
+            EntityState::Active(boxed_actor_ref) => Some(boxed_actor_ref.clone()),
+            _ => None,
         }
     }
 }
 
 #[derive(Clone)]
 struct Entity {
-    actor_id: String,
-    recipe: Vec<u8>,
-    status: EntityStatus,
+    actor_id: Arc<String>,
+    recipe: Arc<Vec<u8>>,
+    status: EntityState,
     last_request: DateTime<Utc>,
 }
 
@@ -98,7 +107,7 @@ impl PersistentActor for Shard {
 
     async fn post_recovery(&mut self, ctx: &mut ActorContext) {
         let recovered_entities = self.entities.len();
-        debug!(
+        info!(
             "started shard#{}, recovered_entities={}",
             self.shard_id, recovered_entities
         );
@@ -108,63 +117,46 @@ impl PersistentActor for Shard {
         }
 
         if self.entity_passivation {
-            self.entity_passivation_timer = Some(Timer::start(
-                self.actor_ref(ctx),
-                self.entity_passivation_tick,
-                PassivationTimerTick,
-            ));
-        }
-    }
-
-    async fn stopped(&mut self, ctx: &mut ActorContext) {
-        if let Some(supervised) = ctx.supervised_mut() {
-            supervised.stop_all().await;
+            // TODO: Start entity passivation worker
         }
     }
 }
-
-#[derive(Clone)]
-struct PassivationTimerTick;
-
-impl Message for PassivationTimerTick {
-    type Result = ();
-}
-
-impl TimerTick for PassivationTimerTick {}
 
 impl Shard {
     async fn start_entity(
         &mut self,
-        actor_id: &ActorId,
-        recipe: &Vec<u8>,
+        actor_id: Arc<ActorId>,
+        recipe: Arc<Vec<u8>>,
         ctx: &mut ActorContext,
         is_recovering: bool,
     ) -> Result<BoxedActorRef, ActorRefErr> {
+        let start_entity = StartEntity {
+            actor_id: actor_id.clone(),
+            recipe: recipe.clone(),
+        };
+
         if !is_recovering && self.persistent_entities {
-            let _persist_res = self
-                .persist(
-                    &StartEntity {
-                        actor_id: actor_id.clone(),
-                        recipe: recipe.clone(),
-                    },
-                    ctx,
-                )
-                .await;
+            let _persist_res = self.persist(&start_entity, ctx).await;
         }
 
         let entity = self
             .handler
-            .create(Some(actor_id.clone()), recipe.clone(), Some(ctx), None)
+            .create(
+                Some(actor_id.to_string()),
+                &start_entity.recipe,
+                Some(ctx),
+                None,
+            )
             .await;
 
         match &entity {
-            Ok(_) => {
+            Ok(actor_ref) => {
                 self.entities.insert(
                     actor_id.clone(),
                     Entity {
                         actor_id: actor_id.clone(),
-                        recipe: recipe.clone(),
-                        status: EntityStatus::Active,
+                        recipe,
+                        status: EntityState::Active(actor_ref.clone()),
                         last_request: Utc::now(),
                     },
                 );
@@ -173,7 +165,7 @@ impl Shard {
                     "spawned entity as a child of Shard#{}, actor_id={}, total_hosted_entities={}",
                     &self.shard_id,
                     &actor_id,
-                    &ctx.supervised_mut().unwrap().children.len()
+                    &ctx.supervised_count()
                 );
             }
             Err(e) => {
@@ -188,16 +180,10 @@ impl Shard {
     }
 
     async fn recover_entities(&mut self, ctx: &mut ActorContext) {
-        let entities: Vec<Entity> = self
-            .entities
-            .values()
-            .filter(|e| e.status.is_active())
-            .cloned()
-            .collect();
-
+        let entities = self.get_active_entities();
         for entity in entities {
             if let Err(e) = self
-                .start_entity(&entity.actor_id, &entity.recipe, ctx, true)
+                .start_entity(entity.actor_id.clone(), entity.recipe, ctx, true)
                 .await
             {
                 warn!(
@@ -207,11 +193,14 @@ impl Shard {
             }
         }
     }
-}
 
-#[async_trait]
-impl Handler<PassivationTimerTick> for Shard {
-    async fn handle(&mut self, _message: PassivationTimerTick, _ctx: &mut ActorContext) {}
+    fn get_active_entities(&self) -> Vec<Entity> {
+        self.entities
+            .values()
+            .filter(|e| e.status.is_active())
+            .cloned()
+            .collect()
+    }
 }
 
 #[async_trait]
@@ -222,7 +211,7 @@ impl Handler<StartEntity> for Shard {
         */
 
         let _res = self
-            .start_entity(&message.actor_id, message.recipe.as_ref(), ctx, false)
+            .start_entity(message.actor_id, message.recipe, ctx, false)
             .await;
     }
 }
@@ -231,7 +220,6 @@ impl Handler<StartEntity> for Shard {
 impl Handler<EntityRequest> for Shard {
     async fn handle(&mut self, message: EntityRequest, ctx: &mut ActorContext) {
         let system = ctx.system().remote();
-        let actor = ctx.boxed_child_ref(&message.actor_id);
         let handler = system.config().message_handler(&message.message_type);
 
         let actor_id = message.actor_id;
@@ -255,6 +243,7 @@ impl Handler<EntityRequest> for Shard {
             );
 
             result_channel.map(|m| {
+                let actor_id = actor_id.to_string();
                 m.send(Err(ActorRefErr::NotSupported {
                     actor_id,
                     message_type,
@@ -265,42 +254,55 @@ impl Handler<EntityRequest> for Shard {
             return;
         }
 
-        if self.entity_passivation {
-            if let Some(entity) = self.entities.get_mut(&actor_id) {
-                entity.last_request = Utc::now();
+        let handler = handler.unwrap();
+        let actor = self.get_or_create(actor_id, message.recipe, ctx).await;
+        match actor {
+            Ok(actor_ref) => {
+                let message = message.message;
+                info!("calling handle_direct");
+                tokio::spawn(async move {
+                    handler
+                        .handle_direct(&actor_ref, &message, result_channel)
+                        .await;
+                });
+            }
+            Err(e) => {
+                warn!("error while ");
+                result_channel.map(|c| c.send(Err(e)));
+            }
+        }
+    }
+}
+
+impl Shard {
+    async fn get_or_create(
+        &mut self,
+        actor_id: Arc<ActorId>,
+        recipe: Option<Arc<Vec<u8>>>,
+        ctx: &mut ActorContext,
+    ) -> Result<BoxedActorRef, ActorRefErr> {
+        let mut entity = self.entities.get_mut(&actor_id);
+
+        let mut recipe = recipe;
+        if let Some(entity) = entity {
+            if let EntityState::Active(boxed_actor_ref) = &entity.status {
+                return Ok(boxed_actor_ref.clone());
+            } else if recipe.is_none() {
+                // No actor recipe tied to the request but we've seen this actor before, use the recovered recipe
+                recipe = Some(entity.recipe.clone());
             }
         }
 
-        let handler = handler.unwrap();
-        let actor = match actor {
-            Some(actor) => actor,
-            None => match message.recipe {
-                /*  TODO: `start_entity` should be done asynchronously, any messages sent while the actor is
-                          starting should be buffered and emitted once the Shard receives confirmation that the actor was created
-                */
-                Some(recipe) => match self
-                    .start_entity(&actor_id, recipe.as_ref(), ctx, false)
-                    .await
-                {
-                    Ok(actor) => actor,
-                    Err(_err) => {
-                        result_channel.map(|m| m.send(Err(ActorRefErr::ActorUnavailable)));
-                        return;
-                    }
-                },
-                None => {
-                    result_channel.map(|m| m.send(Err(ActorRefErr::NotFound(actor_id))));
-                    return;
-                }
+        match recipe {
+            /*  TODO: `start_entity` should be done asynchronously, any messages sent while the actor is
+                      starting should be buffered and emitted once the Shard receives confirmation that the actor was created
+            */
+            Some(recipe) => match self.start_entity(actor_id, recipe, ctx, false).await {
+                Ok(actor) => Ok(actor),
+                Err(e) => Err(e),
             },
-        };
-
-        let message = message.message;
-        tokio::spawn(async move {
-            handler
-                .handle_direct(&actor, &message, result_channel)
-                .await;
-        });
+            None => Err(ActorRefErr::NotFound(actor_id.to_string())),
+        }
     }
 }
 
@@ -310,11 +312,12 @@ impl Handler<RemoteEntityRequest> for Shard {
         let (tx, rx) = oneshot::channel();
 
         debug!(
-            "remote entity request, node={}, actor_id={}, shard_id={}, origin_node={}",
+            "remote entity request, node={}, actor_id={}, shard_id={}, origin_node={}, request_id={}",
             ctx.system().remote().node_id(),
             &message.actor_id,
-            self.shard_id,
-            message.origin_node,
+            &self.shard_id,
+            &message.origin_node,
+            &message.request_id,
         );
 
         let origin_node = message.origin_node;
@@ -331,19 +334,17 @@ impl Handler<RemoteEntityRequest> for Shard {
 
         let system = ctx.system().remote_owned();
         tokio::spawn(async move {
-            if let Ok(Ok(result)) = rx.await {
-                let message_id = request_id.to_string();
-                let result = SessionEvent::Result(ClientResult {
-                    message_id,
-                    result,
-                    ..Default::default()
-                });
-
-                if let Err(e) = system.node_rpc_raw(request_id, result, origin_node).await {
-                    error!(
-                        "error whilst sending result to target node (node_id={}, request_id={}) error: {}",
-                        &origin_node, &request_id, &e
-                    );
+            match rx.await {
+                Ok(Ok(result)) => {
+                    system
+                        .notify_raw_rpc_result(request_id, result, origin_node)
+                        .await
+                }
+                Err(_e) => {
+                    error!("remote entity request failed, result channel closed");
+                }
+                Ok(Err(e)) => {
+                    error!("remote entity request failed, err={}", &e);
                 }
             }
         });
@@ -373,7 +374,7 @@ impl Recover<StartEntity> for Shard {
             Entity {
                 actor_id: message.actor_id,
                 recipe: message.recipe,
-                status: EntityStatus::Active,
+                status: EntityState::Idle,
                 last_request: Utc::now(),
             },
         );
@@ -384,7 +385,7 @@ impl Recover<StartEntity> for Shard {
 impl Recover<PassivateEntity> for Shard {
     async fn recover(&mut self, message: PassivateEntity, _ctx: &mut ActorContext) {
         if let Some(entity) = self.entities.get_mut(&message.actor_id) {
-            entity.status = EntityStatus::Passivated;
+            entity.status = EntityState::Passivated;
         }
     }
 }
@@ -421,11 +422,11 @@ impl Snapshot for ShardStateSnapshot {
                 .entities
                 .into_iter()
                 .map(|e| proto::ShardStateSnapshot_Entity {
-                    actor_id: e.actor_id,
-                    recipe: e.recipe,
-                    status: match e.status {
-                        EntityStatus::Active => proto::EntityStatus::ACTIVE,
-                        EntityStatus::Passivated => proto::EntityStatus::PASSIVATED,
+                    actor_id: e.actor_id.to_string(),
+                    recipe: e.recipe.to_vec(),
+                    state: match e.status {
+                        EntityState::Active(_) | EntityState::Idle => proto::EntityState::IDLE,
+                        EntityState::Passivated => proto::EntityState::PASSIVATED,
                     },
                     ..Default::default()
                 })
@@ -450,11 +451,13 @@ impl Snapshot for ShardStateSnapshot {
                         .entities
                         .into_iter()
                         .map(|e| Entity {
-                            actor_id: e.actor_id,
-                            recipe: e.recipe,
-                            status: match e.status {
-                                proto::EntityStatus::ACTIVE => EntityStatus::Active,
-                                proto::EntityStatus::PASSIVATED => EntityStatus::Passivated,
+                            actor_id: Arc::new(e.actor_id),
+                            recipe: Arc::new(e.recipe),
+                            status: match e.state {
+                                proto::EntityState::IDLE | proto::EntityState::ACTIVE => {
+                                    EntityState::Idle
+                                }
+                                proto::EntityState::PASSIVATED => EntityState::Passivated,
                             },
                             last_request: Utc::now(),
                         })

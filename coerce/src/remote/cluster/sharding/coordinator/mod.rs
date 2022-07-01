@@ -46,6 +46,7 @@ pub struct ShardCoordinator {
     shards: HashMap<ShardId, NodeId>,
     reallocating_shards: HashSet<ShardId>,
     scheduled_rebalance: Option<ScheduledRebalance>,
+    self_node_id: Option<NodeId>,
 }
 
 type ScheduledRebalance = ScheduledNotify<ShardCoordinator, Rebalance>;
@@ -65,6 +66,7 @@ impl PersistentActor for ShardCoordinator {
         let node_id = remote.node_id();
         let node_tag = remote.node_tag().to_string();
 
+        self.self_node_id = Some(node_id);
         self.add_host(ShardHostState {
             node_id,
             node_tag,
@@ -117,6 +119,7 @@ impl ShardCoordinator {
             shards: Default::default(),
             reallocating_shards: Default::default(),
             scheduled_rebalance: None,
+            self_node_id: None,
         }
     }
 

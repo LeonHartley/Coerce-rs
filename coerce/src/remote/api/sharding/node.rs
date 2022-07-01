@@ -61,16 +61,16 @@ impl Handler<GetStats> for ShardingApi {
             if let Ok(host_stats_receiver) = host_stats {
                 if let Ok(host_stats) = host_stats_receiver.await {
                     let total_shards =
-                        host_stats.hosted_shards.len() + host_stats.remote_shards.len();
+                        host_stats.hosted_shard_count + host_stats.remote_shard_count;
 
                     Some(Stats {
                         entity: message.0,
-                        hosted_shards: host_stats.hosted_shards,
-                        remote_shards: host_stats
-                            .remote_shards
-                            .into_iter()
-                            .map(|s| (s.shard_id, s.node_id))
-                            .collect(),
+                        hosted_shards: HashMap::new(), /*host_stats.hosted_shards,*/
+                        remote_shards: HashMap::new(), /*host_stats
+                                                       .remote_shards
+                                                       .into_iter()
+                                                       .map(|s| (s.shard_id, s.node_id))
+                                                       .collect(),*/
                         total_shards,
                     })
                 } else {
@@ -98,18 +98,18 @@ impl Handler<GetAllStats> for ShardingApi {
             if let Ok(host_stats_receiver) = host_stats {
                 if let Ok(host_stats) = host_stats_receiver.await {
                     let total_shards =
-                        host_stats.hosted_shards.len() + host_stats.remote_shards.len();
+                        host_stats.hosted_shard_count + host_stats.remote_shard_count;
 
                     stats.insert(
                         entity.clone(),
                         Stats {
                             entity: entity.clone(),
-                            hosted_shards: host_stats.hosted_shards,
-                            remote_shards: host_stats
-                                .remote_shards
-                                .into_iter()
-                                .map(|s| (s.shard_id, s.node_id))
-                                .collect(),
+                            hosted_shards: HashMap::new(), /*host_stats.hosted_shards*/
+                            remote_shards: HashMap::new(), /*host_stats
+                                                           .remote_shards
+                                                           .into_iter()
+                                                           .map(|s| (s.shard_id, s.node_id))
+                                                           .collect()*/
                             total_shards,
                         },
                     );

@@ -8,7 +8,7 @@ use crate::remote::cluster::sharding::coordinator::stats::GetShardingStats;
 use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 use crate::remote::cluster::sharding::host::{
-    ShardAllocated, ShardHost, ShardReallocating, StopShard,
+    ShardAllocated, ShardAllocator, ShardHost, ShardReallocating, StopShard,
 };
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::Shard;
@@ -18,6 +18,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
+pub mod builder;
 pub mod coordinator;
 pub mod host;
 pub mod proto;
@@ -38,13 +39,17 @@ struct ShardingCore {
 
 pub struct Sharded<A: Actor> {
     sharding: Arc<ShardingCore>,
-    actor_id: ActorId,
+    actor_id: Arc<ActorId>,
     recipe: Option<Arc<Vec<u8>>>,
     _a: PhantomData<A>,
 }
 
 impl<A: ActorFactory> Sharding<A> {
-    pub async fn start(shard_entity: String, system: RemoteActorSystem) -> Self {
+    pub async fn start(
+        shard_entity: String,
+        system: RemoteActorSystem,
+        allocator: Option<Box<dyn ShardAllocator>>,
+    ) -> Self {
         let coordinator_spawner_actor_id = Some(format!(
             "ShardCoordinator-{}-Spawner-{}",
             &shard_entity,
@@ -58,7 +63,7 @@ impl<A: ActorFactory> Sharding<A> {
             .actor_handler(A::Actor::type_name())
             .expect("actor factory not supported");
 
-        let host = ShardHost::new(shard_entity.clone(), actor_handler, None)
+        let host = ShardHost::new(shard_entity.clone(), actor_handler, allocator)
             .into_actor(host_actor_id, system.actor_system())
             .await
             .expect("create ShardHost actor");
@@ -86,6 +91,7 @@ impl<A: ActorFactory> Sharding<A> {
             None => None,
         };
 
+        let actor_id = Arc::new(actor_id);
         let sharding = self.core.clone();
         Sharded {
             actor_id,

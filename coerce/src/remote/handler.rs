@@ -12,6 +12,7 @@ use crate::actor::context::ActorContext;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
@@ -21,7 +22,7 @@ pub trait ActorHandler: 'static + Any + Sync + Send {
     async fn create(
         &self,
         actor_id: Option<String>,
-        raw_recipe: Vec<u8>,
+        raw_recipe: &Vec<u8>,
         supervisor_ctx: Option<&mut ActorContext>,
         system: Option<&ActorSystem>,
     ) -> Result<BoxedActorRef, ActorRefErr>;
@@ -39,7 +40,7 @@ pub trait ActorMessageHandler: Any {
         &self,
         actor: ActorId,
         buffer: &[u8],
-        res: tokio::sync::oneshot::Sender<Result<Vec<u8>, ActorRefErr>>,
+        res: Sender<Result<Vec<u8>, ActorRefErr>>,
         attempt: usize,
     );
 
@@ -47,7 +48,7 @@ pub trait ActorMessageHandler: Any {
         &self,
         actor: &BoxedActorRef,
         buffer: &[u8],
-        res: Option<tokio::sync::oneshot::Sender<Result<Vec<u8>, ActorRefErr>>>,
+        res: Option<Sender<Result<Vec<u8>, ActorRefErr>>>,
     );
 
     fn new_boxed(&self) -> BoxedMessageHandler;
@@ -135,7 +136,7 @@ where
     async fn create(
         &self,
         actor_id: Option<ActorId>,
-        recipe: Vec<u8>,
+        recipe: &Vec<u8>,
         supervisor_ctx: Option<&mut ActorContext>,
         system: Option<&ActorSystem>,
     ) -> Result<BoxedActorRef, ActorRefErr> {
@@ -198,6 +199,10 @@ impl ActorRefCache {
 
     pub fn get(&self, actor_id: &ActorId) -> Option<BoxedActorRef> {
         self.inner.lock().get(actor_id).cloned()
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.lock().len()
     }
 }
 
@@ -349,7 +354,9 @@ where
                     A::type_name()
                 );
 
-                // TODO: send notification back to `res` sender
+                if let Some(res) = res {
+                    let _ = res.send(Err(ActorRefErr::InvalidRef));
+                }
             }
         }
     }
@@ -366,7 +373,7 @@ where
     }
 }
 
-pub fn send_proto_result<M: protobuf::Message>(msg: M, res: tokio::sync::oneshot::Sender<Vec<u8>>)
+pub fn send_proto_result<M: protobuf::Message>(msg: M, res: Sender<Vec<u8>>)
 where
     M: 'static + Sync + Send,
 {

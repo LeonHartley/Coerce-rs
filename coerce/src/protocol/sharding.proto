@@ -4,6 +4,8 @@ package coerce.sharding;
 
 message AllocateShard {
   uint32 shard_id = 1;
+
+  bool rebalancing = 2;
 }
 
 message RemoteShard {
@@ -22,6 +24,18 @@ message ShardReallocating {
 
 message StopShard {
   uint32 shard_id = 1;
+
+  uint64 origin_node_id = 2;
+
+  string request_id = 3;
+}
+
+message ShardStopped {
+  uint32 shard_id = 1;
+
+  uint64 origin_node_id = 2;
+
+  bool is_successful = 3;
 }
 
 message AllocateShardResult {
@@ -62,9 +76,10 @@ message RemoteEntityRequest {
   uint64 origin_node = 6;
 }
 
-enum EntityStatus {
-  ACTIVE = 0;
-  PASSIVATED = 1;
+enum EntityState {
+  IDLE = 0;
+  ACTIVE = 1;
+  PASSIVATED = 2;
 }
 
 message StartEntity {
@@ -87,7 +102,7 @@ message ShardStateSnapshot {
 
     bytes recipe = 2;
 
-    EntityStatus status = 3;
+    EntityState state = 3;
   }
 
   uint32 shard_id = 1;

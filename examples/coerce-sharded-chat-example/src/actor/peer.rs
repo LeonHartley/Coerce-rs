@@ -159,6 +159,7 @@ impl Handler<JoinChat> for Peer {
             "user {} joining chat (chat_stream={})",
             &self.name, &chat_stream_id
         );
+
         let result = chat_stream
             .send(Join {
                 peer_name: self.name.clone(),

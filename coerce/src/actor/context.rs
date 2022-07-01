@@ -30,7 +30,7 @@ pub struct ActorContext {
 impl Drop for ActorContext {
     fn drop(&mut self) {
         if let Some(boxed_parent_ref) = &self.boxed_parent_ref {
-            boxed_parent_ref.notify_child_terminated(self.id().into());
+            let _ = boxed_parent_ref.notify_child_terminated(self.id().into());
         }
 
         if let Some(mut supervised) = self.supervised.take() {
@@ -43,6 +43,7 @@ impl Drop for ActorContext {
             ActorStatus::Starting => {
                 debug!("actor failed to start, context dropped");
             }
+
             ActorStatus::Started => {
                 if self.system.is_some() && self.system().is_terminated() {
                     debug!(
@@ -54,6 +55,7 @@ impl Drop for ActorContext {
                     debug!("actor (id={}) has stopped unexpectedly", self.id());
                 }
             }
+
             ActorStatus::Stopping => {
                 if self.system.is_some() && self.system().is_terminated() {
                     trace!(
@@ -67,6 +69,7 @@ impl Drop for ActorContext {
                     );
                 }
             }
+
             ActorStatus::Stopped => {
                 debug!("actor (id={}) stopped, context dropped", self.id());
             }
@@ -154,7 +157,7 @@ impl ActorContext {
     pub fn attach_child_ref(&mut self, actor_ref: BoxedActorRef) {
         let supervised = {
             if self.supervised.is_none() {
-                self.supervised = Some(Supervised::new());
+                self.supervised = Some(Supervised::new(self.id().to_string()));
             }
 
             self.supervised.as_mut().unwrap()
@@ -190,7 +193,7 @@ impl ActorContext {
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let supervised = {
             if self.supervised.is_none() {
-                self.supervised = Some(Supervised::new());
+                self.supervised = Some(Supervised::new(self.id().to_string()));
             }
 
             self.supervised.as_mut().unwrap()
@@ -201,9 +204,25 @@ impl ActorContext {
         supervised.spawn(id, actor, system, parent_ref).await
     }
 
+    pub fn supervised_count(&self) -> usize {
+        self.supervised.as_ref().map_or(0, |s| s.count())
+    }
+
     pub fn with_parent(mut self, boxed_parent_ref: Option<BoxedActorRef>) -> Self {
         self.boxed_parent_ref = boxed_parent_ref;
         self
+    }
+
+    pub fn parent<A: Actor>(&self) -> Option<LocalActorRef<A>> {
+        if let Some(parent) = &self.boxed_parent_ref.clone() {
+            parent.as_actor()
+        } else {
+            None
+        }
+    }
+
+    pub fn boxed_parent(&self) -> Option<BoxedActorRef> {
+        self.boxed_parent_ref.clone()
     }
 
     pub fn add_on_stopped_handler(&mut self, event_handler: Sender<()>) {

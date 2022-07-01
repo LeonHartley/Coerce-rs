@@ -1,5 +1,5 @@
 use crate::actor::LocalActorRef;
-use crate::remote::api::sharding::cluster::get_sharding_stats;
+use crate::remote::api::sharding::cluster::{get_shard_host_stats, get_sharding_stats};
 use crate::remote::api::sharding::node::{GetAllStats, GetShardTypes, GetStats};
 use crate::remote::api::sharding::ShardingApi;
 use crate::remote::api::Routes;
@@ -26,6 +26,10 @@ impl Routes for LocalActorRef<ShardingApi> {
             .route("/sharding/cluster/stats/:entity", {
                 let actor_ref = self.clone();
                 get(move |path| get_sharding_stats(actor_ref, path))
+            })
+            .route("/sharding/host/stats/:entity", {
+                let actor_ref = self.clone();
+                get(move |path| get_shard_host_stats(actor_ref, path))
             })
             .route("/sharding/node/stats/:entity", {
                 let actor_ref = self.clone();

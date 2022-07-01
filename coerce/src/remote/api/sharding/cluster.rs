@@ -4,6 +4,7 @@ use crate::actor::{ActorRef, ActorRefErr, LocalActorRef};
 use crate::remote::api::sharding::ShardingApi;
 use crate::remote::cluster::sharding::coordinator::stats::{GetShardingStats, NodeStats};
 use crate::remote::cluster::sharding::coordinator::ShardId;
+use crate::remote::cluster::sharding::host::stats::{GetStats, HostStats};
 use crate::remote::cluster::sharding::host::{shard_actor_id, GetCoordinator};
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::stats::ShardStats as ShardActorStats;
@@ -24,6 +25,16 @@ type ClusterStatsReceiver = oneshot::Receiver<Option<ShardingClusterStats>>;
 
 impl Message for GetClusterStats {
     type Result = Option<ClusterStatsReceiver>;
+}
+
+pub struct GetHostStats {
+    entity_type: String,
+}
+
+type HostStatsReceiver = oneshot::Receiver<Option<HostStats>>;
+
+impl Message for GetHostStats {
+    type Result = Option<HostStatsReceiver>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,6 +67,38 @@ pub struct ShardingClusterStats {
 }
 
 #[async_trait]
+impl Handler<GetHostStats> for ShardingApi {
+    async fn handle(
+        &mut self,
+        message: GetHostStats,
+        _ctx: &mut ActorContext,
+    ) -> Option<HostStatsReceiver> {
+        let shard_host = self.shard_hosts.get(&message.entity_type);
+        if shard_host.is_none() {
+            return None;
+        }
+
+        let shard_host = shard_host.unwrap().clone();
+
+        let (tx, rx) = oneshot::channel();
+        tokio::spawn(async move {
+            let receiver = shard_host.send(GetStats).await;
+            if let Ok(receiver) = receiver {
+                let result = receiver.await;
+                if let Ok(stats) = result {
+                    let _ = tx.send(Some(stats));
+                } else {
+                    let _ = tx.send(None);
+                }
+            } else {
+                let _ = tx.send(None);
+            }
+        });
+
+        Some(rx)
+    }
+}
+#[async_trait]
 impl Handler<GetClusterStats> for ShardingApi {
     async fn handle(
         &mut self,
@@ -83,7 +126,6 @@ impl Handler<GetClusterStats> for ShardingApi {
                 let self_node_id = remote.node_id();
                 for shard in sharding_stats.shards {
                     let actor_id = shard_actor_id(&message.entity_type, shard.shard_id);
-
                     let shard_actor_ref = if shard.node_id == self_node_id {
                         let local_actor = remote.actor_system().get_tracked_actor(actor_id).await;
                         if let Some(actor) = local_actor {
@@ -118,6 +160,8 @@ impl Handler<GetClusterStats> for ShardingApi {
                     nodes,
                     shards,
                 }));
+            } else {
+                let _ = tx.send(None);
             }
         });
 
@@ -135,6 +179,21 @@ pub async fn get_sharding_stats(
         .unwrap();
     if let Some(cluster_stats_receiver) = cluster_stats {
         Json(cluster_stats_receiver.await.unwrap())
+    } else {
+        Json(None)
+    }
+}
+
+pub async fn get_shard_host_stats(
+    sharding_api: LocalActorRef<ShardingApi>,
+    Path(entity_type): Path<String>,
+) -> impl IntoResponse {
+    let host_stats: Option<HostStatsReceiver> = sharding_api
+        .send(GetHostStats { entity_type })
+        .await
+        .unwrap();
+    if let Some(host_stats) = host_stats {
+        Json(host_stats.await.unwrap())
     } else {
         Json(None)
     }

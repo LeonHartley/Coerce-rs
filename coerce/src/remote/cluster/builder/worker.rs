@@ -35,13 +35,13 @@ impl ClusterWorkerBuilder {
     }
 
     pub async fn start(mut self) -> RemoteServer {
-        let span = tracing::trace_span!(
-            "ClusterWorkerBuilder::start",
-            listen_addr = self.server_listen_addr.as_str(),
-            node_tag = self.system.node_tag()
-        );
-
-        let _enter = span.enter();
+        // let span = tracing::trace_span!(
+        //     "ClusterWorkerBuilder::start",
+        //     listen_addr = self.server_listen_addr.as_str(),
+        //     node_tag = self.system.node_tag()
+        // );
+        //
+        // let _enter = span.enter();
 
         let started_at = *self.system.started_at();
         self.system
@@ -70,8 +70,8 @@ impl ClusterWorkerBuilder {
 
     async fn discover_peers(&mut self) {
         if let Some(seed_addr) = self.seed_addr.take() {
-            let span = tracing::trace_span!("ClusterWorkerBuilder::discover_peers");
-            let _enter = span.enter();
+            // let span = tracing::trace_span!("ClusterWorkerBuilder::discover_peers");
+            // let _enter = span.enter();
 
             let (tx, rx) = oneshot::channel();
 

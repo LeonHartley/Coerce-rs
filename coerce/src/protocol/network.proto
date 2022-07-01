@@ -55,6 +55,14 @@ message NodeIdentity {
   google.protobuf.Timestamp node_started_at = 5;
 
   repeated RemoteNode peers = 6;
+
+  SystemCapabilities capabilities = 7;
+}
+
+message SystemCapabilities {
+  repeated string actors = 1;
+
+  repeated string messages = 2;
 }
 
 message ClientHandshake {
@@ -77,15 +85,10 @@ message ClientResult {
   string trace_id = 3;
 }
 
-enum ClientErrorCode {
-  ActorUnavailable = 0;
-  ProcessingFailed = 1;
-}
-
 message ClientErr {
   string message_id = 1;
 
-  ClientErrorCode code = 2;
+  ActorRefErr error = 2;
 
   string trace_id = 3;
 }
@@ -198,4 +201,31 @@ message RaftRequest {
   uint32 request_type = 2;
 
   bytes payload = 3;
+}
+
+message ActorRefErr {
+  enum ErrorType {
+    ActorUnavailable = 0;
+    NotFound = 1;
+    AlreadyExists = 2;
+    Serialisation = 3;
+    Deserialisation = 4;
+    Timeout = 5;
+    StartChannelClosed = 6;
+    InvalidRef = 7;
+    ResultChannelClosed = 8;
+    ResultSendFailed = 9;
+    NotSupported = 10;
+    NotImplemented = 11;
+  }
+
+  ErrorType type = 1;
+
+  string actor_id = 2;
+
+  string message_type = 3;
+
+  string actor_type = 4;
+
+  string message = 5;
 }

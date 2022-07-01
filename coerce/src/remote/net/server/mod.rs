@@ -16,7 +16,7 @@ use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::proto::network::{
     ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, NodeIdentity, Pong,
-    RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish,
+    RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish, SystemCapabilities,
 };
 use crate::remote::stream::mediator::PublishRaw;
 use crate::CARGO_PKG_VERSION;
@@ -149,61 +149,76 @@ pub async fn server_loop(
     loop {
         match accept(&listener, cancellation_token.clone()).await {
             Some(Ok((socket, addr))) => {
-                trace!(target: "RemoteServer", "client accepted {}", addr);
-                let (read, write) = tokio::io::split(socket);
+                let this_node_addr = node_addr.clone();
+                let session_store = session_store.clone();
+                let system = system.clone();
 
-                let read = FramedRead::new(read, NetworkCodec);
-                let write = FramedWrite::new(write, NetworkCodec);
+                let _ = tokio::spawn(async move {
+                    trace!(target: "RemoteServer", "client accepted {}", addr);
+                    let (read, write) = tokio::io::split(socket);
 
-                let session_id = Uuid::new_v4();
+                    let read = FramedRead::new(read, NetworkCodec);
+                    let write = FramedWrite::new(write, NetworkCodec);
 
-                let session = session_store
-                    .send(NewSession(RemoteSession::new(session_id, write)))
-                    .await
-                    .expect("new session registered");
+                    let session_id = Uuid::new_v4();
 
-                let peers = system
-                    .get_nodes()
-                    .await
-                    .into_iter()
-                    .map(|node| RemoteNodeProto {
-                        node_id: node.id,
-                        addr: node.addr,
-                        tag: node.tag,
-                        node_started_at: node
-                            .node_started_at
-                            .as_ref()
-                            .map(datetime_to_timestamp)
-                            .into(),
-                        ..RemoteNodeProto::default()
-                    })
-                    .collect::<Vec<RemoteNodeProto>>();
+                    let session = session_store
+                        .send(NewSession(RemoteSession::new(session_id, write)))
+                        .await
+                        .expect("new session registered");
 
-                session
-                    .send(SessionWrite(
-                        session_id,
-                        ClientEvent::Identity(NodeIdentity {
-                            node_id: system.node_id(),
-                            node_tag: system.node_tag().to_string(),
-                            application_version: format!(
-                                "pkg_version={},protocol_version=1",
-                                &CARGO_PKG_VERSION
-                            ),
-                            addr: node_addr.clone(),
-                            node_started_at: Some(datetime_to_timestamp(system.started_at()))
+                    let peers = system
+                        .get_nodes()
+                        .await
+                        .into_iter()
+                        .map(|node| RemoteNodeProto {
+                            node_id: node.id,
+                            addr: node.addr,
+                            tag: node.tag,
+                            node_started_at: node
+                                .node_started_at
+                                .as_ref()
+                                .map(datetime_to_timestamp)
                                 .into(),
-                            peers: peers.into(),
-                            ..Default::default()
-                        }),
-                    ))
-                    .await
-                    .expect("send session write");
+                            ..RemoteNodeProto::default()
+                        })
+                        .collect::<Vec<RemoteNodeProto>>();
 
-                let _session = tokio::spawn(receive_loop(
-                    system.clone(),
-                    read,
-                    SessionMessageReceiver::new(session_id, session_store.clone(), session),
-                ));
+                    let capabilities = system.config().get_capabilities();
+                    let capabilities = Some(SystemCapabilities {
+                        actors: capabilities.actors.into(),
+                        messages: capabilities.messages.into(),
+                        ..Default::default()
+                    });
+
+                    session
+                        .send(SessionWrite(
+                            session_id,
+                            ClientEvent::Identity(NodeIdentity {
+                                node_id: system.node_id(),
+                                node_tag: system.node_tag().to_string(),
+                                application_version: format!(
+                                    "pkg_version={},protocol_version=1",
+                                    &CARGO_PKG_VERSION
+                                ),
+                                addr: this_node_addr,
+                                node_started_at: Some(datetime_to_timestamp(system.started_at()))
+                                    .into(),
+                                peers: peers.into(),
+                                capabilities: capabilities.into(),
+                                ..Default::default()
+                            }),
+                        ))
+                        .await
+                        .expect("send session write");
+
+                    let _session = tokio::spawn(receive_loop(
+                        addr.to_string(),
+                        system.clone(),
+                        read,
+                        SessionMessageReceiver::new(session_id, session_store.clone(), session),
+                    ));
+                });
             }
             Some(Err(e)) => error!(target: "RemoteServer", "error accepting client: {:?}", e),
             None => break,
@@ -301,6 +316,7 @@ impl StreamReceiver for SessionMessageReceiver {
                         .await
                 }
             }
+
             SessionEvent::Result(res) => {
                 match sys.pop_request(Uuid::from_str(&res.message_id).unwrap()) {
                     Some(res_tx) => {
@@ -310,6 +326,9 @@ impl StreamReceiver for SessionMessageReceiver {
                         warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
                     }
                 }
+            }
+            SessionEvent::Err(e) => {
+                let error = e;
             }
         }
     }
@@ -409,14 +428,14 @@ async fn session_handle_message(
     ctx: RemoteActorSystem,
     session: LocalActorRef<RemoteSession>,
 ) {
-    let mut headers = HashMap::<String, String>::new();
-    headers.insert("traceparent".to_owned(), msg.trace_id);
-    let span = tracing::trace_span!("RemoteServer::MessageRequest");
-    span.set_parent(global::get_text_map_propagator(|propagator| {
-        propagator.extract(&mut headers)
-    }));
-
-    let _enter = span.enter();
+    // let mut headers = HashMap::<String, String>::new();
+    // headers.insert("traceparent".to_owned(), msg.trace_id);
+    // let span = tracing::trace_span!("RemoteServer::MessageRequest");
+    // span.set_parent(global::get_text_map_propagator(|propagator| {
+    //     propagator.extract(&mut headers)
+    // }));
+    //
+    // let _enter = span.enter();
 
     match ctx
         .handle_message(

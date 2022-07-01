@@ -46,8 +46,8 @@ pub async fn main() {
         .await;
 
     {
-        let span = tracing::info_span!("CreateAndSend");
-        let _enter = span.enter();
+        // let span = tracing::info_span!("CreateAndSend");
+        // let _enter = span.enter();
 
         let actor = remote
             .actor_ref::<EchoActor>("echo-actor".to_string())

@@ -561,6 +561,7 @@ pub struct NodeIdentity {
     pub application_version: ::std::string::String,
     pub node_started_at: ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp>,
     pub peers: ::protobuf::RepeatedField<RemoteNode>,
+    pub capabilities: ::protobuf::SingularPtrField<SystemCapabilities>,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -727,6 +728,39 @@ impl NodeIdentity {
     pub fn take_peers(&mut self) -> ::protobuf::RepeatedField<RemoteNode> {
         ::std::mem::replace(&mut self.peers, ::protobuf::RepeatedField::new())
     }
+
+    // .coerce.network.SystemCapabilities capabilities = 7;
+
+
+    pub fn get_capabilities(&self) -> &SystemCapabilities {
+        self.capabilities.as_ref().unwrap_or_else(|| <SystemCapabilities as ::protobuf::Message>::default_instance())
+    }
+    pub fn clear_capabilities(&mut self) {
+        self.capabilities.clear();
+    }
+
+    pub fn has_capabilities(&self) -> bool {
+        self.capabilities.is_some()
+    }
+
+    // Param is passed by value, moved
+    pub fn set_capabilities(&mut self, v: SystemCapabilities) {
+        self.capabilities = ::protobuf::SingularPtrField::some(v);
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_capabilities(&mut self) -> &mut SystemCapabilities {
+        if self.capabilities.is_none() {
+            self.capabilities.set_default();
+        }
+        self.capabilities.as_mut().unwrap()
+    }
+
+    // Take field
+    pub fn take_capabilities(&mut self) -> SystemCapabilities {
+        self.capabilities.take().unwrap_or_else(|| SystemCapabilities::new())
+    }
 }
 
 impl ::protobuf::Message for NodeIdentity {
@@ -737,6 +771,11 @@ impl ::protobuf::Message for NodeIdentity {
             }
         };
         for v in &self.peers {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        for v in &self.capabilities {
             if !v.is_initialized() {
                 return false;
             }
@@ -770,6 +809,9 @@ impl ::protobuf::Message for NodeIdentity {
                 6 => {
                     ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.peers)?;
                 },
+                7 => {
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.capabilities)?;
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -802,6 +844,10 @@ impl ::protobuf::Message for NodeIdentity {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         };
+        if let Some(ref v) = self.capabilities.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -830,6 +876,11 @@ impl ::protobuf::Message for NodeIdentity {
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
         };
+        if let Some(ref v) = self.capabilities.as_ref() {
+            os.write_tag(7, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
+        }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -898,6 +949,11 @@ impl ::protobuf::Message for NodeIdentity {
                 |m: &NodeIdentity| { &m.peers },
                 |m: &mut NodeIdentity| { &mut m.peers },
             ));
+            fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<SystemCapabilities>>(
+                "capabilities",
+                |m: &NodeIdentity| { &m.capabilities },
+                |m: &mut NodeIdentity| { &mut m.capabilities },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<NodeIdentity>(
                 "NodeIdentity",
                 fields,
@@ -920,6 +976,7 @@ impl ::protobuf::Clear for NodeIdentity {
         self.application_version.clear();
         self.node_started_at.clear();
         self.peers.clear();
+        self.capabilities.clear();
         self.unknown_fields.clear();
     }
 }
@@ -931,6 +988,205 @@ impl ::std::fmt::Debug for NodeIdentity {
 }
 
 impl ::protobuf::reflect::ProtobufValue for NodeIdentity {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct SystemCapabilities {
+    // message fields
+    pub actors: ::protobuf::RepeatedField<::std::string::String>,
+    pub messages: ::protobuf::RepeatedField<::std::string::String>,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a SystemCapabilities {
+    fn default() -> &'a SystemCapabilities {
+        <SystemCapabilities as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl SystemCapabilities {
+    pub fn new() -> SystemCapabilities {
+        ::std::default::Default::default()
+    }
+
+    // repeated string actors = 1;
+
+
+    pub fn get_actors(&self) -> &[::std::string::String] {
+        &self.actors
+    }
+    pub fn clear_actors(&mut self) {
+        self.actors.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actors(&mut self, v: ::protobuf::RepeatedField<::std::string::String>) {
+        self.actors = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_actors(&mut self) -> &mut ::protobuf::RepeatedField<::std::string::String> {
+        &mut self.actors
+    }
+
+    // Take field
+    pub fn take_actors(&mut self) -> ::protobuf::RepeatedField<::std::string::String> {
+        ::std::mem::replace(&mut self.actors, ::protobuf::RepeatedField::new())
+    }
+
+    // repeated string messages = 2;
+
+
+    pub fn get_messages(&self) -> &[::std::string::String] {
+        &self.messages
+    }
+    pub fn clear_messages(&mut self) {
+        self.messages.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_messages(&mut self, v: ::protobuf::RepeatedField<::std::string::String>) {
+        self.messages = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_messages(&mut self) -> &mut ::protobuf::RepeatedField<::std::string::String> {
+        &mut self.messages
+    }
+
+    // Take field
+    pub fn take_messages(&mut self) -> ::protobuf::RepeatedField<::std::string::String> {
+        ::std::mem::replace(&mut self.messages, ::protobuf::RepeatedField::new())
+    }
+}
+
+impl ::protobuf::Message for SystemCapabilities {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_repeated_string_into(wire_type, is, &mut self.actors)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_repeated_string_into(wire_type, is, &mut self.messages)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        for value in &self.actors {
+            my_size += ::protobuf::rt::string_size(1, &value);
+        };
+        for value in &self.messages {
+            my_size += ::protobuf::rt::string_size(2, &value);
+        };
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        for v in &self.actors {
+            os.write_string(1, &v)?;
+        };
+        for v in &self.messages {
+            os.write_string(2, &v)?;
+        };
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> SystemCapabilities {
+        SystemCapabilities::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actors",
+                |m: &SystemCapabilities| { &m.actors },
+                |m: &mut SystemCapabilities| { &mut m.actors },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "messages",
+                |m: &SystemCapabilities| { &m.messages },
+                |m: &mut SystemCapabilities| { &mut m.messages },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<SystemCapabilities>(
+                "SystemCapabilities",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static SystemCapabilities {
+        static instance: ::protobuf::rt::LazyV2<SystemCapabilities> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(SystemCapabilities::new)
+    }
+}
+
+impl ::protobuf::Clear for SystemCapabilities {
+    fn clear(&mut self) {
+        self.actors.clear();
+        self.messages.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for SystemCapabilities {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for SystemCapabilities {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Message(self)
     }
@@ -1525,7 +1781,7 @@ impl ::protobuf::reflect::ProtobufValue for ClientResult {
 pub struct ClientErr {
     // message fields
     pub message_id: ::std::string::String,
-    pub code: ClientErrorCode,
+    pub error: ::protobuf::SingularPtrField<ActorRefErr>,
     pub trace_id: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
@@ -1569,19 +1825,37 @@ impl ClientErr {
         ::std::mem::replace(&mut self.message_id, ::std::string::String::new())
     }
 
-    // .coerce.network.ClientErrorCode code = 2;
+    // .coerce.network.ActorRefErr error = 2;
 
 
-    pub fn get_code(&self) -> ClientErrorCode {
-        self.code
+    pub fn get_error(&self) -> &ActorRefErr {
+        self.error.as_ref().unwrap_or_else(|| <ActorRefErr as ::protobuf::Message>::default_instance())
     }
-    pub fn clear_code(&mut self) {
-        self.code = ClientErrorCode::ActorUnavailable;
+    pub fn clear_error(&mut self) {
+        self.error.clear();
+    }
+
+    pub fn has_error(&self) -> bool {
+        self.error.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_code(&mut self, v: ClientErrorCode) {
-        self.code = v;
+    pub fn set_error(&mut self, v: ActorRefErr) {
+        self.error = ::protobuf::SingularPtrField::some(v);
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_error(&mut self) -> &mut ActorRefErr {
+        if self.error.is_none() {
+            self.error.set_default();
+        }
+        self.error.as_mut().unwrap()
+    }
+
+    // Take field
+    pub fn take_error(&mut self) -> ActorRefErr {
+        self.error.take().unwrap_or_else(|| ActorRefErr::new())
     }
 
     // string trace_id = 3;
@@ -1613,6 +1887,11 @@ impl ClientErr {
 
 impl ::protobuf::Message for ClientErr {
     fn is_initialized(&self) -> bool {
+        for v in &self.error {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
         true
     }
 
@@ -1624,7 +1903,7 @@ impl ::protobuf::Message for ClientErr {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.message_id)?;
                 },
                 2 => {
-                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.code, 2, &mut self.unknown_fields)?
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.error)?;
                 },
                 3 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.trace_id)?;
@@ -1644,8 +1923,9 @@ impl ::protobuf::Message for ClientErr {
         if !self.message_id.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.message_id);
         }
-        if self.code != ClientErrorCode::ActorUnavailable {
-            my_size += ::protobuf::rt::enum_size(2, self.code);
+        if let Some(ref v) = self.error.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
         if !self.trace_id.is_empty() {
             my_size += ::protobuf::rt::string_size(3, &self.trace_id);
@@ -1659,8 +1939,10 @@ impl ::protobuf::Message for ClientErr {
         if !self.message_id.is_empty() {
             os.write_string(1, &self.message_id)?;
         }
-        if self.code != ClientErrorCode::ActorUnavailable {
-            os.write_enum(2, ::protobuf::ProtobufEnum::value(&self.code))?;
+        if let Some(ref v) = self.error.as_ref() {
+            os.write_tag(2, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
         }
         if !self.trace_id.is_empty() {
             os.write_string(3, &self.trace_id)?;
@@ -1708,10 +1990,10 @@ impl ::protobuf::Message for ClientErr {
                 |m: &ClientErr| { &m.message_id },
                 |m: &mut ClientErr| { &mut m.message_id },
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<ClientErrorCode>>(
-                "code",
-                |m: &ClientErr| { &m.code },
-                |m: &mut ClientErr| { &mut m.code },
+            fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<ActorRefErr>>(
+                "error",
+                |m: &ClientErr| { &m.error },
+                |m: &mut ClientErr| { &mut m.error },
             ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                 "trace_id",
@@ -1735,7 +2017,7 @@ impl ::protobuf::Message for ClientErr {
 impl ::protobuf::Clear for ClientErr {
     fn clear(&mut self) {
         self.message_id.clear();
-        self.code = ClientErrorCode::ActorUnavailable;
+        self.error.clear();
         self.trace_id.clear();
         self.unknown_fields.clear();
     }
@@ -4828,6 +5110,402 @@ impl ::protobuf::reflect::ProtobufValue for RaftRequest {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct ActorRefErr {
+    // message fields
+    pub field_type: ActorRefErr_ErrorType,
+    pub actor_id: ::std::string::String,
+    pub message_type: ::std::string::String,
+    pub actor_type: ::std::string::String,
+    pub message: ::std::string::String,
+    // special fields
+    pub unknown_fields: ::protobuf::UnknownFields,
+    pub cached_size: ::protobuf::CachedSize,
+}
+
+impl<'a> ::std::default::Default for &'a ActorRefErr {
+    fn default() -> &'a ActorRefErr {
+        <ActorRefErr as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ActorRefErr {
+    pub fn new() -> ActorRefErr {
+        ::std::default::Default::default()
+    }
+
+    // .coerce.network.ActorRefErr.ErrorType type = 1;
+
+
+    pub fn get_field_type(&self) -> ActorRefErr_ErrorType {
+        self.field_type
+    }
+    pub fn clear_field_type(&mut self) {
+        self.field_type = ActorRefErr_ErrorType::ActorUnavailable;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_field_type(&mut self, v: ActorRefErr_ErrorType) {
+        self.field_type = v;
+    }
+
+    // string actor_id = 2;
+
+
+    pub fn get_actor_id(&self) -> &str {
+        &self.actor_id
+    }
+    pub fn clear_actor_id(&mut self) {
+        self.actor_id.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actor_id(&mut self, v: ::std::string::String) {
+        self.actor_id = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_actor_id(&mut self) -> &mut ::std::string::String {
+        &mut self.actor_id
+    }
+
+    // Take field
+    pub fn take_actor_id(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.actor_id, ::std::string::String::new())
+    }
+
+    // string message_type = 3;
+
+
+    pub fn get_message_type(&self) -> &str {
+        &self.message_type
+    }
+    pub fn clear_message_type(&mut self) {
+        self.message_type.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_message_type(&mut self, v: ::std::string::String) {
+        self.message_type = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_message_type(&mut self) -> &mut ::std::string::String {
+        &mut self.message_type
+    }
+
+    // Take field
+    pub fn take_message_type(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.message_type, ::std::string::String::new())
+    }
+
+    // string actor_type = 4;
+
+
+    pub fn get_actor_type(&self) -> &str {
+        &self.actor_type
+    }
+    pub fn clear_actor_type(&mut self) {
+        self.actor_type.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_actor_type(&mut self, v: ::std::string::String) {
+        self.actor_type = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_actor_type(&mut self) -> &mut ::std::string::String {
+        &mut self.actor_type
+    }
+
+    // Take field
+    pub fn take_actor_type(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.actor_type, ::std::string::String::new())
+    }
+
+    // string message = 5;
+
+
+    pub fn get_message(&self) -> &str {
+        &self.message
+    }
+    pub fn clear_message(&mut self) {
+        self.message.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_message(&mut self, v: ::std::string::String) {
+        self.message = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_message(&mut self) -> &mut ::std::string::String {
+        &mut self.message
+    }
+
+    // Take field
+    pub fn take_message(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.message, ::std::string::String::new())
+    }
+}
+
+impl ::protobuf::Message for ActorRefErr {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.field_type, 1, &mut self.unknown_fields)?
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_id)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.message_type)?;
+                },
+                4 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.actor_type)?;
+                },
+                5 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.message)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.field_type != ActorRefErr_ErrorType::ActorUnavailable {
+            my_size += ::protobuf::rt::enum_size(1, self.field_type);
+        }
+        if !self.actor_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.actor_id);
+        }
+        if !self.message_type.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.message_type);
+        }
+        if !self.actor_type.is_empty() {
+            my_size += ::protobuf::rt::string_size(4, &self.actor_type);
+        }
+        if !self.message.is_empty() {
+            my_size += ::protobuf::rt::string_size(5, &self.message);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+        if self.field_type != ActorRefErr_ErrorType::ActorUnavailable {
+            os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.field_type))?;
+        }
+        if !self.actor_id.is_empty() {
+            os.write_string(2, &self.actor_id)?;
+        }
+        if !self.message_type.is_empty() {
+            os.write_string(3, &self.message_type)?;
+        }
+        if !self.actor_type.is_empty() {
+            os.write_string(4, &self.actor_type)?;
+        }
+        if !self.message.is_empty() {
+            os.write_string(5, &self.message)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &dyn (::std::any::Any) {
+        self as &dyn (::std::any::Any)
+    }
+    fn as_any_mut(&mut self) -> &mut dyn (::std::any::Any) {
+        self as &mut dyn (::std::any::Any)
+    }
+    fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn (::std::any::Any)> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> ActorRefErr {
+        ActorRefErr::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            let mut fields = ::std::vec::Vec::new();
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<ActorRefErr_ErrorType>>(
+                "type",
+                |m: &ActorRefErr| { &m.field_type },
+                |m: &mut ActorRefErr| { &mut m.field_type },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actor_id",
+                |m: &ActorRefErr| { &m.actor_id },
+                |m: &mut ActorRefErr| { &mut m.actor_id },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "message_type",
+                |m: &ActorRefErr| { &m.message_type },
+                |m: &mut ActorRefErr| { &mut m.message_type },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "actor_type",
+                |m: &ActorRefErr| { &m.actor_type },
+                |m: &mut ActorRefErr| { &mut m.actor_type },
+            ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                "message",
+                |m: &ActorRefErr| { &m.message },
+                |m: &mut ActorRefErr| { &mut m.message },
+            ));
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<ActorRefErr>(
+                "ActorRefErr",
+                fields,
+                file_descriptor_proto()
+            )
+        })
+    }
+
+    fn default_instance() -> &'static ActorRefErr {
+        static instance: ::protobuf::rt::LazyV2<ActorRefErr> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(ActorRefErr::new)
+    }
+}
+
+impl ::protobuf::Clear for ActorRefErr {
+    fn clear(&mut self) {
+        self.field_type = ActorRefErr_ErrorType::ActorUnavailable;
+        self.actor_id.clear();
+        self.message_type.clear();
+        self.actor_type.clear();
+        self.message.clear();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for ActorRefErr {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ActorRefErr {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Message(self)
+    }
+}
+
+#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+pub enum ActorRefErr_ErrorType {
+    ActorUnavailable = 0,
+    NotFound = 1,
+    AlreadyExists = 2,
+    Serialisation = 3,
+    Deserialisation = 4,
+    Timeout = 5,
+    StartChannelClosed = 6,
+    InvalidRef = 7,
+    ResultChannelClosed = 8,
+    ResultSendFailed = 9,
+    NotSupported = 10,
+    NotImplemented = 11,
+}
+
+impl ::protobuf::ProtobufEnum for ActorRefErr_ErrorType {
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<ActorRefErr_ErrorType> {
+        match value {
+            0 => ::std::option::Option::Some(ActorRefErr_ErrorType::ActorUnavailable),
+            1 => ::std::option::Option::Some(ActorRefErr_ErrorType::NotFound),
+            2 => ::std::option::Option::Some(ActorRefErr_ErrorType::AlreadyExists),
+            3 => ::std::option::Option::Some(ActorRefErr_ErrorType::Serialisation),
+            4 => ::std::option::Option::Some(ActorRefErr_ErrorType::Deserialisation),
+            5 => ::std::option::Option::Some(ActorRefErr_ErrorType::Timeout),
+            6 => ::std::option::Option::Some(ActorRefErr_ErrorType::StartChannelClosed),
+            7 => ::std::option::Option::Some(ActorRefErr_ErrorType::InvalidRef),
+            8 => ::std::option::Option::Some(ActorRefErr_ErrorType::ResultChannelClosed),
+            9 => ::std::option::Option::Some(ActorRefErr_ErrorType::ResultSendFailed),
+            10 => ::std::option::Option::Some(ActorRefErr_ErrorType::NotSupported),
+            11 => ::std::option::Option::Some(ActorRefErr_ErrorType::NotImplemented),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    fn values() -> &'static [Self] {
+        static values: &'static [ActorRefErr_ErrorType] = &[
+            ActorRefErr_ErrorType::ActorUnavailable,
+            ActorRefErr_ErrorType::NotFound,
+            ActorRefErr_ErrorType::AlreadyExists,
+            ActorRefErr_ErrorType::Serialisation,
+            ActorRefErr_ErrorType::Deserialisation,
+            ActorRefErr_ErrorType::Timeout,
+            ActorRefErr_ErrorType::StartChannelClosed,
+            ActorRefErr_ErrorType::InvalidRef,
+            ActorRefErr_ErrorType::ResultChannelClosed,
+            ActorRefErr_ErrorType::ResultSendFailed,
+            ActorRefErr_ErrorType::NotSupported,
+            ActorRefErr_ErrorType::NotImplemented,
+        ];
+        values
+    }
+
+    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        descriptor.get(|| {
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<ActorRefErr_ErrorType>("ActorRefErr.ErrorType", file_descriptor_proto())
+        })
+    }
+}
+
+impl ::std::marker::Copy for ActorRefErr_ErrorType {
+}
+
+impl ::std::default::Default for ActorRefErr_ErrorType {
+    fn default() -> Self {
+        ActorRefErr_ErrorType::ActorUnavailable
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ActorRefErr_ErrorType {
+    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
+        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum Event {
     Identify = 0,
@@ -4962,56 +5640,6 @@ impl ::protobuf::reflect::ProtobufValue for ClientType {
 }
 
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
-pub enum ClientErrorCode {
-    ActorUnavailable = 0,
-    ProcessingFailed = 1,
-}
-
-impl ::protobuf::ProtobufEnum for ClientErrorCode {
-    fn value(&self) -> i32 {
-        *self as i32
-    }
-
-    fn from_i32(value: i32) -> ::std::option::Option<ClientErrorCode> {
-        match value {
-            0 => ::std::option::Option::Some(ClientErrorCode::ActorUnavailable),
-            1 => ::std::option::Option::Some(ClientErrorCode::ProcessingFailed),
-            _ => ::std::option::Option::None
-        }
-    }
-
-    fn values() -> &'static [Self] {
-        static values: &'static [ClientErrorCode] = &[
-            ClientErrorCode::ActorUnavailable,
-            ClientErrorCode::ProcessingFailed,
-        ];
-        values
-    }
-
-    fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
-        descriptor.get(|| {
-            ::protobuf::reflect::EnumDescriptor::new_pb_name::<ClientErrorCode>("ClientErrorCode", file_descriptor_proto())
-        })
-    }
-}
-
-impl ::std::marker::Copy for ClientErrorCode {
-}
-
-impl ::std::default::Default for ClientErrorCode {
-    fn default() -> Self {
-        ClientErrorCode::ActorUnavailable
-    }
-}
-
-impl ::protobuf::reflect::ProtobufValue for ClientErrorCode {
-    fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
-        ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
-    }
-}
-
-#[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum SystemEvent {
     ClusterNewNode = 0,
     ClusterNodeRemoved = 1,
@@ -5072,72 +5700,85 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \rnodeStartedAtB\0\x12\x12\n\x03tag\x18\x04\x20\x01(\tR\x03tagB\0:\0\"v\
     \n\x08Identify\x12&\n\x0esource_node_id\x18\x01\x20\x01(\x04R\x0csourceN\
     odeIdB\0\x12(\n\x0fsource_node_tag\x18\x02\x20\x01(\tR\rsourceNodeTagB\0\
-    \x12\x16\n\x05token\x18\x03\x20\x01(\tR\x05tokenB\0:\0\"\x8b\x02\n\x0cNo\
+    \x12\x16\n\x05token\x18\x03\x20\x01(\tR\x05tokenB\0:\0\"\xd5\x02\n\x0cNo\
     deIdentity\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\
     \x1b\n\x08node_tag\x18\x02\x20\x01(\tR\x07nodeTagB\0\x12\x14\n\x04addr\
     \x18\x03\x20\x01(\tR\x04addrB\0\x121\n\x13application_version\x18\x04\
     \x20\x01(\tR\x12applicationVersionB\0\x12D\n\x0fnode_started_at\x18\x05\
     \x20\x01(\x0b2\x1a.google.protobuf.TimestampR\rnodeStartedAtB\0\x122\n\
     \x05peers\x18\x06\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\x05peersB\
-    \0:\0\"\xe2\x01\n\x0fClientHandshake\x12\x19\n\x07node_id\x18\x01\x20\
-    \x01(\x04R\x06nodeIdB\0\x122\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce\
-    .network.RemoteNodeR\x05nodesB\0\x12\x1b\n\x08node_tag\x18\x03\x20\x01(\
-    \tR\x07nodeTagB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceIdB\
-    \0\x12D\n\x0fnode_started_at\x18\x05\x20\x01(\x0b2\x1a.google.protobuf.T\
-    imestampR\rnodeStartedAtB\0:\0\"h\n\x0cClientResult\x12\x1f\n\nmessage_i\
-    d\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x18\n\x06result\x18\x02\x20\x01(\
-    \x0cR\x06resultB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\
-    \0:\0\"\x82\x01\n\tClientErr\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\t\
-    messageIdB\0\x125\n\x04code\x18\x02\x20\x01(\x0e2\x1f.coerce.network.Cli\
-    entErrorCodeR\x04codeB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07tr\
-    aceIdB\0:\0\"F\n\x04Ping\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmess\
-    ageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"F\n\
-    \x04Pong\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\
-    \n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"\xa5\x01\n\x0bCreat\
-    eActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\
-    \x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12\x1f\n\nactor_type\x18\
-    \x03\x20\x01(\tR\tactorTypeB\0\x12\x18\n\x06recipe\x18\x04\x20\x01(\x0cR\
-    \x06recipeB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceIdB\0:\0\
-    \"h\n\tFindActor\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
-    \x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorIdB\0\x12\x1b\n\x08tr\
-    ace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"e\n\x0cActorAddress\x12\x1b\
-    \n\x08actor_id\x18\x01\x20\x01(\tR\x07actorIdB\0\x12\x19\n\x07node_id\
-    \x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\
-    \x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eMessageRequest\x12\x1f\n\nmessa\
-    ge_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0chandler_type\x18\x02\
-    \x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\x08actor_id\x18\x03\x20\x01(\tR\
-    \x07actorIdB\0\x12\x1a\n\x07message\x18\x04\x20\x01(\x0cR\x07messageB\0\
-    \x12\x1b\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceIdB\0\x12-\n\x11requi\
-    res_response\x18\x06\x20\x01(\x08R\x10requiresResponseB\0:\0\"\xf4\x01\n\
-    \x10SessionHandshake\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeI\
-    dB\0\x122\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNode\
-    R\x05nodesB\0\x12\x16\n\x05token\x18\x03\x20\x01(\x0cR\x05tokenB\0\x12\
-    \x1b\n\x08node_tag\x18\x04\x20\x01(\tR\x07nodeTagB\0\x12=\n\x0bclient_ty\
-    pe\x18\x05\x20\x01(\x0e2\x1a.coerce.network.ClientTypeR\nclientTypeB\0\
-    \x12\x1b\n\x08trace_id\x18\x06\x20\x01(\tR\x07traceIdB\0:\0\"v\n\rStream\
-    Publish\x12\x16\n\x05topic\x18\x01\x20\x01(\tR\x05topicB\0\x12\x12\n\x03\
-    key\x18\x02\x20\x01(\tR\x03keyB\0\x12\x1a\n\x07message\x18\x03\x20\x01(\
-    \x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceId\
-    B\0:\0\"_\n\x0cNewNodeEvent\x120\n\x04node\x18\x01\x20\x01(\x0b2\x1a.coe\
-    rce.network.RemoteNodeR\x04nodeB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01\
-    (\tR\x07traceIdB\0:\0\"c\n\x10NodeRemovedEvent\x120\n\x04node\x18\x01\
-    \x20\x01(\x0b2\x1a.coerce.network.RemoteNodeR\x04nodeB\0\x12\x1b\n\x08tr\
-    ace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"N\n\x12LeaderChangedEvent\
-    \x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x12\x1b\n\x08tr\
-    ace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"q\n\x0bRaftRequest\x12\x1f\
-    \n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12#\n\x0crequest_type\
-    \x18\x02\x20\x01(\rR\x0brequestTypeB\0\x12\x1a\n\x07payload\x18\x03\x20\
-    \x01(\x0cR\x07payloadB\0:\0*\xbe\x01\n\x05Event\x12\x0c\n\x08Identify\
-    \x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\
-    \x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\
-    \x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegi\
-    sterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublis\
-    h\x10\n\x12\x08\n\x04Raft\x10\x0b\x12\x0c\n\x08Identity\x10\x0c\x1a\0*&\
-    \n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01\x1a\0*?\
-    \n\x0fClientErrorCode\x12\x14\n\x10ActorUnavailable\x10\0\x12\x14\n\x10P\
-    rocessingFailed\x10\x01\x1a\0*U\n\x0bSystemEvent\x12\x12\n\x0eClusterNew\
-    Node\x10\0\x12\x16\n\x12ClusterNodeRemoved\x10\x01\x12\x18\n\x14ClusterL\
-    eaderChanged\x10\x02\x1a\0B\0b\x06proto3\
+    \0\x12H\n\x0ccapabilities\x18\x07\x20\x01(\x0b2\".coerce.network.SystemC\
+    apabilitiesR\x0ccapabilitiesB\0:\0\"N\n\x12SystemCapabilities\x12\x18\n\
+    \x06actors\x18\x01\x20\x03(\tR\x06actorsB\0\x12\x1c\n\x08messages\x18\
+    \x02\x20\x03(\tR\x08messagesB\0:\0\"\xe2\x01\n\x0fClientHandshake\x12\
+    \x19\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x122\n\x05nodes\x18\
+    \x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\x05nodesB\0\x12\x1b\n\
+    \x08node_tag\x18\x03\x20\x01(\tR\x07nodeTagB\0\x12\x1b\n\x08trace_id\x18\
+    \x04\x20\x01(\tR\x07traceIdB\0\x12D\n\x0fnode_started_at\x18\x05\x20\x01\
+    (\x0b2\x1a.google.protobuf.TimestampR\rnodeStartedAtB\0:\0\"h\n\x0cClien\
+    tResult\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x18\
+    \n\x06result\x18\x02\x20\x01(\x0cR\x06resultB\0\x12\x1b\n\x08trace_id\
+    \x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\x80\x01\n\tClientErr\x12\x1f\n\n\
+    message_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x123\n\x05error\x18\x02\x20\
+    \x01(\x0b2\x1b.coerce.network.ActorRefErrR\x05errorB\0\x12\x1b\n\x08trac\
+    e_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"F\n\x04Ping\x12\x1f\n\nmessag\
+    e_id\x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\
+    \x01(\tR\x07traceIdB\0:\0\"F\n\x04Pong\x12\x1f\n\nmessage_id\x18\x01\x20\
+    \x01(\tR\tmessageIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07trac\
+    eIdB\0:\0\"\xa5\x01\n\x0bCreateActor\x12\x1f\n\nmessage_id\x18\x01\x20\
+    \x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07acto\
+    rIdB\0\x12\x1f\n\nactor_type\x18\x03\x20\x01(\tR\tactorTypeB\0\x12\x18\n\
+    \x06recipe\x18\x04\x20\x01(\x0cR\x06recipeB\0\x12\x1b\n\x08trace_id\x18\
+    \x05\x20\x01(\tR\x07traceIdB\0:\0\"h\n\tFindActor\x12\x1f\n\nmessage_id\
+    \x18\x01\x20\x01(\tR\tmessageIdB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01\
+    (\tR\x07actorIdB\0\x12\x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\
+    \0:\0\"e\n\x0cActorAddress\x12\x1b\n\x08actor_id\x18\x01\x20\x01(\tR\x07\
+    actorIdB\0\x12\x19\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeIdB\0\x12\
+    \x1b\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceIdB\0:\0\"\xdd\x01\n\x0eM\
+    essageRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageIdB\0\
+    \x12#\n\x0chandler_type\x18\x02\x20\x01(\tR\x0bhandlerTypeB\0\x12\x1b\n\
+    \x08actor_id\x18\x03\x20\x01(\tR\x07actorIdB\0\x12\x1a\n\x07message\x18\
+    \x04\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace_id\x18\x05\x20\x01(\
+    \tR\x07traceIdB\0\x12-\n\x11requires_response\x18\x06\x20\x01(\x08R\x10r\
+    equiresResponseB\0:\0\"\xf4\x01\n\x10SessionHandshake\x12\x19\n\x07node_\
+    id\x18\x01\x20\x01(\x04R\x06nodeIdB\0\x122\n\x05nodes\x18\x02\x20\x03(\
+    \x0b2\x1a.coerce.network.RemoteNodeR\x05nodesB\0\x12\x16\n\x05token\x18\
+    \x03\x20\x01(\x0cR\x05tokenB\0\x12\x1b\n\x08node_tag\x18\x04\x20\x01(\tR\
+    \x07nodeTagB\0\x12=\n\x0bclient_type\x18\x05\x20\x01(\x0e2\x1a.coerce.ne\
+    twork.ClientTypeR\nclientTypeB\0\x12\x1b\n\x08trace_id\x18\x06\x20\x01(\
+    \tR\x07traceIdB\0:\0\"v\n\rStreamPublish\x12\x16\n\x05topic\x18\x01\x20\
+    \x01(\tR\x05topicB\0\x12\x12\n\x03key\x18\x02\x20\x01(\tR\x03keyB\0\x12\
+    \x1a\n\x07message\x18\x03\x20\x01(\x0cR\x07messageB\0\x12\x1b\n\x08trace\
+    _id\x18\x04\x20\x01(\tR\x07traceIdB\0:\0\"_\n\x0cNewNodeEvent\x120\n\x04\
+    node\x18\x01\x20\x01(\x0b2\x1a.coerce.network.RemoteNodeR\x04nodeB\0\x12\
+    \x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\"c\n\x10NodeRemo\
+    vedEvent\x120\n\x04node\x18\x01\x20\x01(\x0b2\x1a.coerce.network.RemoteN\
+    odeR\x04nodeB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\
+    \0\"N\n\x12LeaderChangedEvent\x12\x19\n\x07node_id\x18\x01\x20\x01(\x04R\
+    \x06nodeIdB\0\x12\x1b\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceIdB\0:\0\
+    \"q\n\x0bRaftRequest\x12\x1f\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageI\
+    dB\0\x12#\n\x0crequest_type\x18\x02\x20\x01(\rR\x0brequestTypeB\0\x12\
+    \x1a\n\x07payload\x18\x03\x20\x01(\x0cR\x07payloadB\0:\0\"\xc4\x03\n\x0b\
+    ActorRefErr\x12;\n\x04type\x18\x01\x20\x01(\x0e2%.coerce.network.ActorRe\
+    fErr.ErrorTypeR\x04typeB\0\x12\x1b\n\x08actor_id\x18\x02\x20\x01(\tR\x07\
+    actorIdB\0\x12#\n\x0cmessage_type\x18\x03\x20\x01(\tR\x0bmessageTypeB\0\
+    \x12\x1f\n\nactor_type\x18\x04\x20\x01(\tR\tactorTypeB\0\x12\x1a\n\x07me\
+    ssage\x18\x05\x20\x01(\tR\x07messageB\0\"\xf6\x01\n\tErrorType\x12\x14\n\
+    \x10ActorUnavailable\x10\0\x12\x0c\n\x08NotFound\x10\x01\x12\x11\n\rAlre\
+    adyExists\x10\x02\x12\x11\n\rSerialisation\x10\x03\x12\x13\n\x0fDeserial\
+    isation\x10\x04\x12\x0b\n\x07Timeout\x10\x05\x12\x16\n\x12StartChannelCl\
+    osed\x10\x06\x12\x0e\n\nInvalidRef\x10\x07\x12\x17\n\x13ResultChannelClo\
+    sed\x10\x08\x12\x14\n\x10ResultSendFailed\x10\t\x12\x10\n\x0cNotSupporte\
+    d\x10\n\x12\x12\n\x0eNotImplemented\x10\x0b\x1a\0:\0*\xbe\x01\n\x05Event\
+    \x12\x0c\n\x08Identify\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Resul\
+    t\x10\x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\
+    \x04Pong\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\
+    \x07\x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\
+    \x11\n\rStreamPublish\x10\n\x12\x08\n\x04Raft\x10\x0b\x12\x0c\n\x08Ident\
+    ity\x10\x0c\x1a\0*&\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Wor\
+    ker\x10\x01\x1a\0*U\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\
+    \x12\x16\n\x12ClusterNodeRemoved\x10\x01\x12\x18\n\x14ClusterLeaderChang\
+    ed\x10\x02\x1a\0B\0b\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

@@ -18,7 +18,12 @@ pub struct RemoteShard {
     pub node_id: NodeId,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct HostStats {
+    pub requests_pending_leader_allocation_count: usize,
+    pub requests_pending_shard_allocation_count: usize,
+    pub hosted_shard_count: usize,
+    pub remote_shard_count: usize,
     pub hosted_shards: HashMap<ShardId, ShardStats>,
     pub remote_shards: Vec<RemoteShard>,
 }
@@ -42,6 +47,10 @@ impl Handler<GetStats> for ShardHost {
             .collect();
 
         let stats = HostStats {
+            requests_pending_leader_allocation_count: self.requests_pending_leader_allocation.len(),
+            requests_pending_shard_allocation_count: self.requests_pending_shard_allocation.len(),
+            hosted_shard_count: self.hosted_shards.len(),
+            remote_shard_count: self.remote_shards.len(),
             hosted_shards: Default::default(),
             remote_shards: self
                 .remote_shards

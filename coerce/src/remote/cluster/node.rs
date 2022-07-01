@@ -2,6 +2,7 @@ use crate::remote::system::NodeId;
 
 use hashring::HashRing;
 
+use crate::remote::actor::SystemCapabilities;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -43,6 +44,7 @@ pub struct RemoteNode {
 pub struct NodeIdentity {
     pub node: RemoteNode,
     pub peers: Vec<RemoteNode>,
+    pub capabilities: SystemCapabilities,
 }
 
 impl RemoteNodeStore {

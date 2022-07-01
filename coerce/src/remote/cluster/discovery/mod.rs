@@ -7,6 +7,7 @@ use crate::remote::net::client::RemoteClientRef;
 use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
+use futures::future::join_all;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -25,7 +26,7 @@ impl Actor for NodeDiscovery {}
 
 pub struct Discover {
     pub seed: Seed,
-    pub on_discovery_complete: Option<Sender<()>>,
+    pub on_discovery_complete: Option<Sender<bool>>,
 }
 
 pub enum Seed {
@@ -61,7 +62,7 @@ impl Handler<Discover> for NodeDiscovery {
                     info!("node (addr={}) already discovered", &addr);
 
                     if let Some(on_discovery_complete) = message.on_discovery_complete {
-                        let _ = on_discovery_complete.send(());
+                        let _ = on_discovery_complete.send(true);
                     }
 
                     return;
@@ -83,7 +84,7 @@ impl Handler<Discover> for NodeDiscovery {
                         }
                     } else if discovered_nodes.len() == 0 {
                         if let Some(discovery_complete) = message.on_discovery_complete {
-                            let _ = discovery_complete.send(());
+                            let _ = discovery_complete.send(true);
                         }
 
                         return;
@@ -97,13 +98,12 @@ impl Handler<Discover> for NodeDiscovery {
                     });
                 } else {
                     warn!(
-                        "[node={}] unable to identify node (addr={})",
-                        remote.node_id(),
-                        &addr
+                        node_id = remote.node_id(),
+                        "unable to identify node (addr={})", &addr
                     );
 
                     if let Some(discovery_complete) = message.on_discovery_complete {
-                        let _ = discovery_complete.send(());
+                        let _ = discovery_complete.send(false);
                     }
                 }
             }
@@ -119,6 +119,8 @@ impl Handler<Discover> for NodeDiscovery {
                 let node_count = nodes.len();
 
                 info!("discovering {} nodes", node_count);
+
+                let mut tasks = vec![];
 
                 for node in nodes {
                     if !current_nodes.contains(&node.id)
@@ -136,7 +138,8 @@ impl Handler<Discover> for NodeDiscovery {
                                 .map(|n| n.into())
                                 .collect();
 
-                            tokio::spawn(discover_node_handshake(
+                            self.discovering_nodes.insert(node.id);
+                            tasks.push(discover_node_handshake(
                                 node,
                                 remote.clone(),
                                 client,
@@ -146,11 +149,19 @@ impl Handler<Discover> for NodeDiscovery {
                     }
                 }
 
-                info!("discovered {} nodes", node_count);
+                let on_discovery_complete = message.on_discovery_complete;
+                tokio::spawn(async move {
+                    let nodes_discovering_count = tasks.len();
+                    let _ = join_all(tasks).await;
+                    info!(
+                        "discovered {} new nodes (out of {})",
+                        nodes_discovering_count, node_count
+                    );
 
-                if let Some(discovery_complete) = message.on_discovery_complete {
-                    let _ = discovery_complete.send(());
-                }
+                    if let Some(discovery_complete) = on_discovery_complete {
+                        let _ = discovery_complete.send(true);
+                    }
+                });
             }
         }
     }
@@ -210,7 +221,7 @@ impl Handler<NodeDiscovered> for NodeDiscovery {
         } else {
             // retry handshake etc?
             warn!(
-                "handshake to node (addr={}, id={}) failed (from node_id={}) failed",
+                "handshake to node (addr={}, id={}) from node_id={} failed",
                 message.node.addr,
                 message.node.id,
                 remote.node_id()
@@ -234,13 +245,6 @@ async fn discover_node_handshake(
                     "successfully discovered peer (addr={}, id={}, tag={}, started_at={:?}, request_id={})",
                     &node.addr, &node.id, &node.tag, &node.node_started_at, &request_id,
                 );
-
-            PubSub::publish_locally(
-                SystemTopic,
-                SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(node.clone()))),
-                &system,
-            )
-            .await;
         }
         Err(e) => {
             error!("error while attempting to handshake with node (from node={}) - {} (addr={}, id={}, tag={}, started_at={:?}), request_id={}",

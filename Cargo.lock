@@ -96,9 +96,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axum"
-version = "0.4.8"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9f346c92c1e9a71d14fe4aaf7c2a5d9932cc4e5e48d8fb6641524416eb79ddd"
+checksum = "ab2504b827a8bef941ba3dd64bdffe9cf56ca182908a147edd6189c95fbcae7d"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -108,6 +108,7 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
+ "itoa 1.0.1",
  "matchit",
  "memchr",
  "mime",
@@ -126,9 +127,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.1.2"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dbcda393bef9c87572779cb8ef916f12d77750b27535dd6819fa86591627a51"
+checksum = "da31c0ed7b4690e2c78fe4b880d21cd7db04a346ebc658b4270251b695437f17"
 dependencies = [
  "async-trait",
  "bytes",
@@ -140,9 +141,9 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.1.5"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5b6d79bc9c2975821d39c7df31ea766026beb9efe28c076a48cfd7d50f34f18"
+checksum = "75330529f6b27544cedc6089108602a056d016df6aa4f2cb24408d840392ef2d"
 dependencies = [
  "axum",
  "bytes",
@@ -160,15 +161,6 @@ name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
-
-[[package]]
-name = "bincode"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bitflags"
@@ -271,14 +263,13 @@ dependencies = [
 
 [[package]]
 name = "coerce"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-raft",
  "async-trait",
  "axum",
  "axum-extra",
- "bincode",
  "byteorder",
  "bytes",
  "chrono",
@@ -293,14 +284,14 @@ dependencies = [
  "metrics",
  "opentelemetry 0.17.0",
  "opentelemetry-jaeger 0.16.0",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.0",
  "protobuf",
  "rand 0.8.5",
  "serde",
  "serde_json",
  "tokio",
  "tokio-stream",
- "tokio-util 0.6.9",
+ "tokio-util 0.7.0",
  "tracing",
  "tracing-futures",
  "tracing-opentelemetry 0.17.2",
@@ -309,11 +300,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c0d89607182dfc2d5fd2f02f398dc68c5f4ceae6cd0955def357a3a7117fd8e"
+dependencies = [
+ "anyhow",
+ "async-raft",
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "futures",
+ "hashring",
+ "lazy_static",
+ "log",
+ "memstore",
+ "metrics",
+ "opentelemetry 0.17.0",
+ "parking_lot 0.12.0",
+ "protobuf",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tokio-util 0.7.0",
+ "tracing",
+ "tracing-futures",
+ "tracing-opentelemetry 0.17.2",
+ "uuid",
+]
+
+[[package]]
 name = "coerce-cluster-example"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "coerce",
+ "coerce 0.6.0",
  "coerce-macros",
  "opentelemetry 0.11.2",
  "opentelemetry-jaeger 0.10.0",
@@ -324,6 +350,10 @@ dependencies = [
  "tracing-opentelemetry 0.10.0",
  "tracing-subscriber 0.2.25",
 ]
+
+[[package]]
+name = "coerce-k8s"
+version = "0.1.0"
 
 [[package]]
 name = "coerce-macros"
@@ -340,7 +370,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "coerce",
+ "coerce 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis-async",
  "tokio",
 ]
@@ -352,7 +382,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap 3.1.6",
- "coerce",
+ "coerce 0.6.0",
  "coerce-macros",
  "coerce-redis",
  "env_logger",
@@ -702,9 +732,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31f4c6746584866f0feabcc69893c5b51beef3831656a968ed7ae254cdc4fd03"
+checksum = "ff8670570af52249509a86f5e3e18a08c60b177071826898fde8997cf5f6bfbb"
 dependencies = [
  "bytes",
  "fnv",
@@ -903,9 +933,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "matchit"
-version = "0.4.6"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9376a4f0340565ad675d11fc1419227faf5f60cd7ac9cb2e7185a471f30af833"
+checksum = "73cbba799671b762df5a175adf59ce145165747bb891505c43d09aefbbf38beb"
 
 [[package]]
 name = "memchr"
@@ -1865,9 +1895,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.17.0"
+version = "1.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2af73ac49756f3f7c01172e34a23e5d0216f6c32333757c2c61feb2bbff5a5ee"
+checksum = "4903bf0427cf68dddd5aa6a93220756f8be0c34fcfa9f5e6191e103e15a31395"
 dependencies = [
  "bytes",
  "libc",
@@ -1925,11 +1955,9 @@ checksum = "9e99e1983e5d376cd8eb4b66604d2e99e79f5bd988c3055891dcd8c9e2604cc0"
 dependencies = [
  "bytes",
  "futures-core",
- "futures-io",
  "futures-sink",
  "log",
  "pin-project-lite",
- "slab",
  "tokio",
 ]
 
@@ -1941,9 +1969,12 @@ checksum = "64910e1b9c1901aaf5375561e35b9c057d95ff41a44ede043a03e09279eabaf1"
 dependencies = [
  "bytes",
  "futures-core",
+ "futures-io",
  "futures-sink",
+ "futures-util",
  "log",
  "pin-project-lite",
+ "slab",
  "tokio",
 ]
 
@@ -1966,9 +1997,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.2.5"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aba3f3efabf7fb41fae8534fc20a817013dd1c12cb45441efb6c82e6556b4cd8"
+checksum = "7d342c6d58709c0a6d48d48dabbb62d4ef955cf5f0f3bbfd845838e7ae88dbae"
 dependencies = [
  "bitflags",
  "bytes",
@@ -2021,9 +2052,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.23"
+version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa31669fa42c09c34d94d8165dd2012e8ff3c66aca50f3bb226b68f216f2706c"
+checksum = "f54c8ca710e81886d498c2fd3331b56c93aa248d49de2222ad2742247c60072f"
 dependencies = [
  "lazy_static",
  "valuable",

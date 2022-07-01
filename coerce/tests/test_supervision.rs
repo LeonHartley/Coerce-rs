@@ -21,7 +21,7 @@ struct TestActor {
 impl Actor for TestActor {
     async fn started(&mut self, ctx: &mut ActorContext) {
         let child = ctx.spawn("child".to_string(), ActorChild {}).await.unwrap();
-        child.notify_stop();
+        let _ = child.stop().await;
     }
 
     async fn on_child_stopped(&mut self, id: &ActorId, _ctx: &mut ActorContext) {

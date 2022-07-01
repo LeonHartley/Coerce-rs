@@ -1,1 +1,1 @@
-cargo run --bin sharded-chat-server --release -- --node_id 1 --remote_seed_addr localhost:32101 --remote_listen_addr localhost:31101 --websocket_listen_addr  localhost:31102 --cluster_api_listen_addr  0.0.0.0:31103 --log_level DEBUG --metrics_exporter_listen_addr 0.0.0.0:31104
+cargo run --bin sharded-chat-server -- --node_id 1 --remote_seed_addr localhost:32101 --remote_listen_addr localhost:31101 --websocket_listen_addr  localhost:31102 --cluster_api_listen_addr  0.0.0.0:31103 --log_level INFO --metrics_exporter_listen_addr 0.0.0.0:31104

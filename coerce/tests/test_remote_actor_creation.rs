@@ -22,7 +22,7 @@ pub struct TestActorRecipe {
 }
 
 impl ActorRecipe for TestActorRecipe {
-    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
         serde_json::from_slice(&bytes).unwrap()
     }
 

@@ -173,15 +173,6 @@ pub async fn test_pubsub_distributed() {
         .await
         .unwrap();
 
-    let (tx, on_leader_changed_a) = channel();
-    let _ = remote.heartbeat().notify(OnLeaderChanged(tx));
-
-    let (tx, on_leader_changed_b) = channel();
-    let _ = remote_b.heartbeat().notify(OnLeaderChanged(tx));
-
-    let _ = on_leader_changed_a.await;
-    let _ = on_leader_changed_b.await;
-
     // Publish 5 messages on the first server
     for _ in 0..5 {
         PubSub::publish(StatusStream, StatusEvent::Online, &remote).await;

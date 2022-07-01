@@ -113,17 +113,18 @@ impl<A: PersistentActor> Journal<A> {
                 &self.persistence_id,
                 JournalEntry {
                     sequence,
-                    payload_type,
+                    payload_type: payload_type.clone(),
                     bytes,
                 },
             )
-            .await;
+            .await?;
 
         info!(
             "persisted message, persistence_id={}, message_type={}",
             &self.persistence_id,
             M::type_name()
         );
+
         self.last_sequence_id = sequence;
         Ok(())
     }
@@ -146,8 +147,7 @@ impl<A: PersistentActor> Journal<A> {
 
         let sequence = self.last_sequence_id + 1;
 
-        let write_snapshot = self
-            .storage
+        self.storage
             .write_snapshot(
                 &self.persistence_id,
                 JournalEntry {
@@ -156,15 +156,10 @@ impl<A: PersistentActor> Journal<A> {
                     bytes,
                 },
             )
-            .await;
+            .await?;
 
-        match write_snapshot {
-            Ok(_) => {
-                self.last_sequence_id = sequence;
-                Ok(())
-            }
-            Err(e) => Err(PersistErr::Storage(e)),
-        }
+        self.last_sequence_id = sequence;
+        Ok(())
     }
 
     pub async fn recover_snapshot(&mut self) -> Option<RecoveredPayload<A>> {
@@ -184,11 +179,9 @@ impl<A: PersistentActor> Journal<A> {
 
             self.last_sequence_id = sequence;
 
-            trace!(
+            debug!(
                 "snapshot recovered (persistence_id={}), last sequence={}, type={}",
-                &self.persistence_id,
-                &self.last_sequence_id,
-                &raw_snapshot.payload_type
+                &self.persistence_id, &self.last_sequence_id, &raw_snapshot.payload_type
             );
 
             handler.map(|handler| RecoveredPayload {
@@ -202,6 +195,9 @@ impl<A: PersistentActor> Journal<A> {
     }
 
     pub async fn recover_messages(&mut self) -> Option<Vec<RecoveredPayload<A>>> {
+        // TODO: route journal recovery through a system that we can apply limiting to so we can only
+        //       recover {n} entities at a time, so we don't end up bringing down
+        //       the storage backend
         if let Some(messages) = self
             .storage
             .read_latest_messages(&self.persistence_id, self.last_sequence_id)
@@ -276,5 +272,11 @@ where
         } else {
             // todo: log serialisation error / fail the recovery
         }
+    }
+}
+
+impl From<anyhow::Error> for PersistErr {
+    fn from(e: anyhow::Error) -> Self {
+        Self::Storage(e)
     }
 }

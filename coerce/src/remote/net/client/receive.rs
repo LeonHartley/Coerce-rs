@@ -1,7 +1,7 @@
 use crate::actor::message::Message;
 
 use crate::actor::LocalActorRef;
-use crate::remote::actor::RemoteResponse;
+use crate::remote::actor::{RemoteResponse, SystemCapabilities};
 use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::RemoteClient;
@@ -57,6 +57,13 @@ impl StreamReceiver for ClientMessageReceiver {
                     let _ = identity_sender.send(NodeIdentity {
                         node: parse_proto_node_identity(&identity),
                         peers: identity.peers.into_iter().map(parse_proto_node).collect(),
+                        capabilities: identity
+                            .capabilities
+                            .map(|capabilities| SystemCapabilities {
+                                actors: capabilities.actors.to_vec(),
+                                messages: capabilities.messages.to_vec(),
+                            })
+                            .unwrap_or_else(|| SystemCapabilities::default()),
                     });
                 } else {
                     debug!("received `Identity` but the client was already identified");

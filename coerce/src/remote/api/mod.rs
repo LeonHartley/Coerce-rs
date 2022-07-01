@@ -1,10 +1,11 @@
 pub mod cluster;
 pub mod metrics;
 pub mod sharding;
+pub mod system;
 
 use crate::remote::system::RemoteActorSystem;
 use axum::routing::get;
-use axum::Router;
+use axum::{Json, Router};
 use std::net::SocketAddr;
 
 pub struct RemoteHttpApi {
@@ -31,13 +32,21 @@ impl RemoteHttpApi {
     }
 
     pub async fn start(self) {
-        let app = self.router.route("/version", get(|| async { VERSION }));
+        let system = self.system.clone();
+        let app = self
+            .router
+            .route("/version", get(|| async { VERSION }))
+            .route(
+                "/capabilities",
+                get(move || async move { Json(system.config().get_capabilities()) }),
+            );
 
         info!(
             "[node={}] http api listening on {}",
             &self.system.node_id(),
             &self.listen_addr
         );
+
         axum::Server::bind(&self.listen_addr)
             .serve(app.into_make_service())
             .await

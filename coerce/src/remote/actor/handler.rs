@@ -50,24 +50,6 @@ impl Handler<GetNodes> for RemoteRegistry {
 }
 
 #[async_trait]
-impl Handler<PushRequest> for RemoteHandler {
-    async fn handle(&mut self, message: PushRequest, _ctx: &mut ActorContext) {
-        self.requests.insert(message.0, message.1);
-    }
-}
-
-#[async_trait]
-impl Handler<PopRequest> for RemoteHandler {
-    async fn handle(
-        &mut self,
-        message: PopRequest,
-        _ctx: &mut ActorContext,
-    ) -> Option<RemoteRequest> {
-        self.requests.remove(&message.0)
-    }
-}
-
-#[async_trait]
 impl Handler<RegisterNode> for RemoteRegistry {
     async fn handle(&mut self, message: RegisterNode, _ctx: &mut ActorContext) {
         self.register_node(message.0);
@@ -150,12 +132,12 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
 #[async_trait]
 impl Handler<GetActorNode> for RemoteRegistry {
     async fn handle(&mut self, message: GetActorNode, _: &mut ActorContext) {
-        let span = tracing::trace_span!(
-            "RemoteRegistry::GetActorNode",
-            actor_id = message.actor_id.as_str()
-        );
-
-        let _enter = span.enter();
+        // let span = tracing::trace_span!(
+        //     "RemoteRegistry::GetActorNode",
+        //     actor_id = message.actor_id.as_str()
+        // );
+        //
+        // let _enter = span.enter();
 
         let id = message.actor_id;
         let current_system = self.system.as_ref().unwrap().node_id();
@@ -184,8 +166,8 @@ impl Handler<GetActorNode> for RemoteRegistry {
 
             trace!(target: "RemoteRegistry::GetActorNode", "asking remotely, current_sys={}, target_sys={}", current_system, assigned_registry_node);
             tokio::spawn(async move {
-                let span = tracing::trace_span!("RemoteRegistry::GetActorNode::Remote");
-                let _enter = span.enter();
+                // let span = tracing::trace_span!("RemoteRegistry::GetActorNode::Remote");
+                // let _enter = span.enter();
 
                 let message_id = Uuid::new_v4();
                 let system = system;
@@ -195,7 +177,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 system.push_request(message_id, res_tx);
 
                 trace!(target: "RemoteRegistry::GetActorNode", "sending actor lookup request to={}", assigned_registry_node);
-                let trace_id = extract_trace_identifier(&span);
+                let trace_id = String::new(); //extract_trace_identifier(&span);
                 system
                     .notify_node(
                         assigned_registry_node,
@@ -252,7 +234,7 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         self.nodes.get_by_key(&id).map_or_else(|| node_id, |n| n.id);
 
                     if &assigned_registry_node == &node_id {
-                        trace!("registering actor locally {}", assigned_registry_node);
+                        info!("registering actor locally {}", assigned_registry_node);
                         self.actors.insert(id, node_id);
                     } else {
                         let system = system.clone();
@@ -279,21 +261,21 @@ impl Handler<Receive<SystemTopic>> for RemoteRegistry {
                 trace!(target: "RemoteRegistry", "cluster event");
                 let system = self.system.as_ref().unwrap().clone();
                 let registry_ref = self.actor_ref(ctx);
-
-                // TODO: remove all of this stuff
-                tokio::spawn(async move {
-                    let sys = system;
-                    let actor_ids = sys
-                        .actor_system()
-                        .scheduler()
-                        .exec::<_, Vec<ActorId>>(|s| s.actors.keys().map(|k| k.clone()).collect())
-                        .await
-                        .expect("unable to get active actor ids from scheduler");
-
-                    for actor_id in actor_ids {
-                        registry_ref.notify(RegisterActor::new(actor_id, None));
-                    }
-                });
+                //
+                // // TODO: remove all of this stuff
+                // tokio::spawn(async move {
+                //     let sys = system;
+                //     let actor_ids = sys
+                //         .actor_system()
+                //         .scheduler()
+                //         .exec::<_, Vec<ActorId>>(|s| s.actors.keys().map(|k| k.clone()).collect())
+                //         .await
+                //         .expect("unable to get active actor ids from scheduler");
+                //
+                //     for actor_id in actor_ids {
+                //         registry_ref.notify(RegisterActor::new(actor_id, None));
+                //     }
+                // });
             }
         }
     }

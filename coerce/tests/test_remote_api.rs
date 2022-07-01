@@ -30,7 +30,7 @@ struct TestActorFactory {}
 struct TestActorRecipe;
 
 impl ActorRecipe for TestActorRecipe {
-    fn read_from_bytes(_bytes: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(_bytes: &Vec<u8>) -> Option<Self> {
         Some(Self)
     }
 
@@ -82,8 +82,11 @@ pub async fn test_remote_api_routes() {
     }
 
     let (remote, _server) = create_system(persistence).await;
-    let sharding =
-        Sharding::<TestActorFactory>::start("TestActor".to_string(), remote.clone()).await;
+    let sharding = Sharding::<TestActorFactory>::builder(remote.clone())
+        .with_entity_type("TestActor")
+        .build()
+        .await;
+
     let cluster_api = ClusterApi::new(remote.clone());
     let sharding_api = ShardingApi::default()
         .attach(&sharding)

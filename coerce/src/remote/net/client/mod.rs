@@ -236,7 +236,7 @@ pub enum ClientType {
 }
 
 pub struct BeginHandshake {
-    request_id: uuid::Uuid,
+    request_id: Uuid,
     seed_nodes: Vec<RemoteNode>,
     on_handshake_complete: Sender<()>,
 }

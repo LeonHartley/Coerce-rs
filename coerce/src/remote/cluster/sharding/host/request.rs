@@ -18,7 +18,7 @@ use tokio::sync::oneshot::{channel, Sender};
 use uuid::Uuid;
 
 pub struct EntityRequest {
-    pub actor_id: ActorId,
+    pub actor_id: Arc<ActorId>,
     pub message_type: String,
     pub message: Vec<u8>,
     pub recipe: Option<Arc<Vec<u8>>>,
@@ -34,7 +34,11 @@ pub struct RemoteEntityRequest {
     pub origin_node: NodeId,
 }
 
-pub fn handle_request(message: EntityRequest, shard_id: ShardId, shard_state: &mut ShardState) {
+pub(super) fn handle_request(
+    message: EntityRequest,
+    shard_id: ShardId,
+    shard_state: &mut ShardState,
+) {
     match shard_state {
         ShardState::Starting { request_buffer, .. } => request_buffer.push(message),
 
@@ -89,7 +93,12 @@ impl Handler<EntityRequest> for ShardHost {
 
             let host_ref = self.actor_ref(ctx);
             tokio::spawn(async move {
-                let allocation = leader.send(AllocateShard { shard_id }).await;
+                let allocation = leader
+                    .send(AllocateShard {
+                        shard_id,
+                        rebalancing: false,
+                    })
+                    .await;
                 if let Ok(AllocateShardResult::Allocated(shard_id, node_id)) = allocation {
                     host_ref.notify(ShardAllocated(shard_id, node_id));
                 }
@@ -126,7 +135,7 @@ async fn remote_entity_request(
         .notify(RemoteEntityRequest {
             origin_node: system.node_id(),
             request_id,
-            actor_id: request.actor_id,
+            actor_id: request.actor_id.to_string(),
             message_type: request.message_type,
             message: request.message,
             recipe: request.recipe.map(|r| r.as_ref().clone()),
@@ -167,7 +176,7 @@ async fn remote_entity_request(
 impl From<RemoteEntityRequest> for EntityRequest {
     fn from(req: RemoteEntityRequest) -> Self {
         EntityRequest {
-            actor_id: req.actor_id,
+            actor_id: Arc::new(req.actor_id),
             message_type: req.message_type,
             message: req.message,
             recipe: req.recipe.map(|r| Arc::new(r)),

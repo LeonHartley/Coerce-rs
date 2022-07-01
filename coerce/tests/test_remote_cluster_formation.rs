@@ -25,7 +25,7 @@ pub struct TestActorRecipe {
 }
 
 impl ActorRecipe for TestActorRecipe {
-    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
         serde_json::from_slice(&bytes).unwrap()
     }
 
@@ -56,7 +56,7 @@ impl ActorFactory for TestActorFactory {
 pub struct EchoActorRecipe {}
 
 impl ActorRecipe for EchoActorRecipe {
-    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
         serde_json::from_slice(&bytes).unwrap()
     }
 
@@ -135,10 +135,6 @@ pub async fn test_remote_cluster_workers() {
         .with_seed_addr("localhost:30101")
         .start()
         .await;
-
-    let (tx, on_leader_changed_c) = channel();
-    let _ = remote_3_c.heartbeat().notify(OnLeaderChanged(tx));
-    let _ = on_leader_changed_c.await;
 
     let nodes_a = remote_c.get_nodes().await;
     let nodes_b = remote_2_c.get_nodes().await;

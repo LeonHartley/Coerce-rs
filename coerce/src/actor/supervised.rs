@@ -7,12 +7,14 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 
 pub struct Supervised {
+    pub actor_id: String,
     pub children: HashMap<ActorId, BoxedActorRef>,
 }
 
 impl Supervised {
-    pub fn new() -> Supervised {
+    pub fn new(actor_id: String) -> Supervised {
         Self {
+            actor_id,
             children: HashMap::new(),
         }
     }
@@ -68,6 +70,10 @@ impl Supervised {
         }
     }
 
+    pub fn count(&self) -> usize {
+        self.children.len()
+    }
+
     pub fn child<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
         self.children
             .get(id)
@@ -85,6 +91,7 @@ impl Supervised {
     }
 
     pub async fn stop_all(&mut self) {
+        let n = self.children.len();
         let stop_results = futures::future::join_all(
             self.children
                 .iter()
@@ -98,13 +105,17 @@ impl Supervised {
                 self.children.remove(&actor_id);
             } else {
                 match stop_result.unwrap_err() {
-                    ActorRefErr::InvalidRef => {}
+                    ActorRefErr::InvalidRef => {
+                        warn!("invalid ref, actor_id={} already stopped", &actor_id);
+                    }
                     e => {
                         warn!("failed to stop child actor_id={}, err={}", actor_id, e);
                     }
                 }
             }
         }
+
+        info!("{} stopped {} child actors", &self.actor_id, n);
     }
 
     pub async fn on_child_stopped(&mut self, id: &ActorId) {

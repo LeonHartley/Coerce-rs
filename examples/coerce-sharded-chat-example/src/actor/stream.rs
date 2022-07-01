@@ -28,8 +28,8 @@ impl PersistentActor for ChatStream {
     }
 
     async fn post_recovery(&mut self, _ctx: &mut ActorContext) {
-        info!(
-            "ChatStream (name={}) recovered {} chat messages",
+        debug!(
+            "ChatStream (name={}) created, recovered {} chat messages",
             &self.name,
             self.messages.len()
         );
@@ -118,7 +118,7 @@ impl ActorFactory for ChatStreamFactory {
     type Recipe = CreateChatStream;
 
     async fn create(&self, recipe: CreateChatStream) -> Result<ChatStream, ActorCreationErr> {
-        info!(target: "ChatStreamFactory", "creating ChatStream actor, chat_stream_id={}, creator={}", &recipe.name, &recipe.creator);
+        debug!(target: "ChatStreamFactory", "creating ChatStream actor, chat_stream_id={}, creator={}", &recipe.name, &recipe.creator);
         Ok(Self::Actor {
             name: recipe.name.clone(),
             creator: recipe.creator,
@@ -137,8 +137,8 @@ impl Recover<ChatMessage> for ChatStream {
 }
 
 impl ActorRecipe for CreateChatStream {
-    fn read_from_bytes(bytes: Vec<u8>) -> Option<Self> {
-        serde_json::from_slice(&bytes).map_or(None, |m| Some(m))
+    fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
+        serde_json::from_slice(bytes).map_or(None, |m| Some(m))
     }
 
     fn write_to_bytes(&self) -> Option<Vec<u8>> {

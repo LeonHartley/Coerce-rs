@@ -1,3 +1,4 @@
+use crate::actor::ActorRefErr;
 use crate::remote::net::proto::network::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActor, Event, FindActor,
     Identify, MessageRequest, NodeIdentity, Ping, Pong, RaftRequest, SessionHandshake,
@@ -6,8 +7,9 @@ use crate::remote::net::proto::network::{
 use crate::remote::net::StreamData;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use protobuf::{Message, ProtobufEnum, ProtobufError};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub enum ClientEvent {
     Identity(NodeIdentity),
@@ -30,7 +32,20 @@ pub enum SessionEvent {
     FindActor(FindActor),
     StreamPublish(Arc<StreamPublish>),
     Result(ClientResult),
+    Err(ClientError),
     Raft(RaftRequest),
+}
+
+#[derive(Debug)]
+pub struct ClientError {
+    error: ActorRefErr,
+    request_id: Uuid,
+}
+
+impl Display for ClientError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "error={}, request_id={}", &self.error, &self.request_id)
+    }
 }
 
 impl StreamData for ClientEvent {

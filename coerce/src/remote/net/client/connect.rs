@@ -33,9 +33,9 @@ impl RemoteClient {
         _connect: Connect,
         ctx: &mut ActorContext,
     ) -> Option<ConnectionState> {
-        let span = tracing::trace_span!("RemoteClient::connect", address = self.addr.as_str());
-
-        let _enter = span.enter();
+        // let span = tracing::trace_span!("RemoteClient::connect", address = self.addr.as_str());
+        //
+        // let _enter = span.enter();
         let stream = TcpStream::connect(&self.addr).await;
         if stream.is_err() {
             return None;
@@ -51,6 +51,7 @@ impl RemoteClient {
 
         let remote = ctx.system().remote_owned();
         let receive_task = tokio::spawn(receive_loop(
+            self.addr.clone(),
             remote.clone(),
             reader,
             ClientMessageReceiver::new(self.actor_ref(ctx), identity_tx),
@@ -86,9 +87,9 @@ const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
 #[async_trait]
 impl Handler<Connect> for RemoteClient {
     async fn handle(&mut self, message: Connect, ctx: &mut ActorContext) {
-        let span = tracing::trace_span!("RemoteClient::connect", actor_id = ctx.id().as_str(),);
-
-        let _enter = span.enter();
+        // let span = tracing::trace_span!("RemoteClient::connect", actor_id = ctx.id().as_str(),);
+        //
+        // let _enter = span.enter();
 
         if let Some(connection_state) = self.connect(message, ctx).await {
             let client_actor_ref = self.actor_ref(ctx);
@@ -134,7 +135,9 @@ impl Handler<BeginHandshake> for RemoteClient {
         let mut connection = match &mut self.state {
             Some(ClientState::Connected(connection)) => connection,
             _ => {
-                error!("dropping handshake, connection is not open");
+                let actor_ref = self.actor_ref(ctx);
+                let _ = actor_ref.notify(Connect);
+                let _ = actor_ref.notify(message);
                 return;
             }
         };
@@ -242,7 +245,7 @@ impl Handler<Disconnected> for RemoteClient {
     async fn handle(&mut self, _msg: Disconnected, ctx: &mut ActorContext) {
         if let Some(true) = self.state.as_ref().map(|n| n.is_connected()) {
             warn!(
-                "RemoteClient connection to node (addr={}) , retrying in {}ms",
+                "RemoteClient disconnected from node (addr={}), attempting re-connection in {}ms",
                 &self.addr,
                 RECONNECT_DELAY.as_millis()
             );

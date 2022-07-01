@@ -2,7 +2,7 @@ use crate::actor::peer::Peer;
 use crate::actor::stream::{ChatStreamFactory, Handshake};
 use coerce::actor::message::Message;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::IntoActor;
+use coerce::actor::{ActorRefErr, IntoActor, LocalActorRef};
 use coerce::remote::cluster::sharding::Sharding;
 use futures_util::StreamExt;
 use std::net::SocketAddr;
@@ -27,13 +27,22 @@ async fn handle_connection(
             let handshake: Handshake =
                 Handshake::from_remote_envelope(handshake.into_data()).unwrap();
 
-            Peer::new(handshake.name, peer_addr, reader, writer, sharding)
+            match Peer::new(handshake.name, peer_addr, reader, writer, sharding)
                 .into_anon_actor(Some(format!("peer-{}", peer_addr)), &actor_system)
-                .await;
+                .await
+            {
+                Ok(actor_ref) => {
+                    debug!("peer actor created, ref: {:?}", actor_ref)
+                }
+                Err(e) => {
+                    warn!("error creating peer actor: {}", e)
+                }
+            }
         } else {
-            info!("nope");
+            warn!("failed to read handshake (connection={})", &peer_addr);
         }
     }
+
     Ok(())
 }
 

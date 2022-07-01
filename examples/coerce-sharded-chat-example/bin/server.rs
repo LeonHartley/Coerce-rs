@@ -22,20 +22,21 @@ pub async fn main() {
 fn configure_application() -> ShardedChatConfig {
     let matches = Command::new("coerce-sharded-chat-server")
         .version(env::var("CARGO_PKG_VERSION").unwrap_or(String::from("1")).as_str())
-        .arg(arg!(--node_id <NODE_ID> "The ID this node will identify itself as"))
-        .arg(arg!(--remote_listen_addr <LISTEN_ADDR> "The host and port which Coerce will listen to connections from"))
-        .arg(arg!(--websocket_listen_addr <LISTEN_ADDR> "The host and port which the sharded chat websockets will listen from"))
-        .arg(arg!(--cluster_api_listen_addr <LISTEN_ADDR> "The host and port which the Coerce cluster HTTP API will listen from"))
-        .arg(arg!(--log_level [LOG_LEVEL] "The minimum level at which the application log will be filtered (default=INFO)"))
-        .arg(arg!(--remote_seed_addr [TCP_ADDR] "(optional) The host and port which Coerce will attempt to use as a seed node"))
-        .arg(arg!(--metrics_exporter_listen_addr [TCP_ADDR] "(optional) The host and port which the prometheus metrics exporter"))
+        .arg(arg!(--node_id <NODE_ID> "The ID this node will identify itself as").env("NODE_ID"))
+        .arg(arg!(--remote_listen_addr <LISTEN_ADDR> "The host and port which Coerce will listen to connections from").env("REMOTE_LISTEN_ADDR"))
+        .arg(arg!(--websocket_listen_addr <LISTEN_ADDR> "The host and port which the sharded chat websockets will listen from").env("WEBSOCKET_LISTEN_ADDR"))
+        .arg(arg!(--cluster_api_listen_addr <LISTEN_ADDR> "The host and port which the Coerce cluster HTTP API will listen from").env("CLUSTER_API_LISTEN_ADDR"))
+        .arg(arg!(--log_level [LOG_LEVEL] "The minimum level at which the application log will be filtered (default=INFO)").env("LOG_LEVEL"))
+        .arg(arg!(--remote_seed_addr [TCP_ADDR] "(optional) The host and port which Coerce will attempt to use as a seed node").env("REMOTE_SEED_ADDR"))
+        .arg(arg!(--metrics_exporter_listen_addr [TCP_ADDR] "(optional) The host and port which the prometheus metrics exporter").env("METRICS_EXPORTER_LISTEN_ADDR"))
+        .arg(arg!(--redis_addr [TCP_ADDR] "(optional) Redis TCP address. By default, in-memory persistence is enabled").env("REDIS_ADDR"))
         .get_matches();
 
     let node_id = matches
         .value_of("node_id")
         .unwrap()
         .parse::<NodeId>()
-        .expect("valid node_id (integer)");
+        .expect("invalid node_id (unsigned 64bit integer)");
 
     let remote_listen_addr = matches.value_of("remote_listen_addr").unwrap().to_string();
 
@@ -72,31 +73,18 @@ fn configure_application() -> ShardedChatConfig {
     }
 
     tracing_subscriber::fmt()
+        .compact()
+        .with_max_level(tracing::Level::from_str(log_level).unwrap())
         .with_span_events(FmtSpan::NONE)
-        .json()
-        .with_max_level(tracing::Level::TRACE)
-        .with_span_list(false)
         .init();
 
-    //
-    // let _ = env_logger::Builder::new()
-    //     .format(|buf, record| {
-    //         writeln!(
-    //             buf,
-    //             "{} [{}] {} - {}",
-    //             Local::now().format("%Y-%m-%dT%H:%M:%S%.6f"),
-    //             record.level(),
-    //             record.target(),
-    //             record.args(),
-    //         )
-    //     })
-    //     .filter(
-    //         None,
-    //         LevelFilter::from_str(log_level).expect("valid log level"),
-    //     )
-    //     .try_init();
-
-    let redis_persistence_host = "127.0.0.1:6379";
+    let persistence = if let Some(redis_addr) = matches.value_of("redis_addr") {
+        ShardedChatPersistence::Redis {
+            host: Some(redis_addr.to_string()),
+        }
+    } else {
+        ShardedChatPersistence::InMemory
+    };
 
     ShardedChatConfig {
         node_id,
@@ -104,8 +92,6 @@ fn configure_application() -> ShardedChatConfig {
         remote_seed_addr,
         websocket_listen_addr,
         cluster_api_listen_addr,
-        persistence: ShardedChatPersistence::Redis {
-            host: Some(redis_persistence_host.to_string()),
-        },
+        persistence,
     }
 }

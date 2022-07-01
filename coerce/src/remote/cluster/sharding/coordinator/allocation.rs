@@ -19,6 +19,7 @@ use std::hash::{Hash, Hasher};
 
 pub struct AllocateShard {
     pub shard_id: ShardId,
+    pub rebalancing: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -74,6 +75,10 @@ impl Handler<AllocateShard> for ShardCoordinator {
             return AllocateShardResult::AlreadyAllocated(message.shard_id, *entry);
         }
 
+        if message.rebalancing {
+            return self.allocate_shard(message.shard_id, ctx).await;
+        }
+
         match self.persist(&message, ctx).await {
             Ok(_) => self.allocate_shard(message.shard_id, ctx).await,
             Err(e) => {
@@ -111,11 +116,11 @@ async fn allocate(
 
         shard_entry.insert(node_id);
         if host.shards.insert(shard_id) {
-            tokio::spawn(broadcast_allocation(
-                shard_id,
-                host.node_id,
-                hosts.iter().map(|h| h.actor.clone()).collect(),
-            ));
+            let node_id = host.node_id;
+            let hosts = hosts.iter().map(|h| h.actor.clone()).collect();
+            tokio::spawn(async move {
+                broadcast_allocation(shard_id, node_id, hosts).await;
+            });
         }
 
         AllocateShardResult::Allocated(shard_id, node_id)
@@ -187,6 +192,7 @@ impl Message for AllocateShard {
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
         proto::AllocateShard {
             shard_id: self.shard_id,
+            rebalancing: self.rebalancing,
             ..Default::default()
         }
         .write_to_bytes()
@@ -202,6 +208,7 @@ impl Message for AllocateShard {
             |allocate_shard| {
                 Ok(AllocateShard {
                     shard_id: allocate_shard.shard_id,
+                    rebalancing: allocate_shard.rebalancing,
                 })
             },
         )
