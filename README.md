@@ -4,6 +4,13 @@ Coerce-rs is an asynchronous (async/await) Actor runtime and distributed system 
 extremely simple yet powerful actor-based distributed system development. With minimal code, you can build a highly
 scalable, fault-tolerant modern actor-driven application.
 
+## Crates
+| **Crate**                                              | **Purpose**                                                                                                 | **Latest Version**                                              |
+|--------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| [coerce](https://crates.io/crate/coerce)               | The main Coerce runtime and framework                                                                       | ![crates.io](https://img.shields.io/crates/v/coerce.svg)        |
+| [coerce-redis](https://crates.io/crate/coerce-redis)   | Actor persistence provider for Redis. Enables event source and snapshots to be read and written from Redis. | ![crates.io](https://img.shields.io/crates/v/coerce-redis.svg)  |
+| [coerce-macros](https://crates.io/crate/coerce.macros) | Useful macros allowing for quick implementations of snapshots, JSON-serialisable remote messages and more.  | ![crates.io](https://img.shields.io/crates/v/coerce-macros.svg) |
+
 ## Features
 
 ### Actors
