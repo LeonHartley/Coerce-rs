@@ -273,7 +273,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "chrono",
- "coerce-macros",
+ "coerce-macros 0.1.0",
  "criterion",
  "env_logger",
  "futures",
@@ -340,7 +340,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "coerce 0.6.0",
- "coerce-macros",
+ "coerce-macros 0.1.0",
  "opentelemetry 0.11.2",
  "opentelemetry-jaeger 0.10.0",
  "serde",
@@ -365,8 +365,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02a086fd041dbeca2505c9e0b79deb1beafe4efd4edecff6af74a13e6f2e5079"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "coerce-redis"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "coerce 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redis-async",
+ "tokio",
+]
+
+[[package]]
+name = "coerce-redis"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca492056549b519166be3506e15999dab654ee8a3ccd4fb4dd869ad3ab4a54e5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -382,9 +406,9 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap 3.1.6",
- "coerce 0.6.0",
- "coerce-macros",
- "coerce-redis",
+ "coerce 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-redis 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger",
  "futures",
  "futures-io",

@@ -1,8 +1,11 @@
 [package]
 name = "coerce-macros"
 version = "0.1.0"
-authors = ["Leon Hartley <leon.hartley@sharpgaming.com>"]
+authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2018"
+description = "Utility macros for Coerce"
+license = "Apache-2.0"
+repository = "https://github.com/leonhartley/coerce-rs"
 
 [lib]
 proc-macro = true
