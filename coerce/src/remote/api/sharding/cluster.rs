@@ -208,7 +208,7 @@ impl From<ShardActorStats> for ShardStats {
             entities: s
                 .entities
                 .into_iter()
-                .map(|e| Entity { actor_id: e })
+                .map(|e| Entity { actor_id: e.to_string() })
                 .collect(),
         }
     }

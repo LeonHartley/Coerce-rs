@@ -1,7 +1,6 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, LocalActorRef,
-};
+use crate::actor::{Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, LocalActorRef, IntoActorId};
+
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
 use crate::remote::cluster::sharding::coordinator::stats::GetShardingStats;
@@ -39,7 +38,7 @@ struct ShardingCore {
 
 pub struct Sharded<A: Actor> {
     sharding: Arc<ShardingCore>,
-    actor_id: Arc<ActorId>,
+    actor_id: ActorId,
     recipe: Option<Arc<Vec<u8>>>,
     _a: PhantomData<A>,
 }
@@ -54,14 +53,16 @@ impl<A: ActorFactory> Sharding<A> {
             "ShardCoordinator-{}-Spawner-{}",
             &shard_entity,
             system.node_id()
-        ));
+        ).into_actor_id());
 
-        let host_actor_id = Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()));
+        let host_actor_id = Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()).into_actor_id());
 
-        let actor_handler = system
+        let actor_handler = match system
             .config()
-            .actor_handler(A::Actor::type_name())
-            .expect("actor factory not supported");
+            .actor_handler(A::Actor::type_name()) {
+            None => panic!("failed to initialise sharding for entity={}, factory not found for type={}, please register it via RemoteActorSystemBuilder", &shard_entity, A::Actor::type_name()),
+            Some(handler) => handler,
+        };
 
         let host = ShardHost::new(shard_entity.clone(), actor_handler, allocator)
             .into_actor(host_actor_id, system.actor_system())
@@ -85,13 +86,13 @@ impl<A: ActorFactory> Sharding<A> {
         }
     }
 
-    pub fn get(&self, actor_id: ActorId, recipe: Option<A::Recipe>) -> Sharded<A::Actor> {
+    pub fn get(&self, actor_id: impl IntoActorId, recipe: Option<A::Recipe>) -> Sharded<A::Actor> {
+        let actor_id = actor_id.into_actor_id();
         let recipe = match recipe {
             Some(recipe) => recipe.write_to_bytes().map(Arc::new),
             None => None,
         };
 
-        let actor_id = Arc::new(actor_id);
         let sharding = self.core.clone();
         Sharded {
             actor_id,

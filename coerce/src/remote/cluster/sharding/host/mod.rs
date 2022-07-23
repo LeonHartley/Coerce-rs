@@ -2,9 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
 };
-use crate::actor::{
-    Actor, ActorId, ActorRef, ActorRefErr, BoxedActorRef, IntoActor, LocalActorRef,
-};
+use crate::actor::{Actor, ActorId, ActorRef, IntoActor, LocalActorRef, IntoActorId, ToActorId};
 use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
 use crate::remote::cluster::sharding::host::request::{handle_request, EntityRequest};
@@ -82,7 +80,7 @@ impl ShardHost {
     }
 
     pub async fn get_coordinator(&self, ctx: &ActorContext) -> ActorRef<ShardCoordinator> {
-        let actor_id = format!("ShardCoordinator-{}", &self.shard_entity);
+        let actor_id = format!("ShardCoordinator-{}", &self.shard_entity).into_actor_id();
         let remote = ctx.system().remote();
         let leader = remote.current_leader();
         if leader == Some(remote.node_id()) {
@@ -126,7 +124,7 @@ pub struct StopShard {
 }
 
 pub struct StartEntity {
-    pub actor_id: Arc<ActorId>,
+    pub actor_id: ActorId,
     pub recipe: Arc<Vec<u8>>,
 }
 
@@ -135,7 +133,7 @@ pub struct RemoveEntity {
 }
 
 pub struct PassivateEntity {
-    pub actor_id: String,
+    pub actor_id: ActorId,
 }
 
 pub struct GetShards;
@@ -374,7 +372,7 @@ impl Handler<ShardStopped> for ShardHost {
 }
 
 pub fn shard_actor_id(shard_entity: &String, shard_id: ShardId) -> ActorId {
-    format!("{}-Shard-{}", &shard_entity, shard_id)
+    format!("{}-Shard-{}", &shard_entity, shard_id).into_actor_id()
 }
 
 impl Message for ShardAllocated {
@@ -500,7 +498,7 @@ impl Message for StartEntity {
     fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::StartEntity::parse_from_bytes(&b)
             .map(|r| Self {
-                actor_id: Arc::new(r.actor_id),
+                actor_id: r.actor_id.to_actor_id(),
                 recipe: Arc::new(r.recipe),
             })
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)
@@ -520,7 +518,7 @@ impl Message for RemoveEntity {
 
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
         proto::RemoveEntity {
-            actor_id: self.actor_id.clone(),
+            actor_id: self.actor_id.to_string(),
             ..Default::default()
         }
         .write_to_bytes()
@@ -533,7 +531,7 @@ impl Message for RemoveEntity {
     fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::RemoveEntity::parse_from_bytes(&b)
             .map(|r| Self {
-                actor_id: r.actor_id,
+                actor_id: r.actor_id.into_actor_id(),
             })
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }
@@ -552,7 +550,7 @@ impl Message for PassivateEntity {
 
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
         proto::PassivateEntity {
-            actor_id: self.actor_id.clone(),
+            actor_id: self.actor_id.to_string(),
             ..Default::default()
         }
         .write_to_bytes()
@@ -565,7 +563,7 @@ impl Message for PassivateEntity {
     fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::PassivateEntity::parse_from_bytes(&b)
             .map(|r| Self {
-                actor_id: r.actor_id,
+                actor_id: r.actor_id.into_actor_id(),
             })
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }

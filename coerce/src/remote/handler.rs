@@ -12,16 +12,16 @@ use crate::actor::context::ActorContext;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::sync::Arc;
+
 use std::time::Duration;
-use tokio::sync::oneshot;
+
 use tokio::sync::oneshot::Sender;
 
 #[async_trait]
 pub trait ActorHandler: 'static + Any + Sync + Send {
     async fn create(
         &self,
-        actor_id: Option<String>,
+        actor_id: Option<ActorId>,
         raw_recipe: &Vec<u8>,
         supervisor_ctx: Option<&mut ActorContext>,
         system: Option<&ActorSystem>,
@@ -194,7 +194,7 @@ impl ActorRefCache {
     }
 
     pub fn add(&self, actor_id: &ActorId, actor_ref: BoxedActorRef) {
-        self.inner.lock().insert(actor_id.to_string(), actor_ref);
+        self.inner.lock().insert(actor_id.clone(), actor_ref);
     }
 
     pub fn get(&self, actor_id: &ActorId) -> Option<BoxedActorRef> {
@@ -225,7 +225,7 @@ async fn get_actor_ref<A: Actor>(
         }
     }
 
-    if let Some(actor_ref) = system.get_tracked_actor::<A>(actor_id.to_string()).await {
+    if let Some(actor_ref) = system.get_tracked_actor::<A>(actor_id.clone()).await {
         ACTOR_REF_CACHE.add(actor_id, BoxedActorRef::from(actor_ref.clone()));
 
         Some(actor_ref)

@@ -5,7 +5,6 @@ use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, Loc
 use crate::persistent::context::ActorPersistence;
 use futures::{Stream, StreamExt};
 use tokio::sync::oneshot::Sender;
-use tracing::field::{Field, Visit};
 
 use crate::actor::supervised::Supervised;
 
@@ -30,7 +29,7 @@ pub struct ActorContext {
 impl Drop for ActorContext {
     fn drop(&mut self) {
         if let Some(boxed_parent_ref) = &self.boxed_parent_ref {
-            let _ = boxed_parent_ref.notify_child_terminated(self.id().into());
+            let _ = boxed_parent_ref.notify_child_terminated(self.id().clone());
         }
 
         if let Some(mut supervised) = self.supervised.take() {

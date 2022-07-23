@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
-use tokio::task::JoinHandle;
+
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -29,7 +29,27 @@ pub mod supervised;
 pub mod system;
 pub mod worker;
 
-pub type ActorId = String;
+pub type ActorId = Arc<str>;
+
+pub trait IntoActorId {
+    fn into_actor_id(self) -> ActorId;
+}
+
+pub trait ToActorId {
+    fn to_actor_id(&self) -> ActorId;
+}
+
+impl<T: ToString + Send + Sync> IntoActorId for T {
+    fn into_actor_id(self) -> ActorId {
+        self.to_string().into()
+    }
+}
+
+impl<T: ToString + Send + Sync> ToActorId for T {
+    fn to_actor_id(&self) -> ActorId {
+        self.to_string().into()
+    }
+}
 
 #[async_trait]
 pub trait Actor: 'static + Send + Sync {
@@ -67,15 +87,15 @@ pub trait Actor: 'static + Send + Sync {
 
 #[async_trait]
 pub trait IntoActor: Actor + Sized {
-    async fn into_actor(
+    async fn into_actor<'a, I: 'a + IntoActorId + Send>(
         self,
-        id: Option<ActorId>,
+        id: Option<I>,
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 
-    async fn into_anon_actor(
+    async fn into_anon_actor<'a, I: 'a + IntoActorId + Send >(
         self,
-        id: Option<ActorId>,
+        id: Option<I>,
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 }
@@ -277,11 +297,12 @@ impl<A: Actor> ActorRef<A> {
 
 #[async_trait]
 impl<A: Actor> IntoActor for A {
-    async fn into_actor(
+    async fn into_actor<'a, I: 'a + IntoActorId + Send>(
         self,
-        id: Option<ActorId>,
+        id: Option<I>,
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
+        let id = id.map(|i| i.into_actor_id());
         if let Some(id) = id {
             sys.new_actor(id, self, Tracked).await
         } else {
@@ -289,12 +310,12 @@ impl<A: Actor> IntoActor for A {
         }
     }
 
-    async fn into_anon_actor(
+    async fn into_anon_actor<'a, I: 'a + IntoActorId + Send>(
         self,
-        id: Option<ActorId>,
+        id: Option<I>,
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
-        sys.new_actor(id.map_or_else(new_actor_id, |id| id), self, Anonymous)
+        sys.new_actor(id.map_or_else(new_actor_id, |id| id.into_actor_id()), self, Anonymous)
             .await
     }
 }
@@ -455,7 +476,7 @@ impl<A: Actor> LocalActorRef<A> {
                     tracing::trace!("recv result");
                     Ok(res)
                 }
-                Err(e) => Err(ActorRefErr::ResultChannelClosed),
+                Err(_e) => Err(ActorRefErr::ResultChannelClosed),
             },
             Err(_e) => Err(ActorRefErr::InvalidRef),
         }
@@ -628,5 +649,5 @@ impl<A: Actor> LocalActorRef<A> {
 }
 
 pub fn new_actor_id() -> ActorId {
-    Uuid::new_v4().to_string()
+    Uuid::new_v4().into_actor_id()
 }

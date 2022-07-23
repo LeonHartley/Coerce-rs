@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr};
+use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActorId};
 use crate::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
 };
@@ -18,7 +18,7 @@ use tokio::sync::oneshot::{channel, Sender};
 use uuid::Uuid;
 
 pub struct EntityRequest {
-    pub actor_id: Arc<ActorId>,
+    pub actor_id: ActorId,
     pub message_type: String,
     pub message: Vec<u8>,
     pub recipe: Option<Arc<Vec<u8>>>,
@@ -135,7 +135,7 @@ async fn remote_entity_request(
         .notify(RemoteEntityRequest {
             origin_node: system.node_id(),
             request_id,
-            actor_id: request.actor_id.to_string(),
+            actor_id: request.actor_id.into_actor_id(),
             message_type: request.message_type,
             message: request.message,
             recipe: request.recipe.map(|r| r.as_ref().clone()),
@@ -176,7 +176,7 @@ async fn remote_entity_request(
 impl From<RemoteEntityRequest> for EntityRequest {
     fn from(req: RemoteEntityRequest) -> Self {
         EntityRequest {
-            actor_id: Arc::new(req.actor_id),
+            actor_id: req.actor_id.into_actor_id(),
             message_type: req.message_type,
             message: req.message,
             recipe: req.recipe.map(|r| Arc::new(r)),
@@ -195,7 +195,7 @@ impl Message for RemoteEntityRequest {
     fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
         let proto = proto::RemoteEntityRequest {
             request_id: self.request_id.to_string(),
-            actor_id: self.actor_id.clone(),
+            actor_id: self.actor_id.to_string(),
             message_type: self.message_type.clone(),
             message: self.message.clone(),
             recipe: self.recipe.clone().map_or_else(
@@ -224,7 +224,7 @@ impl Message for RemoteEntityRequest {
             |proto| {
                 Ok(RemoteEntityRequest {
                     request_id: Uuid::from_str(&proto.request_id).unwrap(),
-                    actor_id: proto.actor_id,
+                    actor_id: proto.actor_id.into_actor_id(),
                     message_type: proto.message_type,
                     message: proto.message,
                     recipe: proto

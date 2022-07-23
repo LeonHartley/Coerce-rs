@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, LocalActorRef};
+use crate::actor::{Actor, IntoActorId, LocalActorRef};
 
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::ClientEvent;
@@ -69,7 +69,7 @@ impl Handler<NewSession> for RemoteSessionStore {
         let session = message.0;
 
         let session_actor = ctx
-            .spawn(format!("RemoteSession-{}", session_id.to_string()), session)
+            .spawn(format!("RemoteSession-{}", session_id.to_string()).into_actor_id(), session)
             .await
             .expect("unable to create session actor");
 

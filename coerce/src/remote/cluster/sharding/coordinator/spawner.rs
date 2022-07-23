@@ -139,7 +139,12 @@ impl Handler<Receive<SystemTopic>> for CoordinatorSpawner {
                         );
                     }
 
-                    self.local_shard_host.notify(LeaderAllocated);
+                    if let Err(e) = self.local_shard_host.notify(LeaderAllocated) {
+                        error!(target: COORDINATOR_SPAWNER,
+                            "[node={}] failed to notify `LeaderAllocated` to local shard host (entity={}, err={})",
+                            self.node_id, &self.shard_entity, e
+                        );
+                    }
                 }
             },
         }

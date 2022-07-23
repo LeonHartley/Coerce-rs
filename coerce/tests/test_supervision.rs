@@ -1,6 +1,6 @@
 use coerce::actor::context::ActorContext;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, ActorId, IntoActor};
+use coerce::actor::{Actor, ActorId, IntoActor, IntoActorId};
 
 pub mod util;
 
@@ -20,13 +20,13 @@ struct TestActor {
 #[async_trait]
 impl Actor for TestActor {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        let child = ctx.spawn("child".to_string(), ActorChild {}).await.unwrap();
+        let child = ctx.spawn("child".into_actor_id(), ActorChild {}).await.unwrap();
         let _ = child.stop().await;
     }
 
     async fn on_child_stopped(&mut self, id: &ActorId, _ctx: &mut ActorContext) {
         info!("child terminated (id={})", &id);
-        self.child_terminated_cb.take().unwrap().send(id.into());
+        let _ = self.child_terminated_cb.take().unwrap().send(id.clone());
     }
 }
 

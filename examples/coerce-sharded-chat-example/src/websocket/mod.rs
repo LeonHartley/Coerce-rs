@@ -2,7 +2,7 @@ use crate::actor::peer::Peer;
 use crate::actor::stream::{ChatStreamFactory, Handshake};
 use coerce::actor::message::Message;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorRefErr, IntoActor, LocalActorRef};
+use coerce::actor::IntoActor;
 use coerce::remote::cluster::sharding::Sharding;
 use futures_util::StreamExt;
 use std::net::SocketAddr;

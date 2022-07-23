@@ -4,7 +4,7 @@ use std::error::Error;
 
 use crate::actor::metrics::ActorMetrics;
 use std::fmt::{Debug, Display, Formatter};
-use std::hash::Hash;
+
 use std::marker::PhantomData;
 use std::time::Instant;
 use tokio::sync::oneshot;

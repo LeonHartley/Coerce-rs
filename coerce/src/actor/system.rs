@@ -1,5 +1,5 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, LocalActorRef};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, LocalActorRef, IntoActorId};
 use crate::remote::system::RemoteActorSystem;
 
 use crate::persistent::{ConfigurePersistence, Persistence};
@@ -91,13 +91,13 @@ impl ActorSystem {
         self.new_actor(id, actor, ActorType::Anonymous).await
     }
 
-    pub async fn new_actor<A: Actor>(
+    pub async fn new_actor<I: IntoActorId, A: Actor>(
         &self,
-        id: ActorId,
+        id: I,
         actor: A,
         actor_type: ActorType,
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
-        let actor_type_name = A::type_name();
+        let _actor_type_name = A::type_name();
         // let span = tracing::trace_span!(
         //     "ActorSystem::new_actor",
         //     actor_type = match actor_type {
@@ -110,6 +110,7 @@ impl ActorSystem {
         //
         // let _enter = span.enter();
 
+        let id = id.into_actor_id();
         let (tx, rx) = tokio::sync::oneshot::channel();
         let actor_ref = start_actor(
             actor,
@@ -156,7 +157,7 @@ impl ActorSystem {
     }
 
     pub async fn get_tracked_actor<A: Actor>(&self, id: ActorId) -> Option<LocalActorRef<A>> {
-        let actor_type_name = A::type_name();
+        let _actor_type_name = A::type_name();
         // let span = tracing::trace_span!(
         //     "ActorSystem::get_tracked_actor",
         //     actor_id = id.as_str(),

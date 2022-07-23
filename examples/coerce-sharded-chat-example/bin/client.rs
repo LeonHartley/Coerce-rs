@@ -1,9 +1,8 @@
-use chrono::Local;
 use clap::{arg, Command};
 
 use coerce_sharded_chat_example::websocket::client::ChatClient;
 use std::env;
-use std::io::Write;
+
 use std::str::FromStr;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::Receiver;

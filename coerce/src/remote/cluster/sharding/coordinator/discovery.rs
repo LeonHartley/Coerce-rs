@@ -7,11 +7,10 @@ use crate::remote::cluster::sharding::coordinator::{
 };
 use crate::remote::cluster::sharding::host::ShardHost;
 
-use crate::actor::Actor;
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
-use std::time::Duration;
+use crate::actor::IntoActorId;
 
 pub struct NodeDiscovered(pub Arc<RemoteNode>);
 
@@ -46,7 +45,7 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
                     node_tag: new_node.tag.clone(),
                     shards: Default::default(),
                     actor: RemoteActorRef::<ShardHost>::new(
-                        format!("ShardHost-{}-{}", &self.shard_entity, new_node.id),
+                        format!("ShardHost-{}-{}", &self.shard_entity, new_node.id).into_actor_id(),
                         new_node.id,
                         remote,
                     )

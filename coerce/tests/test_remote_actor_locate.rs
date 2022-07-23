@@ -9,11 +9,11 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
+use coerce::actor::{IntoActorId, ToActorId};
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
-use coerce::remote::heartbeat::OnLeaderChanged;
+
 use coerce::remote::system::RemoteActorSystem;
-use tokio::sync::oneshot::channel;
 
 #[coerce_test]
 pub async fn test_remote_actor_locate_node_locally() {
@@ -25,9 +25,9 @@ pub async fn test_remote_actor_locate_node_locally() {
         .build()
         .await;
 
-    let locate_before_creation = remote.locate_actor_node("leon".to_string()).await;
+    let locate_before_creation = remote.locate_actor_node("leon".into_actor_id()).await;
 
-    system
+    let _ = system
         .new_actor(
             "leon".to_string(),
             util::TestActor {
@@ -37,7 +37,8 @@ pub async fn test_remote_actor_locate_node_locally() {
             Tracked,
         )
         .await;
-    let locate_after_creation = remote.locate_actor_node("leon".to_string()).await;
+
+    let locate_after_creation = remote.locate_actor_node("leon".into_actor_id()).await;
 
     assert!(locate_before_creation.is_none());
     assert!(locate_after_creation.is_some());
@@ -79,15 +80,15 @@ pub async fn test_remote_actor_locate_remotely() {
         .start()
         .await;
 
-    let locate_before_creation_a = remote_a.locate_actor_node("leon".to_string()).await;
-    let locate_before_creation_b = remote_b.locate_actor_node("leon".to_string()).await;
+    let locate_before_creation_a = remote_a.locate_actor_node("leon".into_actor_id()).await;
+    let locate_before_creation_b = remote_b.locate_actor_node("leon".into_actor_id()).await;
 
     assert_eq!(locate_before_creation_a, None);
     assert_eq!(locate_before_creation_b, None);
 
     system_a
         .new_actor(
-            "leon".to_string(),
+            "leon",
             util::TestActor {
                 status: None,
                 counter: 0,
@@ -116,12 +117,12 @@ pub async fn test_remote_actor_locate_remotely() {
     // futures::future::join_all(tasks).await;
 
     let local_ref = remote_a
-        .actor_ref::<util::TestActor>("leon".to_string())
+        .actor_ref::<util::TestActor>("leon".into_actor_id())
         .await
         .expect("unable to get local ref");
 
     let remote_ref = remote_b
-        .actor_ref::<util::TestActor>("leon".to_string())
+        .actor_ref::<util::TestActor>("leon".into_actor_id())
         .await
         .expect("unable to get remote ref");
 

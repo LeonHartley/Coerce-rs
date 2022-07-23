@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 
-use crate::actor::{Actor, ActorRef, LocalActorRef, ScheduledNotify};
+use crate::actor::{Actor, ActorRef, IntoActorId, LocalActorRef, ScheduledNotify};
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::PersistentActor;
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
@@ -91,7 +91,7 @@ impl PersistentActor for ShardCoordinator {
                     node_tag: String::default(),
                     shards: HashSet::new(),
                     actor: RemoteActorRef::<ShardHost>::new(
-                        format!("ShardHost-{}-{}", &self.shard_entity, host.id),
+                        format!("ShardHost-{}-{}", &self.shard_entity, host.id).into_actor_id(),
                         host.id,
                         remote.clone(),
                     )

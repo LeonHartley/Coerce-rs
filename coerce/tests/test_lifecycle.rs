@@ -1,7 +1,7 @@
 use coerce::actor::context::ActorStatus;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{ActorRefErr, IntoActor};
-use futures::future::join_all;
+
 use std::time::Duration;
 use tokio::time::sleep;
 use util::*;

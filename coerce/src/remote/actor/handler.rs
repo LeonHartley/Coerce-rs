@@ -1,25 +1,22 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
 use crate::remote::actor::message::{
-    ClientConnected, ClientWrite, GetActorNode, GetNodes, NewClient, PopRequest, PushRequest,
-    RegisterActor, RegisterNode, SetRemote, UpdateNodes,
+    ClientConnected, ClientWrite, GetActorNode, GetNodes, NewClient, RegisterActor, RegisterNode,
+    SetRemote, UpdateNodes,
 };
-use crate::remote::actor::{
-    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteRequest, RemoteResponse,
-};
+use crate::remote::actor::{RemoteClientRegistry, RemoteRegistry, RemoteResponse};
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::net::client::RemoteClient;
 use std::collections::hash_map::Entry;
-use std::sync::Arc;
 
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, FindActor};
 
-use crate::actor::{Actor, ActorId, LocalActorRef};
+use crate::actor::{Actor, LocalActorRef};
 use crate::remote::net::client::send::Write;
 use crate::remote::stream::pubsub::{PubSub, Receive};
-use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
-use crate::remote::tracing::extract_trace_identifier;
+use crate::remote::stream::system::{SystemEvent, SystemTopic};
+
 use protobuf::Message;
 use uuid::Uuid;
 
@@ -183,7 +180,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
                         assigned_registry_node,
                         SessionEvent::FindActor(FindActor {
                             message_id: message_id.to_string(),
-                            actor_id: id,
+                            actor_id: id.to_string(),
                             trace_id,
                             ..FindActor::default()
                         }),
@@ -241,7 +238,7 @@ impl Handler<RegisterActor> for RemoteRegistry {
                         tokio::spawn(async move {
                             let event = SessionEvent::RegisterActor(ActorAddress {
                                 node_id,
-                                actor_id: id,
+                                actor_id: id.to_string(),
                                 ..ActorAddress::default()
                             });
                             system.notify_node(assigned_registry_node, event).await;
@@ -259,8 +256,8 @@ impl Handler<Receive<SystemTopic>> for RemoteRegistry {
         match event.0.as_ref() {
             SystemEvent::Cluster(_) => {
                 trace!(target: "RemoteRegistry", "cluster event");
-                let system = self.system.as_ref().unwrap().clone();
-                let registry_ref = self.actor_ref(ctx);
+                let _system = self.system.as_ref().unwrap().clone();
+                let _registry_ref = self.actor_ref(ctx);
                 //
                 // // TODO: remove all of this stuff
                 // tokio::spawn(async move {

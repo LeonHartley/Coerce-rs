@@ -1,10 +1,9 @@
 use coerce::actor::context::ActorContext;
-use tokio::sync::oneshot;
 
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::Actor;
-use coerce::remote::heartbeat::OnLeaderChanged;
+
 use coerce::remote::net::StreamData;
 use coerce::remote::stream::pubsub::{PubSub, Receive, Subscription, Topic};
 use coerce::remote::system::RemoteActorSystem;

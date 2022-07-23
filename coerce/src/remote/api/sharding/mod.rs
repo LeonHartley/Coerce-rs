@@ -3,7 +3,7 @@ mod node;
 mod routes;
 
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorFactory, IntoActor, LocalActorRef};
+use crate::actor::{Actor, ActorFactory, IntoActor, LocalActorRef, IntoActorId};
 use crate::remote::cluster::sharding::host::ShardHost;
 use crate::remote::cluster::sharding::Sharding;
 use std::collections::HashMap;
@@ -25,7 +25,7 @@ impl ShardingApi {
     }
 
     pub async fn start(self, actor_system: &ActorSystem) -> LocalActorRef<ShardingApi> {
-        self.into_actor(Some("ShardingApi".to_string()), actor_system)
+        self.into_actor(Some("ShardingApi".into_actor_id()), actor_system)
             .await
             .expect("unable to start ShardingApi actor")
     }

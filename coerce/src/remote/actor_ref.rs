@@ -5,7 +5,7 @@ use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::MessageRequest;
 use crate::remote::system::{NodeId, RemoteActorSystem};
-use crate::remote::tracing::extract_trace_identifier;
+
 use std::fmt::{Debug, Formatter};
 
 use std::marker::PhantomData;
@@ -105,7 +105,7 @@ where
                         error!(target: "RemoteActorRef", "failed to receive result, e={}", e);
                         Err(ActorRefErr::ResultChannelClosed)
                     }
-                    Ok(RemoteResponse::Err(e)) => {
+                    Ok(RemoteResponse::Err(_e)) => {
                         // TODO: return custom error
                         Err(ActorUnavailable)
                     }
@@ -139,7 +139,7 @@ where
 
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
             let handler_type = header.handler_type;
-            let actor_id = header.actor_id;
+            let actor_id = header.actor_id.to_string();
             SessionEvent::NotifyActor(MessageRequest {
                 message_id: id.to_string(),
                 handler_type,

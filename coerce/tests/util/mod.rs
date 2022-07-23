@@ -1,12 +1,10 @@
-use chrono::Local;
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 use coerce_macros::JsonMessage;
-use env_logger::Builder;
+
 use serde::Serialize;
-use std::borrow::Borrow;
-use std::io::Write;
+
 use std::str::FromStr;
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;

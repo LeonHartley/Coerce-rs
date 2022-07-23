@@ -7,7 +7,7 @@ extern crate serde;
 extern crate async_trait;
 
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorFactory, ActorRecipe};
+use coerce::actor::{new_actor_id, Actor, ActorCreationErr, ActorFactory, ActorRecipe, ToActorId};
 
 use coerce::remote::system::{RemoteActorErr, RemoteActorSystem};
 use protobuf::Message;
@@ -92,7 +92,7 @@ pub async fn test_remote_actor_deploy_remotely() {
     };
 
     let deployment_result = remote_b
-        .deploy_actor::<TestActorFactory>(Some(actor_id.clone()), recipe, Some(remote.node_id()))
+        .deploy_actor::<TestActorFactory>(Some(actor_id.to_actor_id()), recipe, Some(remote.node_id()))
         .await;
 
     assert_eq!(deployment_result.is_ok(), true)

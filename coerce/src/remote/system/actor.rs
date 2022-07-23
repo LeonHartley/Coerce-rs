@@ -1,8 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Message;
-use crate::actor::{
-    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef,
-};
+use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, IntoActorId};
 use crate::remote::actor::message::{GetActorNode, RegisterActor};
 use crate::remote::handler::send_proto_result;
 use crate::remote::net::message::SessionEvent;
@@ -136,7 +134,7 @@ impl RemoteActorSystem {
             let message = CreateActor {
                 actor_type,
                 message_id: message_id.to_string(),
-                actor_id: id.clone(),
+                actor_id: id.to_string(),
                 recipe,
                 ..CreateActor::default()
             };
@@ -157,7 +155,7 @@ impl RemoteActorSystem {
         match actor_addr {
             Some(actor_address) => {
                 let actor_ref = RemoteActorRef::<F::Actor>::new(
-                    actor_address.actor_id,
+                    actor_address.actor_id.into_actor_id(),
                     actor_address.node_id,
                     self.clone(),
                 );
@@ -202,7 +200,7 @@ impl RemoteActorSystem {
             match actor_ref {
                 Ok(actor_ref) => {
                     let result = ActorAddress {
-                        actor_id: actor_ref.actor_id().clone(),
+                        actor_id: actor_ref.actor_id().to_string(),
                         node_id: self.node_id(),
                         ..ActorAddress::default()
                     };

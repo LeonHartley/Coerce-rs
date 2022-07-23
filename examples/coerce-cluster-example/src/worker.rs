@@ -7,6 +7,7 @@ use opentelemetry::global;
 use opentelemetry::sdk::propagation::TraceContextPropagator;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use coerce::actor::ToActorId;
 
 #[macro_use]
 extern crate serde;
@@ -50,7 +51,7 @@ pub async fn main() {
         // let _enter = span.enter();
 
         let actor = remote
-            .actor_ref::<EchoActor>("echo-actor".to_string())
+            .actor_ref::<EchoActor>("echo-actor".to_actor_id())
             .await
             .expect("unable to get echo actor");
 

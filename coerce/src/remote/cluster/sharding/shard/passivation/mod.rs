@@ -1,11 +1,11 @@
-use crate::actor::context::{ActorContext, ActorStatus};
+use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
-use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+
+use crate::actor::{Actor, LocalActorRef};
 use crate::remote::cluster::sharding::shard::Shard;
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+
+use std::time::Duration;
 
 pub struct PassivationConfig {
     entity_passivation_tick: Duration,
@@ -57,5 +57,5 @@ impl Actor for PassivationWorker {
 }
 #[async_trait]
 impl Handler<PassivationTimerTick> for PassivationWorker {
-    async fn handle(&mut self, _message: PassivationTimerTick, ctx: &mut ActorContext) {}
+    async fn handle(&mut self, _message: PassivationTimerTick, _ctx: &mut ActorContext) {}
 }

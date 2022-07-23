@@ -1,11 +1,11 @@
 use crate::actor::pubsub::{ChatReceive, ChatStreamTopic};
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
-use coerce::actor::{Actor, ActorCreationErr, ActorFactory, ActorRecipe};
-use coerce::persistent::journal::snapshot::Snapshot;
+use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
+
 use coerce::persistent::journal::types::JournalTypes;
-use coerce::persistent::journal::PersistErr;
-use coerce::persistent::{PersistentActor, Recover, RecoverSnapshot};
+
+use coerce::persistent::{PersistentActor, Recover};
 
 use coerce::remote::stream::pubsub::PubSub;
 
@@ -131,7 +131,7 @@ impl ActorFactory for ChatStreamFactory {
 
 #[async_trait]
 impl Recover<ChatMessage> for ChatStream {
-    async fn recover(&mut self, message: ChatMessage, ctx: &mut ActorContext) {
+    async fn recover(&mut self, message: ChatMessage, _ctx: &mut ActorContext) {
         self.messages.push(message);
     }
 }

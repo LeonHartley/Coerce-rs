@@ -1,4 +1,3 @@
-use crate::actor::pubsub::ChatStreamTopic;
 use crate::actor::stream::{ChatMessage, ChatStream, ChatStreamFactory, Join};
 use crate::websocket::start;
 

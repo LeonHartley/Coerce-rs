@@ -1,4 +1,4 @@
-use opentelemetry::trace::{FutureExt, TraceContextExt, TraceFlags};
+use opentelemetry::trace::{TraceContextExt, TraceFlags};
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 

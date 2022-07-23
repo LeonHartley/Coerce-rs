@@ -90,7 +90,7 @@ impl<A: PersistentActor> Journal<A> {
     where
         A: Recover<M>,
     {
-        info!(
+        trace!(
             "persisting message, persistence_id={}, message_type={}",
             &self.persistence_id,
             M::type_name()
@@ -119,7 +119,7 @@ impl<A: PersistentActor> Journal<A> {
             )
             .await?;
 
-        info!(
+        debug!(
             "persisted message, persistence_id={}, message_type={}",
             &self.persistence_id,
             M::type_name()

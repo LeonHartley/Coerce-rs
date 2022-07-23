@@ -1,12 +1,11 @@
 #[macro_use]
 extern crate tracing;
 
-use chrono::Local;
 use coerce_sharded_chat_example::actor::peer::{JoinChat, SendChatMessage};
 use coerce_sharded_chat_example::actor::stream::ChatMessage;
 use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig, ShardedChatPersistence};
 use coerce_sharded_chat_example::websocket::client::ChatClient;
-use env_logger::Builder;
+
 use futures_util::future::join_all;
 use std::io::Write;
 use std::str::FromStr;

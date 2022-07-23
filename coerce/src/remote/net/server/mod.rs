@@ -1,6 +1,6 @@
 use crate::remote::system::RemoteActorSystem;
 
-use crate::actor::{ActorId, LocalActorRef};
+use crate::actor::{ActorId, LocalActorRef, IntoActorId};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{
     datetime_to_timestamp, timestamp_to_datetime, ClientEvent, SessionEvent,
@@ -14,17 +14,14 @@ use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::proto::network::{
-    ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, NodeIdentity, Pong,
-    RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish, SystemCapabilities,
-};
+use crate::remote::net::proto::network::{ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, NodeIdentity, Pong, RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish, SystemCapabilities};
 use crate::remote::stream::mediator::PublishRaw;
 use crate::CARGO_PKG_VERSION;
 
 use futures::future::FutureExt;
-use opentelemetry::global;
+
 use protobuf::Message;
-use std::collections::HashMap;
+
 use std::net::SocketAddr;
 
 use std::str::FromStr;
@@ -36,7 +33,7 @@ use tokio::sync::oneshot;
 
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::sync::CancellationToken;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
+
 use uuid::Uuid;
 
 pub mod session;
@@ -257,7 +254,7 @@ impl StreamReceiver for SessionMessageReceiver {
                 trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, &find_actor.actor_id);
                 tokio::spawn(session_handle_lookup(
                     Uuid::from_str(&find_actor.message_id).unwrap(),
-                    find_actor.actor_id,
+                    find_actor.actor_id.into_actor_id(),
                     self.session_id,
                     sys.clone(),
                     self.session.clone(),
@@ -267,7 +264,7 @@ impl StreamReceiver for SessionMessageReceiver {
             SessionEvent::RegisterActor(actor) => {
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
                 let node_id = actor.get_node_id();
-                sys.register_actor(actor.actor_id, Some(node_id));
+                sys.register_actor(actor.actor_id.into_actor_id(), Some(node_id));
             }
 
             SessionEvent::NotifyActor(msg) => {
@@ -328,7 +325,7 @@ impl StreamReceiver for SessionMessageReceiver {
                 }
             }
             SessionEvent::Err(e) => {
-                let error = e;
+                let _error = e;
             }
         }
     }
@@ -437,10 +434,12 @@ async fn session_handle_message(
     //
     // let _enter = span.enter();
 
+    let actor_id = msg.actor_id.into_actor_id();
+
     match ctx
         .handle_message(
             msg.handler_type.as_str(),
-            msg.actor_id.clone(),
+            actor_id.clone(),
             msg.message.as_slice(),
         )
         .await
@@ -451,7 +450,7 @@ async fn session_handle_message(
             }
         }
         Err(e) => {
-            error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &msg.actor_id, e);
+            error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &actor_id, e);
             // TODO: Send error
         }
     }
@@ -468,7 +467,7 @@ async fn session_handle_lookup(
     trace!(target: "RemoteSession", "sending actor lookup result: {:?}", node_id);
 
     let response = ActorAddress {
-        actor_id: id,
+        actor_id: id.to_string(),
         node_id: node_id.unwrap_or(0),
         ..ActorAddress::default()
     };
@@ -491,7 +490,7 @@ async fn session_create_actor(
     let actor_id = if msg.actor_id.is_empty() {
         None
     } else {
-        Some(msg.actor_id)
+        Some(msg.actor_id.into_actor_id())
     };
 
     trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor (actor_id={})", ctx.node_tag(), ctx.node_id(), &msg.message_id, actor_id.as_ref().map_or_else(|| "N/A", |s| s));

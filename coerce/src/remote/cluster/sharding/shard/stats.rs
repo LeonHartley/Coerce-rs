@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::ActorId;
+
 use crate::remote::cluster::sharding::coordinator::ShardId;
 
 use crate::remote::cluster::sharding::proto::sharding as proto;
@@ -16,7 +16,7 @@ pub struct GetShardStats;
 pub struct ShardStats {
     pub shard_id: ShardId,
     pub node_id: NodeId,
-    pub entities: HashSet<ActorId>,
+    pub entities: HashSet<String>,
 }
 
 #[async_trait]
@@ -58,7 +58,7 @@ impl Message for GetShardStats {
                 Ok(ShardStats {
                     shard_id: s.shard_id,
                     node_id: s.node_id,
-                    entities: s.entities.into_iter().collect(),
+                    entities: s.entities.into_iter().map(|e| e.to_string()).collect(),
                 })
             },
         )
@@ -68,7 +68,7 @@ impl Message for GetShardStats {
         proto::ShardStats {
             shard_id: res.shard_id,
             node_id: res.node_id,
-            entities: res.entities.into_iter().collect(),
+            entities: res.entities.into_iter().map(|e| e.to_string()).collect(),
             ..Default::default()
         }
         .write_to_bytes()

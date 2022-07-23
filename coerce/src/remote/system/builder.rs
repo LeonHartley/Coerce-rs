@@ -10,7 +10,7 @@ use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
 
 use crate::remote::stream::mediator::StreamMediator;
-use crate::remote::stream::system::SystemTopic;
+
 use crate::remote::system::{AtomicNodeId, NodeId, RemoteActorSystem, RemoteSystemCore};
 
 use futures::TryFutureExt;
@@ -37,7 +37,7 @@ pub struct RemoteActorSystemBuilder {
 
 impl RemoteActorSystemBuilder {
     pub fn new() -> RemoteActorSystemBuilder {
-        let mut mediator = StreamMediator::new();
+        let mediator = StreamMediator::new();
 
         RemoteActorSystemBuilder {
             node_id: None,

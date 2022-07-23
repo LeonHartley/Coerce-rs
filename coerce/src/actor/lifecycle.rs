@@ -5,7 +5,7 @@ use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
-use std::time::Instant;
+
 use tokio::sync::oneshot::Sender;
 
 pub struct Status();
@@ -90,8 +90,8 @@ impl ActorLoop {
 
         while let Some(mut msg) = receiver.recv().await {
             {
-                let msg_type = msg.name();
-                let actor_type = A::type_name();
+                let _msg_type = msg.name();
+                let _actor_type = A::type_name();
                 //
                 // let span = tracing::trace_span!(
                 //     "Actor::handle",

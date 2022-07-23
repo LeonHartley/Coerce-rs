@@ -9,7 +9,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 
 impl Routes for LocalActorRef<ShardingApi> {
-    fn routes(&self, mut router: Router) -> Router {
+    fn routes(&self, router: Router) -> Router {
         router
             .route("/sharding", {
                 let actor_ref = self.clone();

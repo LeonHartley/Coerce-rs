@@ -5,7 +5,6 @@ use std::fmt::{Display, Formatter};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use crate::actor::message::{Message, MessageWrapErr};
 use crate::actor::{ActorId, ActorRefErr};
 use crate::remote::actor::{RemoteRequest, RemoteResponse};
 use crate::remote::net::message::SessionEvent;
@@ -155,7 +154,7 @@ impl RemoteActorSystem {
         handler.pop_request(id).map(|r| r.res_tx)
     }
     pub fn inflight_remote_request_count(&self) -> usize {
-        let mut handler = self.inner.handler_ref.lock();
+        let handler = self.inner.handler_ref.lock();
         handler.inflight_request_count()
     }
 }

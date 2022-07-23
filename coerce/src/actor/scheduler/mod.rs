@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, LocalActorRef, IntoActorId};
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
@@ -28,7 +28,7 @@ impl ActorScheduler {
                 actors: HashMap::new(),
                 remote: None,
             },
-            "ActorScheduler-0".to_string(),
+            "ActorScheduler-0".into_actor_id(),
             ActorType::Anonymous,
             None,
             None,
@@ -222,9 +222,9 @@ pub fn start_actor<A: Actor>(
 where
     A: 'static + Send + Sync,
 {
-    let actor_id_clone = id.clone();
+    let _actor_id_clone = id.clone();
     // let actor_id = actor_id_clone.as_str();
-    let actor_type_name = A::type_name();
+    let _actor_type_name = A::type_name();
 
     // let node_id = if let Some(system) = &system {
     //     if system.is_remote() {
@@ -261,7 +261,6 @@ where
         .await;
     });
 
-    let actor_id = actor_id_clone.as_str();
-    trace!(message = "started actor", actor_id, actor_type_name);
+
     actor_ref
 }

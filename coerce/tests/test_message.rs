@@ -166,8 +166,8 @@ impl Handler<GetStatusRequest> for OtherActor {
 pub async fn test_actor_receiver() {
     let sys = ActorSystem::new();
 
-    let actor_a = NewActor.into_actor(None, &sys).await.expect("NewActor");
-    let actor_b = OtherActor.into_actor(None, &sys).await.expect("OtherActor");
+    let actor_a = NewActor.into_actor::<String>(None, &sys).await.expect("NewActor");
+    let actor_b = OtherActor.into_actor::<String>(None, &sys).await.expect("OtherActor");
 
     let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
 

@@ -12,10 +12,8 @@ extern crate coerce_macros;
 use coerce::actor::system::ActorSystem;
 use coerce::remote::system::builder::RemoteActorHandlerBuilder;
 use coerce::remote::system::RemoteActorSystem;
-use tokio::sync::oneshot::channel;
 
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
-use coerce::remote::heartbeat::OnLeaderChanged;
 
 use util::*;
 

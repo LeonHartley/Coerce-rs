@@ -103,12 +103,5 @@ pub async fn test_remote_api_routes() {
         .start(),
     );
 
-    let sharded_actor = sharding.get("leon".to_string(), Some(TestActorRecipe));
-    let _res = sharded_actor
-        .send(SetStatusRequest {
-            status: TestActorStatus::Active,
-        })
-        .await;
-
-    // ctrl_c().await;
+    // TODO: actual api tests..
 }

@@ -1,11 +1,10 @@
-use chrono::Local;
 use clap::{arg, Command};
 use coerce::remote::system::NodeId;
 use coerce_sharded_chat_example::app::{ShardedChat, ShardedChatConfig, ShardedChatPersistence};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
 use std::env;
-use std::io::Write;
+
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;

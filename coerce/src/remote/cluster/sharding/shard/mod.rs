@@ -1,7 +1,7 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::scheduler::timer::{Timer, TimerTick};
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef};
+use crate::actor::message::{Envelope, Handler, MessageUnwrapErr, MessageWrapErr};
+
+use crate::actor::{ActorId, ActorRefErr, BoxedActorRef, IntoActorId};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::PersistErr;
@@ -12,16 +12,14 @@ use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntit
 use crate::remote::cluster::sharding::host::{PassivateEntity, RemoveEntity, StartEntity};
 use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::handler::ActorHandler;
-use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::ClientResult;
+
 use crate::remote::system::NodeId;
 use chrono::{DateTime, Utc};
 use protobuf::Message as ProtoMessage;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+
 use tokio::sync::oneshot;
-use tokio::sync::oneshot::Sender;
 
 pub(crate) mod passivation;
 pub(crate) mod stats;
@@ -32,7 +30,7 @@ pub struct Shard {
     persistent_entities: bool,
     recovered_snapshot: bool,
     entity_passivation: bool,
-    entities: HashMap<Arc<String>, Entity>,
+    entities: HashMap<ActorId, Entity>,
 }
 
 impl Shard {
@@ -79,7 +77,7 @@ impl EntityState {
 
 #[derive(Clone)]
 struct Entity {
-    actor_id: Arc<String>,
+    actor_id: ActorId,
     recipe: Arc<Vec<u8>>,
     status: EntityState,
     last_request: DateTime<Utc>,
@@ -94,7 +92,7 @@ struct ShardStateSnapshot {
 #[async_trait]
 impl PersistentActor for Shard {
     fn persistence_key(&self, ctx: &ActorContext) -> String {
-        ctx.id().to_owned()
+        ctx.id().to_string()
     }
 
     fn configure(types: &mut JournalTypes<Self>) {
@@ -125,7 +123,7 @@ impl PersistentActor for Shard {
 impl Shard {
     async fn start_entity(
         &mut self,
-        actor_id: Arc<ActorId>,
+        actor_id: ActorId,
         recipe: Arc<Vec<u8>>,
         ctx: &mut ActorContext,
         is_recovering: bool,
@@ -142,7 +140,7 @@ impl Shard {
         let entity = self
             .handler
             .create(
-                Some(actor_id.to_string()),
+                Some(actor_id.clone()),
                 &start_entity.recipe,
                 Some(ctx),
                 None,
@@ -243,7 +241,7 @@ impl Handler<EntityRequest> for Shard {
             );
 
             result_channel.map(|m| {
-                let actor_id = actor_id.to_string();
+                let actor_id = actor_id;
                 m.send(Err(ActorRefErr::NotSupported {
                     actor_id,
                     message_type,
@@ -259,7 +257,6 @@ impl Handler<EntityRequest> for Shard {
         match actor {
             Ok(actor_ref) => {
                 let message = message.message;
-                info!("calling handle_direct");
                 tokio::spawn(async move {
                     handler
                         .handle_direct(&actor_ref, &message, result_channel)
@@ -267,7 +264,6 @@ impl Handler<EntityRequest> for Shard {
                 });
             }
             Err(e) => {
-                warn!("error while ");
                 result_channel.map(|c| c.send(Err(e)));
             }
         }
@@ -277,11 +273,11 @@ impl Handler<EntityRequest> for Shard {
 impl Shard {
     async fn get_or_create(
         &mut self,
-        actor_id: Arc<ActorId>,
+        actor_id: ActorId,
         recipe: Option<Arc<Vec<u8>>>,
         ctx: &mut ActorContext,
     ) -> Result<BoxedActorRef, ActorRefErr> {
-        let mut entity = self.entities.get_mut(&actor_id);
+        let entity = self.entities.get_mut(&actor_id);
 
         let mut recipe = recipe;
         if let Some(entity) = entity {
@@ -301,7 +297,7 @@ impl Shard {
                 Ok(actor) => Ok(actor),
                 Err(e) => Err(e),
             },
-            None => Err(ActorRefErr::NotFound(actor_id.to_string())),
+            None => Err(ActorRefErr::NotFound(actor_id)),
         }
     }
 }
@@ -451,7 +447,7 @@ impl Snapshot for ShardStateSnapshot {
                         .entities
                         .into_iter()
                         .map(|e| Entity {
-                            actor_id: Arc::new(e.actor_id),
+                            actor_id: e.actor_id.into_actor_id(),
                             recipe: Arc::new(e.recipe),
                             status: match e.state {
                                 proto::EntityState::IDLE | proto::EntityState::ACTIVE => {
