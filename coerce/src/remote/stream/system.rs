@@ -10,7 +10,7 @@ use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
 use crate::remote::net::proto::network as proto;
 use crate::remote::system::NodeId;
-use protobuf::{Message, ProtobufEnum, ProtobufError};
+use protobuf::{Enum, Error, Message};
 
 pub struct SystemTopic;
 
@@ -67,7 +67,7 @@ impl From<NodeRemovedEvent> for SystemEvent {
 }
 impl From<LeaderChangedEvent> for SystemEvent {
     fn from(message: LeaderChangedEvent) -> Self {
-        SystemEvent::Cluster(ClusterEvent::LeaderChanged(message.get_node_id()))
+        SystemEvent::Cluster(ClusterEvent::LeaderChanged(message.node_id))
     }
 }
 
@@ -139,7 +139,7 @@ fn get_proto_node(node: &RemoteNode) -> proto::RemoteNode {
     .into()
 }
 
-fn write_event(system_event: SysEvent, message: Result<Vec<u8>, ProtobufError>) -> Option<Vec<u8>> {
+fn write_event(system_event: SysEvent, message: Result<Vec<u8>, Error>) -> Option<Vec<u8>> {
     let o = match message {
         Ok(mut message) => {
             message.insert(0, system_event as u8);

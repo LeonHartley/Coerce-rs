@@ -10,7 +10,7 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce::actor::system::ActorSystem;
-use coerce::remote::system::builder::RemoteActorHandlerBuilder;
+use coerce::remote::system::builder::RemoteSystemConfigBuilder;
 use coerce::remote::system::RemoteActorSystem;
 
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
@@ -157,7 +157,7 @@ pub async fn test_remote_cluster_workers() {
     assert_eq!(nodes_c_in_b, nodes_c.len());
 }
 
-fn build_handlers(handlers: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
+fn build_handlers(handlers: &mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder {
     handlers
         .with_actor::<TestActorFactory>(TestActorFactory {})
         .with_actor::<EchoActorFactory>(EchoActorFactory {})

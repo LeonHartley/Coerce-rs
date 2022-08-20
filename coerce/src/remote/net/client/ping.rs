@@ -14,7 +14,7 @@ use crate::remote::cluster::discovery::Forget;
 use crate::remote::heartbeat::{NodePing, PingResult};
 use crate::remote::net::client::{ClientState, RemoteClient};
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::{Ping, Pong};
+use crate::remote::net::proto::network::{PingEvent, PongEvent};
 
 #[derive(Clone)]
 pub struct PingTick;
@@ -60,9 +60,9 @@ impl Handler<PingTick> for RemoteClient {
         let message_id = Uuid::new_v4();
         remote.push_request(message_id, res_tx);
 
-        let ping_event = SessionEvent::Ping(Ping {
+        let ping_event = SessionEvent::Ping(PingEvent {
             message_id: message_id.to_string(),
-            ..Ping::default()
+            ..PingEvent::default()
         });
 
         let ping_start = Instant::now();
@@ -76,7 +76,7 @@ impl Handler<PingTick> for RemoteClient {
                         Ok(pong) => match pong {
                             RemoteResponse::Ok(pong_bytes) => {
                                 let ping_end = ping_start.elapsed();
-                                let pong = Pong::parse_from_bytes(&pong_bytes).unwrap();
+                                let pong = PongEvent::parse_from_bytes(&pong_bytes).unwrap();
 
                                 PingResult::Ok(pong, ping_end, Utc::now())
                             }

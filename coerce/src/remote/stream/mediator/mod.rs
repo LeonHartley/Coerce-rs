@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, LocalActorRef};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::StreamPublish;
+use crate::remote::net::proto::network::StreamPublishEvent;
 use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::{
     Receive, Subscription, Topic, TopicEmitter, TopicSubscriberStore,
@@ -198,11 +198,11 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
 
                     tokio::spawn(async move {
                         let message = bytes;
-                        let publish = Arc::new(StreamPublish {
+                        let publish = Arc::new(StreamPublishEvent {
                             topic,
                             message,
                             key,
-                            ..StreamPublish::default()
+                            ..Default::default()
                         });
 
                         let node_count = nodes.len();
@@ -224,9 +224,9 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
     }
 }
 
-impl From<Arc<StreamPublish>> for PublishRaw {
-    fn from(s: Arc<StreamPublish>) -> Self {
-        match Arc::<StreamPublish>::try_unwrap(s) {
+impl From<Arc<StreamPublishEvent>> for PublishRaw {
+    fn from(s: Arc<StreamPublishEvent>) -> Self {
+        match Arc::<StreamPublishEvent>::try_unwrap(s) {
             Ok(p) => {
                 let topic = p.topic;
                 let key = p.key;

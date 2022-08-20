@@ -17,6 +17,7 @@ use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
 use crate::remote::net::proto::network as proto;
 use crate::remote::net::{receive_loop, StreamData};
 
+use protobuf::EnumOrUnknown;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
@@ -171,7 +172,7 @@ impl Handler<BeginHandshake> for RemoteClient {
                         node_id,
                         node_tag,
                         token: vec![],
-                        client_type: self.client_type.into(),
+                        client_type: EnumOrUnknown::new(self.client_type.into()),
                         trace_id: message.request_id.to_string(),
                         nodes: message
                             .seed_nodes

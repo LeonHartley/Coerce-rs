@@ -2,12 +2,12 @@ pub mod actor;
 
 use crate::actor::{Echo, EchoActor};
 use coerce::actor::system::ActorSystem;
+use coerce::actor::ToActorId;
 use coerce::remote::system::RemoteActorSystem;
 use opentelemetry::global;
 use opentelemetry::sdk::propagation::TraceContextPropagator;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use coerce::actor::ToActorId;
 
 #[macro_use]
 extern crate serde;

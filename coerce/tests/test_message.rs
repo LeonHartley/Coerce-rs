@@ -20,7 +20,7 @@ pub async fn test_actor_req_res() {
         .await
         .unwrap();
 
-    let response = actor_ref.send(GetStatusRequest()).await;
+    let response = actor_ref.send(GetStatusRequest).await;
 
     assert_eq!(response, Ok(GetStatusResponse::None));
 }
@@ -46,14 +46,14 @@ pub async fn test_actor_req_res_mutation() {
         .await
         .unwrap();
 
-    let initial_status = actor_ref.send(GetStatusRequest()).await;
+    let initial_status = actor_ref.send(GetStatusRequest).await;
     let _ = actor_ref
         .send(SetStatusRequest {
             status: TestActorStatus::Active,
         })
         .await;
 
-    let current_status = actor_ref.send(GetStatusRequest()).await;
+    let current_status = actor_ref.send(GetStatusRequest).await;
 
     let _ = actor_ref
         .send(SetStatusRequest {
@@ -61,7 +61,7 @@ pub async fn test_actor_req_res_mutation() {
         })
         .await;
 
-    let inactive_status = actor_ref.send(GetStatusRequest()).await;
+    let inactive_status = actor_ref.send(GetStatusRequest).await;
 
     assert_eq!(initial_status, Ok(GetStatusResponse::None));
 
@@ -83,7 +83,7 @@ pub async fn test_actor_exec_mutation() {
         .await
         .unwrap();
 
-    let initial_status = actor_ref.send(GetStatusRequest()).await;
+    let initial_status = actor_ref.send(GetStatusRequest).await;
 
     actor_ref
         .exec(|mut actor| {
@@ -92,7 +92,7 @@ pub async fn test_actor_exec_mutation() {
         .await
         .expect("exec");
 
-    let current_status = actor_ref.send(GetStatusRequest()).await;
+    let current_status = actor_ref.send(GetStatusRequest).await;
     assert_eq!(initial_status, Ok(GetStatusResponse::None));
     assert_eq!(
         current_status,
@@ -166,13 +166,19 @@ impl Handler<GetStatusRequest> for OtherActor {
 pub async fn test_actor_receiver() {
     let sys = ActorSystem::new();
 
-    let actor_a = NewActor.into_actor::<String>(None, &sys).await.expect("NewActor");
-    let actor_b = OtherActor.into_actor::<String>(None, &sys).await.expect("OtherActor");
+    let actor_a = NewActor
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("NewActor");
+    let actor_b = OtherActor
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("OtherActor");
 
     let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
 
     let results =
-        futures::future::join_all(receivers.iter_mut().map(|r| r.send(GetStatusRequest())))
+        futures::future::join_all(receivers.iter_mut().map(|r| r.send(GetStatusRequest)))
             .await
             .into_iter()
             .map(|s| s.unwrap())

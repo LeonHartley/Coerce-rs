@@ -32,7 +32,7 @@ impl RedisStorageProvider {
     pub async fn connect(config: RedisStorageConfig) -> RedisStorageProvider {
         let config = Arc::new(config);
         let address = SocketAddr::from_str(&config.address).expect("invalid redis address");
-        let redis = client::paired_connect(address)
+        let redis = client::paired_connect(address.to_string())
             .await
             .expect("redis connect");
 

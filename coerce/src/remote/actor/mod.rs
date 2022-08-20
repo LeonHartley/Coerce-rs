@@ -48,6 +48,7 @@ pub struct RemoteSystemConfig {
     message_handlers: HashMap<String, BoxedMessageHandler>,
     actor_handlers: HashMap<String, BoxedActorHandler>,
     heartbeat_config: HeartbeatConfig,
+    server_auth_token: Option<String>,
 }
 
 impl RemoteSystemConfig {
@@ -57,6 +58,8 @@ impl RemoteSystemConfig {
         handler_types: HashMap<TypeId, String>,
         message_handlers: HashMap<String, BoxedMessageHandler>,
         actor_handlers: HashMap<String, BoxedActorHandler>,
+        heartbeat_config: HeartbeatConfig,
+        server_auth_token: Option<String>,
     ) -> RemoteSystemConfig {
         RemoteSystemConfig {
             node_tag,
@@ -64,7 +67,8 @@ impl RemoteSystemConfig {
             handler_types,
             message_handlers,
             actor_handlers,
-            heartbeat_config: HeartbeatConfig::default(),
+            heartbeat_config,
+            server_auth_token,
         }
     }
 

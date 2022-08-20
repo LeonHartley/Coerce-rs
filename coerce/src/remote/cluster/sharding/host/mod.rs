@@ -2,7 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
 };
-use crate::actor::{Actor, ActorId, ActorRef, IntoActor, LocalActorRef, IntoActorId, ToActorId};
+use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef, ToActorId};
 use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
 use crate::remote::cluster::sharding::host::request::{handle_request, EntityRequest};

@@ -92,10 +92,14 @@ pub async fn test_remote_actor_deploy_remotely() {
     };
 
     let deployment_result = remote_b
-        .deploy_actor::<TestActorFactory>(Some(actor_id.to_actor_id()), recipe, Some(remote.node_id()))
+        .deploy_actor::<TestActorFactory>(
+            Some(actor_id.to_actor_id()),
+            recipe,
+            Some(remote.node_id()),
+        )
         .await;
 
-    assert_eq!(deployment_result.is_ok(), true)
+    assert_eq!(deployment_result.is_ok(), true);
 }
 
 #[tokio::test]

@@ -20,7 +20,10 @@ struct TestActor {
 #[async_trait]
 impl Actor for TestActor {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        let child = ctx.spawn("child".into_actor_id(), ActorChild {}).await.unwrap();
+        let child = ctx
+            .spawn("child".into_actor_id(), ActorChild {})
+            .await
+            .unwrap();
         let _ = child.stop().await;
     }
 

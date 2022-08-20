@@ -35,7 +35,7 @@ enum ClientType {
   Worker = 1;
 }
 
-message Identify {
+message IdentifyEvent {
   uint64 source_node_id = 1;
 
   string source_node_tag = 2;
@@ -52,11 +52,13 @@ message NodeIdentity {
 
   string application_version = 4;
 
-  google.protobuf.Timestamp node_started_at = 5;
+  string protocol_version = 5;
 
-  repeated RemoteNode peers = 6;
+  google.protobuf.Timestamp node_started_at = 6;
 
-  SystemCapabilities capabilities = 7;
+  repeated RemoteNode peers = 7;
+
+  SystemCapabilities capabilities = 8;
 }
 
 message SystemCapabilities {
@@ -93,19 +95,19 @@ message ClientErr {
   string trace_id = 3;
 }
 
-message Ping {
+message PingEvent {
   string message_id = 1;
 
   string trace_id = 2;
 }
 
-message Pong {
+message PongEvent {
   string message_id = 1;
 
   string trace_id = 2;
 }
 
-message CreateActor {
+message CreateActorEvent {
   string message_id = 1;
 
   string actor_id = 2;
@@ -117,7 +119,7 @@ message CreateActor {
   string trace_id = 5;
 }
 
-message FindActor {
+message FindActorEvent {
   string message_id = 1;
 
   string actor_id = 2;
@@ -145,6 +147,8 @@ message MessageRequest {
   string trace_id = 5;
 
   bool requires_response = 6;
+
+  uint64 origin_node_id = 7;
 }
 
 message SessionHandshake {
@@ -161,7 +165,7 @@ message SessionHandshake {
   string trace_id = 6;
 }
 
-message StreamPublish {
+message StreamPublishEvent {
   string topic = 1;
 
   string key = 2;
@@ -203,6 +207,18 @@ message RaftRequest {
   bytes payload = 3;
 }
 
+enum MessageUnwrapErr {
+  UnknownUnwrapErr = 0;
+  UnwrapUnsupported = 1;
+  DeserializationErr = 2;
+}
+
+enum MessageWrapErr {
+  UnknownWrapErr = 0;
+  WrapUnsupported = 1;
+  SerializationErr = 2;
+}
+
 message ActorRefErr {
   enum ErrorType {
     ActorUnavailable = 0;
@@ -227,5 +243,9 @@ message ActorRefErr {
 
   string actor_type = 4;
 
-  string message = 5;
+  uint64 time_taken_millis = 5;
+
+  MessageWrapErr serialization_error = 6;
+
+  MessageUnwrapErr deserialization_error = 7;
 }

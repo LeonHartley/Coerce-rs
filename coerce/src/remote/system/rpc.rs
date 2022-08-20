@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::actor::{ActorId, ActorRefErr};
 use crate::remote::actor::{RemoteRequest, RemoteResponse};
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::ClientResult;
+use crate::remote::net::proto::network::{ClientErr, ClientResult};
 use crate::remote::net::StreamData;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
@@ -113,6 +113,34 @@ impl RemoteActorSystem {
             let result = SessionEvent::Result(ClientResult {
                 message_id,
                 result,
+                ..Default::default()
+            });
+
+            if let Err(e) = self.node_rpc_raw(request_id, result, node_id).await {
+                error!(
+                    "error whilst sending result to target node (node_id={}, request_id={}) error: {}",
+                    &node_id, &request_id, &e
+                );
+            }
+        }
+    }
+
+    pub async fn notify_rpc_err(&self, request_id: Uuid, error: ActorRefErr, node_id: NodeId) {
+        info!(
+            "notifying error, e={}, node_id={}, request_id={}",
+            &error, node_id, &request_id
+        );
+        if node_id == self.node_id() {
+            let result_sender = self.pop_request(request_id);
+            if let Some(result_sender) = result_sender {
+                let _ = result_sender.send(RemoteResponse::Err(error));
+            }
+        } else {
+            let message_id = request_id.to_string();
+
+            let result = SessionEvent::Err(ClientErr {
+                message_id,
+                error: Some(error.into()).into(),
                 ..Default::default()
             });
 

@@ -150,7 +150,7 @@ impl RemoteClientRef {
         }
 
         Err(ActorRefErr::Timeout {
-            time_taken_millis: start.elapsed().as_millis(),
+            time_taken_millis: start.elapsed().as_millis() as u64,
         })
     }
 
@@ -181,7 +181,7 @@ async fn await_timeout<T>(timeout: Duration, rx: Receiver<T>) -> Result<T, Actor
             Err(_) => Err(ActorRefErr::ResultChannelClosed),
         },
         Err(_) => Err(ActorRefErr::Timeout {
-            time_taken_millis: now.elapsed().as_millis(),
+            time_taken_millis: now.elapsed().as_millis() as u64,
         }),
     }
 }

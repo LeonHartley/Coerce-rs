@@ -60,7 +60,7 @@ pub async fn test_remote_handle_from_json() {
         .build()
         .await;
 
-    let initial_status = actor.send(GetStatusRequest()).await;
+    let initial_status = actor.send(GetStatusRequest).await;
 
     let res = remote
         .handle_message(
@@ -70,7 +70,7 @@ pub async fn test_remote_handle_from_json() {
         )
         .await;
 
-    let current_status = actor.send(GetStatusRequest()).await;
+    let current_status = actor.send(GetStatusRequest).await;
 
     assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
 

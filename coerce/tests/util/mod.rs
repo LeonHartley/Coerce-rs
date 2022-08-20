@@ -5,6 +5,9 @@ use coerce_macros::JsonMessage;
 
 use serde::Serialize;
 
+use coerce::actor::system::ActorSystem;
+use coerce::remote::system::builder::RemoteSystemConfigBuilder;
+use coerce::remote::system::{NodeId, RemoteActorSystem};
 use std::str::FromStr;
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -17,7 +20,7 @@ pub enum TestActorStatus {
 
 #[derive(JsonMessage, Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 #[result("GetStatusResponse")]
-pub struct GetStatusRequest();
+pub struct GetStatusRequest;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub enum GetStatusResponse {
@@ -116,6 +119,33 @@ impl Handler<GetCounterRequest> for EchoActor {
 
 lazy_static::lazy_static! {
     static ref LOG_LEVEL: String = std::env::var("LOG_LEVEL").map_or(String::from("OFF"), |s| s);
+}
+
+pub async fn create_cluster_node<F>(
+    node_id: NodeId,
+    listen_addr: &str,
+    seed: Option<&str>,
+    handlers: F,
+) -> RemoteActorSystem
+where
+    F: 'static + (FnMut(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
+{
+    let remote = RemoteActorSystem::builder()
+        .with_actor_system(ActorSystem::new())
+        .with_id(node_id)
+        .with_handlers(handlers)
+        .build()
+        .await;
+
+    let mut builder = remote.clone().cluster_worker().listen_addr(listen_addr);
+
+    if let Some(seed) = seed {
+        builder = builder.with_seed_addr(seed);
+    }
+
+    builder.start().await;
+
+    remote
 }
 
 pub fn create_trace_logger() {

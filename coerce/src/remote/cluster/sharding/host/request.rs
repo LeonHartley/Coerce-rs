@@ -11,7 +11,7 @@ use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use crate::remote::cluster::sharding::coordinator::ShardId;
-use protobuf::{Message as ProtoMessage, SingularPtrField};
+use protobuf::Message as ProtoMessage;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::oneshot::{channel, Sender};
@@ -199,9 +199,9 @@ impl Message for RemoteEntityRequest {
             message_type: self.message_type.clone(),
             message: self.message.clone(),
             recipe: self.recipe.clone().map_or_else(
-                || SingularPtrField::none(),
+                || None.into(),
                 |r| {
-                    Some(proto::RemoteEntityRequest_Recipe {
+                    Some(proto::remote_entity_request::Recipe {
                         recipe: r,
                         ..Default::default()
                     })

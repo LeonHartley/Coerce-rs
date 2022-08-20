@@ -7,10 +7,10 @@ use crate::remote::cluster::sharding::coordinator::{
 };
 use crate::remote::cluster::sharding::host::ShardHost;
 
+use crate::actor::IntoActorId;
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
-use crate::actor::IntoActorId;
 
 pub struct NodeDiscovered(pub Arc<RemoteNode>);
 

@@ -154,6 +154,7 @@ pub enum EnvelopeType {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum MessageWrapErr {
+    Unknown,
     NotTransmittable,
     SerializationErr,
 }
@@ -163,6 +164,7 @@ impl Display for MessageWrapErr {
         match &self {
             MessageWrapErr::NotTransmittable => write!(f, "Message serialisation not supported, messages must override Message::as_remote_envelop and Message::write_remote_result"),
             MessageWrapErr::SerializationErr => write!(f, "Message failed to serialise"),
+            MessageWrapErr::Unknown => write!(f, "Message failed to serialise, unknown error"),
         }
     }
 }
@@ -171,6 +173,7 @@ impl Error for MessageWrapErr {}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum MessageUnwrapErr {
+    Unknown,
     NotTransmittable,
     DeserializationErr,
 }
@@ -180,6 +183,7 @@ impl Display for MessageUnwrapErr {
         match &self {
             MessageUnwrapErr::NotTransmittable => write!(f, "Message deserialisation not supported, messages must override Message::as_remote_envelope, Message::from_remote_envelope, Message::read_remote_result, and Message::write_remote_result"),
             MessageUnwrapErr::DeserializationErr => write!(f, "Message failed to deserialise"),
+            MessageUnwrapErr::Unknown => write!(f, "Message failed to deserialise, unknown error"),
         }
     }
 }

@@ -1,7 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Envelope, Handler, MessageUnwrapErr, MessageWrapErr};
-
-use crate::actor::{ActorId, ActorRefErr, BoxedActorRef, IntoActorId};
+use crate::actor::{ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, IntoActorId};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::PersistErr;
@@ -88,6 +87,8 @@ struct ShardStateSnapshot {
     node_id: NodeId,
     entities: Vec<Entity>,
 }
+
+struct GetEntities {}
 
 #[async_trait]
 impl PersistentActor for Shard {
@@ -282,11 +283,13 @@ impl Shard {
         let mut recipe = recipe;
         if let Some(entity) = entity {
             if let EntityState::Active(boxed_actor_ref) = &entity.status {
-                return Ok(boxed_actor_ref.clone());
-            } else if recipe.is_none() {
-                // No actor recipe tied to the request but we've seen this actor before, use the recovered recipe
-                recipe = Some(entity.recipe.clone());
+                if boxed_actor_ref.is_valid() {
+                    return Ok(boxed_actor_ref.clone());
+                }
             }
+
+            // we've seen this actor before, let's create it based on the original recipe.
+            recipe = Some(entity.recipe.clone());
         }
 
         match recipe {
@@ -338,9 +341,13 @@ impl Handler<RemoteEntityRequest> for Shard {
                 }
                 Err(_e) => {
                     error!("remote entity request failed, result channel closed");
+                    system
+                        .notify_rpc_err(request_id, ActorRefErr::ResultChannelClosed, origin_node)
+                        .await;
                 }
                 Ok(Err(e)) => {
                     error!("remote entity request failed, err={}", &e);
+                    system.notify_rpc_err(request_id, e, origin_node).await;
                 }
             }
         });
@@ -417,13 +424,14 @@ impl Snapshot for ShardStateSnapshot {
             entities: self
                 .entities
                 .into_iter()
-                .map(|e| proto::ShardStateSnapshot_Entity {
+                .map(|e| proto::shard_state_snapshot::Entity {
                     actor_id: e.actor_id.to_string(),
                     recipe: e.recipe.to_vec(),
                     state: match e.status {
                         EntityState::Active(_) | EntityState::Idle => proto::EntityState::IDLE,
                         EntityState::Passivated => proto::EntityState::PASSIVATED,
-                    },
+                    }
+                    .into(),
                     ..Default::default()
                 })
                 .collect(),
@@ -449,7 +457,7 @@ impl Snapshot for ShardStateSnapshot {
                         .map(|e| Entity {
                             actor_id: e.actor_id.into_actor_id(),
                             recipe: Arc::new(e.recipe),
-                            status: match e.state {
+                            status: match e.state.unwrap() {
                                 proto::EntityState::IDLE | proto::EntityState::ACTIVE => {
                                     EntityState::Idle
                                 }

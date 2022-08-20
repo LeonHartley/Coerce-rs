@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, LocalActorRef, IntoActorId};
+use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, IntoActorId, LocalActorRef};
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
@@ -260,7 +260,6 @@ where
         )
         .await;
     });
-
 
     actor_ref
 }

@@ -1,5 +1,7 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, LocalActorRef, IntoActorId};
+use crate::actor::{
+    Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,
+};
 
 use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
 use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
@@ -11,7 +13,7 @@ use crate::remote::cluster::sharding::host::{
 };
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
 use crate::remote::cluster::sharding::shard::Shard;
-use crate::remote::system::builder::RemoteActorHandlerBuilder;
+use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -49,13 +51,17 @@ impl<A: ActorFactory> Sharding<A> {
         system: RemoteActorSystem,
         allocator: Option<Box<dyn ShardAllocator>>,
     ) -> Self {
-        let coordinator_spawner_actor_id = Some(format!(
-            "ShardCoordinator-{}-Spawner-{}",
-            &shard_entity,
-            system.node_id()
-        ).into_actor_id());
+        let coordinator_spawner_actor_id = Some(
+            format!(
+                "ShardCoordinator-{}-Spawner-{}",
+                &shard_entity,
+                system.node_id()
+            )
+            .into_actor_id(),
+        );
 
-        let host_actor_id = Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()).into_actor_id());
+        let host_actor_id =
+            Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()).into_actor_id());
 
         let actor_handler = match system
             .config()
@@ -177,7 +183,7 @@ impl<A: Actor> Sharded<A> {
     }
 }
 
-pub fn sharding(builder: &mut RemoteActorHandlerBuilder) -> &mut RemoteActorHandlerBuilder {
+pub fn sharding(builder: &mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder {
     builder
         .with_handler::<ShardCoordinator, AllocateShard>("ShardCoordinator.AllocateShard")
         .with_handler::<ShardCoordinator, GetShardingStats>("ShardCoordinator.GetShardingStats")

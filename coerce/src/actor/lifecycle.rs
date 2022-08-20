@@ -1,6 +1,8 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorStatus};
-use crate::actor::message::{Handler, Message, MessageHandler};
+use crate::actor::message::{
+    Envelope, EnvelopeType, Handler, Message, MessageHandler, MessageUnwrapErr, MessageWrapErr,
+};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;

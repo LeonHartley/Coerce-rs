@@ -61,7 +61,10 @@ where
         // let _enter = span.enter();
 
         let id = Uuid::new_v4();
+
         let request = self.create_request(msg, String::new(), id, false);
+
+        // TODO: `notify` could propagate errors?
 
         match request {
             Some(request) => {
@@ -105,10 +108,7 @@ where
                         error!(target: "RemoteActorRef", "failed to receive result, e={}", e);
                         Err(ActorRefErr::ResultChannelClosed)
                     }
-                    Ok(RemoteResponse::Err(_e)) => {
-                        // TODO: return custom error
-                        Err(ActorUnavailable)
-                    }
+                    Ok(RemoteResponse::Err(e)) => Err(e),
                 }
             }
             None => {
@@ -140,6 +140,7 @@ where
         let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
             let handler_type = header.handler_type;
             let actor_id = header.actor_id.to_string();
+            let origin_node_id = self.system.node_id();
             SessionEvent::NotifyActor(MessageRequest {
                 message_id: id.to_string(),
                 handler_type,
@@ -147,7 +148,8 @@ where
                 trace_id,
                 message,
                 requires_response,
-                ..MessageRequest::default()
+                origin_node_id,
+                ..Default::default()
             })
         });
 

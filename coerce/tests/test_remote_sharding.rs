@@ -236,7 +236,7 @@ pub async fn test_shard_host_actor_request() {
         .await;
 
     let res = sharded_actor
-        .send(GetStatusRequest())
+        .send(GetStatusRequest)
         .await
         .expect("get status");
 

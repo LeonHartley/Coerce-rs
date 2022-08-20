@@ -69,7 +69,10 @@ impl Handler<NewSession> for RemoteSessionStore {
         let session = message.0;
 
         let session_actor = ctx
-            .spawn(format!("RemoteSession-{}", session_id.to_string()).into_actor_id(), session)
+            .spawn(
+                format!("RemoteSession-{}", session_id.to_string()).into_actor_id(),
+                session,
+            )
             .await
             .expect("unable to create session actor");
 

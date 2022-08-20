@@ -12,6 +12,7 @@ extern crate metrics;
 
 #[macro_use]
 extern crate tracing;
+extern crate core;
 
 pub mod actor;
 pub mod persistent;

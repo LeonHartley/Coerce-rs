@@ -70,17 +70,17 @@
 //         RemoteActorRef::<TestActor>::new(actor.id.clone(), node_id, remote_2).into();
 //
 //     for _i in 1..=10 as i32 {
-//         let _initial_status = remote_actor.send(GetStatusRequest()).await;
+//         let _initial_status = remote_actor.send(GetStatusRequest).await;
 //     }
 //
-//     let initial_status = remote_actor.send(GetStatusRequest()).await;
+//     let initial_status = remote_actor.send(GetStatusRequest).await;
 //     let _ = remote_actor
 //         .send(SetStatusRequest {
 //             status: TestActorStatus::Active,
 //         })
 //         .await;
 //
-//     let current_status = remote_actor.send(GetStatusRequest()).await;
+//     let current_status = remote_actor.send(GetStatusRequest).await;
 //
 //     let _ = remote_actor
 //         .send(SetStatusRequest {
@@ -88,7 +88,7 @@
 //         })
 //         .await;
 //
-//     let inactive_status = remote_actor.send(GetStatusRequest()).await;
+//     let inactive_status = remote_actor.send(GetStatusRequest).await;
 //
 //     assert_eq!(initial_status, Ok(GetStatusResponse::None));
 //

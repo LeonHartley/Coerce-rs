@@ -4,10 +4,8 @@ use crate::actor::scheduler::timer::{Timer, TimerTick};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::actor::message::SetRemote;
-
 use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
-
-use crate::remote::net::proto::network::Pong;
+use crate::remote::net::proto::network::PongEvent;
 use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::ClusterEvent::LeaderChanged;
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
@@ -26,7 +24,6 @@ use std::time::{Duration, Instant};
 use tokio::sync::oneshot::Sender;
 
 pub struct Heartbeat {
-    config: Arc<HeartbeatConfig>,
     system: Option<RemoteActorSystem>,
     heartbeat_timer: Option<Timer>,
     last_heartbeat: Option<DateTime<Utc>>,
@@ -42,14 +39,8 @@ pub struct HeartbeatConfig {
 }
 
 impl Heartbeat {
-    pub async fn start(
-        node_tag: &str,
-        config: HeartbeatConfig,
-        sys: &ActorSystem,
-    ) -> LocalActorRef<Heartbeat> {
-        let config = Arc::new(config);
+    pub async fn start(node_tag: &str, sys: &ActorSystem) -> LocalActorRef<Heartbeat> {
         Heartbeat {
-            config,
             system: None,
             heartbeat_timer: None,
             last_heartbeat: None,
@@ -65,19 +56,21 @@ impl Heartbeat {
 #[async_trait]
 impl Handler<SetRemote> for Heartbeat {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
-        self.system = Some(message.0);
-
+        let system = message.0;
+        let heartbeat_config = system.config().heartbeat_config();
         debug!(
             "starting heartbeat timer (tick duration={} millis), node_id={}",
-            &self.config.interval.as_millis(),
-            self.system.as_ref().unwrap().node_id()
+            heartbeat_config.interval.as_millis(),
+            system.node_id()
         );
 
         self.heartbeat_timer = Some(Timer::start(
             self.actor_ref(ctx),
-            self.config.interval,
+            heartbeat_config.interval,
             HeartbeatTick,
         ));
+
+        self.system = Some(system);
     }
 }
 
@@ -103,7 +96,7 @@ impl TimerTick for HeartbeatTick {}
 
 #[derive(Clone)]
 pub enum PingResult {
-    Ok(Pong, Duration, DateTime<Utc>),
+    Ok(PongEvent, Duration, DateTime<Utc>),
     Timeout,
     Disconnected,
     Err,
@@ -187,7 +180,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 current_node,
                 node,
                 self.node_pings.get(&node_id).map(|r| r.1.clone()),
-                &self.config,
+                system.config().heartbeat_config(),
             ));
         }
 

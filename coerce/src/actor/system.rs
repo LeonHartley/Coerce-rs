@@ -1,5 +1,7 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, LocalActorRef, IntoActorId};
+use crate::actor::{
+    new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, IntoActorId, LocalActorRef,
+};
 use crate::remote::system::RemoteActorSystem;
 
 use crate::persistent::{ConfigurePersistence, Persistence};

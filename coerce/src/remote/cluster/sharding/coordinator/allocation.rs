@@ -7,14 +7,12 @@ use crate::remote::cluster::sharding::host::{
     ShardAllocated, ShardAllocator, ShardHost, ShardReallocating,
 };
 use crate::remote::cluster::sharding::proto::sharding as proto;
-use crate::remote::cluster::sharding::proto::sharding::{
-    AllocateShardResult_AllocateShardErr, AllocateShardResult_Type,
-};
 use crate::remote::system::NodeId;
 use futures::future::join_all;
 use protobuf::Message as ProtoMessage;
 use std::collections::hash_map::{DefaultHasher, Entry, VacantEntry};
 
+use crate::remote::cluster::sharding::proto::sharding::allocate_shard_result;
 use std::hash::{Hash, Hasher};
 
 pub struct AllocateShard {
@@ -217,22 +215,26 @@ impl Message for AllocateShard {
     fn read_remote_result(buffer: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
         let result = proto::AllocateShardResult::parse_from_bytes(&buffer);
         let result = match result {
-            Ok(result) => match result.result_type {
-                AllocateShardResult_Type::ALLOCATED => {
+            Ok(result) => match result.result_type.unwrap() {
+                allocate_shard_result::Type::ALLOCATED => {
                     let allocation = result.allocation.unwrap();
                     AllocateShardResult::Allocated(allocation.shard_id, allocation.node_id)
                 }
-                AllocateShardResult_Type::ALREADY_ALLOCATED => {
+                allocate_shard_result::Type::ALREADY_ALLOCATED => {
                     let allocation = result.allocation.unwrap();
                     AllocateShardResult::AlreadyAllocated(allocation.shard_id, allocation.node_id)
                 }
-                AllocateShardResult_Type::NOT_ALLOCATED => AllocateShardResult::NotAllocated,
-                AllocateShardResult_Type::ERR => AllocateShardResult::Err(match result.err {
-                    AllocateShardResult_AllocateShardErr::PERSISTENCE => {
-                        AllocateShardErr::Persistence
-                    }
-                    AllocateShardResult_AllocateShardErr::UNKNOWN => AllocateShardErr::Unknown,
-                }),
+                allocate_shard_result::Type::NOT_ALLOCATED => AllocateShardResult::NotAllocated,
+                allocate_shard_result::Type::ERR => {
+                    AllocateShardResult::Err(match result.err.unwrap() {
+                        allocate_shard_result::AllocateShardErr::PERSISTENCE => {
+                            AllocateShardErr::Persistence
+                        }
+                        allocate_shard_result::AllocateShardErr::UNKNOWN => {
+                            AllocateShardErr::Unknown
+                        }
+                    })
+                }
             },
             Err(_e) => return Err(MessageUnwrapErr::DeserializationErr),
         };
@@ -245,7 +247,7 @@ impl Message for AllocateShard {
 
         match res {
             AllocateShardResult::Allocated(shard_id, node_id) => {
-                result.result_type = AllocateShardResult_Type::ALLOCATED;
+                result.result_type = allocate_shard_result::Type::ALLOCATED.into();
                 result.allocation = Some(proto::RemoteShard {
                     shard_id,
                     node_id,
@@ -254,7 +256,7 @@ impl Message for AllocateShard {
                 .into();
             }
             AllocateShardResult::AlreadyAllocated(shard_id, node_id) => {
-                result.result_type = AllocateShardResult_Type::ALREADY_ALLOCATED;
+                result.result_type = allocate_shard_result::Type::ALREADY_ALLOCATED.into();
                 result.allocation = Some(proto::RemoteShard {
                     shard_id,
                     node_id,
@@ -263,16 +265,17 @@ impl Message for AllocateShard {
                 .into();
             }
             AllocateShardResult::NotAllocated => {
-                result.result_type = AllocateShardResult_Type::NOT_ALLOCATED;
+                result.result_type = allocate_shard_result::Type::NOT_ALLOCATED.into();
             }
             AllocateShardResult::Err(e) => {
-                result.result_type = AllocateShardResult_Type::ERR;
+                result.result_type = allocate_shard_result::Type::ERR.into();
                 result.err = match e {
                     AllocateShardErr::Persistence => {
-                        AllocateShardResult_AllocateShardErr::PERSISTENCE
+                        allocate_shard_result::AllocateShardErr::PERSISTENCE
                     }
-                    AllocateShardErr::Unknown => AllocateShardResult_AllocateShardErr::UNKNOWN,
+                    AllocateShardErr::Unknown => allocate_shard_result::AllocateShardErr::UNKNOWN,
                 }
+                .into();
             }
         }
 

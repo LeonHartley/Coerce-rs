@@ -9,9 +9,9 @@ extern crate async_trait;
 #[macro_use]
 extern crate coerce_macros;
 
-use coerce::actor::{IntoActorId, ToActorId};
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
+use coerce::actor::{IntoActorId, ToActorId};
 
 use coerce::remote::system::RemoteActorSystem;
 
@@ -86,7 +86,7 @@ pub async fn test_remote_actor_locate_remotely() {
     assert_eq!(locate_before_creation_a, None);
     assert_eq!(locate_before_creation_b, None);
 
-    system_a
+    let _ = system_a
         .new_actor(
             "leon",
             util::TestActor {
@@ -96,25 +96,6 @@ pub async fn test_remote_actor_locate_remotely() {
             Tracked,
         )
         .await;
-
-    // let mut tasks = vec![];
-    //
-    // for i in 0..100_000 {
-    //     let mut sys = system_a.clone();
-    //     tasks.push(async move {
-    //         sys.new_actor(
-    //             format!("actor-{}", i),
-    //             util::TestActor {
-    //                 status: None,
-    //                 counter: 0,
-    //             },
-    //             Tracked,
-    //         )
-    //         .await;
-    //     });
-    // }
-    //
-    // futures::future::join_all(tasks).await;
 
     let local_ref = remote_a
         .actor_ref::<util::TestActor>("leon".into_actor_id())

@@ -1,4 +1,4 @@
-use protobuf_codegen_pure::Customize;
+use protobuf_codegen::Customize;
 use std::path::Path;
 
 struct ProtobufFile {
@@ -34,12 +34,8 @@ fn main() -> std::io::Result<()> {
 
 fn compile_proto<I: Iterator<Item = (&'static str, &'static str)>>(protobuf_files: I) {
     for file in protobuf_files {
-        protobuf_codegen_pure::Codegen::new()
-            .customize(Customize {
-                gen_mod_rs: Some(true),
-
-                ..Default::default()
-            })
+        protobuf_codegen::Codegen::new()
+            .customize(Customize::default().gen_mod_rs(true))
             .out_dir(file.1)
             .input(file.0)
             .include("coerce/src/protocol/")

@@ -3,7 +3,7 @@ mod node;
 mod routes;
 
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorFactory, IntoActor, LocalActorRef, IntoActorId};
+use crate::actor::{Actor, ActorFactory, IntoActor, IntoActorId, LocalActorRef};
 use crate::remote::cluster::sharding::host::ShardHost;
 use crate::remote::cluster::sharding::Sharding;
 use std::collections::HashMap;

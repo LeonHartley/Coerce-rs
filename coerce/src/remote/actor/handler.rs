@@ -10,9 +10,9 @@ use crate::remote::net::client::RemoteClient;
 use std::collections::hash_map::Entry;
 
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::{ActorAddress, FindActor};
+use crate::remote::net::proto::network::{ActorAddress, FindActorEvent};
 
-use crate::actor::{Actor, LocalActorRef};
+use crate::actor::{Actor, ActorId, LocalActorRef};
 use crate::remote::net::client::send::Write;
 use crate::remote::stream::pubsub::{PubSub, Receive};
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
@@ -178,11 +178,11 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 system
                     .notify_node(
                         assigned_registry_node,
-                        SessionEvent::FindActor(FindActor {
+                        SessionEvent::FindActor(FindActorEvent {
                             message_id: message_id.to_string(),
                             actor_id: id.to_string(),
                             trace_id,
-                            ..FindActor::default()
+                            ..Default::default()
                         }),
                     )
                     .await;
@@ -193,10 +193,10 @@ impl Handler<GetActorNode> for RemoteRegistry {
                         let res = ActorAddress::parse_from_bytes(&res);
                         match res {
                             Ok(res) => {
-                                sender.send(if res.get_node_id() == 0 {
+                                let _ = sender.send(if res.node_id == 0 {
                                     None
                                 } else {
-                                    Some(res.get_node_id())
+                                    Some(res.node_id)
                                 });
                             }
                             Err(e) => {
@@ -256,23 +256,23 @@ impl Handler<Receive<SystemTopic>> for RemoteRegistry {
         match event.0.as_ref() {
             SystemEvent::Cluster(_) => {
                 trace!(target: "RemoteRegistry", "cluster event");
-                let _system = self.system.as_ref().unwrap().clone();
-                let _registry_ref = self.actor_ref(ctx);
+                let system = self.system.as_ref().unwrap().clone();
+                let registry_ref = self.actor_ref(ctx);
                 //
                 // // TODO: remove all of this stuff
-                // tokio::spawn(async move {
-                //     let sys = system;
-                //     let actor_ids = sys
-                //         .actor_system()
-                //         .scheduler()
-                //         .exec::<_, Vec<ActorId>>(|s| s.actors.keys().map(|k| k.clone()).collect())
-                //         .await
-                //         .expect("unable to get active actor ids from scheduler");
-                //
-                //     for actor_id in actor_ids {
-                //         registry_ref.notify(RegisterActor::new(actor_id, None));
-                //     }
-                // });
+                tokio::spawn(async move {
+                    let sys = system;
+                    let actor_ids = sys
+                        .actor_system()
+                        .scheduler()
+                        .exec::<_, Vec<ActorId>>(|s| s.actors.keys().map(|k| k.clone()).collect())
+                        .await
+                        .expect("unable to get active actor ids from scheduler");
+
+                    for actor_id in actor_ids {
+                        let _ = registry_ref.notify(RegisterActor::new(actor_id, None));
+                    }
+                });
             }
         }
     }

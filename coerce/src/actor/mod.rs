@@ -93,7 +93,7 @@ pub trait IntoActor: Actor + Sized {
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 
-    async fn into_anon_actor<'a, I: 'a + IntoActorId + Send >(
+    async fn into_anon_actor<'a, I: 'a + IntoActorId + Send>(
         self,
         id: Option<I>,
         sys: &ActorSystem,
@@ -250,11 +250,10 @@ impl<A: Actor> ActorRef<A> {
     {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.send(msg).await,
-            Ref::Remote(remote_ref) => {
-                remote_ref
-                    .send(msg.into_envelope(EnvelopeType::Remote).unwrap())
-                    .await
-            }
+            Ref::Remote(remote_ref) => match msg.as_remote_envelope() {
+                Ok(envelope) => remote_ref.send(envelope).await,
+                Err(e) => Err(ActorRefErr::Serialisation(e)),
+            },
         }
     }
 
@@ -264,11 +263,10 @@ impl<A: Actor> ActorRef<A> {
     {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.notify(msg),
-            Ref::Remote(remote_ref) => {
-                remote_ref
-                    .notify(msg.into_envelope(EnvelopeType::Remote).unwrap())
-                    .await
-            }
+            Ref::Remote(remote_ref) => match msg.as_remote_envelope() {
+                Ok(envelope) => remote_ref.notify(envelope).await,
+                Err(e) => Err(ActorRefErr::Serialisation(e)),
+            },
         }
     }
 
@@ -315,8 +313,12 @@ impl<A: Actor> IntoActor for A {
         id: Option<I>,
         sys: &ActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
-        sys.new_actor(id.map_or_else(new_actor_id, |id| id.into_actor_id()), self, Anonymous)
-            .await
+        sys.new_actor(
+            id.map_or_else(new_actor_id, |id| id.into_actor_id()),
+            self,
+            Anonymous,
+        )
+        .await
     }
 }
 
@@ -360,6 +362,8 @@ pub trait CoreActorRef: Any {
     fn notify_stop(&self) -> Result<(), ActorRefErr>;
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr>;
+
+    fn is_valid(&self) -> bool;
 
     fn as_any(&self) -> &dyn Any;
 }
@@ -412,7 +416,7 @@ pub enum ActorRefErr {
     Serialisation(MessageWrapErr),
     Deserialisation(MessageUnwrapErr),
     Timeout {
-        time_taken_millis: u128,
+        time_taken_millis: u64,
     },
     StartChannelClosed,
     InvalidRef,
@@ -446,7 +450,7 @@ impl Display for ActorRefErr {
                 actor_type,
             } => write!(
                 f,
-                "no Handler<{}> implementation for actor (id={}, type={}) or the handler is not registered with the RemoteActorSystem",
+                "Remoting not supported, no Handler<{}> implementation for actor (id={}, type={}) or the actor/message combination is not registered with the RemoteActorSystem configuration",
                 message_type, actor_id, actor_type
             ),
             ActorRefErr::StartChannelClosed => write!(f, "actor failed to start, channel closed"),
@@ -571,6 +575,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
         self.notify(Terminated(id))
     }
 
+    fn is_valid(&self) -> bool {
+        self.is_valid()
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -600,6 +608,10 @@ impl CoreActorRef for BoxedActorRef {
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr> {
         self.0.notify_child_terminated(id)
+    }
+
+    fn is_valid(&self) -> bool {
+        self.0.is_valid()
     }
 
     fn as_any(&self) -> &dyn Any {

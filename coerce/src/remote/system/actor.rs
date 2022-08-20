@@ -1,10 +1,12 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Message;
-use crate::actor::{new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, IntoActorId};
+use crate::actor::{
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, IntoActorId,
+};
 use crate::remote::actor::message::{GetActorNode, RegisterActor};
 use crate::remote::handler::send_proto_result;
 use crate::remote::net::message::SessionEvent;
-use crate::remote::net::proto::network::{ActorAddress, CreateActor};
+use crate::remote::net::proto::network::{ActorAddress, CreateActorEvent};
 use crate::remote::system::{NodeId, NodeRpcErr, RemoteActorSystem};
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use protobuf::Message as ProtoMessage;
@@ -131,12 +133,12 @@ impl RemoteActorSystem {
                 return Err(local_create.unwrap_err());
             }
         } else {
-            let message = CreateActor {
+            let message = CreateActorEvent {
                 actor_type,
                 message_id: message_id.to_string(),
                 actor_id: id.to_string(),
                 recipe,
-                ..CreateActor::default()
+                ..Default::default()
             };
 
             match self

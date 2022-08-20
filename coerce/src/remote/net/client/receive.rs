@@ -6,7 +6,7 @@ use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::message::{timestamp_to_datetime, ClientEvent};
-use crate::remote::net::proto::network::Pong;
+use crate::remote::net::proto::network::PongEvent;
 use crate::remote::net::{proto, StreamReceiver};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc};
@@ -20,6 +20,7 @@ use uuid::Uuid;
 pub struct ClientMessageReceiver {
     actor_ref: LocalActorRef<RemoteClient>,
     identity_sender: Option<Sender<NodeIdentity>>,
+    should_close: bool,
 }
 
 impl ClientMessageReceiver {
@@ -31,6 +32,7 @@ impl ClientMessageReceiver {
         Self {
             actor_ref,
             identity_sender,
+            should_close: false,
         }
     }
 }
@@ -55,8 +57,8 @@ impl StreamReceiver for ClientMessageReceiver {
             ClientEvent::Identity(identity) => {
                 if let Some(identity_sender) = self.identity_sender.take() {
                     let _ = identity_sender.send(NodeIdentity {
-                        node: parse_proto_node_identity(&identity),
-                        peers: identity.peers.into_iter().map(parse_proto_node).collect(),
+                        node: (&identity).into(),
+                        peers: identity.peers.into_iter().map(|n| n.into()).collect(),
                         capabilities: identity
                             .capabilities
                             .map(|capabilities| SystemCapabilities {
@@ -82,7 +84,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     .nodes
                     .into_iter()
                     .filter(|n| n.node_id != node_id)
-                    .map(parse_proto_node)
+                    .map(|n| n.into())
                     .collect();
 
                 if !self
@@ -112,15 +114,26 @@ impl StreamReceiver for ClientMessageReceiver {
                     }
                 }
             }
-            ClientEvent::Err(_e) => {}
+            ClientEvent::Err(e) => {
+                info!("received client error!");
+                match sys.pop_request(Uuid::from_str(&e.message_id).unwrap()) {
+                    Some(res_tx) => {
+                        let _ = res_tx.send(RemoteResponse::Err(e.error.unwrap().into()));
+                    }
+                    None => {
+                        //                                          :P
+                        warn!(target: "RemoteClient", "received unsolicited pong");
+                    }
+                }
+            }
             ClientEvent::Ping(_ping) => {}
             ClientEvent::Pong(pong) => {
                 match sys.pop_request(Uuid::from_str(&pong.message_id).unwrap()) {
                     Some(res_tx) => {
                         let _ = res_tx.send(RemoteResponse::Ok(
-                            Pong {
+                            PongEvent {
                                 message_id: pong.message_id,
-                                ..Pong::default()
+                                ..Default::default()
                             }
                             .write_to_bytes()
                             .expect("serialised pong"),
@@ -138,26 +151,38 @@ impl StreamReceiver for ClientMessageReceiver {
     async fn on_close(&mut self, _sys: &RemoteActorSystem) {
         let _ = self.actor_ref.send(Disconnected).await;
     }
-}
 
-pub fn parse_proto_node(n: proto::network::RemoteNode) -> RemoteNode {
-    RemoteNode {
-        id: n.get_node_id(),
-        addr: n.addr,
-        tag: n.tag,
-        node_started_at: n.node_started_at.into_option().map(timestamp_to_datetime),
+    async fn close(&mut self) {
+        self.should_close = true;
+    }
+
+    fn should_close(&self) -> bool {
+        self.should_close
     }
 }
 
-pub fn parse_proto_node_identity(n: &proto::network::NodeIdentity) -> RemoteNode {
-    RemoteNode {
-        id: n.get_node_id(),
-        addr: n.addr.clone(),
-        tag: n.node_tag.clone(),
-        node_started_at: n
-            .node_started_at
-            .clone()
-            .into_option()
-            .map(timestamp_to_datetime),
+impl From<proto::network::RemoteNode> for RemoteNode {
+    fn from(n: proto::network::RemoteNode) -> Self {
+        RemoteNode {
+            id: n.node_id,
+            addr: n.addr,
+            tag: n.tag,
+            node_started_at: n.node_started_at.into_option().map(timestamp_to_datetime),
+        }
+    }
+}
+
+impl From<&proto::network::NodeIdentity> for RemoteNode {
+    fn from(n: &proto::network::NodeIdentity) -> Self {
+        RemoteNode {
+            id: n.node_id,
+            addr: n.addr.clone(),
+            tag: n.node_tag.clone(),
+            node_started_at: n
+                .node_started_at
+                .clone()
+                .into_option()
+                .map(timestamp_to_datetime),
+        }
     }
 }

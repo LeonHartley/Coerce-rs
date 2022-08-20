@@ -30,6 +30,10 @@ pub trait StreamReceiver {
     async fn on_receive(&mut self, msg: Self::Message, sys: &RemoteActorSystem);
 
     async fn on_close(&mut self, sys: &RemoteActorSystem);
+
+    async fn close(&mut self);
+
+    fn should_close(&self) -> bool;
 }
 
 pub struct StreamReceiverFuture<S: tokio::io::AsyncRead> {
@@ -85,6 +89,9 @@ pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
             Ok(res) => match R::Message::read_from_bytes(res) {
                 Some(msg) => {
                     receiver.on_receive(msg, &system).await;
+                    if receiver.should_close() {
+                        break;
+                    }
                 }
                 None => {
                     warn!(target: "RemoteReceive", "failed to decode message from addr={}", &addr)

@@ -32,7 +32,7 @@ impl ChatClient {
         let message = Handshake {
             name: name.to_string(),
         }
-        .into_envelope(EnvelopeType::Remote)
+        .as_remote_envelope()
         .unwrap()
         .into_bytes();
 

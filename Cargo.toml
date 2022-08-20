@@ -4,7 +4,7 @@ members = [
     "coerce/macros",
     "examples/coerce-cluster-example",
     "examples/coerce-sharded-chat-example",
-    "coerce/tools/proto-build",
+    "coerce/tools/coerce-proto-build",
     "providers/persistence/coerce-redis",
     "providers/discovery/coerce-k8s"
 ]

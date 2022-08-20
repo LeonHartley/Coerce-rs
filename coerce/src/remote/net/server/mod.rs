@@ -1,6 +1,6 @@
 use crate::remote::system::RemoteActorSystem;
 
-use crate::actor::{ActorId, LocalActorRef, IntoActorId};
+use crate::actor::{ActorId, IntoActorId, LocalActorRef};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{
     datetime_to_timestamp, timestamp_to_datetime, ClientEvent, SessionEvent,
@@ -14,7 +14,11 @@ use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::proto::network::{ActorAddress, ClientHandshake, ClientResult, CreateActor, MessageRequest, NodeIdentity, Pong, RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublish, SystemCapabilities};
+use crate::remote::net::proto::network::{
+    ActorAddress, ClientHandshake, ClientResult, CreateActorEvent, MessageRequest, NodeIdentity,
+    PongEvent, RemoteNode as RemoteNodeProto, SessionHandshake, StreamPublishEvent,
+    SystemCapabilities,
+};
 use crate::remote::stream::mediator::PublishRaw;
 use crate::CARGO_PKG_VERSION;
 
@@ -46,6 +50,7 @@ pub struct SessionMessageReceiver {
     session_id: Uuid,
     sessions: LocalActorRef<RemoteSessionStore>,
     session: LocalActorRef<RemoteSession>,
+    should_close: bool,
 }
 
 #[derive(Debug)]
@@ -70,6 +75,7 @@ impl SessionMessageReceiver {
             session_id,
             sessions,
             session,
+            should_close: false,
         }
     }
 }
@@ -156,7 +162,6 @@ pub async fn server_loop(
 
                     let read = FramedRead::new(read, NetworkCodec);
                     let write = FramedWrite::new(write, NetworkCodec);
-
                     let session_id = Uuid::new_v4();
 
                     let session = session_store
@@ -242,6 +247,7 @@ impl StreamReceiver for SessionMessageReceiver {
             }
             SessionEvent::Handshake(msg) => {
                 trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
+
                 tokio::spawn(session_handshake(
                     sys.clone(),
                     msg,
@@ -263,7 +269,7 @@ impl StreamReceiver for SessionMessageReceiver {
 
             SessionEvent::RegisterActor(actor) => {
                 trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &actor.node_id);
-                let node_id = actor.get_node_id();
+                let node_id = actor.node_id;
                 sys.register_actor(actor.actor_id.into_actor_id(), Some(node_id));
             }
 
@@ -281,9 +287,9 @@ impl StreamReceiver for SessionMessageReceiver {
                 self.session
                     .send(SessionWrite(
                         self.session_id,
-                        ClientEvent::Pong(Pong {
+                        ClientEvent::Pong(PongEvent {
                             message_id: ping.message_id,
-                            ..Pong::default()
+                            ..Default::default()
                         }),
                     ))
                     .await
@@ -324,8 +330,16 @@ impl StreamReceiver for SessionMessageReceiver {
                     }
                 }
             }
-            SessionEvent::Err(e) => {
-                let _error = e;
+            SessionEvent::Err(err) => {
+                let e = err.error.unwrap().into();
+                match sys.pop_request(Uuid::from_str(&err.message_id).unwrap()) {
+                    Some(res_tx) => {
+                        let _ = res_tx.send(RemoteResponse::Err(e));
+                    }
+                    None => {
+                        warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request err (id={})", sys.node_tag(), sys.node_id(), e);
+                    }
+                }
             }
         }
     }
@@ -335,6 +349,14 @@ impl StreamReceiver for SessionMessageReceiver {
             .send(SessionClosed(self.session_id))
             .await
             .expect("send session closed")
+    }
+
+    async fn close(&mut self) {
+        self.should_close = true;
+    }
+
+    fn should_close(&self) -> bool {
+        self.should_close
     }
 }
 
@@ -451,7 +473,9 @@ async fn session_handle_message(
         }
         Err(e) => {
             error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &actor_id, e);
-            // TODO: Send error
+            let _ = ctx
+                .notify_rpc_err(msg.message_id.parse().unwrap(), e, msg.origin_node_id)
+                .await;
         }
     }
 }
@@ -481,7 +505,7 @@ async fn session_handle_lookup(
 }
 
 async fn session_create_actor(
-    msg: CreateActor,
+    msg: CreateActorEvent,
     session_id: Uuid,
     ctx: RemoteActorSystem,
     session: LocalActorRef<RemoteSession>,
@@ -505,7 +529,7 @@ async fn session_create_actor(
     }
 }
 
-async fn session_stream_publish(msg: Arc<StreamPublish>, sys: RemoteActorSystem) {
+async fn session_stream_publish(msg: Arc<StreamPublishEvent>, sys: RemoteActorSystem) {
     // TODO: node should acknowledge the message
     if let Some(mediator) = sys.stream_mediator() {
         mediator.notify::<PublishRaw>(msg.into()).unwrap()
