@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tokio_tungstenite::WebSocketStream;
-use tungstenite::protocol::frame::Frame;
+
 use tungstenite::Message as WebSocketMessage;
 
 pub type WebSocketReader = SplitStream<WebSocketStream<TcpStream>>;
@@ -52,7 +52,7 @@ impl Peer {
     }
 
     pub async fn write<M: Message>(&mut self, id: Option<u8>, message: M) {
-        if let Err(e) = self
+        if let Err(_e) = self
             .websocket_writer
             .send(WebSocketMessage::Binary(
                 write_outbound_message(id, message).unwrap(),

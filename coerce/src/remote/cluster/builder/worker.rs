@@ -6,6 +6,7 @@ use tokio::sync::oneshot;
 
 pub struct ClusterWorkerBuilder {
     server_listen_addr: String,
+    server_external_addr: Option<String>,
     seed_addr: Option<String>,
     system: RemoteActorSystem,
 }
@@ -14,9 +15,11 @@ impl ClusterWorkerBuilder {
     pub fn new(system: RemoteActorSystem) -> ClusterWorkerBuilder {
         let server_listen_addr = "0.0.0.0:30101".to_owned();
         let seed_addr = None;
+        let server_external_addr = None;
 
         ClusterWorkerBuilder {
             server_listen_addr,
+            server_external_addr,
             system,
             seed_addr,
         }
@@ -25,6 +28,11 @@ impl ClusterWorkerBuilder {
     pub fn with_seed_addr<T: ToString>(mut self, seed_addr: T) -> Self {
         self.seed_addr = Some(seed_addr.to_string());
 
+        self
+    }
+
+    pub fn external_addr<T: ToString>(mut self, server_external_addr: T) -> Self {
+        self.server_external_addr = Some(server_external_addr.to_string());
         self
     }
 
@@ -44,10 +52,11 @@ impl ClusterWorkerBuilder {
         // let _enter = span.enter();
 
         let started_at = *self.system.started_at();
+        let cluster_node_addr = self.server_external_addr.as_ref().map_or_else(|| self.server_listen_addr.clone(), |s| s.clone());
         self.system
             .register_node(RemoteNode::new(
                 self.system.node_id(),
-                self.server_listen_addr.clone(),
+                cluster_node_addr.clone(),
                 self.system.node_tag().to_string(),
                 Some(started_at),
             ))
@@ -56,10 +65,10 @@ impl ClusterWorkerBuilder {
         let server_ctx = self.system.clone();
         let mut server = RemoteServer::new();
 
-        trace!("starting on {}", &self.server_listen_addr);
+        trace!("starting on {}, external_addr={}", &self.server_listen_addr, &cluster_node_addr);
 
         server
-            .start(self.server_listen_addr.clone(), server_ctx)
+            .start(self.server_listen_addr.clone(), cluster_node_addr, server_ctx)
             .await
             .expect("failed to start server");
 

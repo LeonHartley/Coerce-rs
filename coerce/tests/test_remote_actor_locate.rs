@@ -11,7 +11,7 @@ extern crate coerce_macros;
 
 use coerce::actor::scheduler::ActorType::Tracked;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{IntoActorId, ToActorId};
+use coerce::actor::IntoActorId;
 
 use coerce::remote::system::RemoteActorSystem;
 

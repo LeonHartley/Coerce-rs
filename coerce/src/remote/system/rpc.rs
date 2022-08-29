@@ -159,16 +159,22 @@ impl RemoteActorSystem {
         actor_id: ActorId,
         buffer: &[u8],
     ) -> Result<Vec<u8>, ActorRefErr> {
-        let (tx, rx) = oneshot::channel();
         let handler = self.inner.config.message_handler(identifier);
 
         if let Some(handler) = handler {
+            let (tx, rx) = oneshot::channel();
             handler.handle_attempt(actor_id, buffer, tx, 1).await;
-        };
 
-        match rx.await {
-            Ok(res) => res,
-            Err(_e) => Err(ActorRefErr::ResultChannelClosed),
+            match rx.await {
+                Ok(res) => res,
+                Err(_e) => Err(ActorRefErr::ResultChannelClosed),
+            }
+        } else {
+            Err(ActorRefErr::NotSupported {
+                actor_id,
+                message_type: identifier.to_string(),
+                actor_type: String::default(),
+            })
         }
     }
 

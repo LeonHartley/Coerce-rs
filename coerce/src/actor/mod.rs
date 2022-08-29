@@ -1,8 +1,7 @@
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{
-    ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler, MessageUnwrapErr,
-    MessageWrapErr,
+    ActorMessage, Exec, Handler, Message, MessageHandler, MessageUnwrapErr, MessageWrapErr,
 };
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};

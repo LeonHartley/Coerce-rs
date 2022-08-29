@@ -4,6 +4,7 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use crate::persistent::context::ActorPersistence;
 use futures::{Stream, StreamExt};
+use std::any::Any;
 use tokio::sync::oneshot::Sender;
 
 use crate::actor::supervised::Supervised;
@@ -253,12 +254,12 @@ pub fn attach_stream<S, T, R, E, A, M>(
         let mut reader = stream;
         while let Some(Ok(msg)) = reader.next().await {
             if let Some(message) = message_converter(msg) {
-                actor_ref.notify(message);
+                let _ = actor_ref.notify(message);
             }
         }
 
         if options.stop_on_stream_end {
-            actor_ref.notify_stop();
+            let _ = actor_ref.notify_stop();
         }
     });
 }
@@ -283,7 +284,9 @@ impl ActorContext {
             .persistence()
             .expect("persistence not configured");
 
-        ctx.persistence = Some(ActorPersistence::new(persistence.provider()));
+        ctx.persistence = Some(ActorPersistence::new(
+            persistence.provider(ctx.boxed_ref.type_id()),
+        ));
 
         ctx
     }

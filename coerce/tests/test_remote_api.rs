@@ -1,4 +1,4 @@
-use crate::util::{GetStatusRequest, SetStatusRequest, TestActor, TestActorStatus};
+use crate::util::{GetStatusRequest, SetStatusRequest, TestActor};
 
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};

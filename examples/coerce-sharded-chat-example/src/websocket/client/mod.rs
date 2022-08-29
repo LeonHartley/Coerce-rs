@@ -2,7 +2,7 @@ use crate::actor::peer::{JoinChat, SendChatMessage};
 
 use crate::actor::stream::{ChatMessage, Handshake};
 use coerce::actor::message::EnvelopeType::Remote;
-use coerce::actor::message::{EnvelopeType, Message};
+use coerce::actor::message::Message;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use std::time::Duration;

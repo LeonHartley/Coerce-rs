@@ -90,6 +90,7 @@ impl RemoteServer {
     pub async fn start(
         &mut self,
         addr: String,
+        external_node_addr: String,
         system: RemoteActorSystem,
     ) -> Result<(), tokio::io::Error> {
         let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -110,7 +111,7 @@ impl RemoteServer {
             system,
             session_store,
             token.clone(),
-            addr,
+            external_node_addr,
         ));
         self.cancellation_token = Some(token);
         Ok(())
@@ -147,12 +148,12 @@ pub async fn server_loop(
     system: RemoteActorSystem,
     session_store: LocalActorRef<RemoteSessionStore>,
     cancellation_token: CancellationToken,
-    node_addr: String,
+    external_node_addr: String,
 ) {
     loop {
         match accept(&listener, cancellation_token.clone()).await {
             Some(Ok((socket, addr))) => {
-                let this_node_addr = node_addr.clone();
+                let this_node_addr = external_node_addr.clone();
                 let session_store = session_store.clone();
                 let system = system.clone();
 

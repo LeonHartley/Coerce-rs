@@ -21,7 +21,7 @@ pub struct ActorSystem {
     system_id: Uuid,
     scheduler: LocalActorRef<ActorScheduler>,
     remote: Option<RemoteActorSystem>,
-    persistence: Option<Persistence>,
+    persistence: Option<Arc<Persistence>>,
     is_terminated: Arc<AtomicBool>,
 }
 
@@ -174,10 +174,10 @@ impl ActorSystem {
     }
 
     pub fn set_persistence(&mut self, persistence: Option<Persistence>) {
-        self.persistence = persistence;
+        self.persistence = persistence.map(|p| Arc::new(p));
     }
 
     pub fn persistence(&self) -> Option<&Persistence> {
-        self.persistence.as_ref()
+        self.persistence.as_ref().map(|p| p.as_ref())
     }
 }

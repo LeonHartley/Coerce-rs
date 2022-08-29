@@ -1,6 +1,5 @@
 use crate::actor::message::{MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{ActorRefErr, ToActorId};
-use crate::remote::net::proto::network::actor_ref_err::ErrorType;
 use crate::remote::net::proto::network::{
     ActorAddress, ClientErr, ClientHandshake, ClientResult, CreateActorEvent, Event,
     FindActorEvent, IdentifyEvent, MessageRequest, NodeIdentity, PingEvent, PongEvent, RaftRequest,
@@ -249,6 +248,7 @@ impl From<ActorRefErr> for proto::network::ActorRefErr {
 
 impl From<proto::network::ActorRefErr> for ActorRefErr {
     fn from(err: proto::network::ActorRefErr) -> Self {
+        use proto::network::actor_ref_err::ErrorType;
         use proto::network::MessageUnwrapErr as ProtoUnwrapErr;
         use proto::network::MessageWrapErr as ProtoWrapErr;
 

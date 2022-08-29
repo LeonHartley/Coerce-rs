@@ -1,8 +1,8 @@
 [package]
 name = "coerce-redis"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Leon Hartley <ljph@outlook.com>"]
-edition = "2018"
+edition = "2021"
 description = "Redis actor persistence provider for Coerce. Supports event sourcing and snapshots"
 license = "Apache-2.0"
 repository = "https://github.com/leonhartley/coerce-rs"
@@ -12,6 +12,8 @@ repository = "https://github.com/leonhartley/coerce-rs"
 [dependencies]
 coerce = { version = "0.7.0" }
 async-trait = { version = "0.1" }
-redis-async = { version = "0.13.0" }
+redis = { version = "0.21", features = ["tokio-comp", "cluster"] }
+redis_cluster_async = "0.7.0"
 tokio = { version = "1.20.1", features = ["full"] }
 anyhow = "1"
+bytes = { version = "1.2.1" }

@@ -3,7 +3,7 @@ use coerce::actor::lifecycle::Status;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::scheduler::ActorType::Anonymous;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, IntoActor, LocalActorRef};
+use coerce::actor::{Actor, IntoActor, IntoActorId, LocalActorRef};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 struct BenchmarkActor;
@@ -42,11 +42,11 @@ fn actor_messaging_benchmark(c: &mut Criterion) {
         let system = ActorSystem::new();
         (
             system
-                .new_actor(String::default(), BenchmarkActor, Anonymous)
+                .new_actor(String::default().into_actor_id(), BenchmarkActor, Anonymous)
                 .await
                 .expect("unable to create actor"),
             system
-                .new_actor(String::default(), BenchmarkActor, Anonymous)
+                .new_actor(String::default().into_actor_id(), BenchmarkActor, Anonymous)
                 .await
                 .expect("unable to create actor"),
         )
