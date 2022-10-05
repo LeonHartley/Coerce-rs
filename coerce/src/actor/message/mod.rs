@@ -15,22 +15,22 @@ pub trait Message: 'static + Sync + Send + Sized {
     fn into_envelope(self, envelope_type: EnvelopeType) -> Result<Envelope<Self>, MessageWrapErr> {
         match envelope_type {
             EnvelopeType::Local => Ok(Envelope::Local(self)),
-            EnvelopeType::Remote => self.as_remote_envelope(),
+            EnvelopeType::Remote => self.as_bytes().map(Envelope::Remote),
         }
     }
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         Err(MessageWrapErr::NotTransmittable)
     }
 
     fn from_envelope(envelope: Envelope<Self>) -> Result<Self, MessageUnwrapErr> {
         match envelope {
             Envelope::Local(msg) => Ok(msg),
-            Envelope::Remote(bytes) => Self::from_remote_envelope(bytes),
+            Envelope::Remote(bytes) => Self::from_bytes(bytes),
         }
     }
 
-    fn from_remote_envelope(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         Err(MessageUnwrapErr::NotTransmittable)
     }
 
@@ -60,12 +60,6 @@ where
     Self: Actor,
 {
     async fn handle(&mut self, message: M, ctx: &mut ActorContext) -> M::Result;
-}
-
-#[derive(Debug)]
-pub enum MessageResult<T> {
-    Ok(T),
-    Error,
 }
 
 pub struct ActorMessage<A: Actor, M: Message>

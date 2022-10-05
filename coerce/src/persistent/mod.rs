@@ -41,15 +41,3 @@ impl Persistence {
             .map_or_else(|| self.default_provider.clone(), |s| s.clone())
     }
 }
-
-pub trait ConfigurePersistence {
-    fn add_persistence(self, persistence: Persistence) -> Self;
-}
-
-impl ConfigurePersistence for ActorSystem {
-    fn add_persistence(mut self, persistence: Persistence) -> Self {
-        self.set_persistence(Some(persistence));
-
-        self
-    }
-}

@@ -119,6 +119,9 @@ async fn remote_entity_request(
     mut request: EntityRequest,
     system: RemoteActorSystem,
 ) -> Result<(), ActorRefErr> {
+    // TODO: We need a way to buffer and re-distribute this request if we get a signal that the node is terminated
+    //       after we have already submitted the request..
+
     let request_id = Uuid::new_v4();
     let (tx, rx) = channel();
     system.push_request(request_id, tx);
@@ -192,8 +195,8 @@ impl Message for EntityRequest {
 impl Message for RemoteEntityRequest {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
-        let proto = proto::RemoteEntityRequest {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
+        proto::RemoteEntityRequest {
             request_id: self.request_id.to_string(),
             actor_id: self.actor_id.to_string(),
             message_type: self.message_type.clone(),
@@ -210,15 +213,12 @@ impl Message for RemoteEntityRequest {
             ),
             origin_node: self.origin_node,
             ..Default::default()
-        };
-
-        proto.write_to_bytes().map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |bytes| Ok(Envelope::Remote(bytes)),
-        )
+        }
+        .write_to_bytes()
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::RemoteEntityRequest::parse_from_bytes(&buffer).map_or_else(
             |_e| Err(MessageUnwrapErr::DeserializationErr),
             |proto| {

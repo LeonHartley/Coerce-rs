@@ -149,6 +149,7 @@ impl StreamReceiver for ClientMessageReceiver {
     }
 
     async fn on_close(&mut self, _sys: &RemoteActorSystem) {
+        info!("closed, sending `Disconnected` to {:?}", &self.actor_ref);
         let _ = self.actor_ref.send(Disconnected).await;
     }
 

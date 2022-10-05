@@ -187,20 +187,17 @@ pub async fn broadcast_reallocation(shard_id: ShardId, hosts: Vec<ActorRef<Shard
 impl Message for AllocateShard {
     type Result = AllocateShardResult;
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::AllocateShard {
             shard_id: self.shard_id,
             rebalancing: self.rebalancing,
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_| Err(MessageWrapErr::SerializationErr),
-            |b| Ok(Envelope::Remote(b)),
-        )
+        .map_or_else(|_| Err(MessageWrapErr::SerializationErr), |b| Ok(b))
     }
 
-    fn from_remote_envelope(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(buffer: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::AllocateShard::parse_from_bytes(&buffer).map_or_else(
             |_| Err(MessageUnwrapErr::DeserializationErr),
             |allocate_shard| {

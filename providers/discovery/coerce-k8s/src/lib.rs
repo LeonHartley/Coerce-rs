@@ -14,10 +14,7 @@ pub struct KubernetesDiscovery {
 }
 
 impl KubernetesDiscovery {
-    pub async fn discover(
-        system: RemoteActorSystem,
-        config: KubernetesDiscoveryConfig,
-    ) -> Option<Vec<String>> {
+    pub async fn discover(config: KubernetesDiscoveryConfig) -> Option<Vec<String>> {
         let client = Client::try_default()
             .await
             .expect("failed to initialise k8s client");
@@ -31,39 +28,32 @@ impl KubernetesDiscovery {
         let mut cluster_nodes = vec![];
 
         if let Ok(pods) = pods {
+            debug!("pods={:#?}", &pods.items);
+
             let pods = pods.items;
             for pod in pods {
-                let pod_ip = pod.status.unwrap().pod_ip;
                 let pod_spec = pod.spec.unwrap();
+                let hostname = pod_spec.hostname.unwrap();
+                let subdomain = pod_spec.subdomain.unwrap();
 
-                if let Some(pod_ip) = pod_ip {
-                    let coerce_remote_port = pod_spec
-                        .containers
+                for container in pod_spec.containers {
+                    let port = container
+                        .ports
+                        .unwrap()
                         .into_iter()
-                        .flat_map(|c| c.ports)
-                        .map(|p| {
-                            p.into_iter()
-                                .filter(|p| {
-                                    p.name.as_ref() == config.coerce_remote_port_name.as_ref()
-                                })
-                                .next()
-                        })
-                        .next();
+                        .filter(|p| p.name == config.coerce_remote_port_name)
+                        .next()
+                        .unwrap();
 
-                    if let Some(Some(port)) = coerce_remote_port {
-                        cluster_nodes.push(format!("{}:{}", pod_ip, port.container_port))
-                    }
+                    cluster_nodes.push(format!(
+                        "{}.{}:{}",
+                        hostname, subdomain, port.container_port
+                    ));
                 }
             }
         }
 
-        info!("discovered nodes: {:#?}", &cluster_nodes);
+        debug!("discovered nodes: {:#?}", &cluster_nodes);
         Some(cluster_nodes)
     }
 }
-//
-// pub trait Test {
-//   fn test(&self) -> bool;
-// }
-//
-// impl Test for Remote

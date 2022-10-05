@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package coerce.network;
 
+import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
 
 message RemoteNode {
@@ -99,6 +100,10 @@ message PingEvent {
   string message_id = 1;
 
   string trace_id = 2;
+
+  uint64 node_id = 3;
+
+  bool system_terminated = 4;
 }
 
 message PongEvent {
@@ -130,7 +135,7 @@ message FindActorEvent {
 message ActorAddress {
   string actor_id = 1;
 
-  uint64 node_id = 2;
+  google.protobuf.UInt64Value node_id = 2;
 
   string trace_id = 3;
 }

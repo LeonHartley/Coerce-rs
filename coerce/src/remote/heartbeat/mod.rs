@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
-use crate::remote::actor::message::SetRemote;
+use crate::remote::actor::message::{NodeTerminated, SetRemote};
 use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
 use crate::remote::net::proto::network::PongEvent;
 use crate::remote::stream::pubsub::PubSub;
@@ -69,6 +69,7 @@ impl Handler<SetRemote> for Heartbeat {
         ));
 
         self.system = Some(system);
+        let _ = self.actor_ref(ctx).notify(HeartbeatTick);
     }
 }
 
@@ -92,7 +93,7 @@ impl Message for HeartbeatTick {
 
 impl TimerTick for HeartbeatTick {}
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum PingResult {
     Ok(PongEvent, Duration, DateTime<Utc>),
     Timeout,
@@ -109,6 +110,7 @@ impl PingResult {
     }
 }
 
+#[derive(Debug)]
 pub struct NodePing(pub NodeId, pub PingResult);
 
 impl Message for NodePing {
@@ -127,6 +129,20 @@ impl Message for OnLeaderChanged {
 impl Handler<NodePing> for Heartbeat {
     async fn handle(&mut self, message: NodePing, _ctx: &mut ActorContext) {
         let _ = self.node_pings.insert(message.0, message);
+    }
+
+}
+
+#[async_trait]
+impl Handler<NodeTerminated> for Heartbeat {
+    async fn handle(&mut self, message: NodeTerminated, ctx: &mut ActorContext) {
+        let node_id = message.0;
+        if let Some(system) = &self.system {
+            let _ = system.registry().send(message).await;
+        }
+
+        self.node_pings.remove(&node_id);
+        self.handle(HeartbeatTick, ctx).await;
     }
 }
 
@@ -169,10 +185,6 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 continue;
             }
 
-            if &node.status == &NodeStatus::Terminated {
-                continue;
-            }
-
             let node_id = node.id;
             updates.push(update_node(
                 current_node,
@@ -200,10 +212,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
         });
 
         if self.last_heartbeat.is_some() {
-            let oldest_healthy_node = updates
-                .iter()
-                .filter(|n| n.status != NodeStatus::Unhealthy || n.status != NodeStatus::Terminated)
-                .next();
+            let oldest_healthy_node = updates.iter().filter(|n| n.status.is_healthy()).next();
 
             match oldest_healthy_node {
                 None => {}
@@ -304,9 +313,16 @@ fn node_status(
                 );
 
                 NodeStatus::Terminated
-            } else if time_since_ping >= config.unhealthy_node_heartbeat_timeout
-                || ping_latency > config.unhealthy_node_heartbeat_timeout
-            {
+            } else if time_since_ping >= config.unhealthy_node_heartbeat_timeout {
+                warn!(
+                    "[node={}] node_id={} hasn't responded to a ping in {} millis, marking as unhealthy",
+                    node_id,
+                    peer_node_id,
+                    time_since_ping.as_millis()
+                );
+
+                NodeStatus::Unhealthy
+            } else if ping_latency > config.unhealthy_node_heartbeat_timeout {
                 warn!(
                     "[node={}] node_id={} took {}ms to respond to ping, marking as unhealthy - time_since_ping={} millis",
                     node_id,
@@ -328,8 +344,12 @@ fn node_status(
         }
 
         None => {
-            debug!("node_id={} has not pinged yet", peer_node_id);
-            NodeStatus::Joining
+            if previous_status == NodeStatus::Terminated {
+                NodeStatus::Terminated
+            } else {
+                debug!("node_id={} has not pinged yet", peer_node_id);
+                NodeStatus::Joining
+            }
         }
 
         Some(PingResult::Timeout) => {
@@ -339,12 +359,12 @@ fn node_status(
             });
 
             if terminated {
-                error!(target: "Heartbeat", "node_id={} has never responded to ping or it has been longer than {} ms since last successful heartbeat, marking as terminated",
+                error!(target: "Heartbeat", "node_id={} has not responded in {} ms, marking as terminated",
                     peer_node_id, config.terminated_node_heartbeat_timeout.as_millis());
                 NodeStatus::Terminated
             } else {
                 warn!(target: "Heartbeat", "node_id={} did not respond to ping within {} ms, marking as unhealthy",
-                    node_id, config.ping_timeout.as_millis());
+                    peer_node_id, config.ping_timeout.as_millis());
 
                 NodeStatus::Unhealthy
             }

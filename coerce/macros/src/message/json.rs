@@ -37,13 +37,12 @@ pub(crate) fn expand(ast: &syn::DeriveInput) -> TokenStream {
         impl #impl_generics ::coerce::actor::message::Message for #name #ty_generics #where_clause {
             type Result = #item_type;
 
-            fn as_remote_envelope(&self) -> Result<coerce::actor::message::Envelope<Self>, coerce::actor::message::MessageWrapErr> {
+            fn as_bytes(&self) -> Result<Vec<u8>, coerce::actor::message::MessageWrapErr> {
                 serde_json::to_vec(&self)
                     .map_err(|_e| coerce::actor::message::MessageWrapErr::SerializationErr)
-                    .map(|bytes| coerce::actor::message::Envelope::Remote(bytes))
             }
 
-            fn from_remote_envelope(bytes: Vec<u8>) -> Result<Self, coerce::actor::message::MessageUnwrapErr> {
+            fn from_bytes(bytes: Vec<u8>) -> Result<Self, coerce::actor::message::MessageUnwrapErr> {
                 serde_json::from_slice(bytes.as_slice()).map_err(|_e| coerce::actor::message::MessageUnwrapErr::DeserializationErr)
             }
 

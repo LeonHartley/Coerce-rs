@@ -3,7 +3,7 @@ use crate::websocket::start;
 
 use coerce::actor::system::ActorSystem;
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
-use coerce::persistent::{ConfigurePersistence, Persistence};
+use coerce::persistent::Persistence;
 use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::system::SystemApi;
@@ -100,7 +100,8 @@ impl ShardedChat {
 }
 
 async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
-    let system = ActorSystem::new().add_persistence(/*match &config.persistence {
+    let system = ActorSystem::new().to_persistent(
+        /*match &config.persistence {
         ShardedChatPersistence::Redis { host: Some(host) } => Persistence::from(
             RedisStorageProvider::connect(RedisStorageConfig {
                 address: host.to_string(),
@@ -109,15 +110,27 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
             })
             .await,
         ),
-        _ => */Persistence::from(InMemoryStorageProvider::new())/*,
-    }*/);
+        _ => */
+        Persistence::from(InMemoryStorageProvider::new()), /*,
+                                                           }*/
+    );
 
+    let mut seed_addr = config.remote_seed_addr.clone();
     let is_running_in_k8s = std::env::var("KUBERNETES_SERVICE_HOST").is_ok();
     let (node_id, node_tag, external_addr) = if is_running_in_k8s {
         let pod_name = std::env::var("POD_NAME")
             .expect("POD_NAME environment variable not set, TODO: fallback to hostname?");
         let cluster_ip = std::env::var("CLUSTER_IP")
             .expect("CLUSTER_IP environment variable not set, TODO: fallback to hostname?");
+
+        let discovered_targets =
+            KubernetesDiscovery::discover(KubernetesDiscoveryConfig::default()).await;
+
+        if let Some(peers) = discovered_targets {
+            if let Some(first_peer) = peers.into_iter().next() {
+                seed_addr = Some(first_peer);
+            }
+        }
 
         let pod_ordinal = pod_name.split("-").last();
         if let Some(Ok(pod_ordinal)) = pod_ordinal.map(|i| i.parse()) {
@@ -141,7 +154,11 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
         )
     };
 
-    info!("starting cluster node (node_id={}, node_tag={}, listen_addr={}, external_addr={:?}", node_id, &node_tag, &config.remote_listen_addr, &external_addr);
+    info!(
+        "starting cluster node (node_id={}, node_tag={}, listen_addr={}, external_addr={:?})",
+        node_id, &node_tag, &config.remote_listen_addr, &external_addr
+    );
+
     let remote_system = RemoteActorSystemBuilder::new()
         .with_id(node_id)
         .with_tag(node_tag)
@@ -162,25 +179,22 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
 
     if let Some(external_addr) = external_addr {
         cluster_worker = cluster_worker.external_addr(external_addr);
-    }
-
-    if is_running_in_k8s {
-        let discovered_targets = KubernetesDiscovery::discover(
-            remote_system.clone(),
-            KubernetesDiscoveryConfig::default(),
-        )
-        .await;
-
-        if let Some(discovered_targets) = discovered_targets {
-            if let Some(first_peer) = discovered_targets.into_iter().next() {
-                cluster_worker = cluster_worker.with_seed_addr(first_peer)
-            }
-        }
     } else {
-        if let Some(seed_addr) = &config.remote_seed_addr {
-            cluster_worker = cluster_worker.with_seed_addr(seed_addr.clone());
-        }
+        cluster_worker =
+            cluster_worker.external_addr(&config.remote_listen_addr.replace("0.0.0.0", "127.0.0.1"))
     }
+
+    // if is_running_in_k8s {
+    //     if let Some(discovered_targets) = discovered_targets {
+    //         if let Some(first_peer) = discovered_targets.into_iter().next() {
+    //             cluster_worker = cluster_worker.with_seed_addr(first_peer)
+    //         }
+    //     }
+    // } else {
+    if let Some(seed_addr) = seed_addr {
+        cluster_worker = cluster_worker.with_seed_addr(seed_addr.clone());
+    }
+    // }
 
     cluster_worker.start().await;
     remote_system

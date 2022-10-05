@@ -95,6 +95,8 @@ where
 
         match event {
             Some(event) => {
+                // TODO: we could make this fail fast if the node is known to be terminated?
+
                 self.system.notify_node(self.node_id, event).await;
                 match res_rx.await {
                     Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {

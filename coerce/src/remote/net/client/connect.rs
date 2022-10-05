@@ -16,6 +16,9 @@ use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
 use crate::remote::net::proto::network as proto;
 use crate::remote::net::{receive_loop, StreamData};
+use std::io::Error;
+use std::net::SocketAddr;
+use std::str::FromStr;
 
 use protobuf::EnumOrUnknown;
 use std::time::Duration;
@@ -39,6 +42,8 @@ impl RemoteClient {
         // let _enter = span.enter();
         let stream = TcpStream::connect(&self.addr).await;
         if stream.is_err() {
+            let error = stream.unwrap_err();
+            error!("connection to {} failed, error: {}", &self.addr, error);
             return None;
         }
 
@@ -92,6 +97,12 @@ impl Handler<Connect> for RemoteClient {
         //
         // let _enter = span.enter();
 
+        if let Some(state) = &self.state {
+            if state.is_connected() {
+                return;
+            }
+        }
+
         if let Some(connection_state) = self.connect(message, ctx).await {
             let client_actor_ref = self.actor_ref(ctx);
             let _ = ctx
@@ -136,9 +147,9 @@ impl Handler<BeginHandshake> for RemoteClient {
         let mut connection = match &mut self.state {
             Some(ClientState::Connected(connection)) => connection,
             _ => {
-                let actor_ref = self.actor_ref(ctx);
-                let _ = actor_ref.notify(Connect);
-                let _ = actor_ref.notify(message);
+                // let actor_ref = self.actor_ref(ctx);
+                // let _ = actor_ref.notify(Connect);
+                // let _ = actor_ref.notify(message);
                 return;
             }
         };

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+package coerce.example.sharding.chat;
+
+message Handshake {
+  string name = 1;
+}
+
+message JoinChat {
+  string chat_stream_id = 1;
+
+  google.protobuf.StringValue join_token = 2;
+}
+
+message LeaveChat {
+  string chat_stream_id = 1;
+}
+
+message SendChatMessage {
+  ChatMessage message = 1;
+}
+
+message ChatMessage {
+  string chat_stream_id = 1;
+
+  google.protobuf.UInt64Value message_id = 2;
+
+  google.protobuf.StringValue sender = 3;
+
+  string message = 4;
+}
+

@@ -12,4 +12,5 @@ extern crate tracing;
 
 pub mod actor;
 pub mod app;
+pub mod protocol;
 pub mod websocket;

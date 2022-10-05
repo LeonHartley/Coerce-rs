@@ -10,10 +10,10 @@ repository = "https://github.com/leonhartley/coerce-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-coerce = { version = "0.7.0" }
+coerce = { path = "../../../coerce" }
 async-trait = { version = "0.1" }
 redis = { version = "0.21", features = ["tokio-comp", "cluster"] }
 redis_cluster_async = "0.7.0"
-tokio = { version = "1.20.1", features = ["full"] }
+tokio = { version = "1.21.1", features = ["full"] }
 anyhow = "1"
 bytes = { version = "1.2.1" }

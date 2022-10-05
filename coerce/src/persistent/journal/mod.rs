@@ -101,10 +101,7 @@ impl<A: PersistentActor> Journal<A> {
             .message_type_mapping::<M>()
             .expect("message type not configured");
 
-        let bytes = message
-            .as_remote_envelope()
-            .expect("cannot serialise message")
-            .into_bytes();
+        let bytes = message.as_bytes().expect("cannot serialise message");
 
         let sequence = self.last_sequence_id + 1;
 
@@ -251,7 +248,7 @@ where
     A: Recover<M>,
 {
     async fn recover(&self, actor: &mut A, bytes: Vec<u8>, ctx: &mut ActorContext) {
-        let message = M::from_remote_envelope(bytes);
+        let message = M::from_bytes(bytes);
         if let Ok(message) = message {
             actor.recover(message, ctx).await;
         } else {

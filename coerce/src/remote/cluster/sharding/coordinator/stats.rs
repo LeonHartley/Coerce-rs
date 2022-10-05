@@ -49,18 +49,15 @@ impl Handler<GetShardingStats> for ShardCoordinator {
 impl Message for GetShardingStats {
     type Result = ShardingStats;
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::GetShardingStats {
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_| Err(MessageWrapErr::SerializationErr),
-            |b| Ok(Envelope::Remote(b)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(bytes: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::GetShardingStats::parse_from_bytes(&bytes).map_or_else(
             |_| Err(MessageUnwrapErr::DeserializationErr),
             |_m| Ok(GetShardingStats),

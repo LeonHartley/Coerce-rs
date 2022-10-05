@@ -52,7 +52,7 @@ impl ClusterWorkerBuilder {
         // let _enter = span.enter();
 
         let started_at = *self.system.started_at();
-        let cluster_node_addr = self.server_external_addr.as_ref().map_or_else(|| self.server_listen_addr.clone(), |s| s.clone());
+        let cluster_node_addr = self.cluster_node_addr();
         self.system
             .register_node(RemoteNode::new(
                 self.system.node_id(),
@@ -65,16 +65,34 @@ impl ClusterWorkerBuilder {
         let server_ctx = self.system.clone();
         let mut server = RemoteServer::new();
 
-        trace!("starting on {}, external_addr={}", &self.server_listen_addr, &cluster_node_addr);
+        trace!(
+            "starting on {}, external_addr={}",
+            &self.server_listen_addr,
+            &cluster_node_addr
+        );
+
+        let discover_peers = self.seed_addr.as_ref() != Some(&cluster_node_addr);
 
         server
-            .start(self.server_listen_addr.clone(), cluster_node_addr, server_ctx)
+            .start(
+                self.server_listen_addr.clone(),
+                cluster_node_addr,
+                server_ctx,
+            )
             .await
             .expect("failed to start server");
 
-        self.discover_peers().await;
+        if discover_peers {
+            self.discover_peers().await;
+        }
 
         server
+    }
+
+    fn cluster_node_addr(&self) -> String {
+        self.server_external_addr
+            .as_ref()
+            .map_or_else(|| self.server_listen_addr.clone(), |s| s.clone())
     }
 
     async fn discover_peers(&mut self) {

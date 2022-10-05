@@ -12,6 +12,7 @@ fn main() -> std::io::Result<()> {
     }
 
     compile_proto(
+        "coerce/src/protocol/",
         vec![
             (
                 "coerce/src/protocol/network.proto",
@@ -29,16 +30,28 @@ fn main() -> std::io::Result<()> {
         .into_iter(),
     );
 
+    compile_proto(
+        "examples/coerce-sharded-chat-example/src/protocol/",
+        vec![(
+            "examples/coerce-sharded-chat-example/src/protocol/chat.proto",
+            "examples/coerce-sharded-chat-example/src/protocol",
+        )]
+        .into_iter(),
+    );
+
     Ok(())
 }
 
-fn compile_proto<I: Iterator<Item = (&'static str, &'static str)>>(protobuf_files: I) {
+fn compile_proto<I: Iterator<Item = (&'static str, &'static str)>>(
+    include_dir: &'static str,
+    protobuf_files: I,
+) {
     for file in protobuf_files {
         protobuf_codegen::Codegen::new()
             .customize(Customize::default().gen_mod_rs(true))
             .out_dir(file.1)
             .input(file.0)
-            .include("coerce/src/protocol/")
+            .include(include_dir)
             .run()
             .expect(&format!("protoc {}", file.0));
     }

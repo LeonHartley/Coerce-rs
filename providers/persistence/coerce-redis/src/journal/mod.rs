@@ -127,11 +127,12 @@ where
     ) -> anyhow::Result<()> {
         let (tx, rx) = oneshot::channel();
         let key = (self.key_provider_fn)(persistence_id, "snapshot", self.config.as_ref());
-        let _ = self.redis_journal.notify(Write {
+
+        self.redis_journal.notify(Write {
             key,
             entry,
             result_channel: tx,
-        });
+        })?;
 
         rx.await?
     }
@@ -139,11 +140,13 @@ where
     async fn write_message(&self, persistence_id: &str, entry: JournalEntry) -> anyhow::Result<()> {
         let (result_channel, rx) = oneshot::channel();
         let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
-        let _ = self.redis_journal.notify(Write {
+
+        self.redis_journal.notify(Write {
             key,
             entry,
             result_channel,
-        });
+        })?;
+
         rx.await?
     }
 
@@ -153,7 +156,10 @@ where
     ) -> anyhow::Result<Option<JournalEntry>> {
         let (result_channel, rx) = oneshot::channel();
         let key = (self.key_provider_fn)(persistence_id, "snapshot", self.config.as_ref());
-        let _ = self.redis_journal.notify(ReadSnapshot(key, result_channel));
+
+        self.redis_journal
+            .notify(ReadSnapshot(key, result_channel))?;
+
         rx.await?
     }
 
@@ -164,11 +170,11 @@ where
     ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
         let (result_channel, rx) = oneshot::channel();
         let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
-        let _ = self.redis_journal.notify(ReadMessages {
+        self.redis_journal.notify(ReadMessages {
             key,
             from_sequence,
             result_channel,
-        });
+        })?;
         rx.await?
     }
 

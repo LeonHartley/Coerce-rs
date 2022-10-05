@@ -1,26 +1,50 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, IntoActorId, LocalActorRef};
-
 use crate::remote::net::codec::NetworkCodec;
-use crate::remote::net::message::ClientEvent;
-use crate::remote::net::StreamData;
+use crate::remote::net::message::{datetime_to_timestamp, ClientEvent};
+use crate::remote::net::proto::network::{
+    NodeIdentity, RemoteNode as RemoteNodeProto, SystemCapabilities,
+};
+use crate::remote::net::server::{RemoteServerConfigRef, SessionMessageReceiver};
+use crate::remote::net::{receive_loop, StreamData};
+use crate::CARGO_PKG_VERSION;
 use futures::SinkExt;
 use std::collections::HashMap;
-use tokio_util::codec::FramedWrite;
+use std::net::SocketAddr;
+use tokio::io::{ReadHalf, WriteHalf};
+use tokio::net::TcpStream;
+use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub struct RemoteSession {
     id: Uuid,
-    write: FramedWrite<tokio::io::WriteHalf<tokio::net::TcpStream>, NetworkCodec>,
+    addr: SocketAddr,
+    write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
+    read: Option<FramedRead<ReadHalf<TcpStream>, NetworkCodec>>,
+    read_cancellation_token: Option<CancellationToken>,
+    remote_server_config: RemoteServerConfigRef,
 }
 
 impl RemoteSession {
     pub fn new(
         id: Uuid,
-        write: FramedWrite<tokio::io::WriteHalf<tokio::net::TcpStream>, NetworkCodec>,
+        addr: SocketAddr,
+        stream: TcpStream,
+        remote_server_config: RemoteServerConfigRef,
     ) -> RemoteSession {
-        RemoteSession { id, write }
+        let (read, write) = tokio::io::split(stream);
+        let read = Some(FramedRead::new(read, NetworkCodec));
+        let write = FramedWrite::new(write, NetworkCodec);
+        RemoteSession {
+            id,
+            addr,
+            write,
+            read,
+            read_cancellation_token: Some(CancellationToken::new()),
+            remote_server_config,
+        }
     }
 }
 
@@ -30,7 +54,63 @@ pub struct RemoteSessionStore {
 
 impl Actor for RemoteSessionStore {}
 
-impl Actor for RemoteSession {}
+#[async_trait]
+impl Actor for RemoteSession {
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        let system = ctx.system().remote();
+
+        let peers = system
+            .get_nodes()
+            .await
+            .into_iter()
+            .map(|node| RemoteNodeProto {
+                node_id: node.id,
+                addr: node.addr,
+                tag: node.tag,
+                node_started_at: node
+                    .node_started_at
+                    .as_ref()
+                    .map(datetime_to_timestamp)
+                    .into(),
+                ..RemoteNodeProto::default()
+            })
+            .collect::<Vec<RemoteNodeProto>>();
+
+        let capabilities = system.config().get_capabilities();
+        let capabilities = Some(SystemCapabilities {
+            actors: capabilities.actors.into(),
+            messages: capabilities.messages.into(),
+            ..Default::default()
+        });
+
+        self.write(ClientEvent::Identity(NodeIdentity {
+            node_id: system.node_id(),
+            node_tag: system.node_tag().to_string(),
+            application_version: format!("pkg_version={},protocol_version=1", CARGO_PKG_VERSION),
+            addr: self.remote_server_config.external_node_addr.to_string(),
+            node_started_at: Some(datetime_to_timestamp(system.started_at())).into(),
+            peers: peers.into(),
+            capabilities: capabilities.into(),
+            ..Default::default()
+        }))
+        .await;
+
+        let _session = tokio::spawn(receive_loop(
+            self.addr.to_string(),
+            system.clone(),
+            self.read.take().unwrap(),
+            SessionMessageReceiver::new(self.id, self.actor_ref(ctx)),
+        ));
+    }
+
+    async fn stopped(&mut self, ctx: &mut ActorContext) {
+        info!("session closed (session_id={})", &self.id);
+
+        if let Some(session_store) = ctx.parent::<RemoteSessionStore>() {
+            let _ = session_store.send(SessionClosed(self.id)).await;
+        }
+    }
+}
 
 impl RemoteSessionStore {
     pub fn new() -> RemoteSessionStore {
@@ -76,7 +156,8 @@ impl Handler<NewSession> for RemoteSessionStore {
             .await
             .expect("unable to create session actor");
 
-        trace!(target: "SessionStore", "new session {}", &session_id);
+        let node_id = ctx.system().remote().node_id();
+        debug!(target: "SessionStore", node_id = node_id, "new session {}", &session_id);
         self.sessions.insert(session_id, session_actor.clone());
         session_actor
     }
@@ -84,9 +165,10 @@ impl Handler<NewSession> for RemoteSessionStore {
 
 #[async_trait]
 impl Handler<SessionClosed> for RemoteSessionStore {
-    async fn handle(&mut self, message: SessionClosed, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SessionClosed, ctx: &mut ActorContext) {
         self.sessions.remove(&message.0);
-        trace!(target: "SessionStore", "disposed session {}", &message.0);
+        let node_id = ctx.system().remote().node_id();
+        debug!(target: "SessionStore", node_id = node_id,  "disposed session {}", &message.0);
     }
 }
 
@@ -110,7 +192,13 @@ impl Handler<SessionWrite> for RemoteSessionStore {
 #[async_trait]
 impl Handler<SessionWrite> for RemoteSession {
     async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorContext) {
-        match message.1.write_to_bytes() {
+        self.write(message.1).await
+    }
+}
+
+impl RemoteSession {
+    pub async fn write(&mut self, message: ClientEvent) {
+        match message.write_to_bytes() {
             Some(msg) => {
                 trace!(target: "RemoteSession", "message encoded");
                 if self.write.send(&msg).await.is_ok() {

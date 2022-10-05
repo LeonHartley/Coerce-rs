@@ -21,6 +21,12 @@ pub enum NodeStatus {
     Terminated,
 }
 
+impl NodeStatus {
+    pub fn is_healthy(&self) -> bool {
+        return matches!(&self, Self::Healthy);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RemoteNodeState {
     pub id: NodeId,
@@ -68,8 +74,19 @@ impl RemoteNodeStore {
         }
     }
 
+    pub fn node_terminated(&mut self, node_id: NodeId) {
+        let node = self.get_mut(&node_id);
+        if let Some(node) = node {
+            node.status = NodeStatus::Terminated;
+        }
+    }
+
     pub fn get(&self, node_id: &NodeId) -> Option<&RemoteNodeState> {
         self.nodes.get(node_id)
+    }
+
+    pub fn get_mut(&mut self, node_id: &NodeId) -> Option<&mut RemoteNodeState> {
+        self.nodes.get_mut(node_id)
     }
 
     pub fn is_registered(&self, node_id: NodeId) -> bool {

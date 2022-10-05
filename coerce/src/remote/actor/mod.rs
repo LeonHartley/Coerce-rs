@@ -11,6 +11,7 @@ use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::any::TypeId;
 use std::collections::HashMap;
 
+use crate::actor::context::ActorContext;
 use crate::actor::scheduler::ActorType::Anonymous;
 use crate::remote::heartbeat::HeartbeatConfig;
 use crate::remote::stream::pubsub::Subscription;
@@ -168,7 +169,14 @@ impl RemoteResponse {
 
 impl Actor for RemoteRegistry {}
 
-impl Actor for RemoteClientRegistry {}
+#[async_trait]
+impl Actor for RemoteClientRegistry {
+    async fn stopped(&mut self, _ctx: &mut ActorContext) {
+        for client in &self.node_id_registry {
+            let _ = client.1.stop().await;
+        }
+    }
+}
 
 impl RemoteClientRegistry {
     pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteClientRegistry> {
@@ -178,7 +186,7 @@ impl RemoteClientRegistry {
                 node_addr_registry: HashMap::new(),
                 node_id_registry: HashMap::new(),
             },
-            ActorType::Anonymous,
+            ActorType::Tracked,
         )
         .await
         .expect("RemoteClientRegistry")
@@ -195,7 +203,7 @@ impl RemoteRegistry {
                 system: None,
                 system_event_subscription: None,
             },
-            Anonymous,
+            ActorType::Tracked,
         )
         .await
         .expect("RemoteRegistry")

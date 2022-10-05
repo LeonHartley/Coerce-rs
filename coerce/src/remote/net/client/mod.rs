@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use futures::SinkExt;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 use tokio::io::WriteHalf;
@@ -19,8 +20,12 @@ use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef};
 use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Connect;
 use crate::remote::net::client::receive::HandshakeAcknowledge;
+use crate::remote::net::client::send::write_bytes;
 use crate::remote::net::codec::NetworkCodec;
+use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network as proto;
+use crate::remote::net::proto::network::PingEvent;
+use crate::remote::net::StreamData;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 pub mod connect;
@@ -196,6 +201,46 @@ impl From<LocalActorRef<RemoteClient>> for RemoteClientRef {
 impl Actor for RemoteClient {
     async fn started(&mut self, ctx: &mut ActorContext) {
         let _ = self.actor_ref(ctx).notify(Connect {});
+    }
+
+    async fn stopped(&mut self, ctx: &mut ActorContext) {
+        match &mut self.state {
+            None => {}
+            Some(state) => match state {
+                ClientState::Idle { .. } => {}
+                ClientState::Connected(connection) => {
+                    if ctx.system().is_terminated() {
+                        debug!(
+                            "system shutdown, notifying node(addr={}, id={:?})",
+                            &self.addr, &self.node_id
+                        );
+
+                        let ping_event = SessionEvent::Ping(PingEvent {
+                            message_id: Uuid::new_v4().to_string(),
+                            node_id: ctx.system().remote().node_id(),
+                            system_terminated: true,
+                            ..PingEvent::default()
+                        });
+
+                        let _ = write_bytes(
+                            &ping_event.write_to_bytes().unwrap(),
+                            &mut connection.write,
+                        )
+                        .await;
+                    }
+
+                    let _res = connection.write.close().await;
+                    connection.receive_task.abort();
+                }
+                ClientState::Quarantined { .. } => {}
+            },
+        }
+
+        if let Some(ping_timer) = self.ping_timer.take() {
+            ping_timer.stop();
+        }
+
+        debug!("client actor: {} stopped", &self.addr);
     }
 }
 

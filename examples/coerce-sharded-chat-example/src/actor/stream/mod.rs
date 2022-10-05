@@ -65,7 +65,9 @@ pub enum JoinResult {
 #[derive(Serialize, Deserialize, JsonMessage, Clone, Debug)]
 #[result("()")]
 pub struct ChatMessage {
-    pub sender: String,
+    pub chat_stream_id: String,
+    pub message_id: Option<u64>,
+    pub sender: Option<String>,
     pub message: String,
 }
 
@@ -99,7 +101,9 @@ impl Handler<ChatMessage> for ChatStream {
 
             info!(
                 "user {} said \"{}\" (chat_stream={})",
-                &message.sender, &message.message, self.name
+                &message.sender.as_ref().unwrap(),
+                &message.message,
+                self.name
             );
 
             PubSub::publish(

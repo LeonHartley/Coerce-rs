@@ -1272,6 +1272,10 @@ pub struct PingEvent {
     pub message_id: ::std::string::String,
     // @@protoc_insertion_point(field:coerce.network.PingEvent.trace_id)
     pub trace_id: ::std::string::String,
+    // @@protoc_insertion_point(field:coerce.network.PingEvent.node_id)
+    pub node_id: u64,
+    // @@protoc_insertion_point(field:coerce.network.PingEvent.system_terminated)
+    pub system_terminated: bool,
     // special fields
     // @@protoc_insertion_point(special_field:coerce.network.PingEvent.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -1289,7 +1293,7 @@ impl PingEvent {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut fields = ::std::vec::Vec::with_capacity(4);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "message_id",
@@ -1300,6 +1304,16 @@ impl PingEvent {
             "trace_id",
             |m: &PingEvent| { &m.trace_id },
             |m: &mut PingEvent| { &mut m.trace_id },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "node_id",
+            |m: &PingEvent| { &m.node_id },
+            |m: &mut PingEvent| { &mut m.node_id },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "system_terminated",
+            |m: &PingEvent| { &m.system_terminated },
+            |m: &mut PingEvent| { &mut m.system_terminated },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PingEvent>(
             "PingEvent",
@@ -1325,6 +1339,12 @@ impl ::protobuf::Message for PingEvent {
                 18 => {
                     self.trace_id = is.read_string()?;
                 },
+                24 => {
+                    self.node_id = is.read_uint64()?;
+                },
+                32 => {
+                    self.system_terminated = is.read_bool()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -1343,6 +1363,12 @@ impl ::protobuf::Message for PingEvent {
         if !self.trace_id.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.trace_id);
         }
+        if self.node_id != 0 {
+            my_size += ::protobuf::rt::uint64_size(3, self.node_id);
+        }
+        if self.system_terminated != false {
+            my_size += 1 + 1;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -1354,6 +1380,12 @@ impl ::protobuf::Message for PingEvent {
         }
         if !self.trace_id.is_empty() {
             os.write_string(2, &self.trace_id)?;
+        }
+        if self.node_id != 0 {
+            os.write_uint64(3, self.node_id)?;
+        }
+        if self.system_terminated != false {
+            os.write_bool(4, self.system_terminated)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -1374,6 +1406,8 @@ impl ::protobuf::Message for PingEvent {
     fn clear(&mut self) {
         self.message_id.clear();
         self.trace_id.clear();
+        self.node_id = 0;
+        self.system_terminated = false;
         self.special_fields.clear();
     }
 
@@ -1381,6 +1415,8 @@ impl ::protobuf::Message for PingEvent {
         static instance: PingEvent = PingEvent {
             message_id: ::std::string::String::new(),
             trace_id: ::std::string::String::new(),
+            node_id: 0,
+            system_terminated: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1903,7 +1939,7 @@ pub struct ActorAddress {
     // @@protoc_insertion_point(field:coerce.network.ActorAddress.actor_id)
     pub actor_id: ::std::string::String,
     // @@protoc_insertion_point(field:coerce.network.ActorAddress.node_id)
-    pub node_id: u64,
+    pub node_id: ::protobuf::MessageField<::protobuf::well_known_types::wrappers::UInt64Value>,
     // @@protoc_insertion_point(field:coerce.network.ActorAddress.trace_id)
     pub trace_id: ::std::string::String,
     // special fields
@@ -1930,7 +1966,7 @@ impl ActorAddress {
             |m: &ActorAddress| { &m.actor_id },
             |m: &mut ActorAddress| { &mut m.actor_id },
         ));
-        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::wrappers::UInt64Value>(
             "node_id",
             |m: &ActorAddress| { &m.node_id },
             |m: &mut ActorAddress| { &mut m.node_id },
@@ -1961,8 +1997,8 @@ impl ::protobuf::Message for ActorAddress {
                 10 => {
                     self.actor_id = is.read_string()?;
                 },
-                16 => {
-                    self.node_id = is.read_uint64()?;
+                18 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.node_id)?;
                 },
                 26 => {
                     self.trace_id = is.read_string()?;
@@ -1982,8 +2018,9 @@ impl ::protobuf::Message for ActorAddress {
         if !self.actor_id.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.actor_id);
         }
-        if self.node_id != 0 {
-            my_size += ::protobuf::rt::uint64_size(2, self.node_id);
+        if let Some(v) = self.node_id.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
         if !self.trace_id.is_empty() {
             my_size += ::protobuf::rt::string_size(3, &self.trace_id);
@@ -1997,8 +2034,8 @@ impl ::protobuf::Message for ActorAddress {
         if !self.actor_id.is_empty() {
             os.write_string(1, &self.actor_id)?;
         }
-        if self.node_id != 0 {
-            os.write_uint64(2, self.node_id)?;
+        if let Some(v) = self.node_id.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
         }
         if !self.trace_id.is_empty() {
             os.write_string(3, &self.trace_id)?;
@@ -2021,7 +2058,7 @@ impl ::protobuf::Message for ActorAddress {
 
     fn clear(&mut self) {
         self.actor_id.clear();
-        self.node_id = 0;
+        self.node_id.clear();
         self.trace_id.clear();
         self.special_fields.clear();
     }
@@ -2029,7 +2066,7 @@ impl ::protobuf::Message for ActorAddress {
     fn default_instance() -> &'static ActorAddress {
         static instance: ActorAddress = ActorAddress {
             actor_id: ::std::string::String::new(),
-            node_id: 0,
+            node_id: ::protobuf::MessageField::none(),
             trace_id: ::std::string::String::new(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
@@ -3907,97 +3944,100 @@ impl MessageWrapErr {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\rnetwork.proto\x12\x0ecoerce.network\x1a\x1fgoogle/protobuf/timestamp\
-    .proto\"\x8f\x01\n\nRemoteNode\x12\x17\n\x07node_id\x18\x01\x20\x01(\x04\
-    R\x06nodeId\x12\x12\n\x04addr\x18\x02\x20\x01(\tR\x04addr\x12B\n\x0fnode\
-    _started_at\x18\x03\x20\x01(\x0b2\x1a.google.protobuf.TimestampR\rnodeSt\
-    artedAt\x12\x10\n\x03tag\x18\x04\x20\x01(\tR\x03tag\"s\n\rIdentifyEvent\
-    \x12$\n\x0esource_node_id\x18\x01\x20\x01(\x04R\x0csourceNodeId\x12&\n\
-    \x0fsource_node_tag\x18\x02\x20\x01(\tR\rsourceNodeTag\x12\x14\n\x05toke\
-    n\x18\x03\x20\x01(\tR\x05token\"\xf0\x02\n\x0cNodeIdentity\x12\x17\n\x07\
-    node_id\x18\x01\x20\x01(\x04R\x06nodeId\x12\x19\n\x08node_tag\x18\x02\
-    \x20\x01(\tR\x07nodeTag\x12\x12\n\x04addr\x18\x03\x20\x01(\tR\x04addr\
-    \x12/\n\x13application_version\x18\x04\x20\x01(\tR\x12applicationVersion\
-    \x12)\n\x10protocol_version\x18\x05\x20\x01(\tR\x0fprotocolVersion\x12B\
-    \n\x0fnode_started_at\x18\x06\x20\x01(\x0b2\x1a.google.protobuf.Timestam\
-    pR\rnodeStartedAt\x120\n\x05peers\x18\x07\x20\x03(\x0b2\x1a.coerce.netwo\
-    rk.RemoteNodeR\x05peers\x12F\n\x0ccapabilities\x18\x08\x20\x01(\x0b2\".c\
-    oerce.network.SystemCapabilitiesR\x0ccapabilities\"H\n\x12SystemCapabili\
-    ties\x12\x16\n\x06actors\x18\x01\x20\x03(\tR\x06actors\x12\x1a\n\x08mess\
-    ages\x18\x02\x20\x03(\tR\x08messages\"\xd6\x01\n\x0fClientHandshake\x12\
-    \x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\x120\n\x05nodes\x18\
-    \x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\x05nodes\x12\x19\n\x08\
-    node_tag\x18\x03\x20\x01(\tR\x07nodeTag\x12\x19\n\x08trace_id\x18\x04\
-    \x20\x01(\tR\x07traceId\x12B\n\x0fnode_started_at\x18\x05\x20\x01(\x0b2\
-    \x1a.google.protobuf.TimestampR\rnodeStartedAt\"`\n\x0cClientResult\x12\
-    \x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\x16\n\x06result\
-    \x18\x02\x20\x01(\x0cR\x06result\x12\x19\n\x08trace_id\x18\x03\x20\x01(\
-    \tR\x07traceId\"x\n\tClientErr\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\
-    \tmessageId\x121\n\x05error\x18\x02\x20\x01(\x0b2\x1b.coerce.network.Act\
-    orRefErrR\x05error\x12\x19\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceId\
-    \"E\n\tPingEvent\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\
-    \x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"E\n\tPongEvent\
-    \x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\x19\n\x08trace\
-    _id\x18\x02\x20\x01(\tR\x07traceId\"\x9e\x01\n\x10CreateActorEvent\x12\
-    \x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\x19\n\x08actor_id\
-    \x18\x02\x20\x01(\tR\x07actorId\x12\x1d\n\nactor_type\x18\x03\x20\x01(\t\
-    R\tactorType\x12\x16\n\x06recipe\x18\x04\x20\x01(\x0cR\x06recipe\x12\x19\
-    \n\x08trace_id\x18\x05\x20\x01(\tR\x07traceId\"e\n\x0eFindActorEvent\x12\
-    \x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\x19\n\x08actor_id\
-    \x18\x02\x20\x01(\tR\x07actorId\x12\x19\n\x08trace_id\x18\x03\x20\x01(\t\
-    R\x07traceId\"]\n\x0cActorAddress\x12\x19\n\x08actor_id\x18\x01\x20\x01(\
-    \tR\x07actorId\x12\x17\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeId\x12\
-    \x19\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceId\"\xf5\x01\n\x0eMessage\
-    Request\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12!\n\x0ch\
-    andler_type\x18\x02\x20\x01(\tR\x0bhandlerType\x12\x19\n\x08actor_id\x18\
-    \x03\x20\x01(\tR\x07actorId\x12\x18\n\x07message\x18\x04\x20\x01(\x0cR\
-    \x07message\x12\x19\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceId\x12+\n\
-    \x11requires_response\x18\x06\x20\x01(\x08R\x10requiresResponse\x12$\n\
-    \x0eorigin_node_id\x18\x07\x20\x01(\x04R\x0coriginNodeId\"\xe6\x01\n\x10\
-    SessionHandshake\x12\x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\
-    \x120\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\
-    \x05nodes\x12\x14\n\x05token\x18\x03\x20\x01(\x0cR\x05token\x12\x19\n\
-    \x08node_tag\x18\x04\x20\x01(\tR\x07nodeTag\x12;\n\x0bclient_type\x18\
-    \x05\x20\x01(\x0e2\x1a.coerce.network.ClientTypeR\nclientType\x12\x19\n\
-    \x08trace_id\x18\x06\x20\x01(\tR\x07traceId\"q\n\x12StreamPublishEvent\
-    \x12\x14\n\x05topic\x18\x01\x20\x01(\tR\x05topic\x12\x10\n\x03key\x18\
-    \x02\x20\x01(\tR\x03key\x12\x18\n\x07message\x18\x03\x20\x01(\x0cR\x07me\
-    ssage\x12\x19\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceId\"Y\n\x0cNewNo\
-    deEvent\x12.\n\x04node\x18\x01\x20\x01(\x0b2\x1a.coerce.network.RemoteNo\
-    deR\x04node\x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"]\n\
-    \x10NodeRemovedEvent\x12.\n\x04node\x18\x01\x20\x01(\x0b2\x1a.coerce.net\
-    work.RemoteNodeR\x04node\x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07tr\
-    aceId\"H\n\x12LeaderChangedEvent\x12\x17\n\x07node_id\x18\x01\x20\x01(\
-    \x04R\x06nodeId\x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"i\
-    \n\x0bRaftRequest\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\
-    \x12!\n\x0crequest_type\x18\x02\x20\x01(\rR\x0brequestType\x12\x18\n\x07\
-    payload\x18\x03\x20\x01(\x0cR\x07payload\"\xf0\x04\n\x0bActorRefErr\x129\
-    \n\x04type\x18\x01\x20\x01(\x0e2%.coerce.network.ActorRefErr.ErrorTypeR\
-    \x04type\x12\x19\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorId\x12!\n\x0c\
-    message_type\x18\x03\x20\x01(\tR\x0bmessageType\x12\x1d\n\nactor_type\
-    \x18\x04\x20\x01(\tR\tactorType\x12*\n\x11time_taken_millis\x18\x05\x20\
-    \x01(\x04R\x0ftimeTakenMillis\x12O\n\x13serialization_error\x18\x06\x20\
-    \x01(\x0e2\x1e.coerce.network.MessageWrapErrR\x12serializationError\x12U\
-    \n\x15deserialization_error\x18\x07\x20\x01(\x0e2\x20.coerce.network.Mes\
-    sageUnwrapErrR\x14deserializationError\"\xf4\x01\n\tErrorType\x12\x14\n\
-    \x10ActorUnavailable\x10\0\x12\x0c\n\x08NotFound\x10\x01\x12\x11\n\rAlre\
-    adyExists\x10\x02\x12\x11\n\rSerialisation\x10\x03\x12\x13\n\x0fDeserial\
-    isation\x10\x04\x12\x0b\n\x07Timeout\x10\x05\x12\x16\n\x12StartChannelCl\
-    osed\x10\x06\x12\x0e\n\nInvalidRef\x10\x07\x12\x17\n\x13ResultChannelClo\
-    sed\x10\x08\x12\x14\n\x10ResultSendFailed\x10\t\x12\x10\n\x0cNotSupporte\
-    d\x10\n\x12\x12\n\x0eNotImplemented\x10\x0b*\xbc\x01\n\x05Event\x12\x0c\
-    \n\x08Identify\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\x10\
-    \x02\x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pon\
-    g\x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\x07\
-    \x12\x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\
-    \n\rStreamPublish\x10\n\x12\x08\n\x04Raft\x10\x0b\x12\x0c\n\x08Identity\
-    \x10\x0c*$\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\
-    \x01*S\n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12C\
-    lusterNodeRemoved\x10\x01\x12\x18\n\x14ClusterLeaderChanged\x10\x02*W\n\
-    \x10MessageUnwrapErr\x12\x14\n\x10UnknownUnwrapErr\x10\0\x12\x15\n\x11Un\
-    wrapUnsupported\x10\x01\x12\x16\n\x12DeserializationErr\x10\x02*O\n\x0eM\
-    essageWrapErr\x12\x12\n\x0eUnknownWrapErr\x10\0\x12\x13\n\x0fWrapUnsuppo\
-    rted\x10\x01\x12\x14\n\x10SerializationErr\x10\x02b\x06proto3\
+    \n\rnetwork.proto\x12\x0ecoerce.network\x1a\x1egoogle/protobuf/wrappers.\
+    proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8f\x01\n\nRemoteNode\x12\
+    \x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\x12\x12\n\x04addr\x18\
+    \x02\x20\x01(\tR\x04addr\x12B\n\x0fnode_started_at\x18\x03\x20\x01(\x0b2\
+    \x1a.google.protobuf.TimestampR\rnodeStartedAt\x12\x10\n\x03tag\x18\x04\
+    \x20\x01(\tR\x03tag\"s\n\rIdentifyEvent\x12$\n\x0esource_node_id\x18\x01\
+    \x20\x01(\x04R\x0csourceNodeId\x12&\n\x0fsource_node_tag\x18\x02\x20\x01\
+    (\tR\rsourceNodeTag\x12\x14\n\x05token\x18\x03\x20\x01(\tR\x05token\"\
+    \xf0\x02\n\x0cNodeIdentity\x12\x17\n\x07node_id\x18\x01\x20\x01(\x04R\
+    \x06nodeId\x12\x19\n\x08node_tag\x18\x02\x20\x01(\tR\x07nodeTag\x12\x12\
+    \n\x04addr\x18\x03\x20\x01(\tR\x04addr\x12/\n\x13application_version\x18\
+    \x04\x20\x01(\tR\x12applicationVersion\x12)\n\x10protocol_version\x18\
+    \x05\x20\x01(\tR\x0fprotocolVersion\x12B\n\x0fnode_started_at\x18\x06\
+    \x20\x01(\x0b2\x1a.google.protobuf.TimestampR\rnodeStartedAt\x120\n\x05p\
+    eers\x18\x07\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\x05peers\x12F\
+    \n\x0ccapabilities\x18\x08\x20\x01(\x0b2\".coerce.network.SystemCapabili\
+    tiesR\x0ccapabilities\"H\n\x12SystemCapabilities\x12\x16\n\x06actors\x18\
+    \x01\x20\x03(\tR\x06actors\x12\x1a\n\x08messages\x18\x02\x20\x03(\tR\x08\
+    messages\"\xd6\x01\n\x0fClientHandshake\x12\x17\n\x07node_id\x18\x01\x20\
+    \x01(\x04R\x06nodeId\x120\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.ne\
+    twork.RemoteNodeR\x05nodes\x12\x19\n\x08node_tag\x18\x03\x20\x01(\tR\x07\
+    nodeTag\x12\x19\n\x08trace_id\x18\x04\x20\x01(\tR\x07traceId\x12B\n\x0fn\
+    ode_started_at\x18\x05\x20\x01(\x0b2\x1a.google.protobuf.TimestampR\rnod\
+    eStartedAt\"`\n\x0cClientResult\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\t\
+    R\tmessageId\x12\x16\n\x06result\x18\x02\x20\x01(\x0cR\x06result\x12\x19\
+    \n\x08trace_id\x18\x03\x20\x01(\tR\x07traceId\"x\n\tClientErr\x12\x1d\n\
+    \nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x121\n\x05error\x18\x02\x20\
+    \x01(\x0b2\x1b.coerce.network.ActorRefErrR\x05error\x12\x19\n\x08trace_i\
+    d\x18\x03\x20\x01(\tR\x07traceId\"\x8b\x01\n\tPingEvent\x12\x1d\n\nmessa\
+    ge_id\x18\x01\x20\x01(\tR\tmessageId\x12\x19\n\x08trace_id\x18\x02\x20\
+    \x01(\tR\x07traceId\x12\x17\n\x07node_id\x18\x03\x20\x01(\x04R\x06nodeId\
+    \x12+\n\x11system_terminated\x18\x04\x20\x01(\x08R\x10systemTerminated\"\
+    E\n\tPongEvent\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\
+    \x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"\x9e\x01\n\x10CreateA\
+    ctorEvent\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\x19\n\
+    \x08actor_id\x18\x02\x20\x01(\tR\x07actorId\x12\x1d\n\nactor_type\x18\
+    \x03\x20\x01(\tR\tactorType\x12\x16\n\x06recipe\x18\x04\x20\x01(\x0cR\
+    \x06recipe\x12\x19\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceId\"e\n\x0e\
+    FindActorEvent\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12\
+    \x19\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorId\x12\x19\n\x08trace_id\
+    \x18\x03\x20\x01(\tR\x07traceId\"{\n\x0cActorAddress\x12\x19\n\x08actor_\
+    id\x18\x01\x20\x01(\tR\x07actorId\x125\n\x07node_id\x18\x02\x20\x01(\x0b\
+    2\x1c.google.protobuf.UInt64ValueR\x06nodeId\x12\x19\n\x08trace_id\x18\
+    \x03\x20\x01(\tR\x07traceId\"\xf5\x01\n\x0eMessageRequest\x12\x1d\n\nmes\
+    sage_id\x18\x01\x20\x01(\tR\tmessageId\x12!\n\x0chandler_type\x18\x02\
+    \x20\x01(\tR\x0bhandlerType\x12\x19\n\x08actor_id\x18\x03\x20\x01(\tR\
+    \x07actorId\x12\x18\n\x07message\x18\x04\x20\x01(\x0cR\x07message\x12\
+    \x19\n\x08trace_id\x18\x05\x20\x01(\tR\x07traceId\x12+\n\x11requires_res\
+    ponse\x18\x06\x20\x01(\x08R\x10requiresResponse\x12$\n\x0eorigin_node_id\
+    \x18\x07\x20\x01(\x04R\x0coriginNodeId\"\xe6\x01\n\x10SessionHandshake\
+    \x12\x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\x120\n\x05nodes\
+    \x18\x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\x05nodes\x12\x14\n\
+    \x05token\x18\x03\x20\x01(\x0cR\x05token\x12\x19\n\x08node_tag\x18\x04\
+    \x20\x01(\tR\x07nodeTag\x12;\n\x0bclient_type\x18\x05\x20\x01(\x0e2\x1a.\
+    coerce.network.ClientTypeR\nclientType\x12\x19\n\x08trace_id\x18\x06\x20\
+    \x01(\tR\x07traceId\"q\n\x12StreamPublishEvent\x12\x14\n\x05topic\x18\
+    \x01\x20\x01(\tR\x05topic\x12\x10\n\x03key\x18\x02\x20\x01(\tR\x03key\
+    \x12\x18\n\x07message\x18\x03\x20\x01(\x0cR\x07message\x12\x19\n\x08trac\
+    e_id\x18\x04\x20\x01(\tR\x07traceId\"Y\n\x0cNewNodeEvent\x12.\n\x04node\
+    \x18\x01\x20\x01(\x0b2\x1a.coerce.network.RemoteNodeR\x04node\x12\x19\n\
+    \x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"]\n\x10NodeRemovedEvent\x12\
+    .\n\x04node\x18\x01\x20\x01(\x0b2\x1a.coerce.network.RemoteNodeR\x04node\
+    \x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"H\n\x12LeaderChan\
+    gedEvent\x12\x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\x12\x19\n\
+    \x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"i\n\x0bRaftRequest\x12\x1d\
+    \n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12!\n\x0crequest_type\x18\
+    \x02\x20\x01(\rR\x0brequestType\x12\x18\n\x07payload\x18\x03\x20\x01(\
+    \x0cR\x07payload\"\xf0\x04\n\x0bActorRefErr\x129\n\x04type\x18\x01\x20\
+    \x01(\x0e2%.coerce.network.ActorRefErr.ErrorTypeR\x04type\x12\x19\n\x08a\
+    ctor_id\x18\x02\x20\x01(\tR\x07actorId\x12!\n\x0cmessage_type\x18\x03\
+    \x20\x01(\tR\x0bmessageType\x12\x1d\n\nactor_type\x18\x04\x20\x01(\tR\ta\
+    ctorType\x12*\n\x11time_taken_millis\x18\x05\x20\x01(\x04R\x0ftimeTakenM\
+    illis\x12O\n\x13serialization_error\x18\x06\x20\x01(\x0e2\x1e.coerce.net\
+    work.MessageWrapErrR\x12serializationError\x12U\n\x15deserialization_err\
+    or\x18\x07\x20\x01(\x0e2\x20.coerce.network.MessageUnwrapErrR\x14deseria\
+    lizationError\"\xf4\x01\n\tErrorType\x12\x14\n\x10ActorUnavailable\x10\0\
+    \x12\x0c\n\x08NotFound\x10\x01\x12\x11\n\rAlreadyExists\x10\x02\x12\x11\
+    \n\rSerialisation\x10\x03\x12\x13\n\x0fDeserialisation\x10\x04\x12\x0b\n\
+    \x07Timeout\x10\x05\x12\x16\n\x12StartChannelClosed\x10\x06\x12\x0e\n\nI\
+    nvalidRef\x10\x07\x12\x17\n\x13ResultChannelClosed\x10\x08\x12\x14\n\x10\
+    ResultSendFailed\x10\t\x12\x10\n\x0cNotSupported\x10\n\x12\x12\n\x0eNotI\
+    mplemented\x10\x0b*\xbc\x01\n\x05Event\x12\x0c\n\x08Identify\x10\0\x12\r\
+    \n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\
+    \x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreate\
+    Actor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\
+    \x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\
+    \x08\n\x04Raft\x10\x0b\x12\x0c\n\x08Identity\x10\x0c*$\n\nClientType\x12\
+    \n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01*S\n\x0bSystemEvent\x12\
+    \x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNodeRemoved\x10\x01\
+    \x12\x18\n\x14ClusterLeaderChanged\x10\x02*W\n\x10MessageUnwrapErr\x12\
+    \x14\n\x10UnknownUnwrapErr\x10\0\x12\x15\n\x11UnwrapUnsupported\x10\x01\
+    \x12\x16\n\x12DeserializationErr\x10\x02*O\n\x0eMessageWrapErr\x12\x12\n\
+    \x0eUnknownWrapErr\x10\0\x12\x13\n\x0fWrapUnsupported\x10\x01\x12\x14\n\
+    \x10SerializationErr\x10\x02b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -4014,7 +4054,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     static file_descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::FileDescriptor> = ::protobuf::rt::Lazy::new();
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
-            let mut deps = ::std::vec::Vec::with_capacity(1);
+            let mut deps = ::std::vec::Vec::with_capacity(2);
+            deps.push(::protobuf::well_known_types::wrappers::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::timestamp::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(20);
             messages.push(RemoteNode::generated_message_descriptor_data());

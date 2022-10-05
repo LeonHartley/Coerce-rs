@@ -1,7 +1,7 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::remote::net::client::connect::Disconnected;
-use crate::remote::net::client::{ClientState, RemoteClient, RemoteClientErr};
+use crate::remote::net::client::{ClientState, ConnectionState, RemoteClient, RemoteClientErr};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::StreamData;
 use futures::SinkExt;
@@ -23,6 +23,19 @@ impl<M: StreamData> Handler<Write<M>> for RemoteClient {
         ctx: &mut ActorContext,
     ) -> Result<(), RemoteClientErr> {
         self.write(message.0, ctx).await
+    }
+}
+
+impl ConnectionState {
+    pub async fn write(&mut self, bytes: Vec<u8>) -> Result<(), Option<Vec<u8>>> {
+        if let Err(e) = write_bytes(&bytes, &mut self.write).await {
+            match e {
+                RemoteClientErr::StreamErr(_e) => Err(Some(bytes)),
+                _ => Err(None),
+            }
+        } else {
+            Err(None)
+        }
     }
 }
 
@@ -106,6 +119,7 @@ impl RemoteClient {
             }
 
             if stream_write_error {
+                info!("stream write error, handling `Disconnected`");
                 self.handle(Disconnected, ctx).await;
             }
         } else {

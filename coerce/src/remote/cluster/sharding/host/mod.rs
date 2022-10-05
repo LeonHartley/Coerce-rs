@@ -302,6 +302,7 @@ impl Handler<StopShard> for ShardHost {
         };
         match shard_entry {
             Entry::Occupied(mut shard_entry) => {
+                // TODO: is this correct? if the status is starting, should we not update that rather than re-inserting `Stopping`?
                 match shard_entry.insert(ShardState::Stopping) {
                     ShardState::Starting {
                         mut stop_requested, ..
@@ -378,7 +379,7 @@ pub fn shard_actor_id(shard_entity: &String, shard_id: ShardId) -> ActorId {
 impl Message for ShardAllocated {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::ShardAllocated {
             shard: Some(proto::RemoteShard {
                 shard_id: self.0,
@@ -389,13 +390,10 @@ impl Message for ShardAllocated {
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::ShardAllocated::parse_from_bytes(&b)
             .map(|r| {
                 let shard = r.shard.unwrap();
@@ -416,19 +414,16 @@ impl Message for ShardAllocated {
 impl Message for ShardReallocating {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::ShardReallocating {
             shard_id: self.0,
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::StopShard::parse_from_bytes(&b)
             .map(|r| Self(r.shard_id))
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)
@@ -446,7 +441,7 @@ impl Message for ShardReallocating {
 impl Message for StopShard {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::StopShard {
             shard_id: self.shard_id,
             request_id: self.request_id.to_string(),
@@ -454,13 +449,10 @@ impl Message for StopShard {
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::StopShard::parse_from_bytes(&b)
             .map(|r| Self {
                 shard_id: r.shard_id,
@@ -482,20 +474,17 @@ impl Message for StopShard {
 impl Message for StartEntity {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::StartEntity {
             actor_id: self.actor_id.to_string(),
             recipe: self.recipe.as_ref().clone(),
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::StartEntity::parse_from_bytes(&b)
             .map(|r| Self {
                 actor_id: r.actor_id.to_actor_id(),
@@ -516,19 +505,16 @@ impl Message for StartEntity {
 impl Message for RemoveEntity {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::RemoveEntity {
             actor_id: self.actor_id.to_string(),
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::RemoveEntity::parse_from_bytes(&b)
             .map(|r| Self {
                 actor_id: r.actor_id.into_actor_id(),
@@ -548,19 +534,16 @@ impl Message for RemoveEntity {
 impl Message for PassivateEntity {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::PassivateEntity {
             actor_id: self.actor_id.to_string(),
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::PassivateEntity::parse_from_bytes(&b)
             .map(|r| Self {
                 actor_id: r.actor_id.into_actor_id(),
@@ -580,20 +563,17 @@ impl Message for PassivateEntity {
 impl Message for ShardStopped {
     type Result = ();
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::ShardStopped {
             shard_id: self.shard_id,
             is_successful: self.stopped_successfully,
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_err(|_| MessageWrapErr::SerializationErr)
     }
 
-    fn from_remote_envelope(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         proto::ShardStopped::parse_from_bytes(&b)
             .map(|r| Self {
                 shard_id: r.shard_id,
