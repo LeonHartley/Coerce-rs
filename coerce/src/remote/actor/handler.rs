@@ -1,6 +1,9 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
-use crate::remote::actor::message::{ClientConnected, ClientWrite, GetActorNode, GetNodes, NewClient, NodeTerminated, RegisterActor, RegisterNode, SetRemote, UpdateNodes};
+use crate::remote::actor::message::{
+    ClientConnected, ClientWrite, GetActorNode, GetNodes, NewClient, NodeTerminated, RegisterActor,
+    RegisterNode, SetRemote, UpdateNodes,
+};
 use crate::remote::actor::{RemoteClientRegistry, RemoteRegistry, RemoteResponse};
 use crate::remote::cluster::node::{RemoteNode, RemoteNodeState};
 use crate::remote::net::client::RemoteClient;

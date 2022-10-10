@@ -1,4 +1,4 @@
-use crate::config::KubernetesDiscoveryConfig;
+use crate::config::{Address, KubernetesDiscoveryConfig};
 use coerce::remote::system::RemoteActorSystem;
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::ListParams;
@@ -19,6 +19,7 @@ impl KubernetesDiscovery {
             .await
             .expect("failed to initialise k8s client");
         let api = Api::<Pod>::default_namespaced(client);
+
         let params = ListParams {
             label_selector: config.pod_selection_label.clone(),
             ..Default::default()
@@ -33,8 +34,30 @@ impl KubernetesDiscovery {
             let pods = pods.items;
             for pod in pods {
                 let pod_spec = pod.spec.unwrap();
-                let hostname = pod_spec.hostname.unwrap();
-                let subdomain = pod_spec.subdomain.unwrap();
+                let pod_status = pod.status.unwrap();
+
+                debug!("pod_status={:?}", pod_status);
+
+                // TODO: Check that the pod is available before using it as a
+                //       seed node.
+
+                let addr = match &config.cluster_node_address {
+                    Address::PodIp => {
+                        let pod_ip = pod_status.pod_ip;
+                        if pod_ip.is_none() {
+                            continue;
+                        }
+
+                        pod_ip.unwrap()
+                    }
+
+                    Address::Hostname => {
+                        let hostname = pod_spec.hostname.unwrap();
+                        let subdomain = pod_spec.subdomain.unwrap();
+
+                        format!("{}.{}", hostname, subdomain)
+                    }
+                };
 
                 for container in pod_spec.containers {
                     let port = container
@@ -42,13 +65,10 @@ impl KubernetesDiscovery {
                         .unwrap()
                         .into_iter()
                         .filter(|p| p.name == config.coerce_remote_port_name)
-                        .next()
-                        .unwrap();
-
-                    cluster_nodes.push(format!(
-                        "{}.{}:{}",
-                        hostname, subdomain, port.container_port
-                    ));
+                        .next();
+                    if let Some(port) = port {
+                        cluster_nodes.push(format!("{}:{}", addr, port.container_port));
+                    }
                 }
             }
         }

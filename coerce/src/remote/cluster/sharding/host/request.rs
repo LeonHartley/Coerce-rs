@@ -100,7 +100,7 @@ impl Handler<EntityRequest> for ShardHost {
                     })
                     .await;
                 if let Ok(AllocateShardResult::Allocated(shard_id, node_id)) = allocation {
-                    host_ref.notify(ShardAllocated(shard_id, node_id));
+                    let _ = host_ref.notify(ShardAllocated(shard_id, node_id));
                 }
             });
         } else {

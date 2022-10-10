@@ -62,7 +62,6 @@ impl RemoteClient {
         client_type: ClientType,
     ) -> LocalActorRef<Self> {
         let actor_id = Some(format!("RemoteClient-{}", &addr));
-
         debug!(
             "Creating RemoteClient (actor_id={})",
             actor_id.as_ref().unwrap()

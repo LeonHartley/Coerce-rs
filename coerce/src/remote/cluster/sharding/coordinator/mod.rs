@@ -8,8 +8,11 @@ use crate::remote::cluster::sharding::host::ShardHost;
 
 use crate::remote::system::NodeId;
 
+use crate::actor::message::Handler;
 use crate::remote::cluster::node::NodeStatus::{Healthy, Joining};
 use crate::remote::cluster::sharding::coordinator::balancing::Rebalance;
+use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
+use crate::remote::stream::system::SystemTopic;
 use crate::remote::RemoteActorRef;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -32,11 +35,18 @@ pub struct ShardHostState {
     pub status: ShardHostStatus,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum ShardHostStatus {
+    Unknown,
     Starting,
     Ready,
     Unavailable,
+}
+
+impl ShardHostStatus {
+    pub fn is_available(&self) -> bool {
+        matches!(&self, ShardHostStatus::Ready)
+    }
 }
 
 pub struct ShardCoordinator {
@@ -47,9 +57,15 @@ pub struct ShardCoordinator {
     reallocating_shards: HashSet<ShardId>,
     scheduled_rebalance: Option<ScheduledRebalance>,
     self_node_id: Option<NodeId>,
+    system_event_subscription: Option<Subscription>,
 }
 
 type ScheduledRebalance = ScheduledNotify<ShardCoordinator, Rebalance>;
+
+#[async_trait]
+impl Handler<Receive<SystemTopic>> for ShardCoordinator {
+    async fn handle(&mut self, message: Receive<SystemTopic>, _ctx: &mut ActorContext) {}
+}
 
 #[async_trait]
 impl PersistentActor for ShardCoordinator {
@@ -81,6 +97,12 @@ impl PersistentActor for ShardCoordinator {
         info!(
             "shard coordinator started (shard_entity={})",
             &self.shard_entity
+        );
+
+        self.system_event_subscription = Some(
+            PubSub::subscribe::<Self, SystemTopic>(SystemTopic, ctx)
+                .await
+                .unwrap(),
         );
 
         let potential_hosts = remote.get_nodes().await;
@@ -120,6 +142,7 @@ impl ShardCoordinator {
             reallocating_shards: Default::default(),
             scheduled_rebalance: None,
             self_node_id: None,
+            system_event_subscription: None,
         }
     }
 

@@ -1,8 +1,14 @@
 use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::net::server::RemoteServer;
+use crate::remote::net::server::{RemoteServer, RemoteServerConfig};
 use crate::remote::system::RemoteActorSystem;
+use std::env;
+use std::net::SocketAddr;
+use std::str::FromStr;
+use std::time::Duration;
+use tokio::net::lookup_host;
 use tokio::sync::oneshot;
+use tokio::time::sleep;
 
 pub struct ClusterWorkerBuilder {
     server_listen_addr: String,
@@ -62,7 +68,7 @@ impl ClusterWorkerBuilder {
             ))
             .await;
 
-        let server_ctx = self.system.clone();
+        let system = self.system.clone();
         let mut server = RemoteServer::new();
 
         trace!(
@@ -73,12 +79,17 @@ impl ClusterWorkerBuilder {
 
         let discover_peers = self.seed_addr.as_ref() != Some(&cluster_node_addr);
 
+        // TODO: Allow all of this to be overridden via environment variables
+
+        let listen_addr = self.server_listen_addr.clone();
+        let override_incoming_node_addr = env::var("COERCE_OVERRIDE_INCOMING_NODE_ADDR")
+            .map_or(false, |s| s == "1" || s.to_lowercase() == "true");
+
+        let config =
+            RemoteServerConfig::new(listen_addr, cluster_node_addr, override_incoming_node_addr);
+
         server
-            .start(
-                self.server_listen_addr.clone(),
-                cluster_node_addr,
-                server_ctx,
-            )
+            .start(config, system)
             .await
             .expect("failed to start server");
 
@@ -100,6 +111,20 @@ impl ClusterWorkerBuilder {
             // let span = tracing::trace_span!("ClusterWorkerBuilder::discover_peers");
             // let _enter = span.enter();
 
+            let mut attempts = 1;
+            loop {
+                if attempts >= 10 {
+                    return;
+                }
+
+                if seed_addr_resolves(&seed_addr).await {
+                    break;
+                }
+
+                sleep(Duration::from_secs(5)).await;
+                attempts += 1;
+            }
+
             let (tx, rx) = oneshot::channel();
 
             let _ = self.system.node_discovery().notify(Discover {
@@ -116,4 +141,9 @@ impl ClusterWorkerBuilder {
             info!("discover_peers - discovered peers successfully");
         }
     }
+}
+
+async fn seed_addr_resolves(seed_addr: &str) -> bool {
+    let resolves = lookup_host(seed_addr).await;
+    resolves.is_ok()
 }

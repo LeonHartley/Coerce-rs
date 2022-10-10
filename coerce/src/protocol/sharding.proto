@@ -112,6 +112,13 @@ message ShardStateSnapshot {
   repeated Entity entities = 3;
 }
 
+enum ShardHostStatus {
+    UNKNOWN = 0;
+    STARTING = 1;
+    READY = 2;
+    UNAVAILABLE = 3;
+}
+
 message GetShardingStats {
 
 }
@@ -120,6 +127,8 @@ message NodeStats {
   uint64 node_id = 1;
 
   uint64 shard_count = 2;
+
+  ShardHostStatus status = 3;
 }
 
 message ShardingStats {

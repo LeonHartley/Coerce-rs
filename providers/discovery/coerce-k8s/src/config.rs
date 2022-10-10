@@ -7,10 +7,10 @@ pub enum Address {
 }
 
 pub struct KubernetesDiscoveryConfig {
-    /// Pod label used to discover active Coerce cluster nodes
+    /// Pod label used to discover active Coerce cluster nodes (environment variable: COERCE_K8S_POD_SELECTOR)
     pub pod_selection_label: Option<String>,
 
-    /// Name of the port, as defined in the kubernetes pod spec
+    /// Name of the port, as defined in the kubernetes pod spec (
     pub coerce_remote_port_name: Option<String>,
 
     pub cluster_node_address: Address,
@@ -23,8 +23,18 @@ impl Default for KubernetesDiscoveryConfig {
                 std::env::var("COERCE_K8S_POD_SELECTOR")
                     .map_or_else(|_e| "app=coerce".to_string(), |s| s),
             ),
-            coerce_remote_port_name: Some("coerce".to_string()),
-            cluster_node_address: Address::Hostname,
+            coerce_remote_port_name: std::env::var("COERCE_K8S_PORT_NAME")
+                .map_or_else(|_e| Some("coerce".to_string()), |s| Some(s)),
+            cluster_node_address: std::env::var("COERCE_K8S_ADDR_MODE").map_or_else(
+                |_e| Address::PodIp,
+                |s| {
+                    if s.to_lowercase() == "hostname" {
+                        Address::Hostname
+                    } else {
+                        Address::PodIp
+                    }
+                },
+            ),
         }
     }
 }

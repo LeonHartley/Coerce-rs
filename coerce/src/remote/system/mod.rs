@@ -108,7 +108,9 @@ impl RemoteActorSystem {
         &self.inner.heartbeat_ref
     }
 
-    pub fn registry(&self) -> &LocalActorRef<RemoteRegistry> { &self.inner.registry_ref }
+    pub fn registry(&self) -> &LocalActorRef<RemoteRegistry> {
+        &self.inner.registry_ref
+    }
 
     pub fn client_registry(&self) -> &LocalActorRef<RemoteClientRegistry> {
         &self.inner.clients_ref

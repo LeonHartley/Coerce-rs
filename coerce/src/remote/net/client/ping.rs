@@ -31,7 +31,7 @@ impl Handler<PingTick> for RemoteClient {
         let remote = ctx.system().remote_owned();
         let heartbeat = remote.heartbeat().clone();
 
-        info!("ping tick, client_addr={}", &self.addr);
+        trace!("ping tick, client_addr={}", &self.addr);
 
         let node_id = if let Some(state) = &self.state {
             match state {
@@ -55,7 +55,7 @@ impl Handler<PingTick> for RemoteClient {
                 }
             }
         } else {
-            info!(
+            trace!(
                 "ping tick cancelled, client not connected - client_addr={}",
                 &self.addr
             );
@@ -77,15 +77,14 @@ impl Handler<PingTick> for RemoteClient {
         if self.write(ping_event, ctx).await.is_ok() {
             tokio::spawn(async move {
                 let timeout = remote.config().heartbeat_config().ping_timeout;
-
-                let ping_result_receiver = res_rx;
-                let ping_result = match tokio::time::timeout(timeout, ping_result_receiver).await {
+                let ping_result = match tokio::time::timeout(timeout, res_rx).await {
                     Ok(res) => match res {
                         Ok(pong) => match pong {
                             RemoteResponse::Ok(pong_bytes) => {
-                                let ping_end = ping_start.elapsed();
                                 let pong = PongEvent::parse_from_bytes(&pong_bytes).unwrap();
-                                PingResult::Ok(pong, ping_end, Utc::now())
+                                let now = Utc::now();
+
+                                PingResult::Ok(pong, ping_start.elapsed(), now)
                             }
                             RemoteResponse::Err(_err_bytes) => PingResult::Err,
                         },
@@ -95,9 +94,10 @@ impl Handler<PingTick> for RemoteClient {
                 };
 
                 let ping = NodePing(node_id, ping_result);
-                info!(
+                trace!(
                     "ping complete - client_addr={}, nodePing = {:?}",
-                    client_addr, &ping
+                    client_addr,
+                    &ping
                 );
                 let _ = heartbeat.notify(ping);
             });

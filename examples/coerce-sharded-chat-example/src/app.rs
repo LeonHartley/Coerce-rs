@@ -12,6 +12,7 @@ use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
 
+use coerce::remote::net::server::RemoteServer;
 use coerce_k8s::config::KubernetesDiscoveryConfig;
 use coerce_k8s::KubernetesDiscovery;
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
@@ -39,11 +40,12 @@ pub struct ShardedChat {
     sharding: Sharding<ChatStreamFactory>,
     listen_task: Option<JoinHandle<()>>,
     cluster_api_listen_task: Option<JoinHandle<()>>,
+    remote_server: RemoteServer,
 }
 
 impl ShardedChat {
     pub async fn start(config: ShardedChatConfig) -> ShardedChat {
-        let system = create_actor_system(&config).await;
+        let (system, remote_server) = create_actor_system(&config).await;
         let sharding = Sharding::builder(system.clone())
             .with_entity_type("ChatStream")
             .build()
@@ -76,6 +78,7 @@ impl ShardedChat {
         ShardedChat {
             system,
             sharding,
+            remote_server,
             listen_task: Some(listen_task),
             cluster_api_listen_task: Some(cluster_api_listen_task),
         }
@@ -84,7 +87,9 @@ impl ShardedChat {
     pub async fn stop(&mut self) {
         info!("shutting down");
 
+        self.remote_server.stop();
         self.system.actor_system().shutdown().await;
+
         if let Some(listen_task) = self.listen_task.take() {
             info!("aborted TCP listen task");
             listen_task.abort();
@@ -99,7 +104,7 @@ impl ShardedChat {
     }
 }
 
-async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
+async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, RemoteServer) {
     let system = ActorSystem::new().to_persistent(
         /*match &config.persistence {
         ShardedChatPersistence::Redis { host: Some(host) } => Persistence::from(
@@ -184,18 +189,10 @@ async fn create_actor_system(config: &ShardedChatConfig) -> RemoteActorSystem {
             cluster_worker.external_addr(&config.remote_listen_addr.replace("0.0.0.0", "127.0.0.1"))
     }
 
-    // if is_running_in_k8s {
-    //     if let Some(discovered_targets) = discovered_targets {
-    //         if let Some(first_peer) = discovered_targets.into_iter().next() {
-    //             cluster_worker = cluster_worker.with_seed_addr(first_peer)
-    //         }
-    //     }
-    // } else {
     if let Some(seed_addr) = seed_addr {
         cluster_worker = cluster_worker.with_seed_addr(seed_addr.clone());
     }
-    // }
 
-    cluster_worker.start().await;
-    remote_system
+    let server = cluster_worker.start().await;
+    (remote_system, server)
 }

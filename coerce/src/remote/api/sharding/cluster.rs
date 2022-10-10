@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::{ActorRef, ActorRefErr, LocalActorRef};
 use crate::remote::api::sharding::ShardingApi;
 use crate::remote::cluster::sharding::coordinator::stats::{GetShardingStats, NodeStats};
-use crate::remote::cluster::sharding::coordinator::ShardId;
+use crate::remote::cluster::sharding::coordinator::{ShardHostStatus, ShardId};
 use crate::remote::cluster::sharding::host::stats::{GetStats, HostStats};
 use crate::remote::cluster::sharding::host::{shard_actor_id, GetCoordinator};
 use crate::remote::cluster::sharding::shard::stats::GetShardStats;
@@ -41,6 +41,7 @@ impl Message for GetHostStats {
 pub struct ShardingNode {
     pub node_id: NodeId,
     pub shard_count: u64,
+    pub status: ShardHostStatus,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -61,6 +62,7 @@ pub struct ShardingClusterStats {
     pub entity_type: String,
     pub total_shards: u64,
     pub total_nodes: u32,
+    pub available_nodes: u32,
     pub total_entities: u32,
     pub nodes: Vec<ShardingNode>,
     pub shards: Vec<ShardStats>,
@@ -156,6 +158,8 @@ impl Handler<GetClusterStats> for ShardingApi {
                     entity_type: sharding_stats.entity_type,
                     total_shards: sharding_stats.total_shards,
                     total_nodes: nodes.len() as u32,
+                    available_nodes: nodes.iter().filter(|n| n.status.is_available()).count()
+                        as u32,
                     total_entities: shards.iter().map(|s| s.entity_count).sum(),
                     nodes,
                     shards,
@@ -221,6 +225,7 @@ impl From<NodeStats> for ShardingNode {
         Self {
             node_id: node.node_id,
             shard_count: node.shard_count,
+            status: node.status,
         }
     }
 }

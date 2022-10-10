@@ -2,6 +2,7 @@ use crate::remote::system::RemoteActorSystem;
 
 use std::future::Future;
 use std::io::Error;
+use std::net::SocketAddr;
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -30,6 +31,10 @@ pub trait StreamReceiver {
     async fn on_receive(&mut self, msg: Self::Message, sys: &RemoteActorSystem);
 
     async fn on_close(&mut self, sys: &RemoteActorSystem);
+
+    fn on_deserialisation_failed(&mut self);
+
+    fn on_stream_lost(&mut self, error: Error);
 
     async fn close(&mut self);
 
@@ -76,7 +81,6 @@ where
 }
 
 pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
-    addr: String,
     mut system: RemoteActorSystem,
     read: FramedRead<S, NetworkCodec>,
     mut receiver: R,
@@ -94,16 +98,16 @@ pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
                     }
                 }
                 None => {
-                    warn!(target: "RemoteReceive", "failed to decode message from addr={}", &addr)
+                    // TODO: either pass the buffer into here or more context, this is pretty useless at the moment..
+                    receiver.on_deserialisation_failed();
                 }
             },
             Err(e) => {
-                warn!(target: "RemoteReceive", "stream connection lost (addr={}) - error: {}", &addr, e);
+                receiver.on_stream_lost(e);
                 break;
             }
         }
     }
 
-    trace!(target: "RemoteReceive", "closed");
     receiver.on_close(&mut system).await;
 }

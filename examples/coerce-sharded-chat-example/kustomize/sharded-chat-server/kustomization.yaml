@@ -4,7 +4,7 @@ resources:
   - ./base
 replicas:
   - name: sharded-chat-server
-    count: 7
+    count: 3
 #images:
 #  - name: sharded-chat-server
 #    newName: sharded-chat-server

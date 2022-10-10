@@ -67,7 +67,8 @@ impl Handler<Rebalance> for ShardCoordinator {
             }
         }
 
-        warn!(
+        // TODO: if the rebalance took over a configurable amount of time, warnings/errors/alerts could be fired
+        debug!(
             "Rebalance took {:?}, rebalance={}",
             start.elapsed(),
             rebalance

@@ -130,7 +130,6 @@ impl Handler<NodePing> for Heartbeat {
     async fn handle(&mut self, message: NodePing, _ctx: &mut ActorContext) {
         let _ = self.node_pings.insert(message.0, message);
     }
-
 }
 
 #[async_trait]

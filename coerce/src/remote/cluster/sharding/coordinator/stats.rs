@@ -1,16 +1,17 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
+use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostStatus};
 use crate::remote::cluster::sharding::host::stats::RemoteShard;
 use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::system::NodeId;
-use protobuf::Message as ProtoMessage;
+use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 
 pub struct GetShardingStats;
 
 pub struct NodeStats {
     pub node_id: NodeId,
     pub shard_count: u64,
+    pub status: ShardHostStatus,
 }
 
 pub struct ShardingStats {
@@ -40,6 +41,7 @@ impl Handler<GetShardingStats> for ShardCoordinator {
                 .map(|n| NodeStats {
                     node_id: n.1.node_id,
                     shard_count: n.1.shards.len() as u64,
+                    status: n.1.status,
                 })
                 .collect(),
         }
@@ -84,6 +86,7 @@ impl Message for GetShardingStats {
                     .map(|n| NodeStats {
                         node_id: n.node_id,
                         shard_count: n.shard_count,
+                        status: n.status.unwrap().into(),
                     })
                     .collect(),
             })
@@ -111,6 +114,7 @@ impl Message for GetShardingStats {
                 .map(|n| proto::NodeStats {
                     node_id: n.node_id,
                     shard_count: n.shard_count,
+                    status: EnumOrUnknown::new(n.status.into()),
                     ..Default::default()
                 })
                 .collect(),
@@ -118,5 +122,27 @@ impl Message for GetShardingStats {
         }
         .write_to_bytes()
         .map_or_else(|_| Err(MessageWrapErr::SerializationErr), |b| Ok(b))
+    }
+}
+
+impl Into<proto::ShardHostStatus> for ShardHostStatus {
+    fn into(self) -> proto::ShardHostStatus {
+        match self {
+            ShardHostStatus::Unknown => proto::ShardHostStatus::UNKNOWN,
+            ShardHostStatus::Starting => proto::ShardHostStatus::STARTING,
+            ShardHostStatus::Ready => proto::ShardHostStatus::READY,
+            ShardHostStatus::Unavailable => proto::ShardHostStatus::UNAVAILABLE,
+        }
+    }
+}
+
+impl From<proto::ShardHostStatus> for ShardHostStatus {
+    fn from(status: proto::ShardHostStatus) -> Self {
+        match status {
+            proto::ShardHostStatus::UNKNOWN => Self::Unknown,
+            proto::ShardHostStatus::STARTING => Self::Starting,
+            proto::ShardHostStatus::READY => Self::Ready,
+            proto::ShardHostStatus::UNAVAILABLE => Self::Unavailable,
+        }
     }
 }
