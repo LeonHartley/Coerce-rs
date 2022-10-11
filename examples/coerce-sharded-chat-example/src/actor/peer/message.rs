@@ -1,7 +1,7 @@
 use crate::actor::stream::ChatMessage;
 use crate::protocol;
 use coerce::actor::message::{Message, MessageUnwrapErr, MessageWrapErr};
-use protobuf::well_known_types::wrappers::{StringValue, UInt64Value};
+use protobuf::well_known_types::wrappers::StringValue;
 use protobuf::Message as ProtoMessage;
 use protobuf::MessageField;
 

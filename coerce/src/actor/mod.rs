@@ -466,8 +466,8 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
-        let message_type = msg.name();
-        let actor_type = A::type_name();
+        let _message_type = msg.name();
+        let _actor_type = A::type_name();
         // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
         // let _enter = span.enter();
 

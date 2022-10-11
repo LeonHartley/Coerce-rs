@@ -1,7 +1,5 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{
-    new_actor_id, Actor, ActorId, ActorRefErr, CoreActorRef, IntoActorId, LocalActorRef,
-};
+use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, IntoActorId, LocalActorRef};
 use crate::persistent::Persistence;
 use crate::remote::system::RemoteActorSystem;
 use std::sync::atomic::AtomicBool;

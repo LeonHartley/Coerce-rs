@@ -10,7 +10,6 @@ use crate::remote::cluster::sharding::coordinator::ShardId;
 use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 use crate::remote::cluster::sharding::host::{PassivateEntity, RemoveEntity, StartEntity};
 use crate::remote::cluster::sharding::proto::sharding as proto;
-use crate::remote::handler::ActorHandler;
 
 use crate::remote::system::NodeId;
 use chrono::{DateTime, Utc};

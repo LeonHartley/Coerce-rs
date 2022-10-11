@@ -12,7 +12,6 @@ use crate::remote::stream::system::{SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc, MIN_DATETIME};
 
-use futures::FutureExt;
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 

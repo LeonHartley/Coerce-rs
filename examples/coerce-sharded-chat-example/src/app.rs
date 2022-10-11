@@ -15,9 +15,9 @@ use coerce::remote::system::{NodeId, RemoteActorSystem};
 use coerce::remote::net::server::RemoteServer;
 use coerce_k8s::config::KubernetesDiscoveryConfig;
 use coerce_k8s::KubernetesDiscovery;
-use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
+
 use std::net::SocketAddr;
-use std::ptr::addr_of;
+
 use std::str::FromStr;
 use tokio::task::JoinHandle;
 

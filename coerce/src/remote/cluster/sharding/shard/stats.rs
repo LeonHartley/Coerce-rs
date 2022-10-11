@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 
 use crate::remote::cluster::sharding::coordinator::ShardId;
 

@@ -1,4 +1,3 @@
-use futures::SinkExt;
 use protobuf::Message as ProtoMessage;
 use std::error::Error;
 use std::fmt::{Display, Formatter};

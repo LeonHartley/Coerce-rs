@@ -4,11 +4,10 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use tokio::sync::oneshot::Sender;
-use uuid::Uuid;
 
 pub struct Status();
 

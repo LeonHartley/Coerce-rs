@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActorId};
 use crate::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
@@ -157,14 +157,14 @@ async fn remote_entity_request(
             result_channel.map(move |result_sender| {
                 let response = response
                     .into_result()
-                    .map_err(|_| ActorRefErr::ActorUnavailable);
+                    .map_err(|e| e);
 
                 result_sender.send(response)
             });
 
             Ok(())
         }
-        Err(_) => Err(ActorRefErr::ActorUnavailable),
+        Err(_e) => Err(ActorRefErr::ResultChannelClosed),
     };
 
     trace!(

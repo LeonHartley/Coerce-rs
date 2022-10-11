@@ -12,7 +12,7 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 use crate::actor::context::ActorContext;
-use crate::actor::scheduler::ActorType::Anonymous;
+
 use crate::remote::heartbeat::HeartbeatConfig;
 use crate::remote::stream::pubsub::Subscription;
 use uuid::Uuid;

@@ -6,7 +6,7 @@ pub mod types;
 use crate::actor::context::ActorContext;
 use crate::actor::message::Message;
 use crate::persistent::journal::snapshot::Snapshot;
-use crate::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
+use crate::persistent::journal::storage::{JournalEntry, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};
 use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
 

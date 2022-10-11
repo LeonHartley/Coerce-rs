@@ -1,18 +1,14 @@
 use crate::journal::actor::{Delete, ReadMessages, ReadSnapshot, RedisJournal, Write};
-use coerce::actor::context::ActorContext;
-use coerce::actor::message::{Handler, Message};
+
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, IntoActor, LocalActorRef};
-use coerce::persistent::journal::provider::{StorageProvider, StorageProviderRef};
+use coerce::actor::{IntoActor, LocalActorRef};
+use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
-use coerce::remote::net::StreamData;
-use redis::aio::{ConnectionLike, MultiplexedConnection};
-use redis::{Cmd, Pipeline, RedisFuture, Value};
-use std::alloc::System;
-use std::net::SocketAddr;
-use std::str::FromStr;
+
+use redis::aio::ConnectionLike;
+
 use std::sync::Arc;
-use tokio::runtime::Handle;
+
 use tokio::sync::oneshot;
 
 pub(crate) mod actor;

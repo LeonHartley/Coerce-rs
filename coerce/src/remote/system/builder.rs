@@ -13,7 +13,6 @@ use crate::remote::stream::mediator::StreamMediator;
 
 use crate::remote::system::{AtomicNodeId, NodeId, RemoteActorSystem, RemoteSystemCore};
 
-use futures::TryFutureExt;
 use rand::RngCore;
 
 use std::collections::HashMap;
@@ -72,14 +71,14 @@ impl RemoteActorSystemBuilder {
         self
     }
 
-    pub fn with_handlers<F>(mut self, f: F) -> Self
+    pub fn with_handlers<F>(self, f: F) -> Self
     where
         F: 'static + (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
     {
         self.configure(f)
     }
 
-    pub fn with_actors<F>(mut self, f: F) -> Self
+    pub fn with_actors<F>(self, f: F) -> Self
     where
         F: 'static + (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
     {

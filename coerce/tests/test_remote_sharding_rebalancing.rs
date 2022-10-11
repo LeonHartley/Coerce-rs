@@ -10,17 +10,14 @@ use coerce::actor::{
 };
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::Persistence;
-use coerce::remote::cluster::sharding::coordinator::allocation::{
-    AllocateShard, AllocateShardResult,
-};
+
 use coerce::remote::cluster::sharding::coordinator::{
-    ShardCoordinator, ShardHostState, ShardHostStatus, ShardId,
+    ShardCoordinator, ShardHostState, ShardHostStatus,
 };
 
-use coerce::remote::cluster::sharding::host::stats::GetStats;
 use coerce::remote::cluster::sharding::host::ShardHost;
 use coerce::remote::cluster::sharding::Sharding;
-use coerce::remote::handler::{ActorHandler, RemoteActorHandler};
+
 use coerce::remote::heartbeat::HeartbeatConfig;
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
@@ -137,7 +134,7 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
     let persistence = Persistence::from(InMemoryStorageProvider::new());
     let (remote_a, server_a) = create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;
 
-    let (remote_b, server_b) = create_system(
+    let (remote_b, _server_b) = create_system(
         persistence.clone(),
         "127.0.0.1:32101",
         2,

@@ -1,6 +1,5 @@
 use crate::actor::message::Message;
 use std::io::Error;
-use std::net::SocketAddr;
 
 use crate::actor::LocalActorRef;
 use crate::remote::actor::{RemoteResponse, SystemCapabilities};

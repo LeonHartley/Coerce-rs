@@ -2,8 +2,7 @@ use crate::config::{Address, KubernetesDiscoveryConfig};
 use coerce::remote::system::RemoteActorSystem;
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::ListParams;
-use kube::{Api, Client, Config};
-use std::sync::Arc;
+use kube::{Api, Client};
 
 #[macro_use]
 extern crate tracing;

@@ -51,7 +51,7 @@ pub async fn test_remote_cluster_heartbeat() {
         .start()
         .await;
 
-    let server_2 = remote_2
+    let _server_2 = remote_2
         .clone()
         .cluster_worker()
         .listen_addr("localhost:30102")

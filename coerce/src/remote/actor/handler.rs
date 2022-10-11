@@ -18,7 +18,7 @@ use crate::remote::stream::pubsub::{PubSub, Receive};
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
 
 use protobuf::well_known_types::wrappers::UInt64Value;
-use protobuf::{Message, MessageField};
+use protobuf::Message;
 use uuid::Uuid;
 
 #[async_trait]

@@ -64,7 +64,7 @@ type ScheduledRebalance = ScheduledNotify<ShardCoordinator, Rebalance>;
 
 #[async_trait]
 impl Handler<Receive<SystemTopic>> for ShardCoordinator {
-    async fn handle(&mut self, message: Receive<SystemTopic>, _ctx: &mut ActorContext) {}
+    async fn handle(&mut self, _message: Receive<SystemTopic>, _ctx: &mut ActorContext) {}
 }
 
 #[async_trait]

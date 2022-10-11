@@ -1,7 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr,
-};
+use crate::actor::message::{EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef, ToActorId};
 use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
 use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
@@ -14,7 +12,6 @@ use crate::remote::RemoteActorRef;
 use protobuf::Message as ProtoMessage;
 
 use crate::remote::actor::BoxedActorHandler;
-use futures::FutureExt;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;

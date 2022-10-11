@@ -4,12 +4,9 @@ pub mod inspect;
 pub mod journal;
 
 pub use actor::*;
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::actor::system::ActorSystem;
-
-use crate::actor::Actor;
 use crate::persistent::journal::provider::{StorageProvider, StorageProviderRef};
 use std::sync::Arc;
 

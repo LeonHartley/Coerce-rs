@@ -440,13 +440,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coerce-test"
-version = "0.1.0"
-dependencies = [
- "coerce 0.8.0",
-]
-
-[[package]]
 name = "combine"
 version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

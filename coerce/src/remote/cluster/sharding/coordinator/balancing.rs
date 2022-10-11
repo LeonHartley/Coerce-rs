@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorRef, LocalActorRef};
+use crate::actor::{ActorRef, LocalActorRef};
 use crate::remote::cluster::sharding::coordinator::allocation::{
     broadcast_reallocation, AllocateShard,
 };

@@ -4,7 +4,7 @@ use coerce::actor::Actor;
 use coerce::persistent::journal::storage::JournalEntry;
 use coerce::remote::net::StreamData;
 use redis::aio::ConnectionLike;
-use redis::{RedisError, RedisResult};
+
 use tokio::sync::oneshot::Sender;
 
 pub(crate) struct RedisJournal<C>(pub C);

@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Handler;
 use crate::actor::{Actor, ActorId, IntoActorId, LocalActorRef};
 use crate::remote::actor::message::NodeTerminated;
 use crate::remote::actor::RemoteResponse;
@@ -23,7 +23,7 @@ use crate::CARGO_PKG_VERSION;
 use futures::SinkExt;
 use protobuf::well_known_types::wrappers::UInt64Value;
 use protobuf::{Message as ProtoMessage, MessageField};
-use std::collections::HashMap;
+
 use std::io::Error;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -296,7 +296,7 @@ impl StreamReceiver for SessionMessageReceiver {
                 tokio::spawn(session_stream_publish(msg, sys.clone()));
             }
 
-            SessionEvent::Raft(req) => {}
+            SessionEvent::Raft(_req) => {}
 
             SessionEvent::Result(res) => {
                 match sys.pop_request(Uuid::from_str(&res.message_id).unwrap()) {

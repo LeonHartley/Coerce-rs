@@ -1,4 +1,4 @@
-use crate::actor::message::{Envelope, EnvelopeType, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Envelope, EnvelopeType, MessageUnwrapErr, MessageWrapErr};
 
 pub struct JournalPayload {
     pub message_type: String,
