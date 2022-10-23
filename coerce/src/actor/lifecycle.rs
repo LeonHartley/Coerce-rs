@@ -4,7 +4,8 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use tokio::sync::oneshot::Sender;
@@ -34,11 +35,7 @@ where
 #[async_trait]
 impl<A: Actor> Handler<Stop> for A {
     async fn handle(&mut self, stop: Stop, ctx: &mut ActorContext) {
-        if let Some(sender) = stop.0 {
-            ctx.add_on_stopped_handler(sender);
-        }
-
-        ctx.set_status(Stopping);
+        ctx.stop(stop.0);
     }
 }
 
@@ -73,7 +70,9 @@ impl ActorLoop {
         ActorMetrics::incr_actor_created(A::type_name());
 
         match ctx.get_status() {
-            Stopping => return,
+            Stopping => {
+                actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await
+            }
             _ => {}
         };
 
@@ -91,14 +90,14 @@ impl ActorLoop {
 
         while let Some(mut msg) = receiver.recv().await {
             {
-                let _msg_type = msg.name();
-                let _actor_type = A::type_name();
+                // let msg_type = msg.name();
+                // let actor_type = A::type_name();
                 //
                 // let span = tracing::trace_span!(
                 //     "Actor::handle",
-                //     actor_id = ctx.id().as_str(),
+                //     actor_id = ctx.id().as_ref(),
                 //     actor_type_name = actor_type,
-                //     message_type = &msg_type
+                //     message_type = msg_type,
                 // );
                 //
                 // let _enter = span.enter();
@@ -131,29 +130,39 @@ impl ActorLoop {
         );
 
         ctx.set_status(Stopping);
+        actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await
+    }
+}
 
-        actor.stopped(&mut ctx).await;
+async fn actor_stopped<A: Actor>(
+    actor: &mut A,
+    actor_type: ActorType,
+    system: &mut Option<ActorSystem>,
+    actor_id: &ActorId,
+    mut ctx: &mut ActorContext,
+) {
+    actor.stopped(&mut ctx).await;
 
-        ctx.set_status(Stopped);
+    ctx.set_status(Stopped);
 
-        if actor_type.is_tracked() {
-            if let Some(system) = system.take() {
-                if !system.is_terminated() {
-                    trace!("de-registering actor {}", &actor_id);
+    if actor_type.is_tracked() {
+        // TODO: we probably want to do this if the actor exited upon stopping too
+        if let Some(system) = system.take() {
+            if !system.is_terminated() {
+                trace!("de-registering actor {}", &actor_id);
 
-                    system
-                        .scheduler()
-                        .send(DeregisterActor(actor_id))
-                        .await
-                        .expect("de-register actor");
-                }
+                system
+                    .scheduler()
+                    .send(DeregisterActor(actor_id.clone()))
+                    .await
+                    .expect("de-register actor");
             }
         }
+    }
 
-        if let Some(on_stopped_handlers) = ctx.take_on_stopped_handlers() {
-            for sender in on_stopped_handlers {
-                let _ = sender.send(());
-            }
+    if let Some(on_stopped_handlers) = ctx.take_on_stopped_handlers() {
+        for sender in on_stopped_handlers {
+            let _ = sender.send(());
         }
     }
 }

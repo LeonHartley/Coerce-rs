@@ -48,14 +48,6 @@ impl ClusterWorkerBuilder {
     }
 
     pub async fn start(mut self) -> RemoteServer {
-        // let span = tracing::trace_span!(
-        //     "ClusterWorkerBuilder::start",
-        //     listen_addr = self.server_listen_addr.as_str(),
-        //     node_tag = self.system.node_tag()
-        // );
-        //
-        // let _enter = span.enter();
-
         let started_at = *self.system.started_at();
         let cluster_node_addr = self.cluster_node_addr();
         self.system
@@ -107,12 +99,13 @@ impl ClusterWorkerBuilder {
 
     async fn discover_peers(&mut self) {
         if let Some(seed_addr) = self.seed_addr.take() {
-            // let span = tracing::trace_span!("ClusterWorkerBuilder::discover_peers");
-            // let _enter = span.enter();
+            const SEED_RESOLVE_MAX_ATTEMPTS: usize = 10;
+            const SEED_RESOLVE_RETRY_DELAY: Duration = Duration::from_secs(5);
 
             let mut attempts = 1;
             loop {
                 if attempts >= 10 {
+                    error!("Cannot resolve DNS for address: {} after 10 attempts, peer discovery cancelled", &seed_addr);
                     return;
                 }
 
@@ -120,7 +113,12 @@ impl ClusterWorkerBuilder {
                     break;
                 }
 
-                sleep(Duration::from_secs(5)).await;
+                warn!(
+                    "Cannot resolve DNS for address: {}, retrying in {}s",
+                    &seed_addr,
+                    &SEED_RESOLVE_RETRY_DELAY.as_secs()
+                );
+                sleep(SEED_RESOLVE_RETRY_DELAY).await;
                 attempts += 1;
             }
 

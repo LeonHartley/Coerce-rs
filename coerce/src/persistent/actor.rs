@@ -2,10 +2,30 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef};
+use std::error::Error;
+use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
+use std::time::Duration;
 
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::{PersistErr, RecoveredPayload};
+
+pub enum Retry {
+    UntilSuccess {
+        delay: Option<Duration>,
+    },
+    MaxAttempts {
+        attempts: usize,
+        delay: Option<Duration>,
+    },
+}
+
+pub enum RecoveryFailurePolicy {
+    StopActor,
+    RetryRecovery(Retry),
+    Panic,
+}
 
 #[async_trait]
 pub trait PersistentActor: 'static + Sized + Send + Sync {
@@ -34,6 +54,8 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
             .persist_message(message)
             .await
     }
+
+    async fn on_recovery_err(&mut self, _err: JournalRecoveryErr, _ctx: &mut ActorContext) {}
 
     async fn snapshot<S: Snapshot>(
         &self,
@@ -71,7 +93,24 @@ where
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
-        let (snapshot, messages) = load_journal::<A>(persistence_key.clone(), ctx).await;
+        let journal = load_journal::<A>(persistence_key.clone(), ctx).await;
+        let (snapshot, messages) = match journal {
+            Ok(journal) => (journal.snapshot, journal.messages),
+            Err(e) => {
+                error!(
+                    "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}",
+                    actor_id = ctx.id(),
+                    persistence_key = &persistence_key,
+                    error = &e
+                );
+
+                self.on_recovery_err(e, ctx).await;
+
+                // TODO: we should utilise the policy
+                ctx.stop(None);
+                return;
+            }
+        };
 
         trace!(
             "persistent actor ({}) recovered {} snapshot(s) and {} message(s)",
@@ -100,21 +139,49 @@ where
     }
 }
 
+struct RecoveredJournal<A: PersistentActor> {
+    snapshot: Option<RecoveredPayload<A>>,
+    messages: Option<Vec<RecoveredPayload<A>>>,
+}
+
+#[derive(Debug)]
+pub enum JournalRecoveryErr {
+    Snapshot(anyhow::Error),
+    Messages(anyhow::Error),
+}
+
+impl Display for JournalRecoveryErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match &self {
+            JournalRecoveryErr::Snapshot(e) => {
+                write!(f, "Snapshot recovery error: {}", e)
+            }
+            JournalRecoveryErr::Messages(e) => {
+                write!(f, "Message recovery error: {}", e)
+            }
+        }
+    }
+}
+
+impl Error for JournalRecoveryErr {}
+
 async fn load_journal<A: PersistentActor>(
     persistence_key: String,
     ctx: &mut ActorContext,
-) -> (
-    Option<RecoveredPayload<A>>,
-    Option<Vec<RecoveredPayload<A>>>,
-) {
-    let journal = ctx
-        .persistence_mut()
-        .init_journal::<A>(persistence_key)
-        .await;
-    (
-        journal.recover_snapshot().await,
-        journal.recover_messages().await,
-    )
+) -> Result<RecoveredJournal<A>, JournalRecoveryErr> {
+    let journal = ctx.persistence_mut().init_journal::<A>(persistence_key);
+
+    let snapshot = journal
+        .recover_snapshot()
+        .await
+        .map_err(JournalRecoveryErr::Snapshot)?;
+
+    let messages = journal
+        .recover_messages()
+        .await
+        .map_err(JournalRecoveryErr::Messages)?;
+
+    Ok(RecoveredJournal { snapshot, messages })
 }
 
 #[async_trait]

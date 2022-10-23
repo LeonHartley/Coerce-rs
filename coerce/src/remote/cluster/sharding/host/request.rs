@@ -89,7 +89,8 @@ impl Handler<EntityRequest> for ShardHost {
             let buffered_requests = buffered_requests.or_insert_with(|| vec![]);
             buffered_requests.push(message);
 
-            debug!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})", shard_id, buffered_requests.len());
+            debug!("shard#{} not allocated, notifying coordinator and buffering request (buffered_requests={})",
+                shard_id, buffered_requests.len());
 
             let host_ref = self.actor_ref(ctx);
             tokio::spawn(async move {
@@ -155,9 +156,7 @@ async fn remote_entity_request(
     let res = match rx.await {
         Ok(response) => {
             result_channel.map(move |result_sender| {
-                let response = response
-                    .into_result()
-                    .map_err(|e| e);
+                let response = response.into_result().map_err(|e| e);
 
                 result_sender.send(response)
             });

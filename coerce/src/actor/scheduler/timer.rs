@@ -3,9 +3,10 @@ use crate::actor::{Actor, LocalActorRef};
 use std::ops::Add;
 use tracing::trace;
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::time;
+use tokio::time::Instant;
 use uuid::Uuid;
 
 pub trait TimerTick: Message {}
@@ -76,9 +77,9 @@ async fn timer_loop<A: Actor, T: TimerTick>(
     T: 'static + Clone + Sync + Send,
 {
     let start = if tick_immediately {
-        tokio::time::Instant::now()
+        Instant::now()
     } else {
-        tokio::time::Instant::now().add(tick)
+        Instant::now().add(tick)
     };
 
     let mut interval = time::interval_at(start, tick);

@@ -1,5 +1,7 @@
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{get_actor, new_actor, new_actor_id};
+use coerce::TraceCollector;
+use tracing_subscriber::prelude::*;
 use util::*;
 
 pub mod util;
@@ -29,6 +31,10 @@ pub async fn test_context_global_get_actor() {
 
 #[tokio::test]
 pub async fn test_context_get_tracked_actor() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
+
     let ctx = ActorSystem::new();
 
     let actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();

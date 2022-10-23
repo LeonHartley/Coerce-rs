@@ -11,7 +11,7 @@ repository = "https://github.com/leonhartley/coerce-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1.21.1", features = ["full"] }
+tokio = { version = "1.21.2", features = ["full"] }
 tokio-util = { version = "0.7.4", features = ["full"] }
 tokio-stream = { version = "0.1" }
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
@@ -26,9 +26,10 @@ bytes = "1.2.1"
 byteorder = "1.4"
 chrono = "0.4"
 protobuf = "3.1.0"
-tracing = "0.1"
+tracing = { version = "0.1", features = ["valuable"] }
 tracing-futures = "0.2.5"
-tracing-opentelemetry = "0.17.2"
+tracing-opentelemetry = "0.18.0"
+tracing-core = "0.1"
 opentelemetry = { version = "0.18.0", default-features = false, features = ["trace"] }
 anyhow = "1.0"
 rand = "0.8.5"
@@ -36,6 +37,8 @@ parking_lot = "0.12"
 axum = "0.5.16"
 axum-extra = "0.3.7"
 metrics = "0.20.1"
+valuable = { version = "0.1", features = ["derive"] }
+tracing-subscriber = { features = ["json"], version = "0.3.16" }
 
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }
@@ -44,7 +47,6 @@ metrics = "0.20.1"
 [dev-dependencies]
 env_logger = "0.9"
 coerce-macros = { path = "./macros" }
-tracing-subscriber = "0.3.9"
 opentelemetry-jaeger = "0.17.0"
 criterion = { version = "0.4.0", features = ["async_tokio"] }
 

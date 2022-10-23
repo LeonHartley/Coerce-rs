@@ -1,11 +1,14 @@
+use crate::actor::context::ActorStatus::Stopping;
 use crate::actor::message::{Handler, Message};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 use crate::persistent::context::ActorPersistence;
+use crate::remote::system::NodeId;
 use futures::{Stream, StreamExt};
 use std::any::Any;
 use tokio::sync::oneshot::Sender;
+use valuable::{NamedField, StructDef, Valuable, Value, Visit};
 
 use crate::actor::supervised::Supervised;
 
@@ -96,6 +99,14 @@ impl ActorContext {
 
     pub fn id(&self) -> &ActorId {
         &self.boxed_ref.actor_id()
+    }
+
+    pub fn stop(&mut self, on_stopped_handler: Option<Sender<()>>) {
+        if let Some(sender) = on_stopped_handler {
+            self.add_on_stopped_handler(sender);
+        }
+
+        self.set_status(Stopping);
     }
 
     pub fn system(&self) -> &ActorSystem {

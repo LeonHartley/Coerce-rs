@@ -2,11 +2,8 @@ use crate::actor::pubsub::{ChatReceive, ChatStreamTopic};
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
-
 use coerce::persistent::journal::types::JournalTypes;
-
 use coerce::persistent::{PersistentActor, Recover};
-
 use coerce::remote::stream::pubsub::PubSub;
 
 pub struct ChatStream {

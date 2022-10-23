@@ -4,16 +4,19 @@ pub mod storage;
 pub mod types;
 
 use crate::actor::context::ActorContext;
-use crate::actor::message::Message;
+use crate::actor::message::{Handler, Message};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::storage::{JournalEntry, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};
 use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
 
+use crate::actor::metrics::ActorMetrics;
+use crate::actor::Actor;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 pub mod proto;
 
@@ -25,7 +28,7 @@ pub struct Journal<A: PersistentActor> {
 }
 
 impl<A: PersistentActor> Journal<A> {
-    pub async fn new(persistence_id: String, storage: JournalStorageRef) -> Self {
+    pub fn new(persistence_id: String, storage: JournalStorageRef) -> Self {
         let last_sequence_id = 0;
         let types = init_journal_types::<A>();
         Self {
@@ -159,12 +162,11 @@ impl<A: PersistentActor> Journal<A> {
         Ok(())
     }
 
-    pub async fn recover_snapshot(&mut self) -> Option<RecoveredPayload<A>> {
+    pub async fn recover_snapshot(&mut self) -> Result<Option<RecoveredPayload<A>>, anyhow::Error> {
         if let Some(raw_snapshot) = self
             .storage
             .read_latest_snapshot(&self.persistence_id)
-            .await
-            .expect("failed to read latest snapshot")
+            .await?
         {
             let handler = self
                 .types
@@ -181,25 +183,26 @@ impl<A: PersistentActor> Journal<A> {
                 &self.persistence_id, &self.last_sequence_id, &raw_snapshot.payload_type
             );
 
-            handler.map(|handler| RecoveredPayload {
+            Ok(handler.map(|handler| RecoveredPayload {
                 bytes,
                 sequence,
                 handler: handler.clone(),
-            })
+            }))
         } else {
-            None
+            Ok(None)
         }
     }
 
-    pub async fn recover_messages(&mut self) -> Option<Vec<RecoveredPayload<A>>> {
+    pub async fn recover_messages(
+        &mut self,
+    ) -> Result<Option<Vec<RecoveredPayload<A>>>, anyhow::Error> {
         // TODO: route journal recovery through a system that we can apply limiting to so we can only
         //       recover {n} entities at a time, so we don't end up bringing down
         //       the storage backend
         if let Some(messages) = self
             .storage
             .read_latest_messages(&self.persistence_id, self.last_sequence_id)
-            .await
-            .expect("failed to read recover latest messages")
+            .await?
         {
             let starting_sequence = self.last_sequence_id;
             let mut recoverable_messages = vec![];
@@ -229,9 +232,14 @@ impl<A: PersistentActor> Journal<A> {
                 "recovery complete, last_sequence_id={}",
                 &self.last_sequence_id
             );
-            Some(recoverable_messages)
+
+            if recoverable_messages.len() == 0 {
+                Ok(None)
+            } else {
+                Ok(Some(recoverable_messages))
+            }
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -250,7 +258,17 @@ where
     async fn recover(&self, actor: &mut A, bytes: Vec<u8>, ctx: &mut ActorContext) {
         let message = M::from_bytes(bytes);
         if let Ok(message) = message {
+            let start = Instant::now();
+
             actor.recover(message, ctx).await;
+            let message_processing_took = start.elapsed();
+
+            ActorMetrics::incr_messages_processed(
+                A::type_name(),
+                M::type_name(),
+                Duration::default(),
+                message_processing_took,
+            );
         } else {
             // todo: log serialisation error / fail the recovery
         }
