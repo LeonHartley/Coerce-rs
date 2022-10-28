@@ -11,11 +11,11 @@ use coerce_macros::JsonMessage;
 use parking_lot::Mutex;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::Arc;
 use tracing::info;
-use tracing_core::Dispatch;
 
 #[macro_use]
 extern crate serde;
@@ -29,8 +29,7 @@ pub mod util;
 struct PersistenceState {
     messages: Option<Vec<JournalEntry>>,
     snapshot: Option<JournalEntry>,
-    should_fail_next: bool,
-    next_error: Option<anyhow::Error>,
+    next_errors: VecDeque<anyhow::Error>,
 }
 
 #[derive(Default)]
@@ -108,8 +107,7 @@ pub async fn test_persistent_actor_recovery_failure_handling() {
 impl MockPersistence {
     pub fn set_next_err(&self, err: anyhow::Error) {
         let mut state = self.state.lock();
-        state.should_fail_next = true;
-        state.next_error = Some(err);
+        state.next_errors.push(err);
     }
 }
 
@@ -121,8 +119,8 @@ impl JournalStorage for MockPersistence {
         entry: JournalEntry,
     ) -> anyhow::Result<()> {
         let mut state = self.state.lock();
-        if state.should_fail_next {
-            Err(state.next_error.take().unwrap())
+        if let Some(error) = state.next_errors.take() {
+            Err(error)
         } else {
             Ok(())
         }
@@ -130,8 +128,8 @@ impl JournalStorage for MockPersistence {
 
     async fn write_message(&self, persistence_id: &str, entry: JournalEntry) -> anyhow::Result<()> {
         let mut state = self.state.lock();
-        if state.should_fail_next {
-            Err(state.next_error.take().unwrap())
+        if let Some(error) = state.next_error.take() {
+            Err(error)
         } else {
             Ok(())
         }
@@ -142,8 +140,8 @@ impl JournalStorage for MockPersistence {
         persistence_id: &str,
     ) -> anyhow::Result<Option<JournalEntry>> {
         let mut state = self.state.lock();
-        if state.should_fail_next {
-            Err(state.next_error.take().unwrap())
+        if let Some(error) = state.next_error.take() {
+            Err(error)
         } else {
             Ok(state.snapshot.clone())
         }
@@ -155,8 +153,8 @@ impl JournalStorage for MockPersistence {
         from_sequence: i64,
     ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
         let mut state = self.state.lock();
-        if state.should_fail_next {
-            Err(state.next_error.take().unwrap())
+        if let Some(error) = state.next_error.take() {
+            Err(error)
         } else {
             Ok(state.messages.clone())
         }

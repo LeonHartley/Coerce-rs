@@ -27,6 +27,50 @@ pub enum RecoveryFailurePolicy {
     Panic,
 }
 
+impl Display for Retry {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match &self {
+            Retry::UntilSuccess { delay } => {
+                if let Some(delay) = delay.as_ref() {
+                    write!(f, "UntilSuccess(delay={} millis)", delay.as_millis())
+                } else {
+                    write!(f, "UntilSuccess(delay=None)")
+                }
+            }
+            Retry::MaxAttempts { attempts, delay } => {
+                if let Some(delay) = delay.as_ref() {
+                    write!(
+                        f,
+                        "MaxAttempts(attempts={}, delay={} millis)",
+                        attempts,
+                        delay.as_millis()
+                    )
+                } else {
+                    write!(f, "MaxAttempts(attempts={}, delay=None)", attempts)
+                }
+            }
+        }
+    }
+}
+
+impl Display for RecoveryFailurePolicy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match &self {
+            RecoveryFailurePolicy::StopActor => write!(f, "StopActor"),
+            RecoveryFailurePolicy::RetryRecovery(r) => write!(f, "Retry({})", r),
+            RecoveryFailurePolicy::Panic => write!(f, "Panic"),
+        }
+    }
+}
+
+impl Default for RecoveryFailurePolicy {
+    fn default() -> Self {
+        RecoveryFailurePolicy::RetryRecovery(Retry::UntilSuccess {
+            delay: Some(Duration::from_millis(500)),
+        })
+    }
+}
+
 #[async_trait]
 pub trait PersistentActor: 'static + Sized + Send + Sync {
     fn persistence_key(&self, ctx: &ActorContext) -> String {
@@ -70,6 +114,10 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
             .persist_snapshot(snapshot)
             .await
     }
+
+    fn recovery_failure_policy(&self) -> RecoveryFailurePolicy {
+        RecoveryFailurePolicy::default()
+    }
 }
 
 #[async_trait]
@@ -93,23 +141,53 @@ where
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
-        let journal = load_journal::<A>(persistence_key.clone(), ctx).await;
-        let (snapshot, messages) = match journal {
-            Ok(journal) => (journal.snapshot, journal.messages),
-            Err(e) => {
-                error!(
-                    "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}",
-                    actor_id = ctx.id(),
-                    persistence_key = &persistence_key,
-                    error = &e
-                );
+        let (snapshot, messages) = {
+            let mut journal = None;
+            loop {
+                match load_journal::<A>(persistence_key.clone(), ctx).await {
+                    Ok(loaded_journal) => {
+                        journal = Some(loaded_journal);
+                        break;
+                    },
+                    Err(e) => {
+                        let policy = self.recovery_failure_policy();
 
-                self.on_recovery_err(e, ctx).await;
+                        error!(
+                                "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}",
+                        actor_id = ctx.id(),
+                        persistence_key = &persistence_key,
+                        error = &e
+                        );
 
-                // TODO: we should utilise the policy
-                ctx.stop(None);
-                return;
+                        self.on_recovery_err(e, ctx).await;
+
+                        match policy {
+                            RecoveryFailurePolicy::StopActor => {
+                                ctx.stop(None);
+                                return;
+                            }
+
+                            RecoveryFailurePolicy::RetryRecovery(retry) => match retry {
+                                Retry::UntilSuccess { delay } => {
+                                    if let Some(delay) = delay {
+                                        tokio::time::sleep(delay).await;
+                                    }
+                                }
+
+                                Retry::MaxAttempts { attempts, delay } => {
+                                    if let Some(delay) = delay {
+                                        tokio::time::sleep(delay).await;
+                                    }
+                                }
+                            },
+                            RecoveryFailurePolicy::Panic => panic!("Persistence failure"),
+                        }
+                    }
+                }
             }
+
+            let journal = journal.expect("no journal loaded");
+            (journal.snapshot, journal.messages)
         };
 
         trace!(
