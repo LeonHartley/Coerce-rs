@@ -3,7 +3,7 @@ use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::{
     MessageRecoveryHandler, RecoveryHandlerRef, SnapshotRecoveryHandler,
 };
-use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
+use crate::persistent::{PersistentActor, RecoverSnapshot};
 use std::any::Any;
 use std::any::TypeId;
 use std::collections::HashMap;

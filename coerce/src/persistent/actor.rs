@@ -5,70 +5,21 @@ use crate::actor::{Actor, BoxedActorRef};
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
+use std::ops::Add;
 use std::time::Duration;
 
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::{PersistErr, RecoveredPayload};
 
-pub enum Retry {
-    UntilSuccess {
-        delay: Option<Duration>,
-    },
-    MaxAttempts {
-        attempts: usize,
-        delay: Option<Duration>,
-    },
+#[async_trait]
+pub trait Recover<M: Message> {
+    async fn recover(&mut self, message: M, ctx: &mut ActorContext);
 }
 
-pub enum RecoveryFailurePolicy {
-    StopActor,
-    RetryRecovery(Retry),
-    Panic,
-}
-
-impl Display for Retry {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self {
-            Retry::UntilSuccess { delay } => {
-                if let Some(delay) = delay.as_ref() {
-                    write!(f, "UntilSuccess(delay={} millis)", delay.as_millis())
-                } else {
-                    write!(f, "UntilSuccess(delay=None)")
-                }
-            }
-            Retry::MaxAttempts { attempts, delay } => {
-                if let Some(delay) = delay.as_ref() {
-                    write!(
-                        f,
-                        "MaxAttempts(attempts={}, delay={} millis)",
-                        attempts,
-                        delay.as_millis()
-                    )
-                } else {
-                    write!(f, "MaxAttempts(attempts={}, delay=None)", attempts)
-                }
-            }
-        }
-    }
-}
-
-impl Display for RecoveryFailurePolicy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self {
-            RecoveryFailurePolicy::StopActor => write!(f, "StopActor"),
-            RecoveryFailurePolicy::RetryRecovery(r) => write!(f, "Retry({})", r),
-            RecoveryFailurePolicy::Panic => write!(f, "Panic"),
-        }
-    }
-}
-
-impl Default for RecoveryFailurePolicy {
-    fn default() -> Self {
-        RecoveryFailurePolicy::RetryRecovery(Retry::UntilSuccess {
-            delay: Some(Duration::from_millis(500)),
-        })
-    }
+#[async_trait]
+pub trait RecoverSnapshot<S: Snapshot> {
+    async fn recover(&mut self, snapshot: S, ctx: &mut ActorContext);
 }
 
 #[async_trait]
@@ -143,21 +94,24 @@ where
         let persistence_key = self.persistence_key(ctx);
         let (snapshot, messages) = {
             let mut journal = None;
+            let mut attempts = 1;
             loop {
                 match load_journal::<A>(persistence_key.clone(), ctx).await {
                     Ok(loaded_journal) => {
                         journal = Some(loaded_journal);
                         break;
-                    },
+                    }
+
                     Err(e) => {
                         let policy = self.recovery_failure_policy();
 
                         error!(
-                                "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}",
-                        actor_id = ctx.id(),
-                        persistence_key = &persistence_key,
-                        error = &e
-                        );
+                            "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}, attempt={attempt}",
+                            actor_id = ctx.id(),
+                            persistence_key = &persistence_key,
+                            error = &e,
+                            attempt = attempts
+                        );##
 
                         self.on_recovery_err(e, ctx).await;
 
@@ -174,7 +128,16 @@ where
                                     }
                                 }
 
-                                Retry::MaxAttempts { attempts, delay } => {
+                                Retry::MaxAttempts {
+                                    max_attempts,
+                                    delay,
+                                } => {
+                                    if attempts >= max_attempts {
+                                        // TODO: Log that we've exceeded max attempts
+                                        ctx.stop(None);
+                                        return;
+                                    }
+
                                     if let Some(delay) = delay {
                                         tokio::time::sleep(delay).await;
                                     }
@@ -184,6 +147,8 @@ where
                         }
                     }
                 }
+
+                attempts = attempts + 1;
             }
 
             let journal = journal.expect("no journal loaded");
@@ -215,59 +180,4 @@ where
 
         self.stopped(ctx).await
     }
-}
-
-struct RecoveredJournal<A: PersistentActor> {
-    snapshot: Option<RecoveredPayload<A>>,
-    messages: Option<Vec<RecoveredPayload<A>>>,
-}
-
-#[derive(Debug)]
-pub enum JournalRecoveryErr {
-    Snapshot(anyhow::Error),
-    Messages(anyhow::Error),
-}
-
-impl Display for JournalRecoveryErr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self {
-            JournalRecoveryErr::Snapshot(e) => {
-                write!(f, "Snapshot recovery error: {}", e)
-            }
-            JournalRecoveryErr::Messages(e) => {
-                write!(f, "Message recovery error: {}", e)
-            }
-        }
-    }
-}
-
-impl Error for JournalRecoveryErr {}
-
-async fn load_journal<A: PersistentActor>(
-    persistence_key: String,
-    ctx: &mut ActorContext,
-) -> Result<RecoveredJournal<A>, JournalRecoveryErr> {
-    let journal = ctx.persistence_mut().init_journal::<A>(persistence_key);
-
-    let snapshot = journal
-        .recover_snapshot()
-        .await
-        .map_err(JournalRecoveryErr::Snapshot)?;
-
-    let messages = journal
-        .recover_messages()
-        .await
-        .map_err(JournalRecoveryErr::Messages)?;
-
-    Ok(RecoveredJournal { snapshot, messages })
-}
-
-#[async_trait]
-pub trait Recover<M: Message> {
-    async fn recover(&mut self, message: M, ctx: &mut ActorContext);
-}
-
-#[async_trait]
-pub trait RecoverSnapshot<S: Snapshot> {
-    async fn recover(&mut self, snapshot: S, ctx: &mut ActorContext);
 }

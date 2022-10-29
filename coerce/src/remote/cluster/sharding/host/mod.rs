@@ -291,7 +291,7 @@ impl Handler<ShardReallocating> for ShardHost {
 #[async_trait]
 impl Handler<StopShard> for ShardHost {
     async fn handle(&mut self, message: StopShard, ctx: &mut ActorContext) {
-        let shard_id = message.shard_id;v
+        let shard_id = message.shard_id;
         let shard_entry = self.hosted_shards.entry(shard_id);
         let stop_request = StopRequested {
             origin_node_id: message.origin_node_id,

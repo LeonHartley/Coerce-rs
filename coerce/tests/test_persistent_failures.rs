@@ -6,7 +6,7 @@ use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
 use coerce::persistent::journal::types::JournalTypes;
-use coerce::persistent::{Persistence, PersistentActor, Recover};
+use coerce::persistent::{Persistence, PersistentActor, Recover, RecoveryFailurePolicy, Retry};
 use coerce_macros::JsonMessage;
 use parking_lot::Mutex;
 use protobuf::MessageField;
@@ -46,6 +46,7 @@ impl StorageProvider for Provider {
 }
 
 struct TestActor {
+    recovery_policy: RecoveryFailurePolicy,
     recovered_message: Option<Message>,
 }
 
@@ -56,6 +57,10 @@ struct Message;
 impl PersistentActor for TestActor {
     fn configure(types: &mut JournalTypes<Self>) {
         types.message::<Message>("Message");
+    }
+
+    fn recovery_failure_policy(&self) -> RecoveryFailurePolicy {
+        self.recovery_policy
     }
 }
 
@@ -85,7 +90,7 @@ impl Display for MockErr {
 impl Error for MockErr {}
 
 #[tokio::test]
-pub async fn test_persistent_actor_recovery_failure_handling() {
+pub async fn test_persistent_actor_recovery_retry_until_success() {
     util::create_trace_logger();
 
     let persistence = Arc::new(MockPersistence::default());
@@ -93,8 +98,13 @@ pub async fn test_persistent_actor_recovery_failure_handling() {
     let system = ActorSystem::new().to_persistent(Persistence::from(provider));
 
     persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
 
     let actor = TestActor {
+        recovery_policy: RecoveryFailurePolicy::RetryRecovery(Retry::UntilSuccess { delay: None }),
         recovered_message: None,
     }
     .into_actor(Some("TestActor".to_actor_id()), &system)
@@ -107,7 +117,7 @@ pub async fn test_persistent_actor_recovery_failure_handling() {
 impl MockPersistence {
     pub fn set_next_err(&self, err: anyhow::Error) {
         let mut state = self.state.lock();
-        state.next_errors.push(err);
+        state.next_errors.push_back(err);
     }
 }
 
@@ -119,7 +129,7 @@ impl JournalStorage for MockPersistence {
         entry: JournalEntry,
     ) -> anyhow::Result<()> {
         let mut state = self.state.lock();
-        if let Some(error) = state.next_errors.take() {
+        if let Some(error) = state.next_errors.pop_front() {
             Err(error)
         } else {
             Ok(())
@@ -128,7 +138,7 @@ impl JournalStorage for MockPersistence {
 
     async fn write_message(&self, persistence_id: &str, entry: JournalEntry) -> anyhow::Result<()> {
         let mut state = self.state.lock();
-        if let Some(error) = state.next_error.take() {
+        if let Some(error) = state.next_errors.pop_front() {
             Err(error)
         } else {
             Ok(())
@@ -140,7 +150,7 @@ impl JournalStorage for MockPersistence {
         persistence_id: &str,
     ) -> anyhow::Result<Option<JournalEntry>> {
         let mut state = self.state.lock();
-        if let Some(error) = state.next_error.take() {
+        if let Some(error) = state.next_errors.pop_front() {
             Err(error)
         } else {
             Ok(state.snapshot.clone())
@@ -153,7 +163,7 @@ impl JournalStorage for MockPersistence {
         from_sequence: i64,
     ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
         let mut state = self.state.lock();
-        if let Some(error) = state.next_error.take() {
+        if let Some(error) = state.next_errors.pop_front() {
             Err(error)
         } else {
             Ok(state.messages.clone())

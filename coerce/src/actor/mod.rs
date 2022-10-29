@@ -466,8 +466,8 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
-        let _message_type = msg.name();
-        let _actor_type = A::type_name();
+        let message_type = msg.name();
+        let actor_type = A::type_name();
         // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
         // let _enter = span.enter();
 
@@ -482,8 +482,12 @@ impl<A: Actor> LocalActorRef<A> {
         match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
             Ok(_) => match rx.await {
                 Ok(res) => {
-                    tracing::trace!("recv result");
-                    // timeout_task.abort();
+                    tracing::trace!(
+                        "recv result (msg_type={msg_type} actor_type={actor_type})",
+                        msg_type = message_type,
+                        actor_type = actor_type
+                    );
+
                     Ok(res)
                 }
                 Err(_e) => Err(ActorRefErr::ResultChannelClosed),
