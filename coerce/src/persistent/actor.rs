@@ -2,6 +2,7 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef};
+use crate::persistent::failure::{retry, PersistFailurePolicy, RecoveryFailurePolicy};
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
@@ -11,6 +12,7 @@ use std::time::Duration;
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::{PersistErr, RecoveredPayload};
+use crate::persistent::recovery::{ActorRecovery, JournalRecoveryErr, RecoveryResult};
 
 #[async_trait]
 pub trait Recover<M: Message> {
@@ -44,13 +46,24 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
     where
         Self: Recover<M>,
     {
-        ctx.persistence_mut()
-            .journal_mut::<Self>()
-            .persist_message(message)
-            .await
-    }
+        let message_bytes = message.as_bytes();
+        match message_bytes {
+            Ok(bytes) => {
+                let mut attempts = 1;
+                loop {
+                    let result = ctx.persistence_mut()
+                        .journal_mut::<Self>()
+                        .persist_message(message_bytes.clone())
+                        .await;
 
-    async fn on_recovery_err(&mut self, _err: JournalRecoveryErr, _ctx: &mut ActorContext) {}
+                    if let Some(res) = check(result, &mut attempts, &self, ctx).await {
+                        return res;
+                    }
+                }
+            }
+            Err(e) => return Err(PersistErr::Serialisation(e)),
+        }
+    }
 
     async fn snapshot<S: Snapshot>(
         &self,
@@ -60,14 +73,65 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
     where
         Self: RecoverSnapshot<S>,
     {
-        ctx.persistence_mut()
-            .journal_mut::<Self>()
-            .persist_snapshot(snapshot)
-            .await
+        let snapshot_bytes = snapshot.into_remote_envelope();
+        match snapshot_bytes {
+            Ok(bytes) => {
+                let mut attempts = 1;
+                loop {
+                    let result = ctx.persistence_mut()
+                        .journal_mut::<Self>()
+                        .persist_snapshot(bytes.into_bytes())
+                        .await;
+
+                    if let Some(res) = check(result, &mut attempts, &self, ctx).await {
+                        return res;
+                    }
+                }
+            }
+            Err(e) => return Err(PersistErr::Serialisation(e)),
+        }
     }
 
     fn recovery_failure_policy(&self) -> RecoveryFailurePolicy {
         RecoveryFailurePolicy::default()
+    }
+
+    fn persist_failure_policy(&self) -> PersistFailurePolicy {
+        PersistFailurePolicy::default()
+    }
+
+    async fn on_recovery_err(&mut self, _err: JournalRecoveryErr, _ctx: &mut ActorContext) {}
+
+    async fn on_recovery_failed(&mut self, _ctx: &mut ActorContext) {}
+}
+
+async fn check<A: PersistentActor>(result: Result<(), PersistErr>, attempts: &mut usize, actor: &A, ctx: &mut ActorContext) -> Option<Result<(), PersistErr>> {
+    match result {
+        Ok(res) => return Some(Ok(res)),
+        Err(e) => {
+            let failure_policy = actor.persist_failure_policy();
+
+            match failure_policy {
+                PersistFailurePolicy::Retry(retry_policy) => {
+                    if !retry(ctx, &attempts, retry_policy).await {
+                        return Some(Err(e));
+                    }
+                }
+                PersistFailurePolicy::ReturnErr => {
+                    return Some(Err(e));
+                }
+                PersistFailurePolicy::StopActor => {
+                    ctx.stop(None);
+                    return Some(Err(PersistErr::ActorStopping(Box::new(e))));
+                }
+                PersistFailurePolicy::Panic => {
+                    panic!("persist failed");
+                }
+            }
+
+            attempts.add(1);
+            None
+        }
     }
 }
 
@@ -93,66 +157,18 @@ where
 
         let persistence_key = self.persistence_key(ctx);
         let (snapshot, messages) = {
-            let mut journal = None;
-            let mut attempts = 1;
-            loop {
-                match load_journal::<A>(persistence_key.clone(), ctx).await {
-                    Ok(loaded_journal) => {
-                        journal = Some(loaded_journal);
-                        break;
-                    }
+            let journal = self
+                .recover_journal(Some(persistence_key.clone()), ctx)
+                .await;
 
-                    Err(e) => {
-                        let policy = self.recovery_failure_policy();
-
-                        error!(
-                            "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}, attempt={attempt}",
-                            actor_id = ctx.id(),
-                            persistence_key = &persistence_key,
-                            error = &e,
-                            attempt = attempts
-                        );##
-
-                        self.on_recovery_err(e, ctx).await;
-
-                        match policy {
-                            RecoveryFailurePolicy::StopActor => {
-                                ctx.stop(None);
-                                return;
-                            }
-
-                            RecoveryFailurePolicy::RetryRecovery(retry) => match retry {
-                                Retry::UntilSuccess { delay } => {
-                                    if let Some(delay) = delay {
-                                        tokio::time::sleep(delay).await;
-                                    }
-                                }
-
-                                Retry::MaxAttempts {
-                                    max_attempts,
-                                    delay,
-                                } => {
-                                    if attempts >= max_attempts {
-                                        // TODO: Log that we've exceeded max attempts
-                                        ctx.stop(None);
-                                        return;
-                                    }
-
-                                    if let Some(delay) = delay {
-                                        tokio::time::sleep(delay).await;
-                                    }
-                                }
-                            },
-                            RecoveryFailurePolicy::Panic => panic!("Persistence failure"),
-                        }
-                    }
+            match journal {
+                RecoveryResult::Recovered(journal) => (journal.snapshot, journal.messages),
+                RecoveryResult::Failed => {
+                    trace!("recovery failed, ctx_status={:?}", ctx.get_status());
+                    self.on_recovery_failed(ctx).await;
+                    return;
                 }
-
-                attempts = attempts + 1;
             }
-
-            let journal = journal.expect("no journal loaded");
-            (journal.snapshot, journal.messages)
         };
 
         trace!(

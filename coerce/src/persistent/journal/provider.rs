@@ -10,9 +10,9 @@ pub type StorageProviderRef = Arc<dyn StorageProvider>;
 pub mod inmemory {
     use crate::persistent::journal::provider::StorageProvider;
     use crate::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
+    use parking_lot::RwLock;
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tokio::sync::RwLock;
 
     #[derive(Debug)]
     struct ActorJournal {
@@ -67,7 +67,7 @@ pub mod inmemory {
             persistence_id: &str,
             entry: JournalEntry,
         ) -> anyhow::Result<()> {
-            let mut store = self.store.write().await;
+            let mut store = self.store.write();
             if let Some(journal) = store.get_mut(persistence_id) {
                 journal.snapshots.push(entry);
             } else {
@@ -85,7 +85,7 @@ pub mod inmemory {
             persistence_id: &str,
             entry: JournalEntry,
         ) -> anyhow::Result<()> {
-            let mut store = self.store.write().await;
+            let mut store = self.store.write();
             if let Some(journal) = store.get_mut(persistence_id) {
                 journal.messages.push(entry);
             } else {
@@ -102,7 +102,7 @@ pub mod inmemory {
             &self,
             persistence_id: &str,
         ) -> anyhow::Result<Option<JournalEntry>> {
-            let store = self.store.read().await;
+            let store = self.store.read();
 
             Ok(store
                 .get(persistence_id)
@@ -114,7 +114,7 @@ pub mod inmemory {
             persistence_id: &str,
             from_sequence: i64,
         ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
-            let store = self.store.read().await;
+            let store = self.store.read();
             Ok(store.get(persistence_id).map(|journal| {
                 let messages = match from_sequence {
                     0 => journal.messages.clone(),
@@ -146,7 +146,7 @@ pub mod inmemory {
         }
 
         async fn delete_all(&self, persistence_id: &str) -> anyhow::Result<()> {
-            let mut store = self.store.write().await;
+            let mut store = self.store.write();
             store.remove(persistence_id);
             Ok(())
         }

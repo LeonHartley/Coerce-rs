@@ -224,7 +224,7 @@ impl From<ActorRefErr> for proto::network::ActorRefErr {
                 error.time_taken_millis = time_taken_millis;
                 ErrorType::Timeout
             }
-            ActorRefErr::StartChannelClosed => ErrorType::StartChannelClosed,
+            ActorRefErr::ActorStartFailed => ErrorType::ActorStartFailed,
             ActorRefErr::InvalidRef => ErrorType::InvalidRef,
             ActorRefErr::ResultChannelClosed => ErrorType::ResultChannelClosed,
             ActorRefErr::ResultSendFailed => ErrorType::ResultSendFailed,
@@ -273,7 +273,7 @@ impl From<proto::network::ActorRefErr> for ActorRefErr {
             ErrorType::Timeout => ActorRefErr::Timeout {
                 time_taken_millis: err.time_taken_millis,
             },
-            ErrorType::StartChannelClosed => ActorRefErr::StartChannelClosed,
+            ErrorType::ActorStartFailed => ActorRefErr::ActorStartFailed,
             ErrorType::InvalidRef => ActorRefErr::InvalidRef,
             ErrorType::ResultChannelClosed => ActorRefErr::ResultChannelClosed,
             ErrorType::ResultSendFailed => ActorRefErr::ResultSendFailed,

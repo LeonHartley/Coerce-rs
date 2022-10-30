@@ -232,7 +232,7 @@ message ActorRefErr {
     Serialisation = 3;
     Deserialisation = 4;
     Timeout = 5;
-    StartChannelClosed = 6;
+    ActorStartFailed = 6;
     InvalidRef = 7;
     ResultChannelClosed = 8;
     ResultSendFailed = 9;

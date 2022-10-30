@@ -4,7 +4,7 @@ pub mod storage;
 pub mod types;
 
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::{Handler, Message, MessageWrapErr};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::storage::{JournalEntry, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};
@@ -78,6 +78,8 @@ impl<A: PersistentActor> RecoveredPayload<A> {
 #[derive(Debug)]
 pub enum PersistErr {
     Storage(anyhow::Error),
+    Serialisation(MessageWrapErr),
+    ActorStopping(Box<PersistErr>),
 }
 
 impl Display for PersistErr {
@@ -89,7 +91,7 @@ impl Display for PersistErr {
 impl Error for PersistErr {}
 
 impl<A: PersistentActor> Journal<A> {
-    pub async fn persist_message<M: Message>(&mut self, message: &M) -> Result<(), PersistErr>
+    pub async fn persist_message<M: Message>(&mut self, bytes: Vec<u8>) -> Result<(), PersistErr>
     where
         A: Recover<M>,
     {
@@ -103,8 +105,6 @@ impl<A: PersistentActor> Journal<A> {
             .types
             .message_type_mapping::<M>()
             .expect("message type not configured");
-
-        let bytes = message.as_bytes().expect("cannot serialise message");
 
         let sequence = self.last_sequence_id + 1;
 
@@ -129,7 +129,7 @@ impl<A: PersistentActor> Journal<A> {
         Ok(())
     }
 
-    pub async fn persist_snapshot<S: Snapshot>(&mut self, snapshot: S) -> Result<(), PersistErr> {
+    pub async fn persist_snapshot<S: Snapshot>(&mut self, bytes: Vec<u8>) -> Result<(), PersistErr> {
         info!(
             "persisting snapshot, persistence_id={}",
             &self.persistence_id
@@ -139,11 +139,6 @@ impl<A: PersistentActor> Journal<A> {
             .types
             .snapshot_type_mapping::<S>()
             .expect("snapshot type not configured");
-
-        let bytes = snapshot
-            .into_remote_envelope()
-            .expect("cannot serialize snapshot")
-            .into_bytes();
 
         let sequence = self.last_sequence_id + 1;
 

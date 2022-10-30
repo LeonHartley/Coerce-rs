@@ -1,10 +1,13 @@
 pub mod actor;
 pub mod context;
+pub mod failure;
 pub mod inspect;
 pub mod journal;
+pub mod persist;
 pub mod recovery;
 
 pub use actor::*;
+pub use recovery::*;
 
 use std::any::TypeId;
 use std::collections::HashMap;

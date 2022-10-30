@@ -162,6 +162,7 @@ where
 
         if let Some(remote) = self.remote.as_mut() {
             debug!(
+                target: "ActorScheduler",
                 "[node={}] registering actor with remote registry, actor_id={}",
                 remote.node_id(),
                 &message.id

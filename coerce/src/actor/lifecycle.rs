@@ -71,7 +71,8 @@ impl ActorLoop {
 
         match ctx.get_status() {
             Stopping => {
-                actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await
+                return actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx)
+                    .await
             }
             _ => {}
         };

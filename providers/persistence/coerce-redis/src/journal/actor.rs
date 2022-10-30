@@ -55,7 +55,7 @@ where
             if let Err(e) = redis::cmd("ZADD")
                 .arg(message.key)
                 .arg(message.entry.sequence)
-                .arg(message.entry.write_to_bytes().expect("serialized journal"))
+                .arg(&message.entry.write_to_bytes().expect("serialized journal"))
                 .query_async::<C, ()>(&mut connection)
                 .await
             {

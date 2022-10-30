@@ -3537,8 +3537,8 @@ pub mod actor_ref_err {
         Deserialisation = 4,
         // @@protoc_insertion_point(enum_value:coerce.network.ActorRefErr.ErrorType.Timeout)
         Timeout = 5,
-        // @@protoc_insertion_point(enum_value:coerce.network.ActorRefErr.ErrorType.StartChannelClosed)
-        StartChannelClosed = 6,
+        // @@protoc_insertion_point(enum_value:coerce.network.ActorRefErr.ErrorType.ActorStartFailed)
+        ActorStartFailed = 6,
         // @@protoc_insertion_point(enum_value:coerce.network.ActorRefErr.ErrorType.InvalidRef)
         InvalidRef = 7,
         // @@protoc_insertion_point(enum_value:coerce.network.ActorRefErr.ErrorType.ResultChannelClosed)
@@ -3566,7 +3566,7 @@ pub mod actor_ref_err {
                 3 => ::std::option::Option::Some(ErrorType::Serialisation),
                 4 => ::std::option::Option::Some(ErrorType::Deserialisation),
                 5 => ::std::option::Option::Some(ErrorType::Timeout),
-                6 => ::std::option::Option::Some(ErrorType::StartChannelClosed),
+                6 => ::std::option::Option::Some(ErrorType::ActorStartFailed),
                 7 => ::std::option::Option::Some(ErrorType::InvalidRef),
                 8 => ::std::option::Option::Some(ErrorType::ResultChannelClosed),
                 9 => ::std::option::Option::Some(ErrorType::ResultSendFailed),
@@ -3583,7 +3583,7 @@ pub mod actor_ref_err {
             ErrorType::Serialisation,
             ErrorType::Deserialisation,
             ErrorType::Timeout,
-            ErrorType::StartChannelClosed,
+            ErrorType::ActorStartFailed,
             ErrorType::InvalidRef,
             ErrorType::ResultChannelClosed,
             ErrorType::ResultSendFailed,
@@ -4011,7 +4011,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"i\n\x0bRaftRequest\x12\x1d\
     \n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12!\n\x0crequest_type\x18\
     \x02\x20\x01(\rR\x0brequestType\x12\x18\n\x07payload\x18\x03\x20\x01(\
-    \x0cR\x07payload\"\xf0\x04\n\x0bActorRefErr\x129\n\x04type\x18\x01\x20\
+    \x0cR\x07payload\"\xee\x04\n\x0bActorRefErr\x129\n\x04type\x18\x01\x20\
     \x01(\x0e2%.coerce.network.ActorRefErr.ErrorTypeR\x04type\x12\x19\n\x08a\
     ctor_id\x18\x02\x20\x01(\tR\x07actorId\x12!\n\x0cmessage_type\x18\x03\
     \x20\x01(\tR\x0bmessageType\x12\x1d\n\nactor_type\x18\x04\x20\x01(\tR\ta\
@@ -4019,14 +4019,14 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     illis\x12O\n\x13serialization_error\x18\x06\x20\x01(\x0e2\x1e.coerce.net\
     work.MessageWrapErrR\x12serializationError\x12U\n\x15deserialization_err\
     or\x18\x07\x20\x01(\x0e2\x20.coerce.network.MessageUnwrapErrR\x14deseria\
-    lizationError\"\xf4\x01\n\tErrorType\x12\x14\n\x10ActorUnavailable\x10\0\
+    lizationError\"\xf2\x01\n\tErrorType\x12\x14\n\x10ActorUnavailable\x10\0\
     \x12\x0c\n\x08NotFound\x10\x01\x12\x11\n\rAlreadyExists\x10\x02\x12\x11\
     \n\rSerialisation\x10\x03\x12\x13\n\x0fDeserialisation\x10\x04\x12\x0b\n\
-    \x07Timeout\x10\x05\x12\x16\n\x12StartChannelClosed\x10\x06\x12\x0e\n\nI\
-    nvalidRef\x10\x07\x12\x17\n\x13ResultChannelClosed\x10\x08\x12\x14\n\x10\
-    ResultSendFailed\x10\t\x12\x10\n\x0cNotSupported\x10\n\x12\x12\n\x0eNotI\
-    mplemented\x10\x0b*\xbc\x01\n\x05Event\x12\x0c\n\x08Identify\x10\0\x12\r\
-    \n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\
+    \x07Timeout\x10\x05\x12\x14\n\x10ActorStartFailed\x10\x06\x12\x0e\n\nInv\
+    alidRef\x10\x07\x12\x17\n\x13ResultChannelClosed\x10\x08\x12\x14\n\x10Re\
+    sultSendFailed\x10\t\x12\x10\n\x0cNotSupported\x10\n\x12\x12\n\x0eNotImp\
+    lemented\x10\x0b*\xbc\x01\n\x05Event\x12\x0c\n\x08Identify\x10\0\x12\r\n\
+    \tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\x07\n\x03Err\x10\x03\
     \x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\x05\x12\x0f\n\x0bCreate\
     Actor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\n\rRegisterActor\x10\
     \x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStreamPublish\x10\n\x12\

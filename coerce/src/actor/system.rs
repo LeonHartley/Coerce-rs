@@ -149,7 +149,7 @@ impl ActorSystem {
                     &id,
                     A::type_name()
                 );
-                Err(ActorRefErr::StartChannelClosed)
+                Err(ActorRefErr::ActorStartFailed)
             }
         }
     }

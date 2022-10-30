@@ -1,7 +1,8 @@
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{IntoActor, ToActorId};
+use coerce::actor::ActorRefErr::ActorUnavailable;
+use coerce::actor::{ActorRefErr, IntoActor, ToActorId};
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
@@ -112,6 +113,26 @@ pub async fn test_persistent_actor_recovery_retry_until_success() {
     .unwrap();
 
     info!("actor created")
+}
+
+#[tokio::test]
+pub async fn test_persistent_actor_recovery_stop_actor() {
+    util::create_trace_logger();
+
+    let persistence = Arc::new(MockPersistence::default());
+    let provider = Provider(persistence.clone());
+    let system = ActorSystem::new().to_persistent(Persistence::from(provider));
+
+    persistence.set_next_err(MockErr.into());
+
+    let actor = TestActor {
+        recovery_policy: RecoveryFailurePolicy::StopActor,
+        recovered_message: None,
+    }
+    .into_actor(Some("TestActor".to_actor_id()), &system)
+    .await;
+
+    assert_eq!(actor.unwrap_err(), ActorRefErr::ActorStartFailed)
 }
 
 impl MockPersistence {

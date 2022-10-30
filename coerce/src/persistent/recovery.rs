@@ -1,10 +1,84 @@
 use crate::actor::context::ActorContext;
+use crate::persistent::failure::{retry, RecoveryFailurePolicy, Retry};
+use crate::persistent::journal::RecoveredPayload;
 use crate::persistent::PersistentActor;
+use std::error::Error;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 
-pub struct ActorRecovery;
+#[async_trait]
+pub trait ActorRecovery: PersistentActor {
+    async fn recover_journal(
+        &mut self,
+        persistence_key: Option<String>,
+        ctx: &mut ActorContext,
+    ) -> RecoveryResult<Self>;
+}
 
-impl ActorRecovery {
+pub enum RecoveryResult<A: PersistentActor> {
+    Recovered(RecoveredJournal<A>),
+    Failed,
+}
 
+#[async_trait]
+impl<A: PersistentActor> ActorRecovery for A {
+    async fn recover_journal(
+        &mut self,
+        persistence_key: Option<String>,
+        ctx: &mut ActorContext,
+    ) -> RecoveryResult<Self> {
+        let mut journal = None;
+        let mut attempts = 1;
+
+        let persistence_key = persistence_key.unwrap_or_else(|| self.persistence_key(ctx));
+
+        loop {
+            match load_journal::<Self>(persistence_key.clone(), ctx).await {
+                Ok(loaded_journal) => {
+                    journal = Some(loaded_journal);
+                    break;
+                }
+
+                Err(e) => {
+                    let policy = self.recovery_failure_policy();
+
+                    error!(
+                            "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}, attempt={attempt}",
+                            actor_id = ctx.id(),
+                            persistence_key = &persistence_key,
+                            error = &e,
+                            attempt = attempts
+                        );
+
+                    self.on_recovery_err(e, ctx).await;
+
+                    match policy {
+                        RecoveryFailurePolicy::StopActor => {
+                            ctx.stop(None);
+                            return RecoveryResult::Failed;
+                        }
+
+                        RecoveryFailurePolicy::Retry(retry_policy) => {
+                            if !retry(ctx, &attempts, retry_policy).await {
+                                return RecoveryResult::Failed;
+                            }
+                        }
+                        RecoveryFailurePolicy::Panic => panic!("Persistence failure"),
+                    }
+                }
+            }
+
+            attempts = attempts + 1;
+        }
+
+        let journal = journal.expect("no journal loaded");
+        RecoveryResult::Recovered(journal)
+    }
+}
+
+pub struct RecoveredJournal<A: PersistentActor> {
+    pub snapshot: Option<RecoveredPayload<A>>,
+    pub messages: Option<Vec<RecoveredPayload<A>>>,
 }
 
 async fn load_journal<A: PersistentActor>(
@@ -24,77 +98,6 @@ async fn load_journal<A: PersistentActor>(
         .map_err(JournalRecoveryErr::Messages)?;
 
     Ok(RecoveredJournal { snapshot, messages })
-}
-
-
-#[derive(Copy, Clone)]
-pub enum Retry {
-    UntilSuccess {
-        delay: Option<Duration>,
-    },
-    MaxAttempts {
-        max_attempts: usize,
-        delay: Option<Duration>,
-    },
-}
-
-#[derive(Copy, Clone)]
-pub enum RecoveryFailurePolicy {
-    StopActor,
-    RetryRecovery(Retry),
-    Panic,
-}
-
-impl Display for Retry {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self {
-            Retry::UntilSuccess { delay } => {
-                if let Some(delay) = delay.as_ref() {
-                    write!(f, "UntilSuccess(delay={} millis)", delay.as_millis())
-                } else {
-                    write!(f, "UntilSuccess(delay=None)")
-                }
-            }
-            Retry::MaxAttempts {
-                max_attempts,
-                delay,
-            } => {
-                if let Some(delay) = delay.as_ref() {
-                    write!(
-                        f,
-                        "MaxAttempts(max_attempts={}, delay={} millis)",
-                        max_attempts,
-                        delay.as_millis()
-                    )
-                } else {
-                    write!(f, "MaxAttempts(max_attempts={}, delay=None)", max_attempts)
-                }
-            }
-        }
-    }
-}
-
-impl Display for RecoveryFailurePolicy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self {
-            RecoveryFailurePolicy::StopActor => write!(f, "StopActor"),
-            RecoveryFailurePolicy::RetryRecovery(r) => write!(f, "Retry({})", r),
-            RecoveryFailurePolicy::Panic => write!(f, "Panic"),
-        }
-    }
-}
-
-impl Default for RecoveryFailurePolicy {
-    fn default() -> Self {
-        RecoveryFailurePolicy::RetryRecovery(Retry::UntilSuccess {
-            delay: Some(Duration::from_millis(500)),
-        })
-    }
-}
-
-struct RecoveredJournal<A: PersistentActor> {
-    snapshot: Option<RecoveredPayload<A>>,
-    messages: Option<Vec<RecoveredPayload<A>>>,
 }
 
 #[derive(Debug)]

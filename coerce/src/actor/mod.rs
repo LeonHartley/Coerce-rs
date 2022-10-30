@@ -418,7 +418,7 @@ pub enum ActorRefErr {
     Timeout {
         time_taken_millis: u64,
     },
-    StartChannelClosed,
+    ActorStartFailed,
     InvalidRef,
     ResultChannelClosed,
     ResultSendFailed,
@@ -453,7 +453,7 @@ impl Display for ActorRefErr {
                 "Remoting not supported, no Handler<{}> implementation for actor (id={}, type={}) or the actor/message combination is not registered with the RemoteActorSystem configuration",
                 message_type, actor_id, actor_type
             ),
-            ActorRefErr::StartChannelClosed => write!(f, "actor failed to start, channel closed"),
+            ActorRefErr::ActorStartFailed => write!(f, "actor failed to start, channel closed"),
             ActorRefErr::NotImplemented => write!(f, "functionality is not yet implemented"),
         }
     }

@@ -65,7 +65,7 @@ impl Supervised {
             Ok(_) => Ok(actor_ref),
             Err(e) => {
                 error!("error spawning supervised actor (id={}) {}", &id, e);
-                Err(ActorRefErr::StartChannelClosed)
+                Err(ActorRefErr::ActorStartFailed)
             }
         }
     }
