@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub struct JournalEntry {
     pub sequence: i64,
     pub payload_type: String,
-    pub bytes: Vec<u8>,
+    pub bytes: Arc<Vec<u8>>,
 }
 
 #[async_trait]
@@ -37,7 +37,7 @@ impl StreamData for JournalEntry {
             Some(JournalEntry {
                 sequence: journal_entry.sequence,
                 payload_type: journal_entry.payload_type,
-                bytes: journal_entry.bytes,
+                bytes: Arc::new(journal_entry.bytes),
             })
         } else {
             None
@@ -49,7 +49,7 @@ impl StreamData for JournalEntry {
         let proto = ProtoJournalEntry {
             sequence: journal_entry.sequence,
             payload_type: journal_entry.payload_type.clone(),
-            bytes: journal_entry.bytes.clone(),
+            bytes: journal_entry.bytes.as_ref().clone(),
             ..Default::default()
         };
 

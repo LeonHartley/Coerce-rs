@@ -28,4 +28,11 @@ pub trait Snapshot: 'static + Sync + Send + Sized {
     fn from_remote_envelope(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         Err(MessageUnwrapErr::NotTransmittable)
     }
+
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
+        std::any::type_name::<Self>()
+    }
 }

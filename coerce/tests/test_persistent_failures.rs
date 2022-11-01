@@ -7,7 +7,9 @@ use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
 use coerce::persistent::journal::types::JournalTypes;
-use coerce::persistent::{Persistence, PersistentActor, Recover, RecoveryFailurePolicy, Retry};
+use coerce::persistent::{
+    PersistFailurePolicy, Persistence, PersistentActor, Recover, RecoveryFailurePolicy, Retry,
+};
 use coerce_macros::JsonMessage;
 use parking_lot::Mutex;
 use protobuf::MessageField;
@@ -48,6 +50,7 @@ impl StorageProvider for Provider {
 
 struct TestActor {
     recovery_policy: RecoveryFailurePolicy,
+    persist_policy: PersistFailurePolicy,
     recovered_message: Option<Message>,
 }
 
@@ -63,6 +66,10 @@ impl PersistentActor for TestActor {
     fn recovery_failure_policy(&self) -> RecoveryFailurePolicy {
         self.recovery_policy
     }
+
+    fn persist_failure_policy(&self) -> PersistFailurePolicy {
+        self.persist_policy
+    }
 }
 
 #[async_trait]
@@ -75,7 +82,9 @@ impl Recover<Message> for TestActor {
 #[async_trait]
 impl Handler<Message> for TestActor {
     async fn handle(&mut self, message: Message, ctx: &mut ActorContext) {
-        info!("received message");
+        if self.persist(&message, ctx).await.is_ok() {
+            info!("received message");
+        }
     }
 }
 
@@ -91,7 +100,7 @@ impl Display for MockErr {
 impl Error for MockErr {}
 
 #[tokio::test]
-pub async fn test_persistent_actor_recovery_retry_until_success() {
+pub async fn test_persistent_actor_recovery_failure_retry_until_success() {
     util::create_trace_logger();
 
     let persistence = Arc::new(MockPersistence::default());
@@ -105,7 +114,8 @@ pub async fn test_persistent_actor_recovery_retry_until_success() {
     persistence.set_next_err(MockErr.into());
 
     let actor = TestActor {
-        recovery_policy: RecoveryFailurePolicy::RetryRecovery(Retry::UntilSuccess { delay: None }),
+        recovery_policy: RecoveryFailurePolicy::Retry(Retry::UntilSuccess { delay: None }),
+        persist_policy: Default::default(),
         recovered_message: None,
     }
     .into_actor(Some("TestActor".to_actor_id()), &system)
@@ -116,7 +126,7 @@ pub async fn test_persistent_actor_recovery_retry_until_success() {
 }
 
 #[tokio::test]
-pub async fn test_persistent_actor_recovery_stop_actor() {
+pub async fn test_persistent_actor_recovery_failure_stop_actor() {
     util::create_trace_logger();
 
     let persistence = Arc::new(MockPersistence::default());
@@ -127,12 +137,67 @@ pub async fn test_persistent_actor_recovery_stop_actor() {
 
     let actor = TestActor {
         recovery_policy: RecoveryFailurePolicy::StopActor,
+        persist_policy: Default::default(),
         recovered_message: None,
     }
     .into_actor(Some("TestActor".to_actor_id()), &system)
     .await;
 
     assert_eq!(actor.unwrap_err(), ActorRefErr::ActorStartFailed)
+}
+
+#[tokio::test]
+pub async fn test_persistent_actor_persist_failure_panic() {
+    util::create_trace_logger();
+
+    let persistence = Arc::new(MockPersistence::default());
+    let provider = Provider(persistence.clone());
+    let system = ActorSystem::new().to_persistent(Persistence::from(provider));
+
+    let actor = TestActor {
+        recovery_policy: Default::default(),
+        persist_policy: PersistFailurePolicy::Panic,
+        recovered_message: None,
+    }
+    .into_actor(Some("TestActor".to_actor_id()), &system)
+    .await;
+
+    let actor = actor.unwrap();
+    assert!(actor.status().await.is_ok());
+
+    persistence.set_next_err(MockErr.into());
+
+    let result = actor.send(Message).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+pub async fn test_persistent_actor_persist_failure_retry_until_success() {
+    util::create_trace_logger();
+
+    let persistence = Arc::new(MockPersistence::default());
+    let provider = Provider(persistence.clone());
+    let system = ActorSystem::new().to_persistent(Persistence::from(provider));
+
+    let actor = TestActor {
+        recovery_policy: Default::default(),
+        persist_policy: PersistFailurePolicy::Retry(Retry::UntilSuccess { delay: None }),
+        recovered_message: None,
+    }
+    .into_actor(Some("TestActor".to_actor_id()), &system)
+    .await;
+
+    let actor = actor.unwrap();
+    assert!(actor.status().await.is_ok());
+
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+    persistence.set_next_err(MockErr.into());
+
+    let result = actor.send(Message).await;
+    assert!(result.is_ok());
 }
 
 impl MockPersistence {

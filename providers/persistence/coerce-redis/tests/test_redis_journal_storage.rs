@@ -27,7 +27,7 @@ pub async fn test_redis_journal_read_write_snapshot() {
             JournalEntry {
                 sequence: 1,
                 payload_type: "test".to_string(),
-                bytes: vec![1, 3, 3, 7],
+                bytes: vec![1, 3, 3, 7].into(),
             },
         )
         .await
@@ -39,7 +39,7 @@ pub async fn test_redis_journal_read_write_snapshot() {
             JournalEntry {
                 sequence: 2,
                 payload_type: "test".to_string(),
-                bytes: vec![1, 3, 3, 7],
+                bytes: vec![1, 3, 3, 7].into(),
             },
         )
         .await
@@ -51,7 +51,7 @@ pub async fn test_redis_journal_read_write_snapshot() {
             JournalEntry {
                 sequence: 3,
                 payload_type: "test".to_string(),
-                bytes: vec![1, 3, 3, 7],
+                bytes: vec![1, 3, 3, 7].into(),
             },
         )
         .await
@@ -89,7 +89,7 @@ pub async fn test_redis_journal_read_write_messages() {
             JournalEntry {
                 sequence: 1,
                 payload_type: "test".to_string(),
-                bytes: vec![1, 3, 3, 7],
+                bytes: vec![1, 3, 3, 7].into(),
             },
         )
         .await
@@ -101,7 +101,7 @@ pub async fn test_redis_journal_read_write_messages() {
             JournalEntry {
                 sequence: 2,
                 payload_type: "test".to_string(),
-                bytes: vec![1, 3, 3, 7],
+                bytes: vec![1, 3, 3, 7].into(),
             },
         )
         .await

@@ -2,17 +2,19 @@ use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef};
+
 use crate::persistent::failure::{retry, PersistFailurePolicy, RecoveryFailurePolicy};
+use crate::persistent::journal::snapshot::Snapshot;
+use crate::persistent::journal::types::JournalTypes;
+use crate::persistent::journal::{PersistErr, RecoveredPayload, RecoveryErr};
+use crate::persistent::recovery::{ActorRecovery, RecoveryResult};
+
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Add;
+use std::sync::Arc;
 use std::time::Duration;
-
-use crate::persistent::journal::snapshot::Snapshot;
-use crate::persistent::journal::types::JournalTypes;
-use crate::persistent::journal::{PersistErr, RecoveredPayload};
-use crate::persistent::recovery::{ActorRecovery, JournalRecoveryErr, RecoveryResult};
 
 #[async_trait]
 pub trait Recover<M: Message> {
@@ -50,17 +52,20 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
         match message_bytes {
             Ok(bytes) => {
                 let mut attempts = 1;
+                let bytes = Arc::new(bytes);
                 loop {
-                    let result = ctx.persistence_mut()
+                    let result = ctx
+                        .persistence_mut()
                         .journal_mut::<Self>()
-                        .persist_message(message_bytes.clone())
+                        .persist_message::<M>(bytes.clone())
                         .await;
 
-                    if let Some(res) = check(result, &mut attempts, &self, ctx).await {
+                    if let Some(res) = check(result, &mut attempts, self, ctx).await {
                         return res;
                     }
                 }
             }
+
             Err(e) => return Err(PersistErr::Serialisation(e)),
         }
     }
@@ -76,14 +81,17 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
         let snapshot_bytes = snapshot.into_remote_envelope();
         match snapshot_bytes {
             Ok(bytes) => {
+                let bytes = Arc::new(bytes.into_bytes());
+
                 let mut attempts = 1;
                 loop {
-                    let result = ctx.persistence_mut()
+                    let result = ctx
+                        .persistence_mut()
                         .journal_mut::<Self>()
-                        .persist_snapshot(bytes.into_bytes())
+                        .persist_snapshot::<S>(bytes.clone())
                         .await;
 
-                    if let Some(res) = check(result, &mut attempts, &self, ctx).await {
+                    if let Some(res) = check(result, &mut attempts, self, ctx).await {
                         return res;
                     }
                 }
@@ -100,16 +108,28 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
         PersistFailurePolicy::default()
     }
 
-    async fn on_recovery_err(&mut self, _err: JournalRecoveryErr, _ctx: &mut ActorContext) {}
+    async fn on_recovery_err(&mut self, _err: RecoveryErr, _ctx: &mut ActorContext) {}
 
     async fn on_recovery_failed(&mut self, _ctx: &mut ActorContext) {}
 }
 
-async fn check<A: PersistentActor>(result: Result<(), PersistErr>, attempts: &mut usize, actor: &A, ctx: &mut ActorContext) -> Option<Result<(), PersistErr>> {
+async fn check<A: PersistentActor>(
+    result: Result<(), PersistErr>,
+    attempts: &mut usize,
+    actor: &A,
+    ctx: &mut ActorContext,
+) -> Option<Result<(), PersistErr>> {
     match result {
         Ok(res) => return Some(Ok(res)),
         Err(e) => {
             let failure_policy = actor.persist_failure_policy();
+
+            error!("persist failed, error={error}, actor_id={actor_id}, policy={failure_policy}, attempt={attempt}",
+                error = e,
+                actor_id = ctx.id(),
+                failure_policy = &failure_policy,
+                attempt = attempts
+            );
 
             match failure_policy {
                 PersistFailurePolicy::Retry(retry_policy) => {
@@ -129,7 +149,7 @@ async fn check<A: PersistentActor>(result: Result<(), PersistErr>, attempts: &mu
                 }
             }
 
-            attempts.add(1);
+            *attempts += 1;
             None
         }
     }
@@ -178,13 +198,37 @@ where
             messages.as_ref().map_or(0, |m| m.len()),
         );
 
+
         if let Some(snapshot) = snapshot {
-            snapshot.recover(self, ctx).await;
+            if let Err(e) = snapshot.recover(self, ctx).await {
+                // non-transient error, i.e serialisation errors should not be retried, we should just exit here.
+                error!("Error while attempting to recover from a snapshot, error={error}, actor_id={actor_id}, persistence_key={persistence_key}",
+                    error = &e,
+                    actor_id = ctx.id(),
+                    persistence_key = &persistence_key
+                );
+
+                self.on_recovery_err(e, ctx).await;
+                ctx.stop(None);
+                return;
+            }
         }
 
         if let Some(messages) = messages {
             for message in messages {
-                message.recover(self, ctx).await;
+                if let Err(e) = message.recover(self, ctx).await {
+                    // non-transient error, i.e serialisation errors should not be retried, we should just exit here.
+                    error!("Error while attempting to recover from a message, error={error}, actor_id={actor_id}, persistence_key={persistence_key}",
+                        error = &e,
+                        actor_id = ctx.id(),
+                        persistence_key = &persistence_key
+                    );
+
+                    // non-transient error, i.e serialisation errors should not be retried, we should just exit here.
+                    self.on_recovery_err(e, ctx).await;
+                    ctx.stop(None);
+                    return;
+                }
             }
         }
 

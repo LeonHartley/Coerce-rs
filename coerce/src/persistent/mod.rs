@@ -7,6 +7,7 @@ pub mod persist;
 pub mod recovery;
 
 pub use actor::*;
+pub use failure::*;
 pub use recovery::*;
 
 use std::any::TypeId;

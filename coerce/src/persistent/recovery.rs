@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::persistent::failure::{retry, RecoveryFailurePolicy, Retry};
-use crate::persistent::journal::RecoveredPayload;
+use crate::persistent::journal::{RecoveredPayload, RecoveryErr};
 use crate::persistent::PersistentActor;
 use std::error::Error;
 use std::fmt;
@@ -84,39 +84,18 @@ pub struct RecoveredJournal<A: PersistentActor> {
 async fn load_journal<A: PersistentActor>(
     persistence_key: String,
     ctx: &mut ActorContext,
-) -> Result<RecoveredJournal<A>, JournalRecoveryErr> {
+) -> Result<RecoveredJournal<A>, RecoveryErr> {
     let journal = ctx.persistence_mut().init_journal::<A>(persistence_key);
 
     let snapshot = journal
         .recover_snapshot()
         .await
-        .map_err(JournalRecoveryErr::Snapshot)?;
+        .map_err(RecoveryErr::Snapshot)?;
 
     let messages = journal
         .recover_messages()
         .await
-        .map_err(JournalRecoveryErr::Messages)?;
+        .map_err(RecoveryErr::Messages)?;
 
     Ok(RecoveredJournal { snapshot, messages })
 }
-
-#[derive(Debug)]
-pub enum JournalRecoveryErr {
-    Snapshot(anyhow::Error),
-    Messages(anyhow::Error),
-}
-
-impl Display for JournalRecoveryErr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self {
-            JournalRecoveryErr::Snapshot(e) => {
-                write!(f, "Snapshot recovery error: {}", e)
-            }
-            JournalRecoveryErr::Messages(e) => {
-                write!(f, "Message recovery error: {}", e)
-            }
-        }
-    }
-}
-
-impl Error for JournalRecoveryErr {}

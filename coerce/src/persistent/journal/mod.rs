@@ -4,7 +4,7 @@ pub mod storage;
 pub mod types;
 
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message, MessageWrapErr};
+use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::storage::{JournalEntry, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};
@@ -42,9 +42,72 @@ impl<A: PersistentActor> Journal<A> {
 
 type RecoveryHandlerRef<A> = Arc<dyn RecoveryHandler<A>>;
 
+#[derive(Debug)]
+pub enum RecoveryErr {
+    MessageDeserialisation {
+        error: MessageUnwrapErr,
+        message_type: &'static str,
+        actor_type: &'static str,
+    },
+
+    SnapshotDeserialisation {
+        error: MessageUnwrapErr,
+        snapshot_type: &'static str,
+        actor_type: &'static str,
+    },
+
+    Snapshot(anyhow::Error),
+    Messages(anyhow::Error),
+}
+
+impl Display for RecoveryErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            RecoveryErr::MessageDeserialisation {
+                error,
+                message_type,
+                actor_type,
+            } => {
+                write!(f, "Message deserialisation error, message_type={message_type}, actor_type={actor_type}, deserialisation error: {error}",
+                       error = error,
+                       message_type = message_type,
+                       actor_type = actor_type
+                )
+            }
+
+            RecoveryErr::SnapshotDeserialisation {
+                error,
+                snapshot_type,
+                actor_type,
+            } => {
+                write!(f, "Snapshot deserialisation error, snapshot_type={snapshot_type}, actor_type={actor_type}, deserialisation error: {error}",
+                       error = error,
+                       snapshot_type = snapshot_type,
+                       actor_type = actor_type
+                )
+            }
+
+            RecoveryErr::Snapshot(e) => {
+                write!(f, "Snapshot recovery error: {error}", error = e)
+            }
+
+            RecoveryErr::Messages(e) => {
+                write!(f, "Message recovery error: {error}", error = e)
+            }
+        }
+    }
+}
+
+impl Error for RecoveryErr {}
+
 #[async_trait]
 pub trait RecoveryHandler<A>: 'static + Send + Sync {
-    async fn recover(&self, actor: &mut A, bytes: Vec<u8>, ctx: &mut ActorContext);
+    async fn recover(
+        &self,
+        actor: &mut A,
+        bytes: Vec<u8>,
+        ctx: &mut ActorContext,
+    ) -> Result<(), RecoveryErr>;
 }
 
 pub struct MessageRecoveryHandler<A: PersistentActor, M: Message>(PhantomData<A>, PhantomData<M>);
@@ -70,7 +133,7 @@ pub struct RecoveredPayload<A: PersistentActor> {
 }
 
 impl<A: PersistentActor> RecoveredPayload<A> {
-    pub async fn recover(self, actor: &mut A, ctx: &mut ActorContext) {
+    pub async fn recover(self, actor: &mut A, ctx: &mut ActorContext) -> Result<(), RecoveryErr> {
         self.handler.recover(actor, self.bytes, ctx).await
     }
 }
@@ -90,8 +153,10 @@ impl Display for PersistErr {
 
 impl Error for PersistErr {}
 
+type BytesRef = Arc<Vec<u8>>;
+
 impl<A: PersistentActor> Journal<A> {
-    pub async fn persist_message<M: Message>(&mut self, bytes: Vec<u8>) -> Result<(), PersistErr>
+    pub async fn persist_message<M: Message>(&mut self, bytes: BytesRef) -> Result<(), PersistErr>
     where
         A: Recover<M>,
     {
@@ -129,7 +194,10 @@ impl<A: PersistentActor> Journal<A> {
         Ok(())
     }
 
-    pub async fn persist_snapshot<S: Snapshot>(&mut self, bytes: Vec<u8>) -> Result<(), PersistErr> {
+    pub async fn persist_snapshot<S: Snapshot>(
+        &mut self,
+        bytes: BytesRef,
+    ) -> Result<(), PersistErr> {
         info!(
             "persisting snapshot, persistence_id={}",
             &self.persistence_id
@@ -169,7 +237,8 @@ impl<A: PersistentActor> Journal<A> {
                 .get(&raw_snapshot.payload_type);
 
             let sequence = raw_snapshot.sequence;
-            let bytes = raw_snapshot.bytes;
+            let bytes =
+                Arc::try_unwrap(raw_snapshot.bytes).map_or_else(|e| e.as_ref().clone(), |s| s);
 
             self.last_sequence_id = sequence;
 
@@ -213,13 +282,17 @@ impl<A: PersistentActor> Journal<A> {
                         &entry.payload_type
                     );
 
+                    let bytes =
+                        Arc::try_unwrap(entry.bytes).map_or_else(|e| e.as_ref().clone(), |s| s);
+
                     recoverable_messages.push(RecoveredPayload {
-                        bytes: entry.bytes,
+                        bytes,
                         sequence: entry.sequence,
                         handler: handler.clone(),
                     })
                 } else {
-                    warn!("persistence_id={} recovered message (type={}) but actor is not configured to process it", &entry.payload_type, &self.persistence_id);
+                    error!("persistence_id={} recovered message (type={}) but actor is not configured to process it",  &self.persistence_id, &entry.payload_type);
+                    // TODO: this should fail recovery
                 }
             }
 
@@ -250,23 +323,32 @@ impl<A: PersistentActor, M: Message> RecoveryHandler<A> for MessageRecoveryHandl
 where
     A: Recover<M>,
 {
-    async fn recover(&self, actor: &mut A, bytes: Vec<u8>, ctx: &mut ActorContext) {
-        let message = M::from_bytes(bytes);
-        if let Ok(message) = message {
-            let start = Instant::now();
+    async fn recover(
+        &self,
+        actor: &mut A,
+        bytes: Vec<u8>,
+        ctx: &mut ActorContext,
+    ) -> Result<(), RecoveryErr> {
+        let message =
+            M::from_bytes(bytes).map_err(|error| RecoveryErr::MessageDeserialisation {
+                error,
+                message_type: M::type_name(),
+                actor_type: A::type_name(),
+            })?;
 
-            actor.recover(message, ctx).await;
-            let message_processing_took = start.elapsed();
+        let start = Instant::now();
 
-            ActorMetrics::incr_messages_processed(
-                A::type_name(),
-                M::type_name(),
-                Duration::default(),
-                message_processing_took,
-            );
-        } else {
-            // todo: log serialisation error / fail the recovery
-        }
+        actor.recover(message, ctx).await;
+        let message_processing_took = start.elapsed();
+
+        ActorMetrics::incr_messages_processed(
+            A::type_name(),
+            M::type_name(),
+            Duration::default(),
+            message_processing_took,
+        );
+
+        Ok(())
     }
 }
 
@@ -275,13 +357,25 @@ impl<A: PersistentActor, S: Snapshot> RecoveryHandler<A> for SnapshotRecoveryHan
 where
     A: RecoverSnapshot<S>,
 {
-    async fn recover(&self, actor: &mut A, bytes: Vec<u8>, ctx: &mut ActorContext) {
-        let message = S::from_remote_envelope(bytes);
-        if let Ok(message) = message {
-            actor.recover(message, ctx).await;
-        } else {
-            // todo: log serialisation error / fail the recovery
-        }
+    async fn recover(
+        &self,
+        actor: &mut A,
+        bytes: Vec<u8>,
+        ctx: &mut ActorContext,
+    ) -> Result<(), RecoveryErr> {
+        actor
+            .recover(
+                S::from_remote_envelope(bytes).map_err(|error| {
+                    RecoveryErr::SnapshotDeserialisation {
+                        error,
+                        snapshot_type: S::type_name(),
+                        actor_type: A::type_name(),
+                    }
+                })?,
+                ctx,
+            )
+            .await;
+        Ok(())
     }
 }
 
