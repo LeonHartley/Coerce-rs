@@ -48,6 +48,7 @@ pub enum RecoveryErr {
         error: MessageUnwrapErr,
         message_type: &'static str,
         actor_type: &'static str,
+        message_sequence_id: i64,
     },
 
     SnapshotDeserialisation {
@@ -67,11 +68,13 @@ impl Display for RecoveryErr {
                 error,
                 message_type,
                 actor_type,
+                message_sequence_id,
             } => {
-                write!(f, "Message deserialisation error, message_type={message_type}, actor_type={actor_type}, deserialisation error: {error}",
+                write!(f, "Message deserialisation error (message_type={message_type}, actor_type={actor_type}, sequence_id={sequence_id}) deserialisation error: {error}",
                        error = error,
                        message_type = message_type,
-                       actor_type = actor_type
+                       actor_type = actor_type,
+                       sequence_id = message_sequence_id
                 )
             }
 
@@ -105,6 +108,7 @@ pub trait RecoveryHandler<A>: 'static + Send + Sync {
     async fn recover(
         &self,
         actor: &mut A,
+        sequence_id: i64,
         bytes: Vec<u8>,
         ctx: &mut ActorContext,
     ) -> Result<(), RecoveryErr>;
@@ -134,7 +138,9 @@ pub struct RecoveredPayload<A: PersistentActor> {
 
 impl<A: PersistentActor> RecoveredPayload<A> {
     pub async fn recover(self, actor: &mut A, ctx: &mut ActorContext) -> Result<(), RecoveryErr> {
-        self.handler.recover(actor, self.bytes, ctx).await
+        self.handler
+            .recover(actor, self.sequence, self.bytes, ctx)
+            .await
     }
 }
 
@@ -326,6 +332,7 @@ where
     async fn recover(
         &self,
         actor: &mut A,
+        sequence_id: i64,
         bytes: Vec<u8>,
         ctx: &mut ActorContext,
     ) -> Result<(), RecoveryErr> {
@@ -334,6 +341,7 @@ where
                 error,
                 message_type: M::type_name(),
                 actor_type: A::type_name(),
+                message_sequence_id: sequence_id,
             })?;
 
         let start = Instant::now();
@@ -360,6 +368,7 @@ where
     async fn recover(
         &self,
         actor: &mut A,
+        _sequence_id: i64,
         bytes: Vec<u8>,
         ctx: &mut ActorContext,
     ) -> Result<(), RecoveryErr> {

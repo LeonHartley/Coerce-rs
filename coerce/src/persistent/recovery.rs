@@ -43,11 +43,12 @@ impl<A: PersistentActor> ActorRecovery for A {
                     let policy = self.recovery_failure_policy();
 
                     error!(
-                            "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}, attempt={attempt}",
+                            "persistent actor (actor_id={actor_id}, persistence_key={persistence_key}) failed to recover - {error}, attempt={attempt}, failure_policy={failure_policy}",
                             actor_id = ctx.id(),
                             persistence_key = &persistence_key,
                             error = &e,
-                            attempt = attempts
+                            attempt = attempts,
+                            failure_policy = &policy
                         );
 
                     self.on_recovery_err(e, ctx).await;
@@ -63,12 +64,13 @@ impl<A: PersistentActor> ActorRecovery for A {
                                 return RecoveryResult::Failed;
                             }
                         }
+
                         RecoveryFailurePolicy::Panic => panic!("Persistence failure"),
                     }
                 }
             }
 
-            attempts = attempts + 1;
+            attempts += 1;
         }
 
         let journal = journal.expect("no journal loaded");

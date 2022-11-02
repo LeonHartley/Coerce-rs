@@ -9,6 +9,7 @@ use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::{PersistErr, RecoveredPayload, RecoveryErr};
 use crate::persistent::recovery::{ActorRecovery, RecoveryResult};
 
+use crate::persistent::RecoveredJournal;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
@@ -100,6 +101,14 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
         }
     }
 
+    async fn recover_journal(
+        &mut self,
+        persistence_key: String,
+        ctx: &mut ActorContext,
+    ) -> RecoveryResult<Self> {
+        ActorRecovery::recover_journal(self, Some(persistence_key), ctx).await
+    }
+
     fn recovery_failure_policy(&self) -> RecoveryFailurePolicy {
         RecoveryFailurePolicy::default()
     }
@@ -137,13 +146,16 @@ async fn check<A: PersistentActor>(
                         return Some(Err(e));
                     }
                 }
+
                 PersistFailurePolicy::ReturnErr => {
                     return Some(Err(e));
                 }
+
                 PersistFailurePolicy::StopActor => {
                     ctx.stop(None);
                     return Some(Err(PersistErr::ActorStopping(Box::new(e))));
                 }
+
                 PersistFailurePolicy::Panic => {
                     panic!("persist failed");
                 }
@@ -177,10 +189,7 @@ where
 
         let persistence_key = self.persistence_key(ctx);
         let (snapshot, messages) = {
-            let journal = self
-                .recover_journal(Some(persistence_key.clone()), ctx)
-                .await;
-
+            let journal = self.recover_journal(persistence_key.clone(), ctx).await;
             match journal {
                 RecoveryResult::Recovered(journal) => (journal.snapshot, journal.messages),
                 RecoveryResult::Failed => {
@@ -197,7 +206,6 @@ where
             if snapshot.is_some() { 1 } else { 0 },
             messages.as_ref().map_or(0, |m| m.len()),
         );
-
 
         if let Some(snapshot) = snapshot {
             if let Err(e) = snapshot.recover(self, ctx).await {

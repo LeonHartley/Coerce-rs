@@ -43,7 +43,6 @@ pub(crate) async fn retry(ctx: &mut ActorContext, attempts: &usize, retry: Retry
             delay,
         } => {
             if attempts >= &max_attempts {
-                // TODO: Log that we've exceeded max attempts
                 ctx.stop(None);
                 return false;
             }

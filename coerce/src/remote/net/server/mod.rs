@@ -131,6 +131,8 @@ pub async fn server_loop(
                 trace!(target: "RemoteServer", "client accepted {}", addr);
                 let session_id = uuid::Uuid::new_v4();
 
+                // TODO: Before creating a session, we need to validate the received token.
+
                 let session = session_store
                     .send(NewSession(RemoteSession::new(
                         session_id,
