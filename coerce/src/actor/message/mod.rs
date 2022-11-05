@@ -1,3 +1,5 @@
+pub mod describe;
+
 use crate::actor::context::ActorContext;
 use crate::actor::Actor;
 use std::error::Error;

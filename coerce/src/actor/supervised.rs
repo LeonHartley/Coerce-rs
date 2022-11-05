@@ -6,9 +6,10 @@ use crate::actor::scheduler::{start_actor, ActorType};
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 
+#[derive(Debug)]
 pub struct Supervised {
     pub actor_id: String,
-    pub children: HashMap<ActorId, BoxedActorRef>,
+    pub children: HashMap<ActorId, ChildRef>,
 }
 
 impl Supervised {
@@ -18,6 +19,18 @@ impl Supervised {
             children: HashMap::new(),
         }
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ChildType {
+    Spawned,
+    Attached,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChildRef {
+    child_type: ChildType,
+    actor_ref: BoxedActorRef,
 }
 
 pub struct Terminated(pub ActorId);
@@ -59,7 +72,8 @@ impl Supervised {
             Some(parent_ref),
         );
 
-        self.children.insert(id.clone(), actor_ref.clone().into());
+        self.children
+            .insert(id.clone(), ChildRef::spawned(actor_ref.clone().into()));
 
         match rx.await {
             Ok(_) => Ok(actor_ref),
@@ -77,17 +91,17 @@ impl Supervised {
     pub fn child<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
         self.children
             .get(id)
-            .map_or(None, |a| (&a.0.as_any()).downcast_ref::<LocalActorRef<A>>())
+            .map_or(None, |a| a.actor_ref().as_actor())
             .map(|a| a.clone())
     }
 
     pub fn child_boxed(&self, id: &ActorId) -> Option<BoxedActorRef> {
-        self.children.get(id).map(|a| a.clone())
+        self.children.get(id).map(|a| a.actor_ref.clone())
     }
 
     pub fn attach_child_ref(&mut self, boxed_ref: BoxedActorRef) {
         self.children
-            .insert(boxed_ref.actor_id().clone(), boxed_ref.into());
+            .insert(boxed_ref.actor_id().clone(), ChildRef::attached(boxed_ref));
     }
 
     pub async fn stop_all(&mut self) {
@@ -95,23 +109,24 @@ impl Supervised {
         let stop_results = futures::future::join_all(
             self.children
                 .iter()
-                .map(|(id, actor)| async move { (id.clone(), actor.stop().await) }),
+                .map(|(id, actor)| async move { (id.clone(), actor.actor_ref.stop().await) }),
         )
         .await;
 
         for (actor_id, stop_result) in stop_results {
-            if let Ok(status) = stop_result {
-                trace!("actor stopped ({}, status={:?})", actor_id, &status);
-                self.children.remove(&actor_id);
-            } else {
-                match stop_result.unwrap_err() {
+            match stop_result {
+                Ok(_) => {
+                    trace!("actor stopped ({})", actor_id);
+                    self.children.remove(&actor_id);
+                }
+                Err(e) => match e {
                     ActorRefErr::InvalidRef => {
                         warn!("invalid ref, actor_id={} already stopped", &actor_id);
                     }
                     e => {
                         warn!("failed to stop child actor_id={}, err={}", actor_id, e);
                     }
-                }
+                },
             }
         }
 
@@ -123,6 +138,30 @@ impl Supervised {
             trace!("child actor (id={}) stopped", id);
         } else {
             trace!("unknown child actor (id={}) stopped", id);
+        }
+    }
+}
+
+impl ChildRef {
+    pub fn actor_ref(&self) -> &BoxedActorRef {
+        &self.actor_ref
+    }
+
+    pub fn is_attached(&self) -> bool {
+        matches!(&self.child_type, ChildType::Attached)
+    }
+
+    pub fn spawned(actor_ref: BoxedActorRef) -> Self {
+        ChildRef {
+            child_type: ChildType::Spawned,
+            actor_ref,
+        }
+    }
+
+    pub fn attached(actor_ref: BoxedActorRef) -> Self {
+        ChildRef {
+            child_type: ChildType::Attached,
+            actor_ref,
         }
     }
 }

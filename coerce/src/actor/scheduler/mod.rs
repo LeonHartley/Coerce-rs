@@ -9,9 +9,11 @@ use crate::remote::system::RemoteActorSystem;
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::time::Instant;
 use uuid::Uuid;
 
+pub mod describe;
 pub mod timer;
 
 pub struct ActorScheduler {
@@ -85,6 +87,19 @@ impl ActorType {
             &ActorType::Anonymous => true,
             _ => false,
         }
+    }
+}
+
+pub struct ActorCount;
+
+impl Message for ActorCount {
+    type Result = usize;
+}
+
+#[async_trait]
+impl Handler<ActorCount> for ActorScheduler {
+    async fn handle(&mut self, _: ActorCount, ctx: &mut ActorContext) -> usize {
+        self.actors.len()
     }
 }
 
@@ -196,11 +211,10 @@ where
         message: GetActor<A>,
         _ctx: &mut ActorContext,
     ) -> Option<LocalActorRef<A>> {
-        let actor_ref = self.actors.get(&message.id).and_then(|actor| {
-            (&actor.0.as_any())
-                .downcast_ref::<LocalActorRef<A>>()
-                .map(|s| s.clone())
-        });
+        let actor_ref = self
+            .actors
+            .get(&message.id)
+            .and_then(|actor| actor.as_actor());
 
         if let Some(remote) = &self.remote {
             debug!(target: "ActorScheduler", "[node={}] GetActor(actor_id={}) actor_found={}", remote.node_id(), &message.id, actor_ref.is_some())

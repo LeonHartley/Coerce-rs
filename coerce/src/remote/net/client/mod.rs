@@ -5,18 +5,16 @@ use std::time::{Duration, Instant};
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
-
 use tokio::sync::oneshot::{Receiver, Sender};
 use tokio::task::JoinHandle;
-
 use tokio_util::codec::FramedWrite;
 use uuid::Uuid;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::Timer;
-
 use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef};
+
 use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Connect;
 use crate::remote::net::client::receive::HandshakeAcknowledge;
@@ -38,7 +36,7 @@ pub struct RemoteClient {
     node_id: Option<NodeId>,
     client_type: ClientType,
     state: Option<ClientState>,
-    stop: Option<oneshot::Sender<bool>>,
+    stop: Option<Sender<bool>>,
     write_buffer_bytes_total: usize,
     write_buffer: VecDeque<Vec<u8>>,
     on_identified_callbacks: Vec<Sender<Option<NodeIdentity>>>,

@@ -149,6 +149,7 @@ pub enum PersistErr {
     Storage(anyhow::Error),
     Serialisation(MessageWrapErr),
     ActorStopping(Box<PersistErr>),
+    NotConfigured(),
 }
 
 impl Display for PersistErr {

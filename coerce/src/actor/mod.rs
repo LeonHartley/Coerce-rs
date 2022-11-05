@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
 
+use crate::actor::message::describe::{ActorDescription, Describe};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -359,6 +360,8 @@ pub trait CoreActorRef: Any {
 
     async fn stop(&self) -> Result<(), ActorRefErr>;
 
+    fn describe(&self, describe: Describe) -> Result<(), ActorRefErr>;
+
     fn notify_stop(&self) -> Result<(), ActorRefErr>;
 
     fn notify_child_terminated(&self, id: ActorId) -> Result<(), ActorRefErr>;
@@ -388,6 +391,15 @@ impl<A: Actor> Debug for LocalActorRef<A> {
         f.debug_struct(&format!("LocalActorRef<{}>", A::type_name()))
             .field("actor_id", &self.id)
             .field("system_id", &self.system_id)
+            .finish()
+    }
+}
+
+impl Debug for BoxedActorRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BoxedActorRef")
+            .field("actor_id", &self.0.actor_id())
+            .field("actor_type", &self.0.actor_type())
             .finish()
     }
 }
@@ -550,6 +562,10 @@ impl<A: Actor> LocalActorRef<A> {
         }
     }
 
+    pub fn describe(&self, describe: Describe) -> Result<(), ActorRefErr> {
+        self.notify(describe)
+    }
+
     pub fn is_valid(&self) -> bool {
         !self.sender.is_closed()
     }
@@ -575,6 +591,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
 
     async fn stop(&self) -> Result<(), ActorRefErr> {
         self.stop().await
+    }
+
+    fn describe(&self, describe: Describe) -> Result<(), ActorRefErr> {
+        self.describe(describe)
     }
 
     fn notify_stop(&self) -> Result<(), ActorRefErr> {
@@ -610,6 +630,10 @@ impl CoreActorRef for BoxedActorRef {
 
     async fn stop(&self) -> Result<(), ActorRefErr> {
         self.0.stop().await
+    }
+
+    fn describe(&self, describe: Describe) -> Result<(), ActorRefErr> {
+        self.0.describe(describe)
     }
 
     fn notify_stop(&self) -> Result<(), ActorRefErr> {
@@ -667,6 +691,39 @@ impl<A: Actor> LocalActorRef<A> {
         });
 
         ScheduledNotify::new(cancellation_token)
+    }
+}
+
+pub type ActorTag = Box<str>;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ActorTags {
+    None,
+    Tag(ActorTag),
+    Tags(Vec<ActorTag>),
+}
+
+impl From<&'static str> for ActorTags {
+    fn from(value: &'static str) -> Self {
+        Self::Tag(value.into())
+    }
+}
+
+impl From<String> for ActorTags {
+    fn from(value: String) -> Self {
+        Self::Tag(value.into())
+    }
+}
+
+impl From<Vec<&'static str>> for ActorTags {
+    fn from(value: Vec<&'static str>) -> Self {
+        Self::Tags(value.into_iter().map(|s| s.into()).collect())
+    }
+}
+
+impl From<Vec<String>> for ActorTags {
+    fn from(value: Vec<String>) -> Self {
+        Self::Tags(value.into_iter().map(|s| s.into()).collect())
     }
 }
 

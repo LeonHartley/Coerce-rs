@@ -1,5 +1,6 @@
 use crate::remote::api::Routes;
 
+use crate::actor::scheduler::ActorCount;
 use crate::remote::system::RemoteActorSystem;
 use axum::response::IntoResponse;
 use axum::routing::get;
@@ -36,7 +37,7 @@ async fn get_stats(system: RemoteActorSystem) -> impl IntoResponse {
         total_tracked_actors: system
             .actor_system()
             .scheduler()
-            .exec(|s| s.actors.len())
+            .send(ActorCount)
             .await
             .unwrap(),
     })

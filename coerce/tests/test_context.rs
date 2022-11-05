@@ -14,6 +14,8 @@ extern crate async_trait;
 
 #[tokio::test]
 pub async fn test_context_global_get_actor() {
+    create_trace_logger();
+
     let actor_ref = new_actor(TestActor::new()).await.unwrap();
 
     let _ = actor_ref
@@ -31,9 +33,7 @@ pub async fn test_context_global_get_actor() {
 
 #[tokio::test]
 pub async fn test_context_get_tracked_actor() {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE)
-        .init();
+    create_trace_logger();
 
     let ctx = ActorSystem::new();
 
@@ -56,6 +56,8 @@ pub async fn test_context_get_tracked_actor() {
 
 #[tokio::test]
 pub async fn test_context_get_actor_not_found() {
+    create_trace_logger();
+
     let ctx = ActorSystem::new();
     let actor = ctx.get_tracked_actor::<TestActor>(new_actor_id()).await;
 
@@ -64,7 +66,7 @@ pub async fn test_context_get_actor_not_found() {
 
 #[tokio::test]
 pub async fn test_context_stop_tracked_actor_get_not_found() {
-    util::create_trace_logger();
+    create_trace_logger();
 
     let ctx = ActorSystem::new();
 

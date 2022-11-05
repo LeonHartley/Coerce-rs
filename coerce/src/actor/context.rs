@@ -1,12 +1,16 @@
-use crate::actor::context::ActorStatus::Stopping;
 use crate::actor::message::{Handler, Message};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
+use crate::actor::{
+    Actor, ActorId, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, LocalActorRef,
+};
 use crate::persistent::context::ActorPersistence;
 use crate::remote::system::NodeId;
 use futures::{Stream, StreamExt};
 use std::any::Any;
+use std::iter;
+use std::iter::empty;
+use std::sync::atomic::AtomicU64;
 use tokio::sync::oneshot::Sender;
 use valuable::{NamedField, StructDef, Valuable, Value, Visit};
 
@@ -21,6 +25,7 @@ pub enum ActorStatus {
 }
 
 pub struct ActorContext {
+    context_id: u64,
     status: ActorStatus,
     persistence: Option<ActorPersistence>,
     boxed_ref: BoxedActorRef,
@@ -28,56 +33,7 @@ pub struct ActorContext {
     supervised: Option<Supervised>,
     system: Option<ActorSystem>,
     on_actor_stopped: Option<Vec<Sender<()>>>,
-}
-
-impl Drop for ActorContext {
-    fn drop(&mut self) {
-        if let Some(boxed_parent_ref) = &self.boxed_parent_ref {
-            let _ = boxed_parent_ref.notify_child_terminated(self.id().clone());
-        }
-
-        if let Some(mut supervised) = self.supervised.take() {
-            tokio::spawn(async move { supervised.stop_all().await });
-        }
-
-        ActorMetrics::incr_actor_stopped(self.boxed_ref.0.actor_type());
-
-        match self.status {
-            ActorStatus::Starting => {
-                debug!("actor failed to start, context dropped");
-            }
-
-            ActorStatus::Started => {
-                if self.system.is_some() && self.system().is_terminated() {
-                    debug!(
-                        "actor (id={}, type={}) has stopped due to system shutdown",
-                        &self.id(),
-                        self.boxed_ref.actor_type()
-                    );
-                } else {
-                    debug!("actor (id={}) has stopped unexpectedly", self.id());
-                }
-            }
-
-            ActorStatus::Stopping => {
-                if self.system.is_some() && self.system().is_terminated() {
-                    trace!(
-                        "actor (id={}) has stopped due to system shutdown",
-                        &self.id()
-                    );
-                } else {
-                    debug!(
-                        "actor (id={}) was stopping but did not complete the stop procedure",
-                        self.id()
-                    );
-                }
-            }
-
-            ActorStatus::Stopped => {
-                debug!("actor (id={}) stopped, context dropped", self.id());
-            }
-        }
-    }
+    tags: Option<ActorTags>,
 }
 
 impl ActorContext {
@@ -86,14 +42,18 @@ impl ActorContext {
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
     ) -> ActorContext {
+        let context_id = system.as_ref().map_or_else(|| 0, |s| s.next_context_id());
+
         ActorContext {
             boxed_ref,
             status,
             system,
+            context_id,
             supervised: None,
             persistence: None,
             boxed_parent_ref: None,
             on_actor_stopped: None,
+            tags: None,
         }
     }
 
@@ -101,12 +61,21 @@ impl ActorContext {
         &self.boxed_ref.actor_id()
     }
 
+    pub fn set_tags(&mut self, tags: impl Into<ActorTags>) {
+        let tags = tags.into();
+        self.tags = Some(tags);
+    }
+
+    pub fn tags(&self) -> ActorTags {
+        self.tags.as_ref().map_or(ActorTags::None, |t| t.clone())
+    }
+
     pub fn stop(&mut self, on_stopped_handler: Option<Sender<()>>) {
         if let Some(sender) = on_stopped_handler {
             self.add_on_stopped_handler(sender);
         }
 
-        self.set_status(Stopping);
+        self.set_status(ActorStatus::Stopping);
     }
 
     pub fn system(&self) -> &ActorSystem {
@@ -197,6 +166,10 @@ impl ActorContext {
         self.supervised.as_mut()
     }
 
+    pub fn supervised(&self) -> Option<&Supervised> {
+        self.supervised.as_ref()
+    }
+
     pub async fn spawn<A: Actor>(
         &mut self,
         id: ActorId,
@@ -246,6 +219,81 @@ impl ActorContext {
 
     pub fn take_on_stopped_handlers(&mut self) -> Option<Vec<Sender<()>>> {
         self.on_actor_stopped.take()
+    }
+}
+
+impl Drop for ActorContext {
+    fn drop(&mut self) {
+        let parent_ref = self.boxed_parent_ref.take();
+
+        if let Some(mut supervised) = self.supervised.take() {
+            let parent_ref = parent_ref.clone();
+            let boxed_ref = self.boxed_ref.clone();
+            let system = self.system.clone();
+            let status = self.status.clone();
+
+            tokio::spawn(async move {
+                supervised.stop_all().await;
+
+                on_context_dropped(&boxed_ref, &parent_ref, &status, &system);
+            });
+        } else {
+            on_context_dropped(
+                &self.boxed_ref,
+                &self.boxed_parent_ref,
+                &self.status,
+                &self.system,
+            );
+        }
+    }
+}
+
+fn on_context_dropped(
+    actor: &BoxedActorRef,
+    parent_ref: &Option<BoxedActorRef>,
+    status: &ActorStatus,
+    system: &Option<ActorSystem>,
+) {
+    ActorMetrics::incr_actor_stopped(actor.actor_type());
+
+    let actor_id = actor.0.actor_id();
+    let actor_type = actor.0.actor_type();
+    let system_terminated = system.as_ref().map(|s| s.is_terminated());
+
+    match status {
+        ActorStatus::Starting => {
+            debug!("actor failed to start, context dropped");
+        }
+
+        ActorStatus::Started => {
+            if let Some(true) = system_terminated {
+                debug!(
+                    "actor (id={}, type={}) has stopped due to system shutdown",
+                    actor_id, actor_type
+                );
+            } else {
+                debug!("actor (id={}) has stopped unexpectedly", actor.0.actor_id());
+            }
+        }
+
+        ActorStatus::Stopping => {
+            if let Some(true) = system_terminated {
+                trace!("actor (id={}) has stopped due to system shutdown", actor_id,);
+            } else {
+                debug!(
+                    "actor (id={}) was stopping but did not complete the stop procedure",
+                    actor_id,
+                );
+            }
+        }
+
+        ActorStatus::Stopped => {
+            debug!("actor (id={}) stopped, context dropped", actor_id);
+        }
+    }
+
+    if let Some(boxed_parent_ref) = parent_ref {
+        let _ = boxed_parent_ref.notify_child_terminated(actor_id.clone());
     }
 }
 

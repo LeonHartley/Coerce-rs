@@ -4,7 +4,7 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, ActorTags, BoxedActorRef, LocalActorRef};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -147,7 +147,6 @@ async fn actor_stopped<A: Actor>(
     ctx.set_status(Stopped);
 
     if actor_type.is_tracked() {
-        // TODO: we probably want to do this if the actor exited upon stopping too
         if let Some(system) = system.take() {
             if !system.is_terminated() {
                 trace!("de-registering actor {}", &actor_id);

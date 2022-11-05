@@ -2,8 +2,9 @@ use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, 
 use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, IntoActorId, LocalActorRef};
 use crate::persistent::Persistence;
 use crate::remote::system::RemoteActorSystem;
-use std::sync::atomic::AtomicBool;
+use rand::RngCore;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::persistent::journal::provider::StorageProvider;
@@ -25,6 +26,7 @@ pub struct ActorSystemCore {
     remote: Option<RemoteActorSystem>,
     persistence: Option<Arc<Persistence>>,
     is_terminated: Arc<AtomicBool>,
+    context_counter: Arc<AtomicU64>,
 }
 
 impl Default for ActorSystem {
@@ -37,6 +39,7 @@ impl Default for ActorSystem {
                 remote: None,
                 persistence: None,
                 is_terminated: Arc::new(AtomicBool::new(false)),
+                context_counter: Arc::new(AtomicU64::new(1)),
             }),
         }
     }
@@ -82,6 +85,10 @@ impl ActorSystem {
 
     pub fn is_remote(&self) -> bool {
         self.core.remote.is_some()
+    }
+
+    pub fn next_context_id(&self) -> u64 {
+        self.core.context_counter.fetch_add(1, Relaxed)
     }
 
     pub async fn new_tracked_actor<A: Actor>(

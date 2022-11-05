@@ -15,6 +15,7 @@ use coerce::remote::heartbeat::HeartbeatConfig;
 use coerce::remote::system::builder::RemoteSystemConfigBuilder;
 use coerce::remote::system::RemoteActorSystem;
 use std::time::Duration;
+use tokio::time;
 
 #[coerce_test]
 pub async fn test_remote_cluster_heartbeat() {
@@ -87,6 +88,8 @@ pub async fn test_remote_cluster_heartbeat() {
         server.stop();
         remote.actor_system().shutdown().await;
     }
+
+    time::sleep(Duration::from_secs(1)).await;
 
     let nodes_b = remote_2.get_nodes().await;
     let node_1 = nodes_b.iter().find(|n| n.id == 1).cloned().unwrap();
