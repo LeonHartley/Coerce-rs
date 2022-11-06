@@ -2,3 +2,4 @@
 **/*.rs.bk
 .idea/
 /coerce-remote/extensions/
+.fleet/

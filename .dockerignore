@@ -3,3 +3,4 @@ Dockerfile
 .dockerignore
 .git
 .gitignore
+.fleet

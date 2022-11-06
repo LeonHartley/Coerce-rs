@@ -380,6 +380,12 @@ impl BoxedActorRef {
     }
 }
 
+impl Display for BoxedActorRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "actor_id={}, actor_type={}", &self.actor_id(), &self.actor_type())
+    }
+}
+
 pub struct LocalActorRef<A: Actor> {
     pub id: ActorId,
     pub system_id: Option<Uuid>,

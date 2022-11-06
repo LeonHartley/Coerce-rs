@@ -14,7 +14,7 @@ use crate::remote::net::client::{
 };
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
-use crate::remote::net::proto::network as proto;
+use crate::remote::net::proto::network::{self as proto, IdentifyEvent};
 use crate::remote::net::{receive_loop, StreamData};
 
 use protobuf::EnumOrUnknown;
@@ -34,9 +34,6 @@ impl RemoteClient {
         _connect: Connect,
         ctx: &mut ActorContext,
     ) -> Option<ConnectionState> {
-        // let span = tracing::trace_span!("RemoteClient::connect", address = self.addr.as_str());
-        //
-        // let _enter = span.enter();
         let stream = TcpStream::connect(&self.addr).await;
         if stream.is_err() {
             let error = stream.unwrap_err();
@@ -53,6 +50,12 @@ impl RemoteClient {
         let (identity_tx, identity_rx) = oneshot::channel();
 
         let remote = ctx.system().remote_owned();
+        let identify = SessionEvent::Identify(IdentifyEvent {
+            ..Default::default()
+        });
+
+        // TODO: send identify message, session won't be accepted until identify is sent and validated
+
         let receive_task = tokio::spawn(receive_loop(
             remote.clone(),
             reader,

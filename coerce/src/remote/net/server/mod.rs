@@ -33,6 +33,24 @@ pub struct RemoteServerConfig {
     /// used by the inbound client, rather than the address provided by
     /// the node via the handshake.
     pub override_incoming_node_addr: bool,
+
+    /// The guard used for incoming connections
+    pub connection_guard: ConnectionGuard,
+}
+
+#[derive(Debug)]
+pub enum ConnectionGuard {
+    /// All connections will be allowed, no token validation will take place.
+    None,
+
+    /// Connections will be verified by checking the incoming join token, can be validated using the configured token.
+    Jwt { secret: Vec<u8> },
+}
+
+impl Default for ConnectionGuard {
+    fn default() -> ConnectionGuard {
+        Self::None
+    }
 }
 
 impl RemoteServerConfig {
@@ -45,6 +63,7 @@ impl RemoteServerConfig {
             listen_addr,
             external_node_addr,
             override_incoming_node_addr,
+            connection_guard: ConnectionGuard::default(),
         }
     }
 }

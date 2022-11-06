@@ -171,22 +171,28 @@ where
     A: 'static + Sync + Send,
 {
     async fn handle(&mut self, message: RegisterActor<A>, _ctx: &mut ActorContext) {
-        let _ = self
+        let actor_id = message.id;
+        let previous_actor = self
             .actors
-            .insert(message.id.clone(), BoxedActorRef::from(message.actor_ref));
+            .insert(actor_id.clone(), BoxedActorRef::from(message.actor_ref));
 
-        if let Some(remote) = self.remote.as_mut() {
+        if let Some(previous_actor) = previous_actor {
+            warn!("actor({previous_actor}) has been replaced with a new reference and is no longer tracked by the scheduler", previous_actor = previous_actor);
+            return;
+        }
+
+        debug!(target: "ActorScheduler", "actor {} registered", &actor_id);
+
+        if let Some(remote) = &self.remote {
             debug!(
                 target: "ActorScheduler",
                 "[node={}] registering actor with remote registry, actor_id={}",
                 remote.node_id(),
-                &message.id
+                &actor_id
             );
 
-            remote.register_actor(message.id.clone(), None);
+            remote.register_actor(actor_id, None);
         }
-
-        debug!(target: "ActorScheduler", "actor {} registered", message.id);
     }
 }
 
