@@ -1,7 +1,7 @@
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{
-    ActorMessage, EnvelopeType, Exec, Handler, Message, MessageHandler, MessageUnwrapErr,
+    ActorMessage, Envelope, Exec, Handler, Message, MessageHandler, MessageUnwrapErr,
     MessageWrapErr,
 };
 use crate::actor::metrics::ActorMetrics;
@@ -250,8 +250,8 @@ impl<A: Actor> ActorRef<A> {
     {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.send(msg).await,
-            Ref::Remote(remote_ref) => match msg.as_remote_envelope() {
-                Ok(envelope) => remote_ref.send(envelope).await,
+            Ref::Remote(remote_ref) => match msg.as_bytes() {
+                Ok(envelope) => remote_ref.send(Envelope::Remote(envelope)).await,
                 Err(e) => Err(ActorRefErr::Serialisation(e)),
             },
         }
@@ -263,8 +263,8 @@ impl<A: Actor> ActorRef<A> {
     {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.notify(msg),
-            Ref::Remote(remote_ref) => match msg.as_remote_envelope() {
-                Ok(envelope) => remote_ref.notify(envelope).await,
+            Ref::Remote(remote_ref) => match msg.as_bytes() {
+                Ok(envelope) => remote_ref.notify(Envelope::Remote(envelope)).await,
                 Err(e) => Err(ActorRefErr::Serialisation(e)),
             },
         }
@@ -466,18 +466,24 @@ impl<A: Actor> LocalActorRef<A> {
     where
         A: Handler<Msg>,
     {
-        // let message_type = msg.name();
-        // let actor_type = A::type_name();
+        let message_type = msg.name();
+        let actor_type = A::type_name();
         // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
         // let _enter = span.enter();
 
         ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
+
+        // let timeout_task = tokio::spawn(async move {
+        //    tokio::time::sleep(Duration::from_millis(1000)).await;
+        //     info!("message(type={}, actor_type={}) has taken longer than 1000ms", message_type, actor_type);
+        // });
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
             Ok(_) => match rx.await {
                 Ok(res) => {
                     tracing::trace!("recv result");
+                    // timeout_task.abort();
                     Ok(res)
                 }
                 Err(_e) => Err(ActorRefErr::ResultChannelClosed),

@@ -111,7 +111,7 @@ impl StreamMediator {
         };
 
         if let Some(topic) = receiver.subscriber_store_mut() {
-            info!(
+            debug!(
                 "actor_id={} subscribing to topic {} (key=\"{}\")",
                 receiver_ref.id,
                 T::topic_name().to_string(),

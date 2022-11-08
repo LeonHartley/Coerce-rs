@@ -1,14 +1,14 @@
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorStatus};
-use crate::actor::message::{
-    Envelope, EnvelopeType, Handler, Message, MessageHandler, MessageUnwrapErr, MessageWrapErr,
-};
+use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use tokio::sync::oneshot::Sender;
+use uuid::Uuid;
 
 pub struct Status();
 
@@ -49,8 +49,8 @@ impl ActorLoop {
     pub async fn run<A: Actor>(
         mut actor: A,
         actor_type: ActorType,
-        mut receiver: tokio::sync::mpsc::UnboundedReceiver<MessageHandler<A>>,
-        mut on_start: Option<tokio::sync::oneshot::Sender<()>>,
+        mut receiver: UnboundedReceiver<MessageHandler<A>>,
+        mut on_start: Option<Sender<()>>,
         actor_ref: LocalActorRef<A>,
         parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,

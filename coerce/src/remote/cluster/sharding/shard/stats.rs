@@ -36,18 +36,15 @@ impl Handler<GetShardStats> for Shard {
 impl Message for GetShardStats {
     type Result = ShardStats;
 
-    fn as_remote_envelope(&self) -> Result<Envelope<Self>, MessageWrapErr> {
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::GetShardStats {
             ..Default::default()
         }
         .write_to_bytes()
-        .map_or_else(
-            |_e| Err(MessageWrapErr::SerializationErr),
-            |m| Ok(Envelope::Remote(m)),
-        )
+        .map_or_else(|_e| Err(MessageWrapErr::SerializationErr), |m| Ok(m))
     }
 
-    fn from_remote_envelope(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+    fn from_bytes(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
         Ok(Self)
     }
 

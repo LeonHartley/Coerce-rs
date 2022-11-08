@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sharded-chat-server
+spec:
+  replicas: 1
+  serviceName: sharded-chat-server
+  template:
+    metadata:
+      annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '31104'
+      labels:
+        app: "sharded-chat-server"
+    spec:
+      serviceAccountName: sharded-chat-server
+      containers:
+        - name: sharded-chat-server
+          image: "sharded-chat-server:latest"
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            tcpSocket:
+              port: coerce
+          ports:
+            - name: coerce
+              containerPort: 31101
+              protocol: TCP
+            - name: websocket
+              containerPort: 31102
+              protocol: TCP
+            - name: coerce-api
+              containerPort: 31103
+              protocol: TCP
+            - name: metrics
+              containerPort: 31104
+              protocol: TCP
+          resources:
+            { }
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: server-config
+                  key: LOG_LEVEL
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLUSTER_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: COERCE_K8S_POD_SELECTOR
+              value: "app=sharded-chat-server"
+            - name: COERCE_OVERRIDE_INCOMING_NODE_ADDR
+              value: "1"
+  selector:
+    matchLabels:
+      app: sharded-chat-server

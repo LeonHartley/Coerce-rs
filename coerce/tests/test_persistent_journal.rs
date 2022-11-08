@@ -7,9 +7,7 @@ use coerce::actor::IntoActor;
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 
 use coerce::persistent::journal::types::JournalTypes;
-use coerce::persistent::{
-    ConfigurePersistence, Persistence, PersistentActor, Recover, RecoverSnapshot,
-};
+use coerce::persistent::{Persistence, PersistentActor, Recover, RecoverSnapshot};
 use coerce_macros::{JsonMessage, JsonSnapshot};
 
 #[macro_use]
@@ -80,7 +78,7 @@ pub async fn test_persistent_actor_message_recovery() {
     util::create_trace_logger();
 
     let system =
-        ActorSystem::new().add_persistence(Persistence::from(InMemoryStorageProvider::new()));
+        ActorSystem::new().to_persistent(Persistence::from(InMemoryStorageProvider::new()));
 
     let id = 1;
     let create_empty_actor = || TestActor {

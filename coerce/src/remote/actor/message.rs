@@ -72,6 +72,12 @@ impl Message for RegisterNode {
     type Result = ();
 }
 
+pub struct NodeTerminated(pub NodeId);
+
+impl Message for NodeTerminated {
+    type Result = ();
+}
+
 pub struct ClientWrite(pub NodeId, pub SessionEvent);
 
 impl Message for ClientWrite {

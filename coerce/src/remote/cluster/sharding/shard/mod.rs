@@ -106,9 +106,11 @@ impl PersistentActor for Shard {
 
     async fn post_recovery(&mut self, ctx: &mut ActorContext) {
         let recovered_entities = self.entities.len();
+        let node_id = ctx.system().remote().node_id();
+
         info!(
-            "started shard#{}, recovered_entities={}",
-            self.shard_id, recovered_entities
+            "started shard#{} on node_id={}, recovered_entities={}",
+            self.shard_id, node_id, recovered_entities
         );
 
         if recovered_entities > 0 {

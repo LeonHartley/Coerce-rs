@@ -67,7 +67,8 @@ impl Handler<Rebalance> for ShardCoordinator {
             }
         }
 
-        warn!(
+        // TODO: if the rebalance took over a configurable amount of time, warnings/errors/alerts could be fired
+        debug!(
             "Rebalance took {:?}, rebalance={}",
             start.elapsed(),
             rebalance
@@ -111,7 +112,7 @@ impl ShardCoordinator {
                         Ok(_) => {
                             let result = rx.await;
                             if let Ok(result) = result {
-                                let result = ShardStopped::from_remote_envelope(result.into_result().unwrap());
+                                let result = ShardStopped::from_bytes(result.into_result().unwrap());
                                 match result {
                                     Ok(_res) => {
                                         let _ = self_ref.send(AllocateShard { shard_id: shard, rebalancing: true }).await;

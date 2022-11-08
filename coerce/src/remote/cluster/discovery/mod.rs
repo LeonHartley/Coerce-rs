@@ -182,6 +182,8 @@ impl Handler<Forget> for NodeDiscovery {
                     let system = system.clone();
                     let node = Arc::new(node.node.clone());
 
+                    // TODO: if configured to do so, remove the node from the RemoteRegistry/RemoteNodeStore
+
                     let _ = tokio::spawn(async move {
                         PubSub::publish_locally(
                             SystemTopic,
@@ -298,10 +300,21 @@ impl NodeDiscovery {
             let identity = client.identify().await;
             if let Ok(Some(identity)) = identity {
                 let identity = Arc::new(identity);
-                let addr = identity.node.addr.clone();
+                let node_remote_addr = identity.node.addr.clone();
                 let node_id = identity.node.id;
 
-                self.discovered_nodes_by_addr.insert(addr, identity.clone());
+                info!(
+                    "cached node identity (addr={}, remote_addr={})",
+                    &addr, &node_remote_addr
+                );
+
+                if addr != node_remote_addr {
+                    self.discovered_nodes_by_addr.insert(addr, identity.clone());
+                }
+
+                self.discovered_nodes_by_addr
+                    .insert(node_remote_addr, identity.clone());
+
                 self.discovered_nodes_by_id
                     .insert(node_id, identity.clone());
 

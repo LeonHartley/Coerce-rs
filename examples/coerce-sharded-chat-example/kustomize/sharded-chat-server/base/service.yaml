@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sharded-chat-server
+spec:
+  clusterIP: None
+  ports:
+    - name: coerce
+      port: 31101
+      protocol: TCP
+    - name: coerce-api
+      port: 31103
+      protocol: TCP
+  selector:
+    app: sharded-chat-server

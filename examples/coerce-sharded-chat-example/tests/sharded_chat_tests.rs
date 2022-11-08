@@ -51,7 +51,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         .write(
             0,
             JoinChat {
-                stream_name: "example-chat-stream".to_string(),
+                chat_stream_id: "example-chat-stream".to_string(),
                 join_token: None,
             },
         )
@@ -61,7 +61,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         .write(
             0,
             JoinChat {
-                stream_name: "example-chat-stream".to_string(),
+                chat_stream_id: "example-chat-stream".to_string(),
                 join_token: None,
             },
         )
@@ -85,13 +85,12 @@ pub async fn test_sharded_chat_join_and_chat() {
     client_b
         .write(
             1,
-            SendChatMessage {
-                chat_stream: "example-chat-stream".to_string(),
-                message: ChatMessage {
-                    sender: String::default(),
-                    message: "Hello!".to_string(),
-                },
-            },
+            SendChatMessage(ChatMessage {
+                chat_stream_id: "example-chat-stream".to_string(),
+                message_id: None,
+                sender: None,
+                message: "Hello!".to_string(),
+            }),
         )
         .await;
 
@@ -99,21 +98,20 @@ pub async fn test_sharded_chat_join_and_chat() {
     let received_message_b = client_b.read::<ChatMessage>().await.unwrap();
 
     assert_eq!("Hello!", &received_message_a.message);
-    assert_eq!("client-b", &received_message_a.sender);
+    assert_eq!("client-b", &received_message_a.sender.unwrap());
 
     assert_eq!("Hello!", &received_message_b.message);
-    assert_eq!("client-b", &received_message_b.sender);
+    assert_eq!("client-b", &received_message_b.sender.unwrap());
 
     client_a
         .write(
             1,
-            SendChatMessage {
-                chat_stream: "example-chat-stream".to_string(),
-                message: ChatMessage {
-                    sender: String::default(),
-                    message: "Heyo!".to_string(),
-                },
-            },
+            SendChatMessage(ChatMessage {
+                chat_stream_id: "example-chat-stream".to_string(),
+                message_id: None,
+                sender: None,
+                message: "Heyo!".to_string(),
+            }),
         )
         .await;
 
@@ -121,10 +119,10 @@ pub async fn test_sharded_chat_join_and_chat() {
     let received_message_b = client_b.read::<ChatMessage>().await.unwrap();
 
     assert_eq!("Heyo!", &received_message_a.message);
-    assert_eq!("client-a", &received_message_a.sender);
+    assert_eq!("client-a", &received_message_a.sender.unwrap());
 
     assert_eq!("Heyo!", &received_message_b.message);
-    assert_eq!("client-a", &received_message_b.sender);
+    assert_eq!("client-a", &received_message_b.sender.unwrap());
 
     let mut client_c = ChatClient::connect("ws://localhost:32102", "client-c")
         .await
@@ -134,7 +132,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         .write(
             0,
             JoinChat {
-                stream_name: "example-chat-stream".to_string(),
+                chat_stream_id: "example-chat-stream".to_string(),
                 join_token: None,
             },
         )
@@ -189,7 +187,7 @@ pub async fn stress_test_sharded_chat_servers() {
                         .write(
                             0,
                             JoinChat {
-                                stream_name: format!("chat-stream-{}", c),
+                                chat_stream_id: format!("chat-stream-{}", c),
                                 join_token: None,
                             },
                         )
@@ -201,13 +199,12 @@ pub async fn stress_test_sharded_chat_servers() {
                         client
                             .write(
                                 1,
-                                SendChatMessage {
-                                    chat_stream: format!("chat-stream-{}", c),
-                                    message: ChatMessage {
-                                        sender: "".to_string(),
-                                        message: "hi".to_string(),
-                                    },
-                                },
+                                SendChatMessage(ChatMessage {
+                                    chat_stream_id: format!("chat-stream-{}", c),
+                                    message_id: None,
+                                    sender: None,
+                                    message: "hi".to_string(),
+                                }),
                             )
                             .await;
                     }

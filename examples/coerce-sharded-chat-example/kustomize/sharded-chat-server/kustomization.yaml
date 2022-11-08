@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./base
+replicas:
+  - name: sharded-chat-server
+    count: 3
+#images:
+#  - name: sharded-chat-server
+#    newName: sharded-chat-server
+
+configMapGenerator:
+  - name: server-config
+    literals:
+      - LOG_LEVEL=DEBUG

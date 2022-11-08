@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package coerce.example.sharding.internal;
+
+import "google/protobuf/wrappers.proto";
+import "chat.proto";
+
+message CreateChatStream {
+  string chat_stream_id = 1;
+
+  string creator = 2;
+}
+
+message Join {
+  string chat_stream_id = 1;
+
+  google.protobuf.StringValue join_token = 2;
+
+  string name = 3;
+}
+
+message JoinResult {
+  enum JoinErr {
+    None = 0;
+    NameCollision = 1;
+  }
+
+  message State {
+    string chat_stream_id = 1;
+
+    string creator = 2;
+
+    repeated coerce.example.sharding.chat.ChatMessage chat_history = 3;
+
+    string token = 4;
+  }
+
+  State stream_state = 1;
+
+  JoinErr error = 2;
+}

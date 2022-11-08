@@ -3,6 +3,7 @@ on:
     branches:
       - master
       - feature/**
+      - dev
 name: coerce-rs tests
 
 jobs:

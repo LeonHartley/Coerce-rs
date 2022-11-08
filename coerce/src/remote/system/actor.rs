@@ -9,7 +9,8 @@ use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{ActorAddress, CreateActorEvent};
 use crate::remote::system::{NodeId, NodeRpcErr, RemoteActorSystem};
 use crate::remote::{RemoteActorRef, RemoteMessageHeader};
-use protobuf::Message as ProtoMessage;
+use protobuf::well_known_types::wrappers::UInt64Value;
+use protobuf::{Message as ProtoMessage, MessageField};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -158,7 +159,7 @@ impl RemoteActorSystem {
             Some(actor_address) => {
                 let actor_ref = RemoteActorRef::<F::Actor>::new(
                     actor_address.actor_id.into_actor_id(),
-                    actor_address.node_id,
+                    actor_address.node_id.value,
                     self.clone(),
                 );
 
@@ -203,7 +204,7 @@ impl RemoteActorSystem {
                 Ok(actor_ref) => {
                     let result = ActorAddress {
                         actor_id: actor_ref.actor_id().to_string(),
-                        node_id: self.node_id(),
+                        node_id: MessageField::some(UInt64Value::from(self.node_id())),
                         ..ActorAddress::default()
                     };
 

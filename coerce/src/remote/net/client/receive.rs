@@ -1,4 +1,6 @@
 use crate::actor::message::Message;
+use std::io::Error;
+use std::net::SocketAddr;
 
 use crate::actor::LocalActorRef;
 use crate::remote::actor::{RemoteResponse, SystemCapabilities};
@@ -21,17 +23,20 @@ pub struct ClientMessageReceiver {
     actor_ref: LocalActorRef<RemoteClient>,
     identity_sender: Option<Sender<NodeIdentity>>,
     should_close: bool,
+    addr: String,
 }
 
 impl ClientMessageReceiver {
     pub fn new(
         actor_ref: LocalActorRef<RemoteClient>,
         identity_sender: Sender<NodeIdentity>,
+        addr: String,
     ) -> ClientMessageReceiver {
         let identity_sender = Some(identity_sender);
         Self {
             actor_ref,
             identity_sender,
+            addr,
             should_close: false,
         }
     }
@@ -149,7 +154,19 @@ impl StreamReceiver for ClientMessageReceiver {
     }
 
     async fn on_close(&mut self, _sys: &RemoteActorSystem) {
+        info!("closed, sending `Disconnected` to {:?}", &self.actor_ref);
         let _ = self.actor_ref.send(Disconnected).await;
+    }
+
+    fn on_deserialisation_failed(&mut self) {
+        warn!("message serialisation failed (addr={})", &self.addr);
+    }
+
+    fn on_stream_lost(&mut self, error: Error) {
+        warn!(
+            "stream connection lost (addr={}) - error: {}",
+            &self.addr, error
+        );
     }
 
     async fn close(&mut self) {

@@ -1,99 +1,166 @@
-use coerce::persistent::journal::provider::StorageProvider;
+use crate::journal::actor::{Delete, ReadMessages, ReadSnapshot, RedisJournal, Write};
+use coerce::actor::context::ActorContext;
+use coerce::actor::message::{Handler, Message};
+use coerce::actor::system::ActorSystem;
+use coerce::actor::{Actor, IntoActor, LocalActorRef};
+use coerce::persistent::journal::provider::{StorageProvider, StorageProviderRef};
 use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
 use coerce::remote::net::StreamData;
-use redis_async::client;
-use redis_async::client::PairedConnection;
-use redis_async::resp::RespValue;
+use redis::aio::{ConnectionLike, MultiplexedConnection};
+use redis::{Cmd, Pipeline, RedisFuture, Value};
+use std::alloc::System;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::runtime::Handle;
+use tokio::sync::oneshot;
+
+pub(crate) mod actor;
 
 pub struct RedisStorageProvider {
-    redis: PairedConnection,
-    config: Arc<RedisStorageConfig>,
-}
-
-struct Redis {
-    config: RedisStorageConfig,
+    redis: JournalStorageRef,
 }
 
 pub struct RedisStorageConfig {
-    pub address: String,
+    pub nodes: Vec<String>,
     pub key_prefix: String,
+    pub cluster: bool,
     pub use_key_hashtags: bool,
 }
 
-pub struct RedisJournalStorage {
-    redis: PairedConnection,
+pub struct RedisJournalStorage<C: 'static + ConnectionLike + Send + Sync>
+where
+    C: Clone,
+{
+    redis_journal: LocalActorRef<RedisJournal<C>>,
     config: Arc<RedisStorageConfig>,
+    key_provider_fn: fn(&str, &str, &RedisStorageConfig) -> String,
 }
 
 impl RedisStorageProvider {
-    pub async fn connect(config: RedisStorageConfig) -> RedisStorageProvider {
-        let config = Arc::new(config);
-        let address = SocketAddr::from_str(&config.address).expect("invalid redis address");
-        let redis = client::paired_connect(address.to_string())
-            .await
-            .expect("redis connect");
+    pub async fn connect(config: RedisStorageConfig, system: &ActorSystem) -> Self {
+        if config.cluster {
+            Self::clustered(config, system).await
+        } else {
+            Self::single_node(config, system).await
+        }
+    }
 
-        RedisStorageProvider { redis, config }
+    pub async fn clustered(
+        config: RedisStorageConfig,
+        system: &ActorSystem,
+    ) -> RedisStorageProvider {
+        use redis_cluster_async::Client;
+
+        create_provider(
+            {
+                let client = Client::open(config.nodes.clone()).unwrap();
+                client.get_connection().await.unwrap()
+            },
+            config,
+            system,
+        )
+        .await
+    }
+
+    pub async fn single_node(
+        config: RedisStorageConfig,
+        system: &ActorSystem,
+    ) -> RedisStorageProvider {
+        use redis::Client;
+
+        create_provider(
+            {
+                let client = Client::open(config.nodes[0].clone()).expect("redis client create");
+                client.get_multiplexed_tokio_connection().await.unwrap()
+            },
+            config,
+            system,
+        )
+        .await
     }
 }
 
-#[async_trait]
+async fn create_provider<C: 'static + ConnectionLike + Send + Sync>(
+    redis: C,
+    config: RedisStorageConfig,
+    system: &ActorSystem,
+) -> RedisStorageProvider
+where
+    C: Clone,
+{
+    let config = Arc::new(config);
+
+    let redis_journal = RedisJournal(redis)
+        .into_anon_actor(Option::<String>::None, system)
+        .await
+        .expect("start journal actor");
+
+    let redis = Arc::new(RedisJournalStorage {
+        redis_journal,
+        config: config.clone(),
+        key_provider_fn: if config.use_key_hashtags {
+            get_clustered_redis_key
+        } else {
+            get_redis_key
+        },
+    });
+
+    RedisStorageProvider { redis }
+}
+
 impl StorageProvider for RedisStorageProvider {
     fn journal_storage(&self) -> Option<JournalStorageRef> {
-        Some(Arc::new(RedisJournalStorage {
-            redis: self.redis.clone(),
-            config: self.config.clone(),
-        }))
+        Some(self.redis.clone())
     }
 }
 
 #[async_trait]
-impl JournalStorage for RedisJournalStorage {
+impl<C: ConnectionLike + Send + Sync> JournalStorage for RedisJournalStorage<C>
+where
+    C: Clone,
+{
     async fn write_snapshot(
         &self,
         persistence_id: &str,
         entry: JournalEntry,
     ) -> anyhow::Result<()> {
-        let key = [&self.config.key_prefix, persistence_id, ".snapshot"].concat();
-        let command = resp_array![
-            "ZADD",
-            key,
-            &entry.sequence.to_string(),
-            entry.write_to_bytes().expect("serialized journal")
-        ];
+        let (tx, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "snapshot", self.config.as_ref());
 
-        let _ = self.redis.send::<Option<i32>>(command).await?;
-        Ok(())
+        self.redis_journal.notify(Write {
+            key,
+            entry,
+            result_channel: tx,
+        })?;
+
+        rx.await?
     }
 
     async fn write_message(&self, persistence_id: &str, entry: JournalEntry) -> anyhow::Result<()> {
-        let key = [&self.config.key_prefix, persistence_id, ".journal"].concat();
-        let command = resp_array![
-            "ZADD",
-            key,
-            &entry.sequence.to_string(),
-            entry.write_to_bytes().expect("serialized msg")
-        ];
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
 
-        let _ = self.redis.send::<Option<i32>>(command).await?;
-        Ok(())
+        self.redis_journal.notify(Write {
+            key,
+            entry,
+            result_channel,
+        })?;
+
+        rx.await?
     }
 
     async fn read_latest_snapshot(
         &self,
         persistence_id: &str,
     ) -> anyhow::Result<Option<JournalEntry>> {
-        let key = [&self.config.key_prefix, persistence_id, ".snapshot"].concat();
-        let command = resp_array!["ZREVRANGEBYSCORE", key, "+inf", "-inf", "LIMIT", "0", "1"];
-        let data = self.redis.send::<Option<RespValue>>(command).await?;
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "snapshot", self.config.as_ref());
 
-        Ok(match data {
-            Some(data) => read_journal_entry(data),
-            None => None,
-        })
+        self.redis_journal
+            .notify(ReadSnapshot(key, result_channel))?;
+
+        rx.await?
     }
 
     async fn read_latest_messages(
@@ -101,56 +168,44 @@ impl JournalStorage for RedisJournalStorage {
         persistence_id: &str,
         from_sequence: i64,
     ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
-        let key = [&self.config.key_prefix, persistence_id, ".journal"].concat();
-        let command = resp_array!["ZRANGEBYSCORE", key, from_sequence.to_string(), "+inf"];
-        let data = self.redis.send::<Option<RespValue>>(command).await?;
-
-        Ok(match data {
-            Some(data) => read_journal_entry_array(data),
-            None => None,
-        })
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
+        self.redis_journal.notify(ReadMessages {
+            key,
+            from_sequence,
+            result_channel,
+        })?;
+        rx.await?
     }
 
     async fn delete_all(&self, persistence_id: &str) -> anyhow::Result<()> {
-        let journal_key = [&self.config.key_prefix, persistence_id, ".journal"].concat();
-        let snapshot_key = [&self.config.key_prefix, persistence_id, ".snapshot"].concat();
+        let journal_key = get_redis_key(persistence_id, "journal", self.config.as_ref());
+        let snapshot_key = get_redis_key(persistence_id, "snapshot", self.config.as_ref());
 
-        let command = resp_array!["DEL", journal_key, snapshot_key];
-        let _ = self.redis.send::<Option<i32>>(command).await?;
-
-        Ok(())
+        self.redis_journal
+            .send(Delete(vec![journal_key, snapshot_key]))
+            .await?
     }
 }
 
-fn read_journal_entry_array(redis_value: RespValue) -> Option<Vec<JournalEntry>> {
-    match redis_value {
-        RespValue::Array(array) => Some(
-            array
-                .into_iter()
-                .map(|v| match v {
-                    RespValue::BulkString(data) => JournalEntry::read_from_bytes(data).unwrap(),
-                    _ => panic!("not supported"),
-                })
-                .collect(),
-        ),
-        _ => panic!("not supported"),
-    }
+fn get_clustered_redis_key(
+    persistence_id: &str,
+    value_type: &str,
+    config: &RedisStorageConfig,
+) -> String {
+    format!(
+        "{{__{persistence_id}}}:{key_prefix}{persistence_id}:{value_type}",
+        persistence_id = persistence_id,
+        key_prefix = config.key_prefix,
+        value_type = value_type
+    )
 }
 
-fn read_journal_entry(redis_value: RespValue) -> Option<JournalEntry> {
-    match redis_value {
-        RespValue::Array(array) => {
-            for data in array {
-                return match data {
-                    RespValue::BulkString(data) => {
-                        Some(JournalEntry::read_from_bytes(data).unwrap())
-                    }
-                    _ => panic!("not supported"),
-                };
-            }
-
-            None
-        }
-        _ => panic!("not supported"),
-    }
+fn get_redis_key(persistence_id: &str, value_type: &str, config: &RedisStorageConfig) -> String {
+    format!(
+        "{key_prefix}{persistence_id}:{value_type}",
+        persistence_id = persistence_id,
+        key_prefix = config.key_prefix,
+        value_type = value_type
+    )
 }

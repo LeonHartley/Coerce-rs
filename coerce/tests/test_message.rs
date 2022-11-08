@@ -177,12 +177,11 @@ pub async fn test_actor_receiver() {
 
     let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
 
-    let results =
-        futures::future::join_all(receivers.iter_mut().map(|r| r.send(GetStatusRequest)))
-            .await
-            .into_iter()
-            .map(|s| s.unwrap())
-            .collect::<Vec<GetStatusResponse>>();
+    let results = futures::future::join_all(receivers.iter_mut().map(|r| r.send(GetStatusRequest)))
+        .await
+        .into_iter()
+        .map(|s| s.unwrap())
+        .collect::<Vec<GetStatusResponse>>();
 
     assert_eq!(
         results,

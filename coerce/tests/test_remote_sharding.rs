@@ -8,7 +8,7 @@ use coerce::actor::{
     Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorRef, IntoActor, LocalActorRef,
 };
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
-use coerce::persistent::{ConfigurePersistence, Persistence};
+use coerce::persistent::Persistence;
 use coerce::remote::cluster::sharding::coordinator::allocation::{
     AllocateShard, AllocateShardResult,
 };
@@ -98,7 +98,7 @@ pub async fn test_shard_coordinator_shard_allocation() {
 
     let handler = RemoteActorHandler::<TestActor, TestActorFactory>::new(TestActorFactory {});
 
-    let sys = ActorSystem::new().add_persistence(Persistence::from(InMemoryStorageProvider::new()));
+    let sys = ActorSystem::new().to_persistent(Persistence::from(InMemoryStorageProvider::new()));
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
         .with_tag("system-one")
@@ -198,7 +198,7 @@ pub async fn test_shard_host_actor_request() {
     let persistence = Persistence::from(InMemoryStorageProvider::new());
 
     async fn create_system(persistence: Persistence) -> (RemoteActorSystem, RemoteServer) {
-        let sys = ActorSystem::new().add_persistence(persistence);
+        let sys = ActorSystem::new().to_persistent(persistence);
         let remote = RemoteActorSystem::builder()
             .with_actor_system(sys)
             .with_tag("system-one")

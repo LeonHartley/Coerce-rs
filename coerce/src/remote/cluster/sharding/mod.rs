@@ -146,8 +146,8 @@ impl<A: Actor> Sharded<A> {
     where
         A: Handler<M>,
     {
-        let message = match message.as_remote_envelope() {
-            Ok(envelope) => envelope.into_bytes(),
+        let message = match message.as_bytes() {
+            Ok(bytes) => bytes,
             Err(e) => return Err(ActorRefErr::Serialisation(e)),
         };
 

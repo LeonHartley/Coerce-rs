@@ -1,9 +1,9 @@
-use crate::util::{GetStatusRequest, SetStatusRequest, TestActor, TestActorStatus};
+use crate::util::{GetStatusRequest, SetStatusRequest, TestActor};
 
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
-use coerce::persistent::{ConfigurePersistence, Persistence};
+use coerce::persistent::Persistence;
 use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::RemoteHttpApi;
@@ -57,7 +57,7 @@ pub async fn test_remote_api_routes() {
 
     let persistence = Persistence::from(InMemoryStorageProvider::new());
     async fn create_system(persistence: Persistence) -> (RemoteActorSystem, RemoteServer) {
-        let sys = ActorSystem::new().add_persistence(persistence);
+        let sys = ActorSystem::new().to_persistent(persistence);
         let remote = RemoteActorSystem::builder()
             .with_actor_system(sys)
             .with_tag("system-one")

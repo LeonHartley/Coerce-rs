@@ -16,6 +16,9 @@ use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{datetime_to_timestamp, SessionEvent};
 use crate::remote::net::proto::network as proto;
 use crate::remote::net::{receive_loop, StreamData};
+use std::io::Error;
+use std::net::SocketAddr;
+use std::str::FromStr;
 
 use protobuf::EnumOrUnknown;
 use std::time::Duration;
@@ -39,6 +42,8 @@ impl RemoteClient {
         // let _enter = span.enter();
         let stream = TcpStream::connect(&self.addr).await;
         if stream.is_err() {
+            let error = stream.unwrap_err();
+            error!("connection to {} failed, error: {}", &self.addr, error);
             return None;
         }
 
@@ -52,15 +57,14 @@ impl RemoteClient {
 
         let remote = ctx.system().remote_owned();
         let receive_task = tokio::spawn(receive_loop(
-            self.addr.clone(),
             remote.clone(),
             reader,
-            ClientMessageReceiver::new(self.actor_ref(ctx), identity_tx),
+            ClientMessageReceiver::new(self.actor_ref(ctx), identity_tx, self.addr.clone()),
         ));
 
         self.ping_timer = Some(Timer::start_immediately(
             self.actor_ref(ctx),
-            Duration::from_millis(500),
+            ctx.system().remote().config().heartbeat_config().interval,
             PingTick,
         ));
 
@@ -92,6 +96,12 @@ impl Handler<Connect> for RemoteClient {
         //
         // let _enter = span.enter();
 
+        if let Some(state) = &self.state {
+            if state.is_connected() {
+                return;
+            }
+        }
+
         if let Some(connection_state) = self.connect(message, ctx).await {
             let client_actor_ref = self.actor_ref(ctx);
             let _ = ctx
@@ -99,7 +109,7 @@ impl Handler<Connect> for RemoteClient {
                 .remote()
                 .client_registry()
                 .send(ClientConnected {
-                    addr: self.addr.clone(),
+                    addr: connection_state.identity.node.addr.clone(),
                     remote_node_id: connection_state.identity.node.id,
                     client_actor_ref,
                 })
@@ -136,9 +146,9 @@ impl Handler<BeginHandshake> for RemoteClient {
         let mut connection = match &mut self.state {
             Some(ClientState::Connected(connection)) => connection,
             _ => {
-                let actor_ref = self.actor_ref(ctx);
-                let _ = actor_ref.notify(Connect);
-                let _ = actor_ref.notify(message);
+                // let actor_ref = self.actor_ref(ctx);
+                // let _ = actor_ref.notify(Connect);
+                // let _ = actor_ref.notify(message);
                 return;
             }
         };
@@ -167,6 +177,12 @@ impl Handler<BeginHandshake> for RemoteClient {
                     &self.addr, &message.request_id
                 );
 
+                // TODO: Instead of writing all nodes as one, we should write all nodes apart from this one,
+                //       and then allow the receiving end to use the connecting IP address rather
+                //       than a hostname. we could make this configurable in-case users want to use
+                //       a proxy/non-k8s load balancer of some sort?
+
+                //       UPDATE: it's been done server-side
                 write_bytes(
                     SessionEvent::Handshake(proto::SessionHandshake {
                         node_id,

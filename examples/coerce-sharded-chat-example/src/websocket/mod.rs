@@ -24,8 +24,7 @@ async fn handle_connection(
         let (writer, mut reader) = stream.split();
         let handshake = reader.next().await;
         if let Some(Ok(handshake)) = handshake {
-            let handshake: Handshake =
-                Handshake::from_remote_envelope(handshake.into_data()).unwrap();
+            let handshake: Handshake = Handshake::from_bytes(handshake.into_data()).unwrap();
 
             match Peer::new(handshake.name, peer_addr, reader, writer, sharding)
                 .into_anon_actor(Some(format!("peer-{}", peer_addr)), &actor_system)

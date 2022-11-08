@@ -2,6 +2,6 @@
 extern crate async_trait;
 
 #[macro_use]
-extern crate redis_async;
+extern crate redis;
 
 pub mod journal;

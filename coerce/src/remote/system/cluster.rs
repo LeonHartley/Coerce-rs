@@ -40,7 +40,7 @@ impl RemoteActorSystem {
 
     pub fn current_leader(&self) -> Option<NodeId> {
         let n = self.inner.current_leader.load(Ordering::SeqCst);
-        if n > 0 {
+        if n >= 0 {
             Some(n as NodeId)
         } else {
             None
@@ -52,7 +52,7 @@ impl RemoteActorSystem {
             .inner
             .current_leader
             .swap(new_leader as i64, Ordering::SeqCst);
-        if n > 0 {
+        if n >= 0 {
             Some(n as NodeId)
         } else {
             None

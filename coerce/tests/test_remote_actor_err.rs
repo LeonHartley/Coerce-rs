@@ -1,12 +1,12 @@
 use crate::util::{GetStatusRequest, SetStatusRequest, TestActor, TestActorStatus};
 use coerce::actor::context::ActorContext;
-use coerce::actor::lifecycle::Stop;
+
 use coerce::actor::message::{Handler, Message, MessageWrapErr};
 use coerce::actor::scheduler::ActorType::Tracked;
-use coerce::actor::system::ActorSystem;
+
 use coerce::actor::{ActorRef, ActorRefErr, ToActorId};
-use coerce::remote::system::builder::{RemoteActorSystemBuilder, RemoteSystemConfigBuilder};
-use coerce::remote::system::RemoteActorSystem;
+use coerce::remote::system::builder::RemoteSystemConfigBuilder;
+
 use coerce::remote::RemoteActorRef;
 
 #[macro_use]

@@ -20,7 +20,6 @@ pub mod cluster;
 pub mod raft;
 pub mod rpc;
 
-use crate::remote::raft::RaftSystem;
 pub use actor::*;
 pub use cluster::*;
 pub use rpc::*;
@@ -45,8 +44,35 @@ pub struct RemoteSystemCore {
     heartbeat_ref: LocalActorRef<Heartbeat>,
     mediator_ref: Option<LocalActorRef<StreamMediator>>,
     config: Arc<RemoteSystemConfig>,
-    raft: Option<Arc<RaftSystem>>,
     current_leader: Arc<AtomicNodeId>,
+}
+
+impl RemoteActorSystem {
+    pub async fn shutdown(&self) {
+        self.inner.shutdown().await;
+    }
+}
+
+impl RemoteSystemCore {
+    pub async fn shutdown(&self) {
+        let _ = self.heartbeat_ref.stop().await;
+        let _ = self.clients_ref.stop().await;
+
+        if let Some(mediator_ref) = self.mediator_ref.as_ref() {
+            let _ = mediator_ref.stop().await;
+        }
+
+        let _ = self.discovery_ref.stop().await;
+        let _ = self.registry_ref.stop().await;
+
+        info!("shutdown complete");
+    }
+}
+
+impl Drop for RemoteSystemCore {
+    fn drop(&mut self) {
+        info!("dropped remotesystem(id={})", self.node_id);
+    }
 }
 
 impl RemoteActorSystem {
@@ -80,6 +106,10 @@ impl RemoteActorSystem {
 
     pub fn heartbeat(&self) -> &LocalActorRef<Heartbeat> {
         &self.inner.heartbeat_ref
+    }
+
+    pub fn registry(&self) -> &LocalActorRef<RemoteRegistry> {
+        &self.inner.registry_ref
     }
 
     pub fn client_registry(&self) -> &LocalActorRef<RemoteClientRegistry> {

@@ -2297,6 +2297,8 @@ pub struct NodeStats {
     pub node_id: u64,
     // @@protoc_insertion_point(field:coerce.sharding.NodeStats.shard_count)
     pub shard_count: u64,
+    // @@protoc_insertion_point(field:coerce.sharding.NodeStats.status)
+    pub status: ::protobuf::EnumOrUnknown<ShardHostStatus>,
     // special fields
     // @@protoc_insertion_point(special_field:coerce.sharding.NodeStats.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -2314,7 +2316,7 @@ impl NodeStats {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut fields = ::std::vec::Vec::with_capacity(3);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "node_id",
@@ -2325,6 +2327,11 @@ impl NodeStats {
             "shard_count",
             |m: &NodeStats| { &m.shard_count },
             |m: &mut NodeStats| { &mut m.shard_count },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "status",
+            |m: &NodeStats| { &m.status },
+            |m: &mut NodeStats| { &mut m.status },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<NodeStats>(
             "NodeStats",
@@ -2350,6 +2357,9 @@ impl ::protobuf::Message for NodeStats {
                 16 => {
                     self.shard_count = is.read_uint64()?;
                 },
+                24 => {
+                    self.status = is.read_enum_or_unknown()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -2368,6 +2378,9 @@ impl ::protobuf::Message for NodeStats {
         if self.shard_count != 0 {
             my_size += ::protobuf::rt::uint64_size(2, self.shard_count);
         }
+        if self.status != ::protobuf::EnumOrUnknown::new(ShardHostStatus::UNKNOWN) {
+            my_size += ::protobuf::rt::int32_size(3, self.status.value());
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -2379,6 +2392,9 @@ impl ::protobuf::Message for NodeStats {
         }
         if self.shard_count != 0 {
             os.write_uint64(2, self.shard_count)?;
+        }
+        if self.status != ::protobuf::EnumOrUnknown::new(ShardHostStatus::UNKNOWN) {
+            os.write_enum(3, ::protobuf::EnumOrUnknown::value(&self.status))?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -2399,6 +2415,7 @@ impl ::protobuf::Message for NodeStats {
     fn clear(&mut self) {
         self.node_id = 0;
         self.shard_count = 0;
+        self.status = ::protobuf::EnumOrUnknown::new(ShardHostStatus::UNKNOWN);
         self.special_fields.clear();
     }
 
@@ -2406,6 +2423,7 @@ impl ::protobuf::Message for NodeStats {
         static instance: NodeStats = NodeStats {
             node_id: 0,
             shard_count: 0,
+            status: ::protobuf::EnumOrUnknown::from_i32(0),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -2926,6 +2944,68 @@ impl EntityState {
     }
 }
 
+#[derive(Clone,Copy,PartialEq,Eq,Debug,Hash)]
+// @@protoc_insertion_point(enum:coerce.sharding.ShardHostStatus)
+pub enum ShardHostStatus {
+    // @@protoc_insertion_point(enum_value:coerce.sharding.ShardHostStatus.UNKNOWN)
+    UNKNOWN = 0,
+    // @@protoc_insertion_point(enum_value:coerce.sharding.ShardHostStatus.STARTING)
+    STARTING = 1,
+    // @@protoc_insertion_point(enum_value:coerce.sharding.ShardHostStatus.READY)
+    READY = 2,
+    // @@protoc_insertion_point(enum_value:coerce.sharding.ShardHostStatus.UNAVAILABLE)
+    UNAVAILABLE = 3,
+}
+
+impl ::protobuf::Enum for ShardHostStatus {
+    const NAME: &'static str = "ShardHostStatus";
+
+    fn value(&self) -> i32 {
+        *self as i32
+    }
+
+    fn from_i32(value: i32) -> ::std::option::Option<ShardHostStatus> {
+        match value {
+            0 => ::std::option::Option::Some(ShardHostStatus::UNKNOWN),
+            1 => ::std::option::Option::Some(ShardHostStatus::STARTING),
+            2 => ::std::option::Option::Some(ShardHostStatus::READY),
+            3 => ::std::option::Option::Some(ShardHostStatus::UNAVAILABLE),
+            _ => ::std::option::Option::None
+        }
+    }
+
+    const VALUES: &'static [ShardHostStatus] = &[
+        ShardHostStatus::UNKNOWN,
+        ShardHostStatus::STARTING,
+        ShardHostStatus::READY,
+        ShardHostStatus::UNAVAILABLE,
+    ];
+}
+
+impl ::protobuf::EnumFull for ShardHostStatus {
+    fn enum_descriptor() -> ::protobuf::reflect::EnumDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().enum_by_package_relative_name("ShardHostStatus").unwrap()).clone()
+    }
+
+    fn descriptor(&self) -> ::protobuf::reflect::EnumValueDescriptor {
+        let index = *self as usize;
+        Self::enum_descriptor().value_by_index(index)
+    }
+}
+
+impl ::std::default::Default for ShardHostStatus {
+    fn default() -> Self {
+        ShardHostStatus::UNKNOWN
+    }
+}
+
+impl ShardHostStatus {
+    fn generated_enum_descriptor_data() -> ::protobuf::reflect::GeneratedEnumDescriptorData {
+        ::protobuf::reflect::GeneratedEnumDescriptorData::new::<ShardHostStatus>("ShardHostStatus")
+    }
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0esharding.proto\x12\x0fcoerce.sharding\"L\n\rAllocateShard\x12\x19\
     \n\x08shard_id\x18\x01\x20\x01(\rR\x07shardId\x12\x20\n\x0brebalancing\
@@ -2963,18 +3043,21 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     arding.ShardStateSnapshot.EntityR\x08entities\x1ao\n\x06Entity\x12\x19\n\
     \x08actor_id\x18\x01\x20\x01(\tR\x07actorId\x12\x16\n\x06recipe\x18\x02\
     \x20\x01(\x0cR\x06recipe\x122\n\x05state\x18\x03\x20\x01(\x0e2\x1c.coerc\
-    e.sharding.EntityStateR\x05state\"\x12\n\x10GetShardingStats\"E\n\tNodeS\
-    tats\x12\x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\x12\x1f\n\x0bs\
-    hard_count\x18\x02\x20\x01(\x04R\nshardCount\"\xbb\x01\n\rShardingStats\
-    \x12\x1f\n\x0bentity_type\x18\x01\x20\x01(\tR\nentityType\x12!\n\x0ctota\
-    l_shards\x18\x02\x20\x01(\x04R\x0btotalShards\x124\n\x06shards\x18\x03\
-    \x20\x03(\x0b2\x1c.coerce.sharding.RemoteShardR\x06shards\x120\n\x05node\
-    s\x18\x04\x20\x03(\x0b2\x1a.coerce.sharding.NodeStatsR\x05nodes\"\x0f\n\
-    \rGetShardStats\"\\\n\nShardStats\x12\x19\n\x08shard_id\x18\x01\x20\x01(\
-    \rR\x07shardId\x12\x17\n\x07node_id\x18\x02\x20\x01(\x04R\x06nodeId\x12\
-    \x1a\n\x08entities\x18\x03\x20\x03(\tR\x08entities*3\n\x0bEntityState\
-    \x12\x08\n\x04IDLE\x10\0\x12\n\n\x06ACTIVE\x10\x01\x12\x0e\n\nPASSIVATED\
-    \x10\x02b\x06proto3\
+    e.sharding.EntityStateR\x05state\"\x12\n\x10GetShardingStats\"\x7f\n\tNo\
+    deStats\x12\x17\n\x07node_id\x18\x01\x20\x01(\x04R\x06nodeId\x12\x1f\n\
+    \x0bshard_count\x18\x02\x20\x01(\x04R\nshardCount\x128\n\x06status\x18\
+    \x03\x20\x01(\x0e2\x20.coerce.sharding.ShardHostStatusR\x06status\"\xbb\
+    \x01\n\rShardingStats\x12\x1f\n\x0bentity_type\x18\x01\x20\x01(\tR\nenti\
+    tyType\x12!\n\x0ctotal_shards\x18\x02\x20\x01(\x04R\x0btotalShards\x124\
+    \n\x06shards\x18\x03\x20\x03(\x0b2\x1c.coerce.sharding.RemoteShardR\x06s\
+    hards\x120\n\x05nodes\x18\x04\x20\x03(\x0b2\x1a.coerce.sharding.NodeStat\
+    sR\x05nodes\"\x0f\n\rGetShardStats\"\\\n\nShardStats\x12\x19\n\x08shard_\
+    id\x18\x01\x20\x01(\rR\x07shardId\x12\x17\n\x07node_id\x18\x02\x20\x01(\
+    \x04R\x06nodeId\x12\x1a\n\x08entities\x18\x03\x20\x03(\tR\x08entities*3\
+    \n\x0bEntityState\x12\x08\n\x04IDLE\x10\0\x12\n\n\x06ACTIVE\x10\x01\x12\
+    \x0e\n\nPASSIVATED\x10\x02*H\n\x0fShardHostStatus\x12\x0b\n\x07UNKNOWN\
+    \x10\0\x12\x0c\n\x08STARTING\x10\x01\x12\t\n\x05READY\x10\x02\x12\x0f\n\
+    \x0bUNAVAILABLE\x10\x03b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -3012,8 +3095,9 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(ShardStats::generated_message_descriptor_data());
             messages.push(remote_entity_request::Recipe::generated_message_descriptor_data());
             messages.push(shard_state_snapshot::Entity::generated_message_descriptor_data());
-            let mut enums = ::std::vec::Vec::with_capacity(3);
+            let mut enums = ::std::vec::Vec::with_capacity(4);
             enums.push(EntityState::generated_enum_descriptor_data());
+            enums.push(ShardHostStatus::generated_enum_descriptor_data());
             enums.push(allocate_shard_result::Type::generated_enum_descriptor_data());
             enums.push(allocate_shard_result::AllocateShardErr::generated_enum_descriptor_data());
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(

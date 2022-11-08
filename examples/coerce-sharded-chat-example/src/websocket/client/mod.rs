@@ -1,8 +1,6 @@
-use crate::actor::peer::{JoinChat, SendChatMessage};
-
 use crate::actor::stream::{ChatMessage, Handshake};
 use coerce::actor::message::EnvelopeType::Remote;
-use coerce::actor::message::{EnvelopeType, Message};
+use coerce::actor::message::Message;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use std::time::Duration;
@@ -11,6 +9,7 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
 
+use crate::actor::peer::message::{JoinChat, SendChatMessage};
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::{Message as WebSocketMessage, Result};
 
@@ -32,9 +31,8 @@ impl ChatClient {
         let message = Handshake {
             name: name.to_string(),
         }
-        .as_remote_envelope()
-        .unwrap()
-        .into_bytes();
+        .as_bytes()
+        .unwrap();
 
         let (mut websocket_writer, mut websocket_reader) = socket.split();
         websocket_writer
@@ -86,7 +84,7 @@ impl ChatClient {
         match message {
             Ok(message) => {
                 if let Some(message) = message {
-                    M::from_remote_envelope(message.into_data()).map_or(None, |m| Some(m))
+                    M::from_bytes(message.into_data()).map_or(None, |m| Some(m))
                 } else {
                     None
                 }
@@ -102,7 +100,7 @@ impl ChatClient {
     }
 
     pub async fn write<M: Message>(&mut self, id: u8, message: M) {
-        let mut buffer = message.into_envelope(Remote).unwrap().into_bytes();
+        let mut buffer = message.as_bytes().unwrap();
         buffer.insert(0, id);
 
         let _ = self
@@ -112,27 +110,26 @@ impl ChatClient {
             .unwrap();
     }
 
-    pub async fn join_chat(&mut self, stream_name: String) {
+    pub async fn join_chat(&mut self, chat_stream_id: String) {
         self.write(
             0,
             JoinChat {
-                stream_name,
+                chat_stream_id,
                 join_token: None,
             },
         )
         .await;
     }
 
-    pub async fn chat(&mut self, chat_stream: String, message: String) {
+    pub async fn chat(&mut self, chat_stream_id: String, message: String) {
         self.write(
             1,
-            SendChatMessage {
-                chat_stream,
-                message: ChatMessage {
-                    sender: String::default(),
-                    message,
-                },
-            },
+            SendChatMessage(ChatMessage {
+                chat_stream_id,
+                message_id: None,
+                sender: None,
+                message,
+            }),
         )
         .await;
     }

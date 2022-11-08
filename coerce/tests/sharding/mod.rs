@@ -1,9 +1,7 @@
-use coerce::actor::context::{ActorContext, ActorStatus};
-use coerce::actor::system::ActorSystem;
-use coerce::actor::{
-    Actor, ActorCreationErr, ActorFactory, ActorId, ActorRecipe, BoxedActorRef, LocalActorRef,
-};
-use parking_lot::Mutex;
+use coerce::actor::context::ActorContext;
+
+use coerce::actor::{Actor, ActorCreationErr, ActorFactory, ActorRecipe};
+
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;

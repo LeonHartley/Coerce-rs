@@ -63,7 +63,7 @@ impl RemoteActorSystemBuilder {
         self
     }
 
-    pub fn with_actors<F>(mut self, f: F) -> Self
+    pub fn configure<F>(mut self, f: F) -> Self
     where
         F: 'static + (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
     {
@@ -76,9 +76,14 @@ impl RemoteActorSystemBuilder {
     where
         F: 'static + (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
     {
-        self.config_builders.push(Box::new(f));
+        self.configure(f)
+    }
 
-        self
+    pub fn with_actors<F>(mut self, f: F) -> Self
+    where
+        F: 'static + (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
+    {
+        self.configure(f)
     }
 
     pub fn with_actor_system(mut self, sys: ActorSystem) -> Self {
@@ -98,8 +103,7 @@ impl RemoteActorSystemBuilder {
     }
 
     pub async fn build(self) -> RemoteActorSystem {
-        // let span = tracing::trace_span!("RemoteActorSystemBuilder::build");
-        // let _enter = span.enter();
+        // TODO: This needs cleaning up!
 
         let mut inner = match self.inner {
             Some(ctx) => ctx,
@@ -119,11 +123,10 @@ impl RemoteActorSystemBuilder {
         });
 
         let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
-
         let config = config_builder.build(self.node_tag, self.server_auth_token);
+
         let handler_ref = Arc::new(parking_lot::Mutex::new(RemoteHandler::new()));
         let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
-
         let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
         let registry_ref_clone = registry_ref.clone();
 
@@ -160,7 +163,6 @@ impl RemoteActorSystemBuilder {
             mediator_ref,
             discovery_ref,
             heartbeat_ref,
-            raft: None,
             started_at: Utc::now(),
             config,
             current_leader: Arc::new(AtomicNodeId::new(if self.single_node_cluster {
@@ -173,8 +175,7 @@ impl RemoteActorSystemBuilder {
         let inner = Arc::new(core.clone());
         let system = RemoteActorSystem { inner };
 
-        core.raft = None;
-        core.inner.set_remote(system.clone());
+        core.inner = core.inner.to_remote(system.clone());
 
         let system = RemoteActorSystem {
             inner: Arc::new(core),
@@ -220,6 +221,7 @@ pub(crate) type ConfigBuilderFn =
 
 pub struct RemoteSystemConfigBuilder {
     system: ActorSystem,
+    heartbeat: Option<HeartbeatConfig>,
     actors: HashMap<String, BoxedActorHandler>,
     handlers: HashMap<String, BoxedMessageHandler>,
 }
@@ -230,6 +232,7 @@ impl RemoteSystemConfigBuilder {
             actors: HashMap::new(),
             handlers: HashMap::new(),
             system,
+            heartbeat: None,
         }
     }
 
@@ -251,6 +254,11 @@ impl RemoteSystemConfigBuilder {
 
         self.actors
             .insert(String::from(F::Actor::type_name()), handler);
+        self
+    }
+
+    pub fn heartbeat(&mut self, heartbeat_config: HeartbeatConfig) -> &mut Self {
+        self.heartbeat = Some(heartbeat_config);
         self
     }
 
@@ -277,7 +285,7 @@ impl RemoteSystemConfigBuilder {
             handler_types,
             self.handlers,
             self.actors,
-            HeartbeatConfig::default(),
+            self.heartbeat.unwrap_or_default(),
             server_auth_token,
         ))
     }

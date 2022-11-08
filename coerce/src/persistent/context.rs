@@ -11,8 +11,7 @@ pub struct ActorPersistence {
 type BoxedJournal = Box<dyn Any + Sync + Send>;
 
 impl ActorPersistence {
-    pub fn new(storage_provider: &StorageProviderRef) -> Self {
-        let storage_provider = storage_provider.clone();
+    pub fn new(storage_provider: StorageProviderRef) -> Self {
         Self {
             storage_provider,
             journal: None,
