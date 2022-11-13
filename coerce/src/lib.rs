@@ -24,26 +24,4 @@ pub mod actor;
 pub mod persistent;
 pub mod remote;
 
-#[derive(Default)]
-pub struct TraceCollector {
-    span_id: AtomicU64,
-}
-
-impl TraceCollector {
-    fn next_span_id(&self) -> u64 {
-        self.span_id.fetch_add(1, Ordering::Relaxed)
-    }
-}
-
-impl<S> Layer<S> for TraceCollector
-where
-    S: tracing::Subscriber,
-    S: Debug,
-{
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        println!("ctx => {:?}", ctx);
-        println!("event => {:?}", event);
-    }
-}
-
 pub(crate) const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

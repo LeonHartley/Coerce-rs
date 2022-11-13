@@ -45,7 +45,7 @@ impl ActorFactory for TestActorFactory {
 }
 
 #[coerce_test]
-pub async fn test_remote_cluster_client_get_actor() {
+pub async fn test_remote_get_actor() {
     util::create_trace_logger();
 
     let system = ActorSystem::new();
@@ -65,6 +65,7 @@ pub async fn test_remote_cluster_client_get_actor() {
     let actor = remote.actor_ref::<TestActor>(actor_id).await;
     assert_eq!(actor.is_some(), true);
 }
+
 //
 // #[coerce_test]
 // pub async fn test_remote_cluster_client_create_actor() {

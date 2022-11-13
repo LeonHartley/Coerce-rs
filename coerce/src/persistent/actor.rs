@@ -3,7 +3,7 @@ use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef};
 
-use crate::persistent::failure::{retry, PersistFailurePolicy, RecoveryFailurePolicy};
+use crate::persistent::failure::{should_retry, PersistFailurePolicy, RecoveryFailurePolicy};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::{PersistErr, RecoveredPayload, RecoveryErr};
@@ -142,7 +142,7 @@ async fn check<A: PersistentActor>(
 
             match failure_policy {
                 PersistFailurePolicy::Retry(retry_policy) => {
-                    if !retry(ctx, &attempts, retry_policy).await {
+                    if !should_retry(ctx, &attempts, retry_policy).await {
                         return Some(Err(e));
                     }
                 }

@@ -12,7 +12,6 @@ use std::iter;
 use std::iter::empty;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::oneshot::Sender;
-use valuable::{NamedField, StructDef, Valuable, Value, Visit};
 
 use crate::actor::supervised::Supervised;
 
@@ -61,6 +60,10 @@ impl ActorContext {
         &self.boxed_ref.actor_id()
     }
 
+    pub fn ctx_id(&self) -> u64 {
+        self.context_id
+    }
+
     pub fn set_tags(&mut self, tags: impl Into<ActorTags>) {
         let tags = tags.into();
         self.tags = Some(tags);
@@ -80,14 +83,6 @@ impl ActorContext {
 
     pub fn system(&self) -> &ActorSystem {
         if let Some(system) = &self.system {
-            system
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn system_mut(&mut self) -> &mut ActorSystem {
-        if let Some(system) = &mut self.system {
             system
         } else {
             unreachable!()

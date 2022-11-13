@@ -27,37 +27,6 @@ pub async fn test_actor_lifecycle_started() {
     assert_eq!(status, Ok(ActorStatus::Started))
 }
 
-#[ignore]
-#[tokio::test(flavor = "multi_thread", worker_threads = 20)]
-pub async fn test_actor_start_100k_and_stop() {
-    let system = ActorSystem::new();
-
-    // let mut tasks = vec![];
-    for i in 0..10_000_000 {
-        // let sys = system.clone();
-        // tasks.push(async move {
-        let actor_name = format!("actor-{}", i);
-        let _actor = TestActor::new()
-            .into_actor(Some(actor_name), &system)
-            .await
-            .expect("start actor");
-        // })
-    }
-
-    println!("done 10m actors");
-    // let _ = join_all(tasks).await;
-
-    println!("sleeping 30s");
-    let _ = sleep(Duration::from_secs(30)).await;
-
-    println!("shutting down");
-    system.shutdown().await;
-    println!("shutdown complete");
-
-    println!("sleeping 30s");
-    let _ = sleep(Duration::from_secs(30)).await;
-}
-
 #[tokio::test]
 pub async fn test_actor_lifecycle_stopping() {
     let actor_ref = ActorSystem::new()

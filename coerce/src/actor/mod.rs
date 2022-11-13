@@ -16,10 +16,9 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
-
-use crate::actor::message::describe::{ActorDescription, Describe};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
+use crate::actor::describe::Describe;
 
 pub mod context;
 pub mod lifecycle;
@@ -29,6 +28,7 @@ pub mod scheduler;
 pub mod supervised;
 pub mod system;
 pub mod worker;
+pub mod describe;
 
 pub type ActorId = Arc<str>;
 
@@ -382,7 +382,12 @@ impl BoxedActorRef {
 
 impl Display for BoxedActorRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "actor_id={}, actor_type={}", &self.actor_id(), &self.actor_type())
+        write!(
+            f,
+            "actor_id={}, actor_type={}",
+            &self.actor_id(),
+            &self.actor_type()
+        )
     }
 }
 
@@ -426,7 +431,7 @@ impl<A: Actor> Clone for LocalActorRef<A> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum ActorRefErr {
     ActorUnavailable,
     NotFound(ActorId),

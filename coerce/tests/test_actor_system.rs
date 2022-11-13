@@ -1,6 +1,5 @@
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{get_actor, new_actor, new_actor_id};
-use coerce::TraceCollector;
 use tracing_subscriber::prelude::*;
 use util::*;
 
@@ -13,7 +12,7 @@ extern crate serde;
 extern crate async_trait;
 
 #[tokio::test]
-pub async fn test_context_global_get_actor() {
+pub async fn test_system_global_get_actor() {
     create_trace_logger();
 
     let actor_ref = new_actor(TestActor::new()).await.unwrap();
@@ -32,7 +31,7 @@ pub async fn test_context_global_get_actor() {
 }
 
 #[tokio::test]
-pub async fn test_context_get_tracked_actor() {
+pub async fn test_system_get_tracked_actor() {
     create_trace_logger();
 
     let ctx = ActorSystem::new();
@@ -55,7 +54,7 @@ pub async fn test_context_get_tracked_actor() {
 }
 
 #[tokio::test]
-pub async fn test_context_get_actor_not_found() {
+pub async fn test_system_get_actor_not_found() {
     create_trace_logger();
 
     let ctx = ActorSystem::new();
@@ -65,7 +64,7 @@ pub async fn test_context_get_actor_not_found() {
 }
 
 #[tokio::test]
-pub async fn test_context_stop_tracked_actor_get_not_found() {
+pub async fn test_system_stop_tracked_actor_get_not_found() {
     create_trace_logger();
 
     let ctx = ActorSystem::new();

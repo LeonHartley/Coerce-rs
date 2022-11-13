@@ -12,6 +12,7 @@ use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
+use tokio::signal::ctrl_c;
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 6)]
@@ -152,7 +153,7 @@ pub async fn test_sharded_chat_join_and_chat() {
         &welcome_message_c.message
     );
 
-    // ctrl_c().await;
+    ctrl_c().await;
 }
 
 #[ignore]

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 coerce = { path = "../../coerce" }
 coerce-macros = { path = "../../coerce/macros" }
-coerce-redis = { version = "0.2.0" }
+coerce-redis = { path = "../../providers/persistence/coerce-redis" }
 coerce-k8s = { path = "../../providers/discovery/coerce-k8s" }
 
 tokio = { version = "1.21.1", features = ["full"] }

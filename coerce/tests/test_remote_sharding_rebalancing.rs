@@ -1,9 +1,14 @@
 use crate::util::{
     GetStatusRequest, GetStatusResponse, SetStatusRequest, TestActor, TestActorStatus,
 };
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::oneshot;
+use tracing::info;
 
+use coerce::actor::message::describe::DescribeOptions;
 use coerce::actor::message::Message;
+use coerce::actor::describe::DescribeAll;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{
     Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorRef, IntoActor, LocalActorRef,
@@ -166,23 +171,43 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
     let expected_status = TestActorStatus::Active;
     assert_eq!(res, GetStatusResponse::Ok(expected_status));
 
-    // stop the system, and start a new one (sharing the same persistence backplane)
+    let describe_options = Arc::new(DescribeOptions {
+        ..Default::default()
+    });
 
-    {
-        let mut server_a = server_a;
-        server_a.stop();
-        remote_a.actor_system().shutdown().await;
-    }
+    let (tx, rx) = oneshot::channel();
+    let _ = remote_a.actor_system().scheduler().notify(DescribeAll {
+        options: describe_options.clone(),
+        sender: tx,
+    });
+    let description = rx.await.unwrap();
+    info!("{:#?}", description);
 
-    // tokio::time::sleep(Duration::from_secs(10)).await;
-
-    // create a reference to the sharded actor without specifying a recipe, which stops the sharding internals from creating the actor if it isn't already running
-    let sharded_actor = sharding_b.get("leon".to_string(), None);
-    let res_after_losing_node_1 = sharded_actor
-        .send(SetStatusRequest {
-            status: TestActorStatus::Active,
-        })
-        .await;
-
-    assert_eq!(res_after_losing_node_1.is_ok(), true);
+    let (tx, rx) = oneshot::channel();
+    let _ = remote_b.actor_system().scheduler().notify(DescribeAll {
+        options: describe_options.clone(),
+        sender: tx,
+    });
+    let description = rx.await.unwrap();
+    info!("{:#?}", description);
+    //
+    // // stop the system, and start a new one (sharing the same persistence backplane)
+    //
+    // {
+    //     let mut server_a = server_a;
+    //     server_a.stop();
+    //     remote_a.actor_system().shutdown().await;
+    // }
+    //
+    // // tokio::time::sleep(Duration::from_secs(10)).await;
+    //
+    // // create a reference to the sharded actor without specifying a recipe, which stops the sharding internals from creating the actor if it isn't already running
+    // let sharded_actor = sharding_b.get("leon".to_string(), None);
+    // let res_after_losing_node_1 = sharded_actor
+    //     .send(SetStatusRequest {
+    //         status: TestActorStatus::Active,
+    //     })
+    //     .await;
+    //
+    // assert_eq!(res_after_losing_node_1.is_ok(), true);
 }

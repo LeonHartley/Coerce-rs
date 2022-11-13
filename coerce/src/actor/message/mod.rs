@@ -1,5 +1,3 @@
-pub mod describe;
-
 use crate::actor::context::ActorContext;
 use crate::actor::Actor;
 use std::error::Error;
@@ -86,7 +84,7 @@ impl<A: Actor, M: Message> ActorMessageHandler<A> for ActorMessage<A, M>
 where
     A: Handler<M>,
 {
-    async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext) -> () {
+    async fn handle(&mut self, actor: &mut A, ctx: &mut ActorContext) {
         self.handle(actor, ctx).await;
     }
 
@@ -148,7 +146,7 @@ pub enum EnvelopeType {
     Remote,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum MessageWrapErr {
     Unknown,
     NotTransmittable,
@@ -167,7 +165,7 @@ impl Display for MessageWrapErr {
 
 impl Error for MessageWrapErr {}
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MessageUnwrapErr {
     Unknown,
     NotTransmittable,

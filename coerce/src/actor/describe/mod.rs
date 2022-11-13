@@ -2,6 +2,8 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::supervised::{ChildRef, Supervised};
 use crate::actor::{Actor, ActorId, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef};
+use crate::actor::scheduler::ActorScheduler;
+
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
@@ -15,6 +17,7 @@ pub struct Describe {
     pub current_depth: usize,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct DescribeOptions {
     pub max_depth: Option<usize>,
     pub max_children: Option<usize>,
@@ -33,35 +36,41 @@ impl Default for DescribeOptions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DescribeResult {
     Ok(ActorDescription),
     Err {
         error: ActorRefErr,
         actor_id: ActorId,
-        actor_type: &'static str,
+        actor_type: String,
     },
     Timeout {
         actor_id: ActorId,
-        actor_type: &'static str,
+        actor_type: String,
     },
 }
 
-#[derive(Debug)]
+impl DescribeResult {
+    pub fn is_ok(&self) -> bool {
+        matches!(&self, Self::Ok(_))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ActorDescription {
-    actor_id: ActorId,
-    actor_type_name: &'static str,
-    tags: ActorTags,
-    supervised: Option<SupervisedDescription>,
+    pub actor_id: ActorId,
+    pub actor_type_name: String,
+    pub actor_context_id: u64,
+    pub tags: ActorTags,
+    pub supervised: Option<SupervisedDescription>,
 }
 
 impl Message for Describe {
     type Result = ();
 }
-
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SupervisedDescription {
-    actors: Vec<DescribeResult>,
+    pub actors: Vec<DescribeResult>,
 }
 
 #[async_trait]
@@ -71,7 +80,8 @@ impl<A: Actor> Handler<Describe> for A {
 
         let description = ActorDescription {
             actor_id: ctx.id().clone(),
-            actor_type_name: A::type_name(),
+            actor_type_name: A::type_name().to_string(),
+            actor_context_id: ctx.ctx_id(),
             tags: ctx.tags(),
             supervised: None,
         };
@@ -80,35 +90,52 @@ impl<A: Actor> Handler<Describe> for A {
         let sender = message.sender.take().unwrap();
 
         if let Some(supervised) = ctx.supervised() {
+            let next_depth = message.current_depth + 1;
+            if message.options.max_depth > Some(next_depth) {
+                let _ = sender.send(description);
+                return;
+            }
+
             let describable_actors = get_describable_actors(
                 supervised.children.values(),
                 message.options.child_describe_attached,
                 message.options.max_children,
             );
 
-            let next_depth = message.current_depth + 1;
-
-            if message.options.max_depth > Some(next_depth) {
-                let _ = sender.send(description);
-                return;
-            }
-
             if !describable_actors.is_empty() {
                 tokio::spawn(async move {
                     let actors = describe_all(describable_actors, next_depth, &message).await;
 
-                    let mut description = description;
-                    description.supervised = Some(SupervisedDescription { actors });
+                    let description = {
+                        let mut description = description;
+                        description.supervised = Some(SupervisedDescription { actors });
+                        description
+                    };
 
-                    let _ = sender.send(description);
+                    log_and_send(sender, description, start);
                 });
-            } else {
-                let _ = sender.send(description);
+
+                return;
             }
-        } else {
-            let _ = sender.send(description);
         }
+
+        log_and_send(sender, description, start);
     }
+}
+
+#[inline]
+fn log_and_send(sender: Sender<ActorDescription>, description: ActorDescription, start: Instant) {
+    debug!(
+        "describe(actor_id={actor_id}, {supervised_count} supervised actor(s)), took {time_taken} millis",
+        actor_id = &description.actor_id,
+        supervised_count = description
+        .supervised
+        .as_ref()
+        .map_or(0, |s| s.actors.len()),
+        time_taken = start.elapsed().as_millis()
+    );
+
+    let _ = sender.send(description);
 }
 
 pub async fn describe_all(
@@ -158,6 +185,42 @@ fn get_describable_actors<'actor>(
         .collect()
 }
 
+pub struct DescribeAll {
+    pub options: Arc<DescribeOptions>,
+    pub sender: Sender<Vec<DescribeResult>>,
+}
+
+impl Message for DescribeAll {
+    type Result = ();
+}
+
+#[async_trait]
+impl Handler<DescribeAll> for ActorScheduler {
+    async fn handle(&mut self, message: DescribeAll, _ctx: &mut ActorContext) {
+        let start = Instant::now();
+        let actors: Vec<BoxedActorRef> = self.actors.values().cloned().collect();
+
+        trace!("describing actors (count={})", actors.len());
+        tokio::spawn(async move {
+            let describe = Describe {
+                options: message.options,
+                sender: None,
+                current_depth: 0,
+            };
+
+            let actors = describe_all(actors, 1, &describe).await;
+            let duration = start.elapsed();
+
+            trace!(
+                "actor description (count={}) took {} millis",
+                actors.len(),
+                duration.as_millis()
+            );
+            let _ = message.sender.send(actors);
+        });
+    }
+}
+
 impl Clone for Describe {
     fn clone(&self) -> Self {
         Self {
@@ -174,7 +237,7 @@ impl DescribeResult {
         DescribeResult::Err {
             error: e,
             actor_id: actor_ref.actor_id().clone(),
-            actor_type: actor_ref.actor_type(),
+            actor_type: actor_ref.actor_type().to_string(),
         }
     }
 
@@ -182,7 +245,7 @@ impl DescribeResult {
     pub fn from_timeout_err(actor_ref: &BoxedActorRef) -> Self {
         DescribeResult::Timeout {
             actor_id: actor_ref.actor_id().clone(),
-            actor_type: actor_ref.actor_type(),
+            actor_type: actor_ref.actor_type().to_string(),
         }
     }
 }

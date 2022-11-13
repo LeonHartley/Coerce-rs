@@ -1,5 +1,5 @@
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::describe::Describe;
+use coerce::actor::describe::Describe;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, ActorId, CoreActorRef, IntoActor, IntoActorId};
@@ -17,8 +17,10 @@ extern crate async_trait;
 #[macro_use]
 extern crate serde;
 
-struct TestActor {
-    all_child_actors_stopped: Option<tokio::sync::oneshot::Sender<ActorId>>,
+struct TestSupervisor {
+    count: usize,
+    max_depth: usize,
+    all_child_actors_stopped: Option<oneshot::Sender<ActorId>>,
 }
 
 struct StopAll;
@@ -28,13 +30,16 @@ impl Message for StopAll {
 }
 
 #[async_trait]
-impl Actor for TestActor {
+impl Actor for TestSupervisor {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        for i in 0..100 {
+        for i in 0..self.count {
             let _child = ctx
                 .spawn(
-                    format!("child-{}", i).into_actor_id(),
-                    ActorChild { depth: 1 },
+                    format!("spawned-{}", i).into_actor_id(),
+                    SpawnedActor {
+                        depth: 1,
+                        max_depth: self.max_depth,
+                    },
                 )
                 .await
                 .unwrap();
@@ -42,7 +47,7 @@ impl Actor for TestActor {
     }
 
     async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {
-        info!("child terminated (id={})", &id);
+        info!("child stopped (id={})", &id);
 
         if ctx.supervised_count() == 0 {
             if let Some(cb) = self.all_child_actors_stopped.take() {
@@ -53,8 +58,8 @@ impl Actor for TestActor {
 }
 
 #[async_trait]
-impl Handler<StopAll> for TestActor {
-    async fn handle(&mut self, message: StopAll, ctx: &mut ActorContext) {
+impl Handler<StopAll> for TestSupervisor {
+    async fn handle(&mut self, _: StopAll, ctx: &mut ActorContext) {
         if let Some(supervised) = ctx.supervised() {
             for child in &supervised.children {
                 let _ = child.1.actor_ref().stop().await;
@@ -63,22 +68,24 @@ impl Handler<StopAll> for TestActor {
     }
 }
 
-struct ActorChild {
+struct SpawnedActor {
     depth: usize,
+    max_depth: usize,
 }
 
 #[async_trait]
-impl Actor for ActorChild {
+impl Actor for SpawnedActor {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        if self.depth > 10 {
+        if self.depth > self.max_depth {
             return;
         }
 
         let _child = ctx
             .spawn(
-                "child".into_actor_id(),
-                ActorChild {
+                "spawned".into_actor_id(),
+                SpawnedActor {
                     depth: self.depth + 1,
+                    max_depth: self.max_depth,
                 },
             )
             .await
@@ -90,12 +97,16 @@ impl Actor for ActorChild {
 pub async fn test_actor_child_spawn_and_stop() {
     util::create_trace_logger();
 
+    const EXPECTED_ACTOR_COUNT: usize = 10;
+    const EXPECTED_DEPTH: usize = 10;
     let system = ActorSystem::new();
     let actor_id = "actor".to_string();
 
-    let (all_child_actors_stopped, on_all_child_actors_stopped) = tokio::sync::oneshot::channel();
+    let (all_child_actors_stopped, on_all_child_actors_stopped) = oneshot::channel();
 
-    let test_actor = TestActor {
+    let test_actor = TestSupervisor {
+        count: EXPECTED_ACTOR_COUNT,
+        max_depth: EXPECTED_DEPTH,
         all_child_actors_stopped: Some(all_child_actors_stopped),
     }
     .into_actor(Some(actor_id), &system)
@@ -104,13 +115,19 @@ pub async fn test_actor_child_spawn_and_stop() {
 
     let (tx, rx) = oneshot::channel();
     let _ = test_actor.describe(Describe {
-        options: Arc::new(Default::default()),
         sender: Some(tx),
         current_depth: 0,
+        ..Default::default()
     });
 
-    let x = rx.await;
-    info!("{:#?}", x);
+    let actor_description = rx.await.unwrap();
+    info!("{:#?}", actor_description);
+
+    let actor_count = actor_description
+        .supervised
+        .map_or(0, |s| s.actors.iter().filter(|n| n.is_ok()).count());
+
+    assert_eq!(EXPECTED_ACTOR_COUNT, actor_count);
 
     let _ = test_actor.notify(StopAll);
 
@@ -120,9 +137,9 @@ pub async fn test_actor_child_spawn_and_stop() {
 
     let (tx, rx) = oneshot::channel();
     let _ = test_actor.describe(Describe {
-        options: Arc::new(Default::default()),
         sender: Some(tx),
         current_depth: 0,
+        ..Default::default()
     });
 
     let x = rx.await;

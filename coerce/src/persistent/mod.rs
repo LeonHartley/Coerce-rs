@@ -3,7 +3,6 @@ pub mod context;
 pub mod failure;
 pub mod inspect;
 pub mod journal;
-pub mod persist;
 pub mod recovery;
 
 pub use actor::*;

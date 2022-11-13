@@ -30,7 +30,7 @@ pub enum Retry {
     },
 }
 
-pub(crate) async fn retry(ctx: &mut ActorContext, attempts: &usize, retry: Retry) -> bool {
+pub(crate) async fn should_retry(ctx: &mut ActorContext, attempts: &usize, retry: Retry) -> bool {
     match retry {
         Retry::UntilSuccess { delay } => {
             if let Some(delay) = delay {

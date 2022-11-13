@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::persistent::failure::{retry, RecoveryFailurePolicy, Retry};
+use crate::persistent::failure::{should_retry, RecoveryFailurePolicy, Retry};
 use crate::persistent::journal::{RecoveredPayload, RecoveryErr};
 use crate::persistent::PersistentActor;
 use std::error::Error;
@@ -60,7 +60,7 @@ impl<A: PersistentActor> ActorRecovery for A {
                         }
 
                         RecoveryFailurePolicy::Retry(retry_policy) => {
-                            if !retry(ctx, &attempts, retry_policy).await {
+                            if !should_retry(ctx, &attempts, retry_policy).await {
                                 return RecoveryResult::Failed;
                             }
                         }
