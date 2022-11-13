@@ -152,8 +152,6 @@ pub async fn test_sharded_chat_join_and_chat() {
         "Welcome to example-chat-stream, say hello!",
         &welcome_message_c.message
     );
-
-    ctrl_c().await;
 }
 
 #[ignore]
