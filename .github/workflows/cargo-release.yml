@@ -1,0 +1,16 @@
+on:
+    push:
+        tags:
+            - '*'
+jobs:
+    build_and_test:
+        name: Coerce Runtime Test
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@master
+            - uses: supercharge/redis-github-action@1.2.0
+            with:
+                redis-version: 6
+                - uses: actions-rs/cargo@v1
+                with:
+                    command: test

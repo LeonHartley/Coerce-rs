@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tracing::info;
 
-use coerce::actor::message::describe::DescribeOptions;
+use coerce::actor::describe::DescribeOptions;
 use coerce::actor::message::Message;
 use coerce::actor::describe::DescribeAll;
 use coerce::actor::system::ActorSystem;
