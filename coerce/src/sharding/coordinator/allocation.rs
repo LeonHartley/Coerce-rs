@@ -2,17 +2,15 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{ActorId, ActorRef};
 use crate::persistent::{PersistentActor, Recover};
-use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
-use crate::remote::cluster::sharding::host::{
-    ShardAllocated, ShardAllocator, ShardHost, ShardReallocating,
-};
-use crate::remote::cluster::sharding::proto::sharding as proto;
 use crate::remote::system::NodeId;
+use crate::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardId};
+use crate::sharding::host::{ShardAllocated, ShardAllocator, ShardHost, ShardReallocating};
+use crate::sharding::proto::sharding as proto;
 use futures::future::join_all;
 use protobuf::Message as ProtoMessage;
 use std::collections::hash_map::{DefaultHasher, Entry, VacantEntry};
 
-use crate::remote::cluster::sharding::proto::sharding::allocate_shard_result;
+use crate::sharding::proto::sharding::allocate_shard_result;
 use std::hash::{Hash, Hasher};
 
 pub struct AllocateShard {

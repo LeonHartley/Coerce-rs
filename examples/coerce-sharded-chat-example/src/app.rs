@@ -8,9 +8,9 @@ use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::system::SystemApi;
 use coerce::remote::api::RemoteHttpApi;
-use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
+use coerce::sharding::Sharding;
 
 use coerce::remote::net::server::RemoteServer;
 use coerce_k8s::config::KubernetesDiscoveryConfig;

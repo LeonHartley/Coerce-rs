@@ -1,14 +1,14 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef, ToActorId};
-use crate::remote::cluster::sharding::coordinator::allocation::DefaultAllocator;
-use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardId};
-use crate::remote::cluster::sharding::host::request::{handle_request, EntityRequest};
-use crate::remote::cluster::sharding::proto::sharding as proto;
+use crate::sharding::coordinator::allocation::DefaultAllocator;
+use crate::sharding::coordinator::{ShardCoordinator, ShardId};
+use crate::sharding::host::request::{handle_request, EntityRequest};
+use crate::sharding::proto::sharding as proto;
 
-use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::NodeId;
 use crate::remote::RemoteActorRef;
+use crate::sharding::shard::Shard;
 use protobuf::Message as ProtoMessage;
 
 use crate::remote::actor::BoxedActorHandler;
@@ -20,7 +20,7 @@ use uuid::Uuid;
 pub mod request;
 pub mod stats;
 
-enum ShardState {
+pub enum ShardState {
     Starting {
         request_buffer: Vec<EntityRequest>,
         stop_requested: Option<StopRequested>,
@@ -29,7 +29,7 @@ enum ShardState {
     Stopping,
 }
 
-struct StopRequested {
+pub struct StopRequested {
     origin_node_id: NodeId,
     request_id: Uuid,
 }

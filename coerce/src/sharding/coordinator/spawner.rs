@@ -1,12 +1,12 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
-use crate::remote::cluster::sharding::coordinator::discovery::{NodeDiscovered, NodeForgotten};
-use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
-use crate::remote::cluster::sharding::host::{LeaderAllocated, ShardHost};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::NodeId;
+use crate::sharding::coordinator::discovery::{NodeDiscovered, NodeForgotten};
+use crate::sharding::coordinator::ShardCoordinator;
+use crate::sharding::host::{LeaderAllocated, ShardHost};
 
 pub struct CoordinatorSpawner {
     node_id: NodeId,

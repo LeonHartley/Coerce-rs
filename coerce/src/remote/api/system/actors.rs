@@ -1,4 +1,5 @@
 use crate::actor::describe;
+use crate::actor::describe::DescribeOptions;
 use crate::remote::system::RemoteActorSystem;
 use axum::extract::Query;
 use axum::response::IntoResponse;
@@ -6,8 +7,6 @@ use axum::Json;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
-use crate::actor::describe::DescribeOptions;
-
 
 #[derive(Serialize, Deserialize)]
 pub struct DescribeAll {
@@ -34,7 +33,7 @@ impl From<DescribeAll> for DescribeOptions {
             max_depth: value.max_depth,
             max_children: None,
             child_describe_timeout: None,
-            child_describe_attached: false
+            child_describe_attached: false,
         }
     }
 }
@@ -47,10 +46,13 @@ pub(crate) async fn describe_all(
     let options = Arc::new(options.0.into());
 
     let (tx, rx) = oneshot::channel();
-    let _ = system.actor_system().scheduler().notify(describe::DescribeAll {
-        options,
-        sender: tx,
-    });
+    let _ = system
+        .actor_system()
+        .scheduler()
+        .notify(describe::DescribeAll {
+            options,
+            sender: tx,
+        });
 
     let actors = rx.await.unwrap();
     Json(Actors { actors })

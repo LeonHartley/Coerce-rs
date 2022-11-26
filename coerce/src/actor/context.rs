@@ -4,16 +4,18 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{
     Actor, ActorId, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, LocalActorRef,
 };
-use crate::persistent::context::ActorPersistence;
-use crate::remote::system::NodeId;
 use futures::{Stream, StreamExt};
 use std::any::Any;
 use std::iter;
 use std::iter::empty;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::oneshot::Sender;
+use valuable::{Fields, NamedField, NamedValues, Structable, StructDef, Valuable, Value, Visit};
 
 use crate::actor::supervised::Supervised;
+
+#[cfg(feature = "persistence")]
+use crate::persistent::context::ActorPersistence;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ActorStatus {
@@ -26,13 +28,40 @@ pub enum ActorStatus {
 pub struct ActorContext {
     context_id: u64,
     status: ActorStatus,
-    persistence: Option<ActorPersistence>,
     boxed_ref: BoxedActorRef,
     boxed_parent_ref: Option<BoxedActorRef>,
     supervised: Option<Supervised>,
     system: Option<ActorSystem>,
     on_actor_stopped: Option<Vec<Sender<()>>>,
     tags: Option<ActorTags>,
+
+    #[cfg(feature = "persistence")]
+    persistence: Option<ActorPersistence>,
+}
+
+static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] =
+    &[
+        NamedField::new("actor_id"),
+        NamedField::new("actor_type")
+    ];
+
+impl Structable for ActorContext {
+    fn definition(&self) -> StructDef<'_> {
+        StructDef::new_static("ActorContext", Fields::Named(ACTOR_CONTEXT_FIELDS))
+    }
+}
+
+impl Valuable for ActorContext {
+    fn as_value(&self) -> Value<'_> {
+        Value::Structable(self)
+    }
+
+    fn visit(&self, v: &mut dyn Visit) {
+        v.visit_named_fields(&NamedValues::new(
+            ACTOR_CONTEXT_FIELDS,
+            &[Value::String(self.id()), Value::String(self.boxed_ref.actor_type())],
+        ));
+    }
 }
 
 impl ActorContext {
@@ -49,10 +78,12 @@ impl ActorContext {
             system,
             context_id,
             supervised: None,
-            persistence: None,
             boxed_parent_ref: None,
             on_actor_stopped: None,
             tags: None,
+
+            #[cfg(feature = "persistence")]
+            persistence: None,
         }
     }
 
@@ -141,18 +172,21 @@ impl ActorContext {
         supervised.attach_child_ref(actor_ref);
     }
 
+    #[cfg(feature = "persistence")]
     pub fn persistence(&self) -> &ActorPersistence {
         self.persistence
             .as_ref()
             .expect("ctx is not setup for persistence")
     }
 
+    #[cfg(feature = "persistence")]
     pub fn persistence_mut(&mut self) -> &mut ActorPersistence {
         self.persistence
             .as_mut()
             .expect("ctx is not setup for persistence")
     }
 
+    #[cfg(feature = "persistence")]
     pub fn set_persistence(&mut self, persistence: ActorPersistence) {
         self.persistence = Some(persistence);
     }
@@ -331,6 +365,7 @@ impl Default for StreamAttachmentOptions {
 }
 
 impl ActorContext {
+    #[cfg(feature = "persistence")]
     pub fn with_persistence(self) -> Self {
         let mut ctx = self;
         let persistence = ctx

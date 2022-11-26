@@ -209,7 +209,6 @@ where
 
         if let Some(snapshot) = snapshot {
             if let Err(e) = snapshot.recover(self, ctx).await {
-                // non-transient error, i.e serialisation errors should not be retried, we should just exit here.
                 error!("Error while attempting to recover from a snapshot, error={error}, actor_id={actor_id}, persistence_key={persistence_key}",
                     error = &e,
                     actor_id = ctx.id(),
@@ -225,14 +224,12 @@ where
         if let Some(messages) = messages {
             for message in messages {
                 if let Err(e) = message.recover(self, ctx).await {
-                    // non-transient error, i.e serialisation errors should not be retried, we should just exit here.
                     error!("Error while attempting to recover from a message, error={error}, actor_id={actor_id}, persistence_key={persistence_key}",
                         error = &e,
                         actor_id = ctx.id(),
                         persistence_key = &persistence_key
                     );
 
-                    // non-transient error, i.e serialisation errors should not be retried, we should just exit here.
                     self.on_recovery_err(e, ctx).await;
                     ctx.stop(None);
                     return;

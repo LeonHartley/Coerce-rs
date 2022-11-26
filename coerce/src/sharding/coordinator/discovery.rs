@@ -1,11 +1,9 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::remote::cluster::node::RemoteNode;
-use crate::remote::cluster::sharding::coordinator::balancing::Rebalance;
-use crate::remote::cluster::sharding::coordinator::{
-    ShardCoordinator, ShardHostState, ShardHostStatus,
-};
-use crate::remote::cluster::sharding::host::ShardHost;
+use crate::sharding::coordinator::balancing::Rebalance;
+use crate::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardHostStatus};
+use crate::sharding::host::ShardHost;
 
 use crate::actor::IntoActorId;
 use crate::remote::RemoteActorRef;
@@ -36,6 +34,7 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
                     self.schedule_full_rebalance(ctx);
                 }
             }
+
             Entry::Vacant(vacant_entry) => {
                 let remote = ctx.system().remote_owned();
 

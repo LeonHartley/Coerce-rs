@@ -4,8 +4,9 @@ use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, IntoActorId, Loc
 
 use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::ActorSystem;
-use crate::remote::actor::message::SetRemote;
-use crate::remote::system::RemoteActorSystem;
+
+#[cfg(feature = "remote")]
+use crate::remote::{actor::message::SetRemote, system::RemoteActorSystem};
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -19,6 +20,8 @@ pub mod timer;
 pub struct ActorScheduler {
     pub(crate) actors: HashMap<ActorId, BoxedActorRef>,
     system_id: Uuid,
+
+    #[cfg(feature = "remote")]
     remote: Option<RemoteActorSystem>,
 }
 
@@ -28,6 +31,8 @@ impl ActorScheduler {
             ActorScheduler {
                 system_id,
                 actors: HashMap::new(),
+
+                #[cfg(feature = "remote")]
                 remote: None,
             },
             "ActorScheduler-0".into_actor_id(),
@@ -98,7 +103,7 @@ impl Message for ActorCount {
 
 #[async_trait]
 impl Handler<ActorCount> for ActorScheduler {
-    async fn handle(&mut self, _: ActorCount, ctx: &mut ActorContext) -> usize {
+    async fn handle(&mut self, _: ActorCount, _ctx: &mut ActorContext) -> usize {
         self.actors.len()
     }
 }
@@ -157,6 +162,7 @@ where
     }
 }
 
+#[cfg(feature = "remote")]
 #[async_trait]
 impl Handler<SetRemote> for ActorScheduler {
     async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
@@ -183,6 +189,7 @@ where
 
         debug!(target: "ActorScheduler", "actor {} registered", &actor_id);
 
+        #[cfg(feature = "remote")]
         if let Some(remote) = &self.remote {
             debug!(
                 target: "ActorScheduler",
@@ -222,6 +229,7 @@ where
             .get(&message.id)
             .and_then(|actor| actor.as_actor());
 
+        #[cfg(feature = "remote")]
         if let Some(remote) = &self.remote {
             debug!(target: "ActorScheduler", "[node={}] GetActor(actor_id={}) actor_found={}", remote.node_id(), &message.id, actor_ref.is_some())
         } else {

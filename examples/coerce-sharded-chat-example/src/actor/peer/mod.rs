@@ -5,8 +5,8 @@ use crate::actor::stream::{
 use coerce::actor::context::{attach_stream, ActorContext, StreamAttachmentOptions};
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::{Actor, CoreActorRef};
-use coerce::remote::cluster::sharding::{Sharded, Sharding};
 use coerce::remote::stream::pubsub::{PubSub, Receive, Subscription};
+use coerce::sharding::{Sharded, Sharding};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::SinkExt;
 use std::collections::HashMap;

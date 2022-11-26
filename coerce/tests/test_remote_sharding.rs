@@ -9,19 +9,15 @@ use coerce::actor::{
 };
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::Persistence;
-use coerce::remote::cluster::sharding::coordinator::allocation::{
-    AllocateShard, AllocateShardResult,
-};
-use coerce::remote::cluster::sharding::coordinator::{
-    ShardCoordinator, ShardHostState, ShardHostStatus, ShardId,
-};
+use coerce::sharding::coordinator::allocation::{AllocateShard, AllocateShardResult};
+use coerce::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardHostStatus, ShardId};
 
-use coerce::remote::cluster::sharding::host::stats::GetStats;
-use coerce::remote::cluster::sharding::host::ShardHost;
-use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::handler::{ActorHandler, RemoteActorHandler};
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
+use coerce::sharding::host::stats::GetStats;
+use coerce::sharding::host::ShardHost;
+use coerce::sharding::Sharding;
 
 mod sharding;
 pub mod util;

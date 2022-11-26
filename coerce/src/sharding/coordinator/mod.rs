@@ -3,17 +3,17 @@ use crate::actor::context::ActorContext;
 use crate::actor::{Actor, ActorRef, IntoActorId, LocalActorRef, ScheduledNotify};
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::PersistentActor;
-use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
-use crate::remote::cluster::sharding::host::ShardHost;
+use crate::sharding::coordinator::allocation::AllocateShard;
+use crate::sharding::host::ShardHost;
 
 use crate::remote::system::NodeId;
 
 use crate::actor::message::Handler;
 use crate::remote::cluster::node::NodeStatus::{Healthy, Joining};
-use crate::remote::cluster::sharding::coordinator::balancing::Rebalance;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::SystemTopic;
 use crate::remote::RemoteActorRef;
+use crate::sharding::coordinator::balancing::Rebalance;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 

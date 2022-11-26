@@ -21,7 +21,6 @@ use std::sync::Arc;
 use crate::actor::scheduler::ActorType;
 use crate::remote::cluster::discovery::NodeDiscovery;
 
-use crate::remote::cluster::sharding::sharding;
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -43,7 +42,10 @@ impl RemoteActorSystemBuilder {
             node_id: None,
             node_tag: None,
             inner: None,
-            config_builders: vec![Box::new(sharding)],
+            config_builders: vec![
+                #[cfg(feature = "sharding")]
+                Box::new(crate::sharding::sharding),
+            ],
             mediator: Some(mediator),
             single_node_cluster: false,
             server_auth_token: None,

@@ -9,7 +9,7 @@ use tokio::sync::oneshot;
 pub mod util;
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 #[macro_use]
 extern crate async_trait;

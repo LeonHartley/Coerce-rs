@@ -1,12 +1,10 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{ActorRef, LocalActorRef};
-use crate::remote::cluster::sharding::coordinator::allocation::{
-    broadcast_reallocation, AllocateShard,
-};
-use crate::remote::cluster::sharding::coordinator::{ShardCoordinator, ShardHostStatus, ShardId};
-use crate::remote::cluster::sharding::host::{ShardHost, ShardStopped, StopShard};
 use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::sharding::coordinator::allocation::{broadcast_reallocation, AllocateShard};
+use crate::sharding::coordinator::{ShardCoordinator, ShardHostStatus, ShardId};
+use crate::sharding::host::{ShardHost, ShardStopped, StopShard};
 use futures::future::join_all;
 
 use std::mem;
@@ -107,7 +105,9 @@ impl ShardCoordinator {
 
                     let (tx, rx) = oneshot::channel();
                     sys.push_request(request_id, tx);
-                    let result = shard_host_actor.notify(StopShard { shard_id: shard, request_id, origin_node_id }).await;
+
+                    let stop = StopShard { shard_id: shard, request_id, origin_node_id };
+                    let result = shard_host_actor.notify(stop).await;
                     match result {
                         Ok(_) => {
                             let result = rx.await;

@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
 
 use crate::actor::{Actor, LocalActorRef};
-use crate::remote::cluster::sharding::shard::Shard;
+use crate::sharding::shard::Shard;
 
 use std::time::Duration;
 

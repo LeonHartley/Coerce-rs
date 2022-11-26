@@ -1,14 +1,16 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, IntoActorId, LocalActorRef};
-use crate::persistent::Persistence;
-use crate::remote::system::RemoteActorSystem;
 use rand::RngCore;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
-
-use crate::persistent::journal::provider::StorageProvider;
 use uuid::Uuid;
+
+#[cfg(feature = "remote")]
+use crate::remote::system::RemoteActorSystem;
+
+#[cfg(feature = "persistence")]
+use crate::persistent::{journal::provider::StorageProvider, Persistence};
 
 lazy_static! {
     static ref CURRENT_SYSTEM: ActorSystem = ActorSystem::new();
@@ -23,10 +25,14 @@ pub struct ActorSystem {
 pub struct ActorSystemCore {
     system_id: Uuid,
     scheduler: LocalActorRef<ActorScheduler>,
-    remote: Option<RemoteActorSystem>,
-    persistence: Option<Arc<Persistence>>,
     is_terminated: Arc<AtomicBool>,
     context_counter: Arc<AtomicU64>,
+
+    #[cfg(feature = "persistence")]
+    persistence: Option<Arc<Persistence>>,
+
+    #[cfg(feature = "remote")]
+    remote: Option<RemoteActorSystem>,
 }
 
 impl Default for ActorSystem {
@@ -36,10 +42,15 @@ impl Default for ActorSystem {
             core: Arc::new(ActorSystemCore {
                 system_id,
                 scheduler: ActorScheduler::new(system_id),
-                remote: None,
-                persistence: None,
+
                 is_terminated: Arc::new(AtomicBool::new(false)),
                 context_counter: Arc::new(AtomicU64::new(1)),
+
+                #[cfg(feature = "persistence")]
+                persistence: None,
+
+                #[cfg(feature = "remote")]
+                remote: None,
             }),
         }
     }
@@ -50,6 +61,7 @@ impl ActorSystem {
         Self::default()
     }
 
+    #[cfg(feature = "persistence")]
     pub fn new_persistent<S: StorageProvider>(storage_provider: S) -> ActorSystem {
         ActorSystem::new().to_persistent(Persistence::from(storage_provider))
     }
@@ -64,27 +76,6 @@ impl ActorSystem {
 
     pub fn global_system() -> ActorSystem {
         CURRENT_SYSTEM.clone()
-    }
-
-    pub fn to_remote(&self, remote: RemoteActorSystem) -> Self {
-        ActorSystem {
-            core: Arc::new(self.core.new_remote(remote)),
-        }
-    }
-
-    pub fn remote(&self) -> &RemoteActorSystem {
-        self.core
-            .remote
-            .as_ref()
-            .expect("this ActorSystem is not setup for remoting")
-    }
-
-    pub fn remote_owned(&self) -> RemoteActorSystem {
-        self.remote().clone()
-    }
-
-    pub fn is_remote(&self) -> bool {
-        self.core.remote.is_some()
     }
 
     pub fn next_context_id(&self) -> u64 {
@@ -171,6 +162,7 @@ impl ActorSystem {
         self.core.is_terminated.store(true, Relaxed);
         let _ = self.core.scheduler.stop().await;
 
+        #[cfg(feature = "remote")]
         if let Some(remote) = &self.core.remote {
             remote.shutdown().await;
         }
@@ -192,7 +184,34 @@ impl ActorSystem {
             Err(_) => None,
         }
     }
+}
 
+#[cfg(feature = "remote")]
+impl ActorSystem {
+    pub fn to_remote(&self, remote: RemoteActorSystem) -> Self {
+        ActorSystem {
+            core: Arc::new(self.core.new_remote(remote)),
+        }
+    }
+
+    pub fn remote(&self) -> &RemoteActorSystem {
+        self.core
+            .remote
+            .as_ref()
+            .expect("this ActorSystem is not setup for remoting")
+    }
+
+    pub fn remote_owned(&self) -> RemoteActorSystem {
+        self.remote().clone()
+    }
+
+    pub fn is_remote(&self) -> bool {
+        self.core.remote.is_some()
+    }
+}
+
+#[cfg(feature = "persistence")]
+impl ActorSystem {
     pub fn persistence(&self) -> Option<&Persistence> {
         self.core.persistence.as_ref().map(|p| p.as_ref())
     }
@@ -205,6 +224,7 @@ impl ActorSystem {
 }
 
 impl ActorSystemCore {
+    #[cfg(feature = "remote")]
     pub fn new_remote(&self, remote: RemoteActorSystem) -> Self {
         let mut core = self.clone();
         core.remote = Some(remote);
@@ -212,6 +232,7 @@ impl ActorSystemCore {
         core
     }
 
+    #[cfg(feature = "persistence")]
     pub fn new_persistent(&self, persistence: Persistence) -> Self {
         let mut core = self.clone();
         core.persistence = Some(Arc::new(persistence));

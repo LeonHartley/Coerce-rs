@@ -3,16 +3,22 @@ pub mod metrics;
 pub mod sharding;
 pub mod system;
 
+use crate::actor::Actor;
 use crate::remote::system::RemoteActorSystem;
 use axum::routing::get;
 use axum::{Json, Router};
 use std::net::SocketAddr;
+use crate::CARGO_PKG_VERSION;
 
 pub struct RemoteHttpApi {
     pub system: RemoteActorSystem,
     pub listen_addr: SocketAddr,
     router: Router,
 }
+//
+// impl Actor for RemoteHttpApi {
+//
+// }
 
 impl RemoteHttpApi {
     pub fn new(listen_addr: SocketAddr, system: RemoteActorSystem) -> Self {
@@ -35,7 +41,7 @@ impl RemoteHttpApi {
         let system = self.system.clone();
         let app = self
             .router
-            .route("/version", get(|| async { VERSION }))
+            .route("/version", get(|| async { CARGO_PKG_VERSION }))
             .route(
                 "/capabilities",
                 get(move || async move { Json(system.config().get_capabilities()) }),
@@ -57,5 +63,3 @@ impl RemoteHttpApi {
 pub trait Routes {
     fn routes(&self, router: Router) -> Router;
 }
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");

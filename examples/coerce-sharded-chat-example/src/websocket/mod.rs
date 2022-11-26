@@ -3,7 +3,7 @@ use crate::actor::stream::{ChatStreamFactory, Handshake};
 use coerce::actor::message::Message;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::IntoActor;
-use coerce::remote::cluster::sharding::Sharding;
+use coerce::sharding::Sharding;
 use futures_util::StreamExt;
 use std::net::SocketAddr;
 

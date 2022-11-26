@@ -6,9 +6,9 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tracing::info;
 
+use coerce::actor::describe::DescribeAll;
 use coerce::actor::describe::DescribeOptions;
 use coerce::actor::message::Message;
-use coerce::actor::describe::DescribeAll;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{
     Actor, ActorCreationErr, ActorFactory, ActorRecipe, ActorRef, IntoActor, LocalActorRef,
@@ -16,12 +16,10 @@ use coerce::actor::{
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::Persistence;
 
-use coerce::remote::cluster::sharding::coordinator::{
-    ShardCoordinator, ShardHostState, ShardHostStatus,
-};
+use coerce::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardHostStatus};
 
-use coerce::remote::cluster::sharding::host::ShardHost;
-use coerce::remote::cluster::sharding::Sharding;
+use coerce::sharding::host::ShardHost;
+use coerce::sharding::Sharding;
 
 use coerce::remote::heartbeat::HeartbeatConfig;
 use coerce::remote::net::server::RemoteServer;

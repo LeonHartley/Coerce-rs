@@ -1,11 +1,11 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{ActorRefErr, LocalActorRef};
-use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::ShardHost;
-use crate::remote::cluster::sharding::shard::stats::{GetShardStats, ShardStats};
-use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::NodeId;
+use crate::sharding::coordinator::ShardId;
+use crate::sharding::host::ShardHost;
+use crate::sharding::shard::stats::{GetShardStats, ShardStats};
+use crate::sharding::shard::Shard;
 use futures::future::join_all;
 use std::collections::HashMap;
 use tokio::sync::oneshot;

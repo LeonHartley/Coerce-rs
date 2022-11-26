@@ -1,11 +1,11 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 
-use crate::remote::cluster::sharding::coordinator::ShardId;
+use crate::sharding::coordinator::ShardId;
 
-use crate::remote::cluster::sharding::proto::sharding as proto;
-use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::NodeId;
+use crate::sharding::proto::sharding as proto;
+use crate::sharding::shard::Shard;
 use protobuf::Message as ProtoMessage;
 use std::collections::HashSet;
 

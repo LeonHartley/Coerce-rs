@@ -6,10 +6,10 @@ use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::PersistErr;
 use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
 use crate::remote::actor::BoxedActorHandler;
-use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
-use crate::remote::cluster::sharding::host::{PassivateEntity, RemoveEntity, StartEntity};
-use crate::remote::cluster::sharding::proto::sharding as proto;
+use crate::sharding::coordinator::ShardId;
+use crate::sharding::host::request::{EntityRequest, RemoteEntityRequest};
+use crate::sharding::host::{PassivateEntity, RemoveEntity, StartEntity};
+use crate::sharding::proto::sharding as proto;
 
 use crate::remote::system::NodeId;
 use chrono::{DateTime, Utc};

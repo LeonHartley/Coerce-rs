@@ -1,15 +1,13 @@
 use crate::actor::context::{ActorContext, ActorStatus};
+use crate::actor::describe::Describe;
 use crate::actor::lifecycle::{Status, Stop};
 use crate::actor::message::{
-    ActorMessage, Envelope, Exec, Handler, Message, MessageHandler, MessageUnwrapErr,
-    MessageWrapErr,
+    ActorMessage, Exec, Handler, Message, MessageHandler, MessageUnwrapErr, MessageWrapErr,
 };
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::actor::supervised::Terminated;
 use crate::actor::system::ActorSystem;
-use crate::remote::system::NodeId;
-use crate::remote::RemoteActorRef;
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
 use std::marker::PhantomData;
@@ -18,9 +16,15 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
-use crate::actor::describe::Describe;
+
+#[cfg(feature = "remote")]
+use crate::actor::message::Envelope;
+
+#[cfg(feature = "remote")]
+use crate::remote::{system::NodeId, RemoteActorRef};
 
 pub mod context;
+pub mod describe;
 pub mod lifecycle;
 pub mod message;
 pub mod metrics;
@@ -28,7 +32,6 @@ pub mod scheduler;
 pub mod supervised;
 pub mod system;
 pub mod worker;
-pub mod describe;
 
 pub type ActorId = Arc<str>;
 
@@ -154,6 +157,8 @@ where
 
 pub(crate) enum Ref<A: Actor> {
     Local(LocalActorRef<A>),
+
+    #[cfg(feature = "remote")]
     Remote(RemoteActorRef<A>),
 }
 
@@ -161,6 +166,8 @@ impl<A: Actor> Clone for Ref<A> {
     fn clone(&self) -> Self {
         match &self {
             Ref::Local(a) => Ref::Local(a.clone()),
+
+            #[cfg(feature = "remote")]
             Ref::Remote(a) => Ref::Remote(a.clone()),
         }
     }
@@ -173,7 +180,9 @@ pub struct ActorRef<A: Actor> {
 impl<A: Actor> Debug for ActorRef<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.inner_ref {
-            Ref::Local(local_ref) => local_ref.fmt(f),
+            Ref::Local(r) => r.fmt(f),
+
+            #[cfg(feature = "remote")]
             Ref::Remote(remote_ref) => remote_ref.fmt(f),
         }
     }
@@ -183,6 +192,8 @@ impl<A: Actor> Display for ActorRef<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.fmt(f),
+
+            #[cfg(feature = "remote")]
             Ref::Remote(remote_ref) => remote_ref.fmt(f),
         }
     }
@@ -192,10 +203,13 @@ impl<A: Actor> ActorRef<A> {
     pub fn actor_id(&self) -> &ActorId {
         match &self.inner_ref {
             Ref::Local(a) => &a.id,
+
+            #[cfg(feature = "remote")]
             Ref::Remote(a) => a.actor_id(),
         }
     }
 
+    #[cfg(feature = "remote")]
     pub fn node_id(&self) -> Option<NodeId> {
         match &self.inner_ref {
             Ref::Local(_) => None,
@@ -251,6 +265,8 @@ impl<A: Actor> ActorRef<A> {
     {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.send(msg).await,
+
+            #[cfg(feature = "remote")]
             Ref::Remote(remote_ref) => match msg.as_bytes() {
                 Ok(envelope) => remote_ref.send(Envelope::Remote(envelope)).await,
                 Err(e) => Err(ActorRefErr::Serialisation(e)),
@@ -264,6 +280,8 @@ impl<A: Actor> ActorRef<A> {
     {
         match &self.inner_ref {
             Ref::Local(local_ref) => local_ref.notify(msg),
+
+            #[cfg(feature = "remote")]
             Ref::Remote(remote_ref) => match msg.as_bytes() {
                 Ok(envelope) => remote_ref.notify(Envelope::Remote(envelope)).await,
                 Err(e) => Err(ActorRefErr::Serialisation(e)),
@@ -275,10 +293,12 @@ impl<A: Actor> ActorRef<A> {
         matches!(&self.inner_ref, &Ref::Local(_))
     }
 
+    #[cfg(feature = "remote")]
     pub fn is_remote(&self) -> bool {
         matches!(&self.inner_ref, &Ref::Remote(_))
     }
 
+    #[cfg(feature = "remote")]
     pub fn unwrap_remote(self) -> RemoteActorRef<A> {
         match self.inner_ref {
             Ref::Remote(remote_ref) => remote_ref,
@@ -342,6 +362,7 @@ impl<A: Actor> From<LocalActorRef<A>> for ActorRef<A> {
     }
 }
 
+#[cfg(feature = "remote")]
 impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
     fn from(r: RemoteActorRef<A>) -> Self {
         ActorRef {

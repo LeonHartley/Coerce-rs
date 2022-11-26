@@ -1,7 +1,7 @@
 use crate::actor::{Actor, ActorFactory};
-use crate::remote::cluster::sharding::host::ShardAllocator;
-use crate::remote::cluster::sharding::Sharding;
 use crate::remote::system::RemoteActorSystem;
+use crate::sharding::host::ShardAllocator;
+use crate::sharding::Sharding;
 use std::marker::PhantomData;
 
 pub struct ShardingBuilder<A: ActorFactory> {

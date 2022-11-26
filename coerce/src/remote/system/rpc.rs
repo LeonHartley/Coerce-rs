@@ -186,6 +186,7 @@ impl RemoteActorSystem {
         let mut handler = self.inner.handler_ref.lock();
         handler.pop_request(id).map(|r| r.res_tx)
     }
+
     pub fn inflight_remote_request_count(&self) -> usize {
         let handler = self.inner.handler_ref.lock();
         handler.inflight_request_count()

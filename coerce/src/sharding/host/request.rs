@@ -1,16 +1,14 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRef, ActorRefErr, IntoActorId};
-use crate::remote::cluster::sharding::coordinator::allocation::{
-    AllocateShard, AllocateShardResult,
-};
+use crate::sharding::coordinator::allocation::{AllocateShard, AllocateShardResult};
 
-use crate::remote::cluster::sharding::host::{ShardAllocated, ShardHost, ShardState};
-use crate::remote::cluster::sharding::proto::sharding as proto;
-use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::sharding::host::{ShardAllocated, ShardHost, ShardState};
+use crate::sharding::proto::sharding as proto;
+use crate::sharding::shard::Shard;
 
-use crate::remote::cluster::sharding::coordinator::ShardId;
+use crate::sharding::coordinator::ShardId;
 use protobuf::Message as ProtoMessage;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -34,7 +32,7 @@ pub struct RemoteEntityRequest {
     pub origin_node: NodeId,
 }
 
-pub(super) fn handle_request(
+pub(crate) fn handle_request(
     message: EntityRequest,
     shard_id: ShardId,
     shard_state: &mut ShardState,

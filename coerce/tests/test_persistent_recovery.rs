@@ -17,7 +17,7 @@ extern crate serde;
 extern crate async_trait;
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 #[async_trait]
 impl RecoverSnapshot<TestActorSnapshot> for TestActor {

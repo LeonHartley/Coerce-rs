@@ -1,10 +1,10 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::remote::api::sharding::ShardingApi;
-use crate::remote::cluster::sharding::coordinator::ShardId;
-use crate::remote::cluster::sharding::host::stats::GetStats as GetHostStats;
-use crate::remote::cluster::sharding::shard::stats::ShardStats;
 use crate::remote::system::NodeId;
+use crate::sharding::coordinator::ShardId;
+use crate::sharding::host::stats::GetStats as GetHostStats;
+use crate::sharding::shard::stats::ShardStats;
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]

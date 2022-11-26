@@ -3,18 +3,18 @@ use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,
 };
 
-use crate::remote::cluster::sharding::coordinator::allocation::AllocateShard;
-use crate::remote::cluster::sharding::coordinator::spawner::CoordinatorSpawner;
-use crate::remote::cluster::sharding::coordinator::stats::GetShardingStats;
-use crate::remote::cluster::sharding::coordinator::ShardCoordinator;
-use crate::remote::cluster::sharding::host::request::{EntityRequest, RemoteEntityRequest};
-use crate::remote::cluster::sharding::host::{
-    ShardAllocated, ShardAllocator, ShardHost, ShardReallocating, StopShard,
-};
-use crate::remote::cluster::sharding::shard::stats::GetShardStats;
-use crate::remote::cluster::sharding::shard::Shard;
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
+use crate::sharding::coordinator::allocation::AllocateShard;
+use crate::sharding::coordinator::spawner::CoordinatorSpawner;
+use crate::sharding::coordinator::stats::GetShardingStats;
+use crate::sharding::coordinator::ShardCoordinator;
+use crate::sharding::host::request::{EntityRequest, RemoteEntityRequest};
+use crate::sharding::host::{
+    ShardAllocated, ShardAllocator, ShardHost, ShardReallocating, StopShard,
+};
+use crate::sharding::shard::stats::GetShardStats;
+use crate::sharding::shard::Shard;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::sync::oneshot;

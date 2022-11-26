@@ -6,8 +6,10 @@ use coerce_macros::JsonMessage;
 use serde::Serialize;
 
 use coerce::actor::system::ActorSystem;
-use coerce::remote::system::builder::RemoteSystemConfigBuilder;
-use coerce::remote::system::{NodeId, RemoteActorSystem};
+
+#[cfg(feature = "remote")]
+use coerce::remote::system::{builder::RemoteSystemConfigBuilder, NodeId, RemoteActorSystem};
+
 use std::str::FromStr;
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -121,6 +123,7 @@ lazy_static::lazy_static! {
     static ref LOG_LEVEL: String = std::env::var("LOG_LEVEL").map_or(String::from("OFF"), |s| s);
 }
 
+#[cfg(feature = "remote")]
 pub async fn create_cluster_node<F>(
     node_id: NodeId,
     listen_addr: &str,

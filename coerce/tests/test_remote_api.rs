@@ -7,9 +7,9 @@ use coerce::persistent::Persistence;
 use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::RemoteHttpApi;
-use coerce::remote::cluster::sharding::Sharding;
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::RemoteActorSystem;
+use coerce::sharding::Sharding;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
