@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-coerce = { path = "../../../coerce", features = ["remote"] }
-kube = { version = "0.74", default-features = false, features = ["client", "rustls-tls"] }
-k8s-openapi = { version = "0.15", features = ["v1_24", "api"] }
+coerce = { version = "0.8.0", features = ["remote"] }
+kube = { version = "0.76.0", default-features = false, features = ["client", "rustls-tls"] }
+k8s-openapi = { version = "0.16.0", features = ["v1_24", "api"] }
 tracing = { version = "0.1" }
