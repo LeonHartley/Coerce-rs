@@ -1,6 +1,6 @@
 [package]
 name = "coerce-k8s"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Kubernetes discovery provider, automatically discover cluster peers hosted in Kubernetes, based on a configurable pod-selection label"
 license = "Apache-2.0"
@@ -12,6 +12,6 @@ repository = "https://github.com/leonhartley/coerce-rs"
 
 [dependencies]
 coerce = { version = "0.8.0", features = ["remote"] }
-kube = { version = "0.76.0", default-features = false, features = ["client", "rustls-tls"] }
-k8s-openapi = { version = "0.16.0", features = ["v1_24", "api"] }
+kube = { version = "0.74.0", default-features = false, features = ["client", "rustls-tls"] }
+k8s-openapi = { version = "0.15.0", features = ["v1_24", "api"] }
 tracing = { version = "0.1" }
