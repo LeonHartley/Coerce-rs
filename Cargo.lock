@@ -275,7 +275,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "chrono",
- "coerce-macros",
+ "coerce-macros 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "criterion",
  "futures",
  "hashring",
@@ -301,7 +301,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "coerce",
- "coerce-macros",
+ "coerce-macros 0.2.0",
  "opentelemetry",
  "opentelemetry-jaeger",
  "serde",
@@ -324,7 +324,18 @@ dependencies = [
 
 [[package]]
 name = "coerce-macros"
-version = "0.1.0"
+version = "0.2.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "coerce-macros"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c89d9c1baca2b55d5e73638dc63da0c6093f6ec66f6324cad332225319e3beb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -361,7 +372,7 @@ dependencies = [
  "clap 4.0.26",
  "coerce",
  "coerce-k8s",
- "coerce-macros",
+ "coerce-macros 0.2.0",
  "coerce-redis",
  "env_logger",
  "futures",
