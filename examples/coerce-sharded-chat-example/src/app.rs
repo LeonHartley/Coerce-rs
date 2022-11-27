@@ -20,6 +20,8 @@ use std::net::SocketAddr;
 
 use std::str::FromStr;
 use tokio::task::JoinHandle;
+use coerce::actor::LocalActorRef;
+use coerce::remote::api::builder::HttpApiBuilder;
 
 pub struct ShardedChatConfig {
     pub node_id: NodeId,
@@ -39,7 +41,7 @@ pub struct ShardedChat {
     system: RemoteActorSystem,
     sharding: Sharding<ChatStreamFactory>,
     listen_task: Option<JoinHandle<()>>,
-    cluster_api_listen_task: Option<JoinHandle<()>>,
+    http_api: LocalActorRef<RemoteHttpApi>,
     remote_server: RemoteServer,
 }
 
@@ -64,28 +66,28 @@ impl ShardedChat {
             .start(system.actor_system())
             .await;
 
-        let cluster_api_listen_task = tokio::spawn(
-            RemoteHttpApi::new(
-                SocketAddr::from_str(&config.cluster_api_listen_addr).unwrap(),
-                system.clone(),
-            )
-            .routes(&cluster_api)
-            .routes(&sharding_api)
-            .routes(&system_api)
-            .start(),
-        );
+        let http_api_actor = HttpApiBuilder::new()
+            .listen_addr(SocketAddr::from_str(&config.cluster_api_listen_addr).unwrap())
+            .routes(cluster_api)
+            .routes(sharding_api)
+            .routes(system_api)
+            .start(system.actor_system())
+            .await;
 
         ShardedChat {
             system,
             sharding,
             remote_server,
             listen_task: Some(listen_task),
-            cluster_api_listen_task: Some(cluster_api_listen_task),
+            http_api: http_api_actor,
         }
     }
 
     pub async fn stop(&mut self) {
         info!("shutting down");
+
+        info!("stopping http api");
+        let _ = self.http_api.stop().await;
 
         self.remote_server.stop();
         self.system.actor_system().shutdown().await;
@@ -93,11 +95,6 @@ impl ShardedChat {
         if let Some(listen_task) = self.listen_task.take() {
             info!("aborted TCP listen task");
             listen_task.abort();
-        }
-
-        if let Some(cluster_api_listen_task) = self.cluster_api_listen_task.take() {
-            info!("aborted HTTP listen task");
-            cluster_api_listen_task.abort();
         }
 
         info!("shutdown complete");

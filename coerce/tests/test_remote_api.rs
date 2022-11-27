@@ -12,6 +12,7 @@ use coerce::remote::system::RemoteActorSystem;
 use coerce::sharding::Sharding;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use coerce::remote::api::builder::HttpApiBuilder;
 
 mod util;
 
@@ -93,15 +94,12 @@ pub async fn test_remote_api_routes() {
         .start(remote.actor_system())
         .await;
 
-    let _ = tokio::spawn(
-        RemoteHttpApi::new(
-            SocketAddr::from_str("0.0.0.0:3000").unwrap(),
-            remote.clone(),
-        )
-        .routes(&cluster_api)
-        .routes(&sharding_api)
-        .start(),
-    );
+    let _ = HttpApiBuilder::new()
+        .listen_addr(SocketAddr::from_str("0.0.0.0:3000").unwrap())
+        .routes(cluster_api)
+        .routes(sharding_api)
+        .start(remote.actor_system())
+        .await;
 
     // TODO: actual api tests..
 }

@@ -105,9 +105,6 @@ impl ActorLoop {
 
                 trace!("[{}] received {}", &actor_id, msg.name(),);
 
-                use valuable::Valuable;
-                info!(actor = ctx.as_value(), "received message");
-
                 msg.handle(&mut actor, &mut ctx).await;
 
                 trace!(

@@ -1,65 +1,74 @@
+pub mod builder;
 pub mod cluster;
 pub mod metrics;
 pub mod sharding;
 pub mod system;
 
-use crate::actor::Actor;
+use crate::actor::context::ActorContext;
+use crate::actor::system::ActorSystem;
+use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
 use crate::CARGO_PKG_VERSION;
 use axum::routing::get;
 use axum::{Json, Router};
 use std::net::SocketAddr;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::Sender;
+use tokio::task::JoinHandle;
 
 pub struct RemoteHttpApi {
-    pub system: RemoteActorSystem,
-    pub listen_addr: SocketAddr,
-    router: Router,
+    listen_addr: SocketAddr,
+    routes: Option<Vec<Box<dyn Routes>>>,
+    stop_tx: Option<Sender<()>>,
 }
-//
-// impl Actor for RemoteHttpApi {
-//
-// }
 
-impl RemoteHttpApi {
-    pub fn new(listen_addr: SocketAddr, system: RemoteActorSystem) -> Self {
-        RemoteHttpApi {
-            system,
-            listen_addr,
-            router: Router::new(),
-        }
-    }
+#[async_trait]
+impl Actor for RemoteHttpApi {
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        let node_id = ctx.system().remote().node_id();
+        let listen_addr = self.listen_addr;
 
-    pub fn routes<R>(mut self, route: &R) -> Self
-    where
-        R: Routes,
-    {
-        self.router = route.routes(self.router);
-        self
-    }
+        let routes = self.routes.take().unwrap();
 
-    pub async fn start(self) {
-        let system = self.system.clone();
-        let app = self
-            .router
-            .route("/version", get(|| async { CARGO_PKG_VERSION }))
-            .route(
-                "/capabilities",
-                get(move || async move { Json(system.config().get_capabilities()) }),
+        let (stop_tx, stop_rx) = oneshot::channel();
+        let _ = tokio::spawn(async move {
+            info!(
+                "[node={}] http api listening on {}",
+                node_id, &listen_addr
             );
 
-        info!(
-            "[node={}] http api listening on {}",
-            &self.system.node_id(),
-            &self.listen_addr
-        );
+            let mut app = Router::new();
+            for route in routes {
+                app = route.routes(app);
+            }
 
-        axum::Server::bind(&self.listen_addr)
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
+            axum::Server::bind(&listen_addr)
+                .serve(app.into_make_service())
+                .with_graceful_shutdown(async { stop_rx.await.unwrap() })
+                .await
+                .unwrap()
+        });
+
+        self.stop_tx = Some(stop_tx);
+    }
+
+    async fn stopped(&mut self, _ctx: &mut ActorContext) {
+        if let Some(stop_tx) = self.stop_tx.take() {
+            let _ = stop_tx.send(());
+        }
     }
 }
 
-pub trait Routes {
+impl RemoteHttpApi {
+    pub fn new(listen_addr: SocketAddr, routes: Vec<Box<dyn Routes>>) -> Self {
+        RemoteHttpApi {
+            listen_addr,
+            routes: Some(routes),
+            stop_tx: None,
+        }
+    }
+}
+
+pub trait Routes: 'static + Send + Sync {
     fn routes(&self, router: Router) -> Router;
 }
