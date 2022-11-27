@@ -2,7 +2,7 @@
 name = "coerce"
 description = "Async actor runtime and distributed systems framework"
 license = "Apache-2.0"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2021"
 readme = "README.md"
@@ -81,3 +81,6 @@ tracing-subscriber = { features = ["json"], version = "0.3.16" }
 [[bench]]
 name = "actor_messaging"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true
