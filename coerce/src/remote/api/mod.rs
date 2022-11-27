@@ -5,10 +5,10 @@ pub mod system;
 
 use crate::actor::Actor;
 use crate::remote::system::RemoteActorSystem;
+use crate::CARGO_PKG_VERSION;
 use axum::routing::get;
 use axum::{Json, Router};
 use std::net::SocketAddr;
-use crate::CARGO_PKG_VERSION;
 
 pub struct RemoteHttpApi {
     pub system: RemoteActorSystem,

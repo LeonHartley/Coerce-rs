@@ -103,11 +103,7 @@ impl ActorLoop {
                 //
                 // let _enter = span.enter();
 
-                trace!(
-                    "[{}] received {}",
-                    &actor_id, msg.name(),
-                );
-
+                trace!("[{}] received {}", &actor_id, msg.name(),);
 
                 use valuable::Valuable;
                 info!(actor = ctx.as_value(), "received message");

@@ -19,8 +19,7 @@ pub async fn main() {
 }
 
 fn configure_application() -> ShardedChatConfig {
-    let matches = Command::new("coerce-sharded-chat-server")
-        .version(env::var("CARGO_PKG_VERSION").unwrap_or(String::from("1")).as_str())
+    let mut matches = Command::new("coerce-sharded-chat-server")
         .arg(arg!(--node_id <NODE_ID> "The ID this node will identify itself as").env("NODE_ID"))
         .arg(arg!(--remote_listen_addr <LISTEN_ADDR> "The host and port which Coerce will listen to connections from").env("REMOTE_LISTEN_ADDR"))
         .arg(arg!(--websocket_listen_addr <LISTEN_ADDR> "The host and port which the sharded chat websockets will listen from").env("WEBSOCKET_LISTEN_ADDR"))
@@ -31,31 +30,31 @@ fn configure_application() -> ShardedChatConfig {
         .arg(arg!(--redis_addr [TCP_ADDR] "(optional) Redis TCP address. By default, in-memory persistence is enabled").env("REDIS_ADDR"))
         .get_matches();
 
-    let node_id = matches
-        .value_of("node_id")
+    let node_id: NodeId = matches
+        .remove_one::<String>("node_id")
         .unwrap()
-        .parse::<NodeId>()
+        .parse()
         .expect("invalid node_id (unsigned 64bit integer)");
 
-    let remote_listen_addr = matches.value_of("remote_listen_addr").unwrap().to_string();
+    let remote_listen_addr = matches.remove_one::<String>("remote_listen_addr").unwrap();
 
     let websocket_listen_addr = matches
-        .value_of("websocket_listen_addr")
-        .unwrap()
-        .to_string();
+        .remove_one::<String>("websocket_listen_addr")
+        .unwrap();
 
     let cluster_api_listen_addr = matches
-        .value_of("cluster_api_listen_addr")
-        .unwrap()
-        .to_string();
+        .remove_one::<String>("cluster_api_listen_addr")
+        .unwrap();
 
-    let remote_seed_addr = matches.value_of("remote_seed_addr").map(|v| v.to_string());
+    let remote_seed_addr = matches.remove_one::<String>("remote_seed_addr");
+
     let log_level = matches
-        .value_of("log_level")
-        .map(|level| level)
-        .unwrap_or("INFO");
+        .remove_one::<String>("log_level")
+        .unwrap_or_else(|| "INFO".to_string());
 
-    if let Some(metrics_exporter_listen_addr) = matches.value_of("metrics_exporter_listen_addr") {
+    if let Some(metrics_exporter_listen_addr) =
+        matches.remove_one::<String>("metrics_exporter_listen_addr")
+    {
         let prometheus_builder = PrometheusBuilder::new();
         prometheus_builder
             .idle_timeout(
@@ -63,7 +62,7 @@ fn configure_application() -> ShardedChatConfig {
                 Some(Duration::from_secs(60 * 30)),
             )
             .with_http_listener(
-                SocketAddr::from_str(metrics_exporter_listen_addr)
+                SocketAddr::from_str(&metrics_exporter_listen_addr)
                     .expect("valid metrics_exporter_listen_addr"),
             )
             .add_global_label("node_id", node_id.to_string())
@@ -73,13 +72,13 @@ fn configure_application() -> ShardedChatConfig {
 
     tracing_subscriber::fmt()
         .compact()
-        .with_max_level(tracing::Level::from_str(log_level).unwrap())
+        .with_max_level(tracing::Level::from_str(&log_level).unwrap())
         .with_span_events(FmtSpan::NONE)
         .init();
 
-    let persistence = if let Some(redis_addr) = matches.value_of("redis_addr") {
+    let persistence = if let Some(redis_addr) = matches.remove_one::<String>("redis_addr") {
         ShardedChatPersistence::Redis {
-            host: Some(redis_addr.to_string()),
+            host: Some(redis_addr),
         }
     } else {
         ShardedChatPersistence::InMemory

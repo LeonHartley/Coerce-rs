@@ -10,7 +10,7 @@ use std::iter;
 use std::iter::empty;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::oneshot::Sender;
-use valuable::{Fields, NamedField, NamedValues, Structable, StructDef, Valuable, Value, Visit};
+use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
 use crate::actor::supervised::Supervised;
 
@@ -40,10 +40,7 @@ pub struct ActorContext {
 }
 
 static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] =
-    &[
-        NamedField::new("actor_id"),
-        NamedField::new("actor_type")
-    ];
+    &[NamedField::new("actor_id"), NamedField::new("actor_type")];
 
 impl Structable for ActorContext {
     fn definition(&self) -> StructDef<'_> {
@@ -59,7 +56,10 @@ impl Valuable for ActorContext {
     fn visit(&self, v: &mut dyn Visit) {
         v.visit_named_fields(&NamedValues::new(
             ACTOR_CONTEXT_FIELDS,
-            &[Value::String(self.id()), Value::String(self.boxed_ref.actor_type())],
+            &[
+                Value::String(self.id()),
+                Value::String(self.boxed_ref.actor_type()),
+            ],
         ));
     }
 }
