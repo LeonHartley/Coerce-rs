@@ -1,6 +1,6 @@
 [package]
 name = "coerce-macros"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2021"
 description = "Utility macros for Coerce"
