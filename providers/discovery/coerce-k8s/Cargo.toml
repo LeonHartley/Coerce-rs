@@ -2,6 +2,11 @@
 name = "coerce-k8s"
 version = "0.1.0"
 edition = "2021"
+description = "Kubernetes discovery provider, automatically discover cluster peers hosted in Kubernetes, based on a configurable pod-selection label"
+license = "Apache-2.0"
+authors = ["Leon Hartley <ljph@outlook.com>"]
+repository = "https://github.com/leonhartley/coerce-rs"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

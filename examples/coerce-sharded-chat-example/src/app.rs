@@ -18,10 +18,10 @@ use coerce_k8s::KubernetesDiscovery;
 
 use std::net::SocketAddr;
 
-use std::str::FromStr;
-use tokio::task::JoinHandle;
 use coerce::actor::LocalActorRef;
 use coerce::remote::api::builder::HttpApiBuilder;
+use std::str::FromStr;
+use tokio::task::JoinHandle;
 
 pub struct ShardedChatConfig {
     pub node_id: NodeId,

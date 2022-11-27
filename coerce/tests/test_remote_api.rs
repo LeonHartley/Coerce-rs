@@ -4,6 +4,7 @@ use coerce::actor::system::ActorSystem;
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
 use coerce::persistent::Persistence;
+use coerce::remote::api::builder::HttpApiBuilder;
 use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::RemoteHttpApi;
@@ -12,7 +13,6 @@ use coerce::remote::system::RemoteActorSystem;
 use coerce::sharding::Sharding;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use coerce::remote::api::builder::HttpApiBuilder;
 
 mod util;
 

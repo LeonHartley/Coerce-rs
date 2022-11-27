@@ -5,11 +5,12 @@ extremely simple yet powerful actor-based distributed system development. With m
 scalable, fault-tolerant modern actor-driven application.
 
 ## Crates
-| **Crate**                                               | **Purpose**                                                                                                 | **Latest Version**                                              |
-|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| [coerce](https://crates.io/crates/coerce)               | The main Coerce runtime and framework                                                                       | ![crates.io](https://img.shields.io/crates/v/coerce.svg)        |
-| [coerce-redis](https://crates.io/crates/coerce-redis)   | Actor persistence provider for Redis. Enables event source and snapshots to be read and written from Redis. | ![crates.io](https://img.shields.io/crates/v/coerce-redis.svg)  |
-| [coerce-macros](https://crates.io/crates/coerce-macros) | Useful macros allowing for quick implementations of snapshots, JSON-serialisable remote messages and more.  | ![crates.io](https://img.shields.io/crates/v/coerce-macros.svg) |
+| **Crate**                                               | **Purpose**                                                                                                                           | **Latest Version**                                              |
+|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| [coerce](https://crates.io/crates/coerce)               | The main Coerce runtime and framework                                                                                                 | ![crates.io](https://img.shields.io/crates/v/coerce.svg)        |
+| [coerce-redis](https://crates.io/crates/coerce-redis)   | Actor persistence provider for Redis. Enables event source and snapshots to be read and written from Redis.                           | ![crates.io](https://img.shields.io/crates/v/coerce-redis.svg)  |
+| [coerce-macros](https://crates.io/crates/coerce-macros) | Useful macros allowing for quick implementations of snapshots, JSON-serialisable remote messages and more.                            | ![crates.io](https://img.shields.io/crates/v/coerce-macros.svg) |
+| [coerce-k8s](https://crates.io/crates/coerce-k8s)       | Kubernetes discovery provider, automatically discover cluster peers hosted in Kubernetes, based on a configurable pod-selection label | ![crates.io](https://img.shields.io/crates/v/coerce-k8s.svg)    |
 
 ## Features
 
