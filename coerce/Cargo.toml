@@ -74,7 +74,7 @@ valuable = { version = "0.1", features = ["derive"] }
 #trust-dns-client = { version = "0.19" }
 
 [dev-dependencies]
-coerce-macros = { path = "./macros" }
+coerce-macros = { version = "0.2.0" }
 criterion = { version = "0.4.0", features = ["async_tokio"] }
 tracing-subscriber = { features = ["json"], version = "0.3.16" }
 
