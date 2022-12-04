@@ -39,12 +39,14 @@ pub struct ClusterNode {
 
 #[derive(Serialize, Deserialize)]
 pub struct ClusterNodes {
+    node_id: NodeId,
     leader_node: Option<NodeId>,
     leader_node_tag: Option<String>,
     nodes: Vec<ClusterNode>,
 }
 
 async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
+    let node_id = system.node_id();
     let leader_node = system.current_leader();
     let mut nodes: Vec<ClusterNode> = system
         .get_nodes()
@@ -75,6 +77,7 @@ async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
     };
 
     Json(ClusterNodes {
+        node_id,
         leader_node,
         leader_node_tag,
         nodes,

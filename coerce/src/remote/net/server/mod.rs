@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 pub mod session;
 
 pub struct RemoteServer {
-    cancellation_token: Option<CancellationToken>,
+    cancellation_token: CancellationToken,
 }
 
 #[derive(Debug)]
@@ -71,7 +71,7 @@ impl RemoteServerConfig {
 impl RemoteServer {
     pub fn new() -> Self {
         RemoteServer {
-            cancellation_token: None,
+            cancellation_token: CancellationToken::new(),
         }
     }
 
@@ -99,22 +99,18 @@ impl RemoteServer {
             .unwrap();
 
         let remote_server_config = Arc::new(config);
-        let cancellation_token = CancellationToken::new();
         tokio::spawn(server_loop(
             listener,
             session_store,
-            cancellation_token.clone(),
+            self.cancellation_token.clone(),
             remote_server_config,
         ));
 
-        self.cancellation_token = Some(cancellation_token);
         Ok(())
     }
 
-    pub fn stop(&mut self) {
-        if let Some(cancellation_token) = self.cancellation_token.take() {
-            cancellation_token.cancel();
-        }
+    pub fn stop(&self) {
+        self.cancellation_token.cancel();
     }
 }
 

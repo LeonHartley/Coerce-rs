@@ -183,6 +183,7 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
             "http_api_addr",
             format!("http://{}", &config.cluster_api_listen_addr),
         )
+        .attribute("cluster", format!("sharded-chat-dev"))
         .attribute("environment", "dev")
         .attribute("hello", "world")
         .build()

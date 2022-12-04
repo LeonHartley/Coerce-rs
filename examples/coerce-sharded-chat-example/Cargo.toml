@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-coerce = { version = "0.8.2", features = ["full"] }
+coerce = { path = "../../coerce", features = ["full"] }
 coerce-macros = { version = "0.2.0" }
-coerce-redis = { version = "0.3.0" }
-coerce-k8s = { version = "0.1.2" }
+coerce-redis = { path = "../../providers/persistence/coerce-redis" }
+coerce-k8s = { path = "../../providers/discovery/coerce-k8s" }
 
 tokio = { version = "1.21.1", features = ["full"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -20,7 +20,7 @@ tokio-tungstenite = { version = "0.17.2", features = ["stream", "connect"] }
 futures = { version = "0.3"}
 futures-io = { version = "0.3"}
 futures-util = { version = "0.3" }
-tracing = "0.1"
+tracing = { version = "0.1", features = ["valuable"] }
 tracing-subscriber = { version = "0.3", features = ["json"] }
 chrono = { version = "0.4" }
 uuid = { version = "1.1.2", features = ["serde", "v4"] }

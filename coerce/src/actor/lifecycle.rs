@@ -7,6 +7,8 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorTags, BoxedActorRef, LocalActorRef};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
+use valuable::Valuable;
+use tracing::Instrument;
 
 use tokio::sync::oneshot::Sender;
 
@@ -88,21 +90,17 @@ impl ActorLoop {
 
         while let Some(mut msg) = receiver.recv().await {
             {
-                // let msg_type = msg.name();
-                // let actor_type = A::type_name();
-                //
-                // let span = tracing::trace_span!(
-                //     "Actor::handle",
-                //     actor_id = ctx.id().as_ref(),
-                //     actor_type_name = actor_type,
-                //     message_type = msg_type,
-                // );
-                //
-                // let _enter = span.enter();
+                let msg_type = msg.name();
+
+                let span = tracing::info_span!(
+                    "actor.recv",
+                    ctx = ctx.as_value(),
+                    message_type = msg_type,
+                );
 
                 trace!("[{}/{}] received {}", ctx.path(), &actor_id, msg.name(),);
 
-                msg.handle(&mut actor, &mut ctx).await;
+                msg.handle(&mut actor, &mut ctx).instrument(span).await;
 
                 trace!("[{}/{}] processed {}", ctx.path(), &actor_id, msg.name());
             }

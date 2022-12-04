@@ -66,6 +66,27 @@ impl Default for ActorSystem {
     }
 }
 
+pub struct ActorSystemBuilder {
+    system_name: Option<String>,
+    persistence_provider: Option<Box<dyn StorageProvider>>,
+}
+
+impl ActorSystemBuilder {
+    pub fn application_name(mut self, name: impl ToString) -> Self {
+        self.system_name = Some(name.to_string());
+        self
+    }
+
+    pub fn with_persistence(mut self, provider: impl StorageProvider) -> Self {
+        self.persistence_provider = Some(Box::new(provider));
+        self
+    }
+
+    pub fn build(self) -> ActorSystem {
+        ActorSystem::default()
+    }
+}
+
 impl ActorSystem {
     pub fn new() -> ActorSystem {
         Self::default()

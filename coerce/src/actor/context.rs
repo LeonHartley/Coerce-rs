@@ -39,8 +39,10 @@ pub struct ActorContext {
     persistence: Option<ActorPersistence>,
 }
 
-static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] =
-    &[NamedField::new("actor_id"), NamedField::new("actor_type")];
+static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] = &[
+    NamedField::new("actor_addr"),
+    NamedField::new("actor_type"),
+];
 
 impl Structable for ActorContext {
     fn definition(&self) -> StructDef<'_> {
@@ -57,7 +59,7 @@ impl Valuable for ActorContext {
         v.visit_named_fields(&NamedValues::new(
             ACTOR_CONTEXT_FIELDS,
             &[
-                Value::String(self.id()),
+                Value::String(format!("{}/{}", self.boxed_ref.actor_path(), self.id()).as_str()),
                 Value::String(self.boxed_ref.actor_type()),
             ],
         ));

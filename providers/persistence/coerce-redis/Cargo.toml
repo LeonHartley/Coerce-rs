@@ -16,7 +16,7 @@ cluster = [
 ]
 
 [dependencies]
-coerce = { version = "0.8.2", features = ["persistence"] }
+coerce = { path = "../../../coerce", features = ["persistence"] }
 async-trait = { version = "0.1" }
 redis = { version = "0.22.1", features = ["tokio-comp"] }
 tokio = { version = "1.21.1", features = ["full"] }
