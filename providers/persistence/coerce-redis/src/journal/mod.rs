@@ -35,31 +35,31 @@ where
 
 impl RedisStorageProvider {
     pub async fn connect(config: RedisStorageConfig, system: &ActorSystem) -> Self {
-        #[cfg(feature = "cluster")]
-        if config.cluster {
-            return Self::clustered(config, system).await;
-        }
+        // #[cfg(feature = "cluster")]
+        // if config.cluster {
+        //     return Self::clustered(config, system).await;
+        // }
 
         Self::single_node(config, system).await
     }
 
-    #[cfg(feature = "cluster")]
-    pub async fn clustered(
-        config: RedisStorageConfig,
-        system: &ActorSystem,
-    ) -> RedisStorageProvider {
-        use redis::cluster::ClusterClient;
-
-        create_provider(
-            {
-                let client = ClusterClient::new(config.nodes.clone()).unwrap();
-                client.get_connection().await.unwrap()
-            },
-            config,
-            system,
-        )
-        .await
-    }
+    // #[cfg(feature = "cluster")]
+    // pub async fn clustered(
+    //     config: RedisStorageConfig,
+    //     system: &ActorSystem,
+    // ) -> RedisStorageProvider {
+    //     use redis::cluster::ClusterClient;
+    //
+    //     create_provider(
+    //         {
+    //             let client = ClusterClient::new(config.nodes.clone()).unwrap();
+    //             client.get_connection().unwrap()
+    //         },
+    //         config,
+    //         system,
+    //     )
+    //     .await
+    // }
 
     pub async fn single_node(
         config: RedisStorageConfig,
