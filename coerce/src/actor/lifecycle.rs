@@ -51,18 +51,19 @@ impl ActorLoop {
         parent_ref: Option<BoxedActorRef>,
         mut system: Option<ActorSystem>,
     ) {
-        let actor_id = actor_ref.id.clone();
+        let actor_id = actor_ref.actor_id().clone();
         let mut ctx = A::new_context(system.clone(), Starting, actor_ref.clone().into())
             .with_parent(parent_ref);
 
         let system_id = actor_ref
-            .system_id
+            .system_id()
             .map_or("system-creation".to_string(), |s| s.to_string());
 
         trace!(
-            target: "Actor",
-            "[{}] starting on system: {}",
-            ctx.id(), system_id
+            "[{}/{}] starting on system: {}",
+            ctx.path(),
+            ctx.id(),
+            system_id
         );
 
         actor.started(&mut ctx).await;
@@ -79,11 +80,7 @@ impl ActorLoop {
 
         ctx.set_status(Started);
 
-        trace!(
-            target: "Actor",
-            "[{}] ready",
-            ctx.id(),
-        );
+        trace!("[{}/{}] ready", ctx.path(), ctx.id(),);
 
         if let Some(on_start) = on_start.take() {
             let _ = on_start.send(());
@@ -103,15 +100,11 @@ impl ActorLoop {
                 //
                 // let _enter = span.enter();
 
-                trace!("[{}] received {}", &actor_id, msg.name(),);
+                trace!("[{}/{}] received {}", ctx.path(), &actor_id, msg.name(),);
 
                 msg.handle(&mut actor, &mut ctx).await;
 
-                trace!(
-                    target: "Actor",
-                    "[{}] processed {}",
-                    &actor_id, msg.name()
-                );
+                trace!("[{}/{}] processed {}", ctx.path(), &actor_id, msg.name());
             }
 
             match ctx.get_status() {
@@ -120,11 +113,7 @@ impl ActorLoop {
             }
         }
 
-        trace!(
-            target: "Actor",
-            "[{}] stopping",
-            &actor_id
-        );
+        trace!("[{}/{}] stopping", ctx.path(), &actor_id);
 
         ctx.set_status(Stopping);
         actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await

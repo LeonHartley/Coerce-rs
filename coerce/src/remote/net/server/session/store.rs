@@ -57,7 +57,7 @@ impl Handler<NewSession> for RemoteSessionStore {
             .expect("unable to create session actor");
 
         let node_id = ctx.system().remote().node_id();
-        debug!(target: "SessionStore", node_id = node_id, "new session {}", &session_id);
+        debug!(node_id = node_id, "new session {}", &session_id);
         self.sessions.insert(session_id, session_actor.clone());
         session_actor
     }
@@ -68,7 +68,7 @@ impl Handler<SessionClosed> for RemoteSessionStore {
     async fn handle(&mut self, message: SessionClosed, ctx: &mut ActorContext) {
         self.sessions.remove(&message.0);
         let node_id = ctx.system().remote().node_id();
-        debug!(target: "SessionStore", node_id = node_id,  "disposed session {}", &message.0);
+        debug!(node_id = node_id, "disposed session {}", &message.0);
     }
 }
 
@@ -77,13 +77,13 @@ impl Handler<SessionWrite> for RemoteSessionStore {
     async fn handle(&mut self, message: SessionWrite, _ctx: &mut ActorContext) {
         match self.sessions.get(&message.0) {
             Some(session) => {
-                trace!(target: "RemoteSessionStore", "writing to session {}", &message.0);
+                trace!("writing to session {}", &message.0);
                 if let Err(e) = session.notify(message) {
-                    error!(target: "RemoteSessionStore", "error while notifying session of write operation: {}", e);
+                    error!("error while notifying session of write operation: {}", e);
                 }
             }
             None => {
-                warn!(target: "RemoteSessionStore", "attempted to write to session that couldn't be found");
+                warn!("attempted to write to session that couldn't be found");
             }
         }
     }

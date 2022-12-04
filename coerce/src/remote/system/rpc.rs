@@ -37,16 +37,19 @@ impl RemoteActorSystem {
         match self.node_rpc_raw(message_id, event, node_id).await {
             Ok(res) => match T::parse_from_bytes(&res) {
                 Ok(res) => {
-                    trace!(target: "NodeEvent", "message_id={}, received result", &message_id);
+                    trace!("message_id={}, received result", &message_id);
                     Ok(res)
                 }
                 Err(_) => {
-                    error!(target: "NodeEvent", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
+                    error!(
+                        "message_id={}, failed to decode result from node_id={}",
+                        &message_id, &node_id
+                    );
                     Err(NodeRpcErr::Serialisation)
                 }
             },
             Err(e) => {
-                error!(target: "NodeEvent", "failed to receive result, e={:?}", e);
+                error!("failed to receive result, e={:?}", e);
                 Err(NodeRpcErr::ReceiveFailed)
             }
         }
@@ -61,16 +64,19 @@ impl RemoteActorSystem {
         match self.node_rpc_raw(message_id, event, node_id).await {
             Ok(res) => match T::read_from_bytes(res) {
                 Some(res) => {
-                    trace!(target: "NodeRpc", "message_id={}, received result", &message_id);
+                    trace!("message_id={}, received result", &message_id);
                     Ok(res)
                 }
                 None => {
-                    error!(target: "NodeRpc", "message_id={}, failed to decode result from node_id={}", &message_id, &node_id);
+                    error!(
+                        "message_id={}, failed to decode result from node_id={}",
+                        &message_id, &node_id
+                    );
                     Err(NodeRpcErr::Serialisation)
                 }
             },
             _ => {
-                error!(target: "NodeRpc", "failed to receive result");
+                error!("failed to receive result");
                 Err(NodeRpcErr::ReceiveFailed)
             }
         }
@@ -84,18 +90,25 @@ impl RemoteActorSystem {
     ) -> Result<Vec<u8>, NodeRpcErr> {
         let (res_tx, res_rx) = oneshot::channel();
 
-        trace!(target: "NodeRpc", "message_id={}, created channel, storing request", &message_id);
+        trace!(
+            "message_id={}, created channel, storing request",
+            &message_id
+        );
         self.push_request(message_id, res_tx);
 
-        trace!(target: "NodeRpc", "message_id={}, emitting event to node_id={}", &message_id, &node_id);
+        trace!(
+            "message_id={}, emitting event to node_id={}",
+            &message_id,
+            &node_id
+        );
         self.notify_node(node_id, event).await;
 
-        trace!(target: "NodeRpc", "message_id={}, waiting for result", &message_id);
+        trace!("message_id={}, waiting for result", &message_id);
         match res_rx.await {
             Ok(RemoteResponse::Ok(res)) => Ok(res),
             Ok(RemoteResponse::Err(res)) => Err(NodeRpcErr::Err(res)),
             Err(e) => {
-                error!(target: "NodeEvent", "failed to receive result, e={}", e);
+                error!("failed to receive result, e={}", e);
                 Err(NodeRpcErr::ReceiveFailed)
             }
         }

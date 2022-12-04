@@ -162,12 +162,15 @@ impl Handler<HeartbeatTick> for Heartbeat {
         let now = Instant::now();
         let nodes = system.get_nodes().await;
 
-        trace!(target: "Heartbeat", "heartbeat tick, node_id={}, node_tag={}, nodes={}, healthy_nodes={}",
-            &current_node, &node_tag, &nodes.len(),
+        trace!(
+            "heartbeat tick, node_id={}, node_tag={}, nodes={}, healthy_nodes={}",
+            &current_node,
+            &node_tag,
+            &nodes.len(),
             &nodes
-              .iter()
-              .filter(|n| n.status == NodeStatus::Healthy)
-              .count()
+                .iter()
+                .filter(|n| n.status == NodeStatus::Healthy)
+                .count()
         );
 
         let mut new_leader_id = None;
@@ -357,12 +360,18 @@ fn node_status(
             });
 
             if terminated {
-                error!(target: "Heartbeat", "node_id={} has not responded in {} ms, marking as terminated",
-                    peer_node_id, config.terminated_node_heartbeat_timeout.as_millis());
+                error!(
+                    "node_id={} has not responded in {} ms, marking as terminated",
+                    peer_node_id,
+                    config.terminated_node_heartbeat_timeout.as_millis()
+                );
                 NodeStatus::Terminated
             } else {
-                warn!(target: "Heartbeat", "node_id={} did not respond to ping within {} ms, marking as unhealthy",
-                    peer_node_id, config.ping_timeout.as_millis());
+                warn!(
+                    "node_id={} did not respond to ping within {} ms, marking as unhealthy",
+                    peer_node_id,
+                    config.ping_timeout.as_millis()
+                );
 
                 NodeStatus::Unhealthy
             }

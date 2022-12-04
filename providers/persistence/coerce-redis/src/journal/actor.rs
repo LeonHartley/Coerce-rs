@@ -2,7 +2,6 @@ use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 use coerce::persistent::journal::storage::JournalEntry;
-use coerce::remote::net::StreamData;
 use redis::aio::ConnectionLike;
 
 use tokio::sync::oneshot::Sender;

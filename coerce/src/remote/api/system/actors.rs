@@ -31,9 +31,9 @@ impl From<DescribeAll> for DescribeOptions {
     fn from(value: DescribeAll) -> Self {
         Self {
             max_depth: value.max_depth,
-            max_children: None,
-            child_describe_timeout: None,
-            child_describe_attached: false,
+            max_children: value.max_children,
+            child_describe_timeout: value.child_describe_timeout,
+            child_describe_attached: value.child_describe_attached,
         }
     }
 }

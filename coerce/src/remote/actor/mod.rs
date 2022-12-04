@@ -1,36 +1,21 @@
-use crate::remote::cluster::node::RemoteNodeStore;
-
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
 use crate::actor::{scheduler::ActorType, Actor, ActorId, ActorRefErr, LocalActorRef};
+use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef, RemoteNodeStore};
 use crate::remote::handler::{
     ActorHandler, ActorMessageHandler, RemoteActorMarker, RemoteActorMessageMarker,
 };
+use crate::remote::heartbeat::HeartbeatConfig;
 use crate::remote::net::client::RemoteClient;
+use crate::remote::stream::pubsub::Subscription;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use std::any::TypeId;
 use std::collections::HashMap;
-
-use crate::actor::context::ActorContext;
-
-use crate::remote::heartbeat::HeartbeatConfig;
-use crate::remote::stream::pubsub::Subscription;
 use uuid::Uuid;
 
-pub mod handler;
+pub mod clients;
 pub mod message;
-
-pub struct RemoteClientRegistry {
-    node_addr_registry: HashMap<String, LocalActorRef<RemoteClient>>,
-    node_id_registry: HashMap<NodeId, LocalActorRef<RemoteClient>>,
-}
-
-pub struct RemoteRegistry {
-    nodes: RemoteNodeStore,
-    actors: HashMap<ActorId, NodeId>,
-    system: Option<RemoteActorSystem>,
-    system_event_subscription: Option<Subscription>,
-}
+pub mod registry;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct SystemCapabilities {
@@ -50,6 +35,7 @@ pub struct RemoteSystemConfig {
     actor_handlers: HashMap<String, BoxedActorHandler>,
     heartbeat_config: HeartbeatConfig,
     server_auth_token: Option<String>,
+    node_attributes: NodeAttributesRef,
 }
 
 impl RemoteSystemConfig {
@@ -61,6 +47,7 @@ impl RemoteSystemConfig {
         actor_handlers: HashMap<String, BoxedActorHandler>,
         heartbeat_config: HeartbeatConfig,
         server_auth_token: Option<String>,
+        node_attributes: NodeAttributesRef,
     ) -> RemoteSystemConfig {
         RemoteSystemConfig {
             node_tag,
@@ -70,6 +57,7 @@ impl RemoteSystemConfig {
             actor_handlers,
             heartbeat_config,
             server_auth_token,
+            node_attributes,
         }
     }
 
@@ -113,6 +101,10 @@ impl RemoteSystemConfig {
         messages.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
 
         SystemCapabilities { actors, messages }
+    }
+
+    pub fn get_attributes(&self) -> &NodeAttributesRef {
+        &self.node_attributes
     }
 }
 
@@ -164,49 +156,6 @@ impl RemoteResponse {
             RemoteResponse::Ok(buff) => Ok(buff),
             RemoteResponse::Err(buff) => Err(buff),
         }
-    }
-}
-
-impl Actor for RemoteRegistry {}
-
-#[async_trait]
-impl Actor for RemoteClientRegistry {
-    async fn stopped(&mut self, _ctx: &mut ActorContext) {
-        for client in &self.node_id_registry {
-            let _ = client.1.stop().await;
-        }
-    }
-}
-
-impl RemoteClientRegistry {
-    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteClientRegistry> {
-        ctx.new_actor(
-            format!("RemoteClientRegistry-{}", system_tag),
-            RemoteClientRegistry {
-                node_addr_registry: HashMap::new(),
-                node_id_registry: HashMap::new(),
-            },
-            ActorType::Tracked,
-        )
-        .await
-        .expect("RemoteClientRegistry")
-    }
-}
-
-impl RemoteRegistry {
-    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteRegistry> {
-        ctx.new_actor(
-            format!("RemoteRegistry-{}", &system_tag),
-            RemoteRegistry {
-                actors: HashMap::new(),
-                nodes: RemoteNodeStore::new(vec![]),
-                system: None,
-                system_event_subscription: None,
-            },
-            ActorType::Tracked,
-        )
-        .await
-        .expect("RemoteRegistry")
     }
 }
 

@@ -1084,7 +1084,7 @@ pub mod allocate_shard_result {
     }
 
     impl Type {
-        pub(crate) fn generated_enum_descriptor_data() -> ::protobuf::reflect::GeneratedEnumDescriptorData {
+        pub(in super) fn generated_enum_descriptor_data() -> ::protobuf::reflect::GeneratedEnumDescriptorData {
             ::protobuf::reflect::GeneratedEnumDescriptorData::new::<Type>("AllocateShardResult.Type")
         }
     }
@@ -1138,7 +1138,7 @@ pub mod allocate_shard_result {
     }
 
     impl AllocateShardErr {
-        pub(crate) fn generated_enum_descriptor_data() -> ::protobuf::reflect::GeneratedEnumDescriptorData {
+        pub(in super) fn generated_enum_descriptor_data() -> ::protobuf::reflect::GeneratedEnumDescriptorData {
             ::protobuf::reflect::GeneratedEnumDescriptorData::new::<AllocateShardErr>("AllocateShardResult.AllocateShardErr")
         }
     }
@@ -1381,7 +1381,7 @@ pub mod remote_entity_request {
             ::std::default::Default::default()
         }
 
-        pub(crate) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
             let mut fields = ::std::vec::Vec::with_capacity(1);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
@@ -2053,7 +2053,7 @@ pub mod shard_state_snapshot {
             ::std::default::Default::default()
         }
 
-        pub(crate) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
             let mut fields = ::std::vec::Vec::with_capacity(3);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(

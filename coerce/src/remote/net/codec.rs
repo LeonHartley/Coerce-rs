@@ -1,5 +1,6 @@
 use bytes::{Buf, BufMut, BytesMut};
 
+use crate::remote::net::metrics::NetworkMetrics;
 use byteorder::{ByteOrder, LittleEndian};
 use std::io::Error;
 use tokio_util::codec::{Decoder, Encoder};
@@ -12,11 +13,14 @@ impl Encoder<&Vec<u8>> for NetworkCodec {
     type Error = Error;
 
     fn encode(&mut self, item: &Vec<u8>, dst: &mut BytesMut) -> Result<(), Error> {
-        trace!(target: "NetworkCodec", "encoding msg");
+        trace!("encoding msg");
 
-        dst.reserve(4 + item.len());
+        let len = 4 + item.len();
+        dst.reserve(len);
         dst.put_i32_le(item.len() as i32);
         dst.put_slice(item);
+
+        NetworkMetrics::incr_bytes_sent(dst.len() as u64);
 
         Ok(())
     }
@@ -31,7 +35,9 @@ impl Decoder for NetworkCodec {
             return Ok(None);
         }
 
-        trace!(target: "NetworkCodec", "decoding message");
+        trace!("decoding message");
+
+        NetworkMetrics::incr_bytes_received(src.len() as u64);
 
         let len = LittleEndian::read_i32(src.as_ref()) as usize;
         if (src.remaining() - 4) < len {

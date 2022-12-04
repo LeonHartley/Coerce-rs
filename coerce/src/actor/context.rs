@@ -2,7 +2,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
-    Actor, ActorId, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, LocalActorRef,
+    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, LocalActorRef,
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
@@ -88,7 +88,11 @@ impl ActorContext {
     }
 
     pub fn id(&self) -> &ActorId {
-        &self.boxed_ref.actor_id()
+        self.boxed_ref.actor_id()
+    }
+
+    pub fn path(&self) -> &ActorPath {
+        self.boxed_ref.actor_path()
     }
 
     pub fn ctx_id(&self) -> u64 {
@@ -163,7 +167,7 @@ impl ActorContext {
     pub fn attach_child_ref(&mut self, actor_ref: BoxedActorRef) {
         let supervised = {
             if self.supervised.is_none() {
-                self.supervised = Some(Supervised::new(self.id().to_string()));
+                self.supervised = Some(Supervised::new(self.id().clone(), self.path().clone()));
             }
 
             self.supervised.as_mut().unwrap()
@@ -206,7 +210,7 @@ impl ActorContext {
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let supervised = {
             if self.supervised.is_none() {
-                self.supervised = Some(Supervised::new(self.id().to_string()));
+                self.supervised = Some(Supervised::new(self.id().clone(), self.path().clone()));
             }
 
             self.supervised.as_mut().unwrap()

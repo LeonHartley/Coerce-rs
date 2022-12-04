@@ -61,7 +61,7 @@ pub async fn test_remote_get_actor() {
         .await
         .unwrap();
 
-    let actor_id = created_actor.id;
+    let actor_id = created_actor.actor_id().clone();
     let actor = remote.actor_ref::<TestActor>(actor_id).await;
     assert_eq!(actor.is_some(), true);
 }

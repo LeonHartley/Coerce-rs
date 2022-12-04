@@ -23,7 +23,9 @@ pub async fn test_system_global_get_actor() {
         })
         .await;
 
-    let actor = get_actor::<TestActor>(actor_ref.id).await.unwrap();
+    let actor = get_actor::<TestActor>(actor_ref.actor_id().clone())
+        .await
+        .unwrap();
 
     let counter = actor.exec(|actor| actor.counter).await;
 
@@ -45,7 +47,7 @@ pub async fn test_system_get_tracked_actor() {
         .await;
 
     let actor = ctx
-        .get_tracked_actor::<TestActor>(actor_ref.id)
+        .get_tracked_actor::<TestActor>(actor_ref.id.clone())
         .await
         .unwrap();
     let counter = actor.exec(|actor| actor.counter).await;
@@ -79,7 +81,9 @@ pub async fn test_system_stop_tracked_actor_get_not_found() {
 
     let _stop = actor_ref.stop().await;
 
-    let actor = ctx.get_tracked_actor::<TestActor>(actor_ref.id).await;
+    let actor = ctx
+        .get_tracked_actor::<TestActor>(actor_ref.actor_id().clone())
+        .await;
 
     assert_eq!(actor.is_none(), true);
 }

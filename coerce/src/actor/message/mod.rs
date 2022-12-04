@@ -125,11 +125,11 @@ where
 
         match self.sender.take() {
             Some(sender) => match sender.send(result) {
-                Ok(_) => trace!(target: "ActorMessage", "sent result successfully"),
-                Err(_e) => warn!(target: "ActorMessage", "failed to send result"),
+                Ok(_) => trace!("sent result successfully"),
+                Err(_e) => warn!("failed to send result"),
             },
             None => {
-                trace!(target: "ActorMessage", "no result consumer, message handling complete");
+                trace!("no result consumer, message handling complete");
                 return;
             }
         }

@@ -102,19 +102,22 @@ where
                     Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
                         Ok(res) => Ok(res),
                         Err(e) => {
-                            error!(target: "RemoteActorRef", "failed to decode result");
+                            error!("failed to decode result");
                             Err(ActorRefErr::Deserialisation(e))
                         }
                     },
                     Err(e) => {
-                        error!(target: "RemoteActorRef", "failed to receive result, e={}", e);
+                        error!("failed to receive result, e={}", e);
                         Err(ActorRefErr::ResultChannelClosed)
                     }
                     Ok(RemoteResponse::Err(e)) => Err(e),
                 }
             }
             None => {
-                error!(target: "RemoteActorRef", "no handler registered actor_type={}, message_type={}", &actor_type, message_type);
+                error!(
+                    "no handler registered actor_type={}, message_type={}",
+                    &actor_type, message_type
+                );
                 Err(ActorRefErr::NotSupported {
                     actor_id: self.id.clone(),
                     message_type: message_type.to_string(),

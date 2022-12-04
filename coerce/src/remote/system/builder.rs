@@ -3,8 +3,8 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorFactory, IntoActor};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
-    BoxedActorHandler, BoxedMessageHandler, RemoteClientRegistry, RemoteHandler, RemoteRegistry,
-    RemoteSystemConfig,
+    clients::RemoteClientRegistry, registry::RemoteRegistry, BoxedActorHandler,
+    BoxedMessageHandler, RemoteHandler, RemoteSystemConfig,
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
@@ -21,6 +21,7 @@ use std::sync::Arc;
 use crate::actor::scheduler::ActorType;
 use crate::remote::cluster::discovery::NodeDiscovery;
 
+use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -32,6 +33,7 @@ pub struct RemoteActorSystemBuilder {
     mediator: Option<StreamMediator>,
     server_auth_token: Option<String>,
     single_node_cluster: bool,
+    node_attributes: HashMap<String, String>,
 }
 
 impl RemoteActorSystemBuilder {
@@ -49,6 +51,7 @@ impl RemoteActorSystemBuilder {
             mediator: Some(mediator),
             single_node_cluster: false,
             server_auth_token: None,
+            node_attributes: Default::default(),
         }
     }
 
@@ -103,6 +106,12 @@ impl RemoteActorSystemBuilder {
         self
     }
 
+    pub fn attribute<K: ToString, V: ToString>(mut self, key: K, value: V) -> Self {
+        self.node_attributes
+            .insert(key.to_string(), value.to_string());
+        self
+    }
+
     pub async fn build(self) -> RemoteActorSystem {
         // TODO: This needs cleaning up!
 
@@ -124,7 +133,8 @@ impl RemoteActorSystemBuilder {
         });
 
         let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
-        let config = config_builder.build(self.node_tag, self.server_auth_token);
+        let config =
+            config_builder.build(self.node_tag, self.server_auth_token, self.node_attributes);
 
         let handler_ref = Arc::new(parking_lot::Mutex::new(RemoteHandler::new()));
         let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
@@ -267,6 +277,7 @@ impl RemoteSystemConfigBuilder {
         self,
         tag: Option<String>,
         server_auth_token: Option<String>,
+        attributes: HashMap<String, String>,
     ) -> Arc<RemoteSystemConfig> {
         let mut handler_types = HashMap::new();
         let mut actor_types = HashMap::new();
@@ -288,6 +299,11 @@ impl RemoteSystemConfigBuilder {
             self.actors,
             self.heartbeat.unwrap_or_default(),
             server_auth_token,
+            attributes
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect::<NodeAttributes>()
+                .into(),
         ))
     }
 }

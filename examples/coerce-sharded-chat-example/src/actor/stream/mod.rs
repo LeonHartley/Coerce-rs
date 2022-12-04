@@ -119,7 +119,10 @@ impl ActorFactory for ChatStreamFactory {
     type Recipe = CreateChatStream;
 
     async fn create(&self, recipe: CreateChatStream) -> Result<ChatStream, ActorCreationErr> {
-        debug!(target: "ChatStreamFactory", "creating ChatStream actor, chat_stream_id={}, creator={}", &recipe.name, &recipe.creator);
+        debug!(
+            "creating ChatStream actor, chat_stream_id={}, creator={}",
+            &recipe.name, &recipe.creator
+        );
         Ok(Self::Actor {
             name: recipe.name.clone(),
             creator: recipe.creator,

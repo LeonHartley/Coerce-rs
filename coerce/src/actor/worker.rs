@@ -103,7 +103,7 @@ impl<W: Actor + Clone> WorkerRefExt<W> for LocalActorRef<Worker<W>> {
             match res.await {
                 Ok(res) => Ok(res),
                 Err(e) => {
-                    error!(target: "WorkerRef", "error receiving result, {}", e);
+                    error!("error receiving result, {}", e);
                     Err(ActorRefErr::ResultChannelClosed)
                 }
             }
@@ -127,12 +127,12 @@ where
                 match worker_ref.send(message.message).await {
                     Ok(res) => {
                         if message.res_tx.send(res).is_ok() {
-                            trace!(target: "Worker", "sent result successfully");
+                            trace!("sent result successfully");
                         } else {
-                            error!(target: "Worker", "failed to send result, receiver dropped?");
+                            error!("failed to send result, receiver dropped?");
                         }
                     }
-                    Err(_e) => error!(target: "Worker", "error sending msg"),
+                    Err(_e) => error!("error sending msg"),
                 }
             });
         }

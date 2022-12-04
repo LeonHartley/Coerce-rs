@@ -38,7 +38,10 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
             Entry::Vacant(vacant_entry) => {
                 let remote = ctx.system().remote_owned();
 
-                debug!(target: "ShardCoordinator", "new shard host (node_id={}, tag={}, addr={})", new_node.id, &new_node.tag, &new_node.addr);
+                debug!(
+                    "new shard host (node_id={}, tag={}, addr={})",
+                    new_node.id, &new_node.tag, &new_node.addr
+                );
                 vacant_entry.insert(ShardHostState {
                     node_id: new_node.id,
                     node_tag: new_node.tag.clone(),

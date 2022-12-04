@@ -9,11 +9,16 @@ repository = "https://github.com/leonhartley/coerce-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+cluster = [
+    "redis/cluster"
+]
+
 [dependencies]
 coerce = { path = "../../../coerce", features = ["persistence"] }
 async-trait = { version = "0.1" }
-redis = { version = "0.21", features = ["tokio-comp", "cluster"] }
-redis_cluster_async = "0.7.0"
+redis = { version = "0.22.1", features = ["tokio-comp"] }
 tokio = { version = "1.21.1", features = ["full"] }
 anyhow = "1"
 bytes = { version = "1.2.1" }

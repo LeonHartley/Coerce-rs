@@ -1,14 +1,17 @@
 pub mod builder;
 pub mod cluster;
-pub mod metrics;
-pub mod sharding;
 pub mod system;
+
+#[cfg(feature = "metrics")]
+pub mod metrics;
+
+#[cfg(feature = "sharding")]
+pub mod sharding;
 
 use crate::actor::context::ActorContext;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, IntoActor, LocalActorRef};
 use crate::remote::system::RemoteActorSystem;
-use crate::CARGO_PKG_VERSION;
 use axum::routing::get;
 use axum::{Json, Router};
 use std::net::SocketAddr;

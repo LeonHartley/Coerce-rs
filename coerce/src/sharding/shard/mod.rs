@@ -13,6 +13,7 @@ use crate::sharding::proto::sharding as proto;
 
 use crate::remote::system::NodeId;
 use chrono::{DateTime, Utc};
+use futures::SinkExt;
 use protobuf::Message as ProtoMessage;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -50,14 +51,19 @@ impl Drop for Shard {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum EntityState {
     Idle,
+    Starting,
     Active(BoxedActorRef),
     Passivated,
 }
 
 impl EntityState {
+    pub fn is_starting(&self) -> bool {
+        matches!(&self, EntityState::Starting)
+    }
+
     pub fn is_active(&self) -> bool {
         match &self {
             EntityState::Active(_) => true,
@@ -197,7 +203,7 @@ impl Shard {
     fn get_active_entities(&self) -> Vec<Entity> {
         self.entities
             .values()
-            .filter(|e| e.status.is_active())
+            .filter(|e| e.status.is_starting())
             .cloned()
             .collect()
     }
@@ -378,7 +384,7 @@ impl Recover<StartEntity> for Shard {
             Entity {
                 actor_id: message.actor_id,
                 recipe: message.recipe,
-                status: EntityState::Idle,
+                status: EntityState::Starting/*TODO: if the previous actor was passivated, we should reflect that in the status so the actor is not restarted during recovery*/,
                 last_request: Utc::now(),
             },
         );
@@ -429,7 +435,9 @@ impl Snapshot for ShardStateSnapshot {
                     actor_id: e.actor_id.to_string(),
                     recipe: e.recipe.to_vec(),
                     state: match e.status {
-                        EntityState::Active(_) | EntityState::Idle => proto::EntityState::IDLE,
+                        EntityState::Active(_) | EntityState::Idle | EntityState::Starting => {
+                            proto::EntityState::IDLE
+                        }
                         EntityState::Passivated => proto::EntityState::PASSIVATED,
                     }
                     .into(),

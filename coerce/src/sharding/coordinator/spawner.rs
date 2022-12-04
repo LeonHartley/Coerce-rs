@@ -17,8 +17,6 @@ pub struct CoordinatorSpawner {
     coordinator: Option<LocalActorRef<ShardCoordinator>>,
 }
 
-const COORDINATOR_SPAWNER: &str = "ShardCoordinator-Spawner";
-
 impl CoordinatorSpawner {
     pub fn new(
         node_id: NodeId,
@@ -48,16 +46,14 @@ impl CoordinatorSpawner {
                 self.coordinator = Some(coordinator);
 
                 debug!(
-                    target: COORDINATOR_SPAWNER,
                     node_id = self.node_id,
-                    "started shard coordinator for entity type={}",
-                    &self.shard_entity
+                    "started shard coordinator for entity type={}", &self.shard_entity
                 );
             }
             Err(e) => {
                 error!(
-                    target: COORDINATOR_SPAWNER,
-                    "[node={}] failed to spawn shard coordinator, e={}", self.node_id, e
+                    "[node={}] failed to spawn shard coordinator, e={}",
+                    self.node_id, e
                 );
             }
         }
@@ -86,10 +82,7 @@ impl Actor for CoordinatorSpawner {
                 self.start_coordinator(ctx).await;
             }
         } else {
-            debug!(
-                target: COORDINATOR_SPAWNER,
-                "[node={}] no leader allocated", self.node_id
-            );
+            debug!("[node={}] no leader allocated", self.node_id);
         }
 
         self.system_event_subscription = Some(
@@ -104,8 +97,8 @@ impl Actor for CoordinatorSpawner {
 impl Handler<Receive<SystemTopic>> for CoordinatorSpawner {
     async fn handle(&mut self, message: Receive<SystemTopic>, ctx: &mut ActorContext) {
         debug!(
-            target: COORDINATOR_SPAWNER,
-            "[node={}] received system event - {:?}", self.node_id, &message.0
+            "[node={}] received system event - {:?}",
+            self.node_id, &message.0
         );
 
         match message.0.as_ref() {
@@ -125,22 +118,18 @@ impl Handler<Receive<SystemTopic>> for CoordinatorSpawner {
                 ClusterEvent::LeaderChanged(leader_node_id) => {
                     let leader_node_id = *leader_node_id;
                     debug!(
-                        target: COORDINATOR_SPAWNER,
-                        "[node={}] Leader changed, leader_node_id={}", self.node_id, leader_node_id,
+                        "[node={}] Leader changed, leader_node_id={}",
+                        self.node_id, leader_node_id,
                     );
 
                     if leader_node_id == self.node_id && self.coordinator.is_none() {
                         self.start_coordinator(ctx).await;
                     } else if self.stop_coordinator().await {
-                        trace!(
-                            target: COORDINATOR_SPAWNER,
-                            "[node={}] stopped coordinator",
-                            self.node_id
-                        );
+                        trace!("[node={}] stopped coordinator", self.node_id);
                     }
 
                     if let Err(e) = self.local_shard_host.notify(LeaderAllocated) {
-                        error!(target: COORDINATOR_SPAWNER,
+                        error!(
                             "[node={}] failed to notify `LeaderAllocated` to local shard host (entity={}, err={})",
                             self.node_id, &self.shard_entity, e
                         );

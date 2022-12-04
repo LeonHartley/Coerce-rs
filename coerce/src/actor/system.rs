@@ -1,5 +1,7 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
-use crate::actor::{new_actor_id, Actor, ActorId, ActorRefErr, IntoActorId, LocalActorRef};
+use crate::actor::{
+    new_actor_id, Actor, ActorId, ActorPath, ActorRefErr, IntoActorId, LocalActorRef,
+};
 use rand::RngCore;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
@@ -13,6 +15,7 @@ use crate::remote::system::RemoteActorSystem;
 use crate::persistent::{journal::provider::StorageProvider, Persistence};
 
 lazy_static! {
+    pub static ref DEFAULT_ACTOR_PATH: ActorPath = String::default().into();
     static ref CURRENT_SYSTEM: ActorSystem = ActorSystem::new();
 }
 
@@ -24,6 +27,7 @@ pub struct ActorSystem {
 #[derive(Clone)]
 pub struct ActorSystemCore {
     system_id: Uuid,
+    system_name: Arc<str>,
     scheduler: LocalActorRef<ActorScheduler>,
     is_terminated: Arc<AtomicBool>,
     context_counter: Arc<AtomicU64>,
@@ -38,11 +42,17 @@ pub struct ActorSystemCore {
 impl Default for ActorSystem {
     fn default() -> Self {
         let system_id = Uuid::new_v4();
+        let system_name: Arc<str> = std::env::var("COERCE_ACTOR_SYSTEM").map_or_else(
+            |e| format!("{}", system_id).into(),
+            |v| v.to_string().into(),
+        );
+
+        let scheduler = ActorScheduler::new(system_id, system_name.clone());
         ActorSystem {
             core: Arc::new(ActorSystemCore {
                 system_id,
-                scheduler: ActorScheduler::new(system_id),
-
+                system_name,
+                scheduler,
                 is_terminated: Arc::new(AtomicBool::new(false)),
                 context_counter: Arc::new(AtomicU64::new(1)),
 
@@ -126,6 +136,7 @@ impl ActorSystem {
             Some(tx),
             Some(self.clone()),
             None,
+            self.core.system_name.clone(),
         );
 
         if actor_type.is_tracked() {

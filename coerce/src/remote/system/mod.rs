@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::actor::system::ActorSystem;
 use crate::actor::LocalActorRef;
 use crate::remote::actor::{
-    RemoteClientRegistry, RemoteHandler, RemoteRegistry, RemoteSystemConfig,
+    clients::RemoteClientRegistry, registry::RemoteRegistry, RemoteHandler, RemoteSystemConfig,
 };
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;

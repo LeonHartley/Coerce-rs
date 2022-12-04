@@ -11,8 +11,10 @@ use crate::actor::system::ActorSystem;
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
 use std::marker::PhantomData;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -35,25 +37,7 @@ pub mod worker;
 
 pub type ActorId = Arc<str>;
 
-pub trait IntoActorId {
-    fn into_actor_id(self) -> ActorId;
-}
-
-pub trait ToActorId {
-    fn to_actor_id(&self) -> ActorId;
-}
-
-impl<T: ToString + Send + Sync> IntoActorId for T {
-    fn into_actor_id(self) -> ActorId {
-        self.to_string().into()
-    }
-}
-
-impl<T: ToString + Send + Sync> ToActorId for T {
-    fn to_actor_id(&self) -> ActorId {
-        self.to_string().into()
-    }
-}
+pub type ActorPath = Arc<str>;
 
 #[async_trait]
 pub trait Actor: 'static + Send + Sync {
@@ -115,6 +99,15 @@ pub trait IntoChild: Actor + Sized {
 
 pub enum ActorCreationErr {
     InvalidRecipe(String),
+}
+
+impl<A: Actor> Deref for LocalActorRef<A> {
+    type Target = LocalActorRefInner<A>;
+
+    #[inline]
+    fn deref(&self) -> &LocalActorRefInner<A> {
+        self.inner.as_ref()
+    }
 }
 
 pub trait ActorRecipe: Sized {
@@ -202,7 +195,7 @@ impl<A: Actor> Display for ActorRef<A> {
 impl<A: Actor> ActorRef<A> {
     pub fn actor_id(&self) -> &ActorId {
         match &self.inner_ref {
-            Ref::Local(a) => &a.id,
+            Ref::Local(a) => a.actor_id(),
 
             #[cfg(feature = "remote")]
             Ref::Remote(a) => a.actor_id(),
@@ -375,6 +368,8 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
 pub trait CoreActorRef: Any {
     fn actor_id(&self) -> &ActorId;
 
+    fn actor_path(&self) -> &ActorPath;
+
     fn actor_type(&self) -> &'static str;
 
     async fn status(&self) -> Result<ActorStatus, ActorRefErr>;
@@ -413,16 +408,22 @@ impl Display for BoxedActorRef {
 }
 
 pub struct LocalActorRef<A: Actor> {
+    inner: Arc<LocalActorRefInner<A>>,
+}
+
+pub struct LocalActorRefInner<A: Actor> {
     pub id: ActorId,
-    pub system_id: Option<Uuid>,
-    sender: tokio::sync::mpsc::UnboundedSender<MessageHandler<A>>,
+    path: ActorPath,
+    system_id: Option<Uuid>,
+    sender: UnboundedSender<MessageHandler<A>>,
 }
 
 impl<A: Actor> Debug for LocalActorRef<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct(&format!("LocalActorRef<{}>", A::type_name()))
-            .field("actor_id", &self.id)
-            .field("system_id", &self.system_id)
+            .field("path", &self.inner.path)
+            .field("actor_id", &self.inner.id)
+            .field("system_id", &self.inner.system_id)
             .finish()
     }
 }
@@ -445,9 +446,7 @@ impl<A: Actor> From<LocalActorRef<A>> for BoxedActorRef {
 impl<A: Actor> Clone for LocalActorRef<A> {
     fn clone(&self) -> Self {
         Self {
-            id: self.id.clone(),
-            system_id: self.system_id,
-            sender: self.sender.clone(),
+            inner: self.inner.clone(),
         }
     }
 }
@@ -506,6 +505,26 @@ impl Display for ActorRefErr {
 impl std::error::Error for ActorRefErr {}
 
 impl<A: Actor> LocalActorRef<A> {
+    pub fn new(
+        id: ActorId,
+        sender: UnboundedSender<MessageHandler<A>>,
+        system_id: Option<Uuid>,
+        path: ActorPath,
+    ) -> Self {
+        Self {
+            inner: Arc::new(LocalActorRefInner {
+                id,
+                path,
+                system_id,
+                sender,
+            }),
+        }
+    }
+
+    pub fn actor_path(&self) -> &ActorPath {
+        &self.inner.path
+    }
+
     pub async fn send<Msg: Message>(&self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
@@ -523,7 +542,11 @@ impl<A: Actor> LocalActorRef<A> {
         // });
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        match self.sender.send(Box::new(ActorMessage::new(msg, Some(tx)))) {
+        match self
+            .inner
+            .sender
+            .send(Box::new(ActorMessage::new(msg, Some(tx))))
+        {
             Ok(_) => match rx.await {
                 Ok(res) => {
                     tracing::trace!(
@@ -555,7 +578,11 @@ impl<A: Actor> LocalActorRef<A> {
 
         ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
 
-        match self.sender.send(Box::new(ActorMessage::new(msg, None))) {
+        match self
+            .inner
+            .sender
+            .send(Box::new(ActorMessage::new(msg, None)))
+        {
             Ok(_) => Ok(()),
             Err(_e) => Err(ActorRefErr::InvalidRef),
         }
@@ -577,7 +604,7 @@ impl<A: Actor> LocalActorRef<A> {
     }
 
     pub fn actor_id(&self) -> &ActorId {
-        &self.id
+        &self.inner.id
     }
 
     pub async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
@@ -599,11 +626,15 @@ impl<A: Actor> LocalActorRef<A> {
     }
 
     pub fn is_valid(&self) -> bool {
-        !self.sender.is_closed()
+        !self.inner.sender.is_closed()
     }
 
     pub fn notify_stop(&self) -> Result<(), ActorRefErr> {
         self.notify(Stop(None))
+    }
+
+    pub fn system_id(&self) -> Option<&Uuid> {
+        self.inner.system_id.as_ref()
     }
 }
 
@@ -611,6 +642,10 @@ impl<A: Actor> LocalActorRef<A> {
 impl<A: Actor> CoreActorRef for LocalActorRef<A> {
     fn actor_id(&self) -> &ActorId {
         self.actor_id()
+    }
+
+    fn actor_path(&self) -> &ActorPath {
+        self.actor_path()
     }
 
     fn actor_type(&self) -> &'static str {
@@ -650,6 +685,10 @@ impl<A: Actor> CoreActorRef for LocalActorRef<A> {
 impl CoreActorRef for BoxedActorRef {
     fn actor_id(&self) -> &ActorId {
         self.0.actor_id()
+    }
+
+    fn actor_path(&self) -> &ActorPath {
+        self.0.actor_path()
     }
 
     fn actor_type(&self) -> &'static str {
@@ -761,4 +800,34 @@ impl From<Vec<String>> for ActorTags {
 
 pub fn new_actor_id() -> ActorId {
     Uuid::new_v4().into_actor_id()
+}
+
+pub trait IntoActorId {
+    fn into_actor_id(self) -> ActorId;
+}
+
+pub trait ToActorId {
+    fn to_actor_id(&self) -> ActorId;
+}
+
+pub trait IntoActorPath {
+    fn into_actor_path(&self) -> ActorPath;
+}
+
+impl<T: ToString + Send + Sync> IntoActorId for T {
+    fn into_actor_id(self) -> ActorId {
+        self.to_string().into()
+    }
+}
+
+impl<T: ToString + Send + Sync> ToActorId for T {
+    fn to_actor_id(&self) -> ActorId {
+        self.to_string().into()
+    }
+}
+
+impl<T: ToString + Send + Sync> IntoActorPath for T {
+    fn into_actor_path(&self) -> ActorPath {
+        self.to_string().into()
+    }
 }

@@ -26,7 +26,6 @@ fn configure_application() -> ShardedChatConfig {
         .arg(arg!(--cluster_api_listen_addr <LISTEN_ADDR> "The host and port which the Coerce cluster HTTP API will listen from").env("CLUSTER_API_LISTEN_ADDR"))
         .arg(arg!(--log_level [LOG_LEVEL] "The minimum level at which the application log will be filtered (default=INFO)").env("LOG_LEVEL"))
         .arg(arg!(--remote_seed_addr [TCP_ADDR] "(optional) The host and port which Coerce will attempt to use as a seed node").env("REMOTE_SEED_ADDR"))
-        .arg(arg!(--metrics_exporter_listen_addr [TCP_ADDR] "(optional) The host and port which the prometheus metrics exporter").env("METRICS_EXPORTER_LISTEN_ADDR"))
         .arg(arg!(--redis_addr [TCP_ADDR] "(optional) Redis TCP address. By default, in-memory persistence is enabled").env("REDIS_ADDR"))
         .get_matches();
 
@@ -51,24 +50,6 @@ fn configure_application() -> ShardedChatConfig {
     let log_level = matches
         .remove_one::<String>("log_level")
         .unwrap_or_else(|| "INFO".to_string());
-
-    if let Some(metrics_exporter_listen_addr) =
-        matches.remove_one::<String>("metrics_exporter_listen_addr")
-    {
-        let prometheus_builder = PrometheusBuilder::new();
-        prometheus_builder
-            .idle_timeout(
-                MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM,
-                Some(Duration::from_secs(60 * 30)),
-            )
-            .with_http_listener(
-                SocketAddr::from_str(&metrics_exporter_listen_addr)
-                    .expect("valid metrics_exporter_listen_addr"),
-            )
-            .add_global_label("node_id", node_id.to_string())
-            .install()
-            .expect("failed to install Prometheus recorder");
-    }
 
     tracing_subscriber::fmt()
         .compact()

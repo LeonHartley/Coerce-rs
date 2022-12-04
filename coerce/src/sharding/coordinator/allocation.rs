@@ -78,7 +78,10 @@ impl Handler<AllocateShard> for ShardCoordinator {
         match self.persist(&message, ctx).await {
             Ok(_) => self.allocate_shard(message.shard_id, ctx).await,
             Err(e) => {
-                warn!(target: "ShardCoordinator", "error persisting a `AllocateShard`, shard_id={}, err={}", message.shard_id, e);
+                warn!(
+                    "error persisting a `AllocateShard`, shard_id={}, err={}",
+                    message.shard_id, e
+                );
                 AllocateShardResult::Err(AllocateShardErr::Persistence)
             }
         }
@@ -88,7 +91,7 @@ impl Handler<AllocateShard> for ShardCoordinator {
 #[async_trait]
 impl Recover<AllocateShard> for ShardCoordinator {
     async fn recover(&mut self, message: AllocateShard, ctx: &mut ActorContext) {
-        trace!(target: "ShardCoordinator", "recovered `AllocateShard`, shard_id={}", message.shard_id);
+        trace!("recovered `AllocateShard`, shard_id={}", message.shard_id);
 
         self.allocate_shard(message.shard_id, ctx).await;
     }
@@ -103,12 +106,15 @@ async fn allocate(
 
     hosts.sort_by(|h1, h2| h1.shards.len().cmp(&h2.shards.len()));
 
-    debug!(target: "ShardCoordinator", "shard#{} allocating - available nodes={:#?}", shard_id, &hosts);
+    debug!(
+        "shard#{} allocating - available nodes={:#?}",
+        shard_id, &hosts
+    );
 
     if let Some(host) = hosts.first_mut() {
         let node_id = host.node_id;
 
-        trace!(target: "ShardCoordinator", "shard#{} allocated, target_node={}", shard_id, node_id);
+        trace!("shard#{} allocated, target_node={}", shard_id, node_id);
 
         shard_entry.insert(node_id);
         if host.shards.insert(shard_id) {
@@ -130,7 +136,11 @@ pub async fn broadcast_allocation(
     node_id: NodeId,
     hosts: Vec<ActorRef<ShardHost>>,
 ) {
-    trace!(target: "ShardCoordinator", "shard allocated (shard=#{}, node_id={}), broadcasting to all shard hosts", shard_id, node_id);
+    trace!(
+        "shard allocated (shard=#{}, node_id={}), broadcasting to all shard hosts",
+        shard_id,
+        node_id
+    );
     let mut futures = vec![];
 
     for host in hosts.into_iter() {
@@ -158,11 +168,14 @@ pub async fn broadcast_allocation(
     }
 
     let _results = join_all(futures).await;
-    trace!(target: "ShardCoordinator", "broadcast to all nodes complete");
+    trace!("broadcast to all nodes complete");
 }
 
 pub async fn broadcast_reallocation(shard_id: ShardId, hosts: Vec<ActorRef<ShardHost>>) {
-    trace!(target: "ShardCoordinator", "shard reallocating (shard=#{}), broadcasting to all shard hosts", shard_id);
+    trace!(
+        "shard reallocating (shard=#{}), broadcasting to all shard hosts",
+        shard_id
+    );
     let mut futures = vec![];
 
     for host in hosts {
@@ -179,7 +192,7 @@ pub async fn broadcast_reallocation(shard_id: ShardId, hosts: Vec<ActorRef<Shard
     }
 
     let _results = join_all(futures).await;
-    trace!(target: "ShardCoordinator", "broadcast to all nodes complete");
+    trace!("broadcast to all nodes complete");
 }
 
 impl Message for AllocateShard {

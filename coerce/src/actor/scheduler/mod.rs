@@ -1,9 +1,12 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, IntoActorId, LocalActorRef};
+use crate::actor::{
+    Actor, ActorId, ActorPath, BoxedActorRef, CoreActorRef, IntoActorId, IntoActorPath,
+    LocalActorRef,
+};
 
 use crate::actor::lifecycle::ActorLoop;
-use crate::actor::system::ActorSystem;
+use crate::actor::system::{ActorSystem, DEFAULT_ACTOR_PATH};
 
 #[cfg(feature = "remote")]
 use crate::remote::{actor::message::SetRemote, system::RemoteActorSystem};
@@ -12,6 +15,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 pub mod describe;
@@ -26,7 +30,7 @@ pub struct ActorScheduler {
 }
 
 impl ActorScheduler {
-    pub fn new(system_id: Uuid) -> LocalActorRef<ActorScheduler> {
+    pub fn new(system_id: Uuid, system_name: Arc<str>) -> LocalActorRef<ActorScheduler> {
         start_actor(
             ActorScheduler {
                 system_id,
@@ -40,6 +44,7 @@ impl ActorScheduler {
             None,
             None,
             None,
+            system_name,
         )
     }
 }
@@ -47,7 +52,7 @@ impl ActorScheduler {
 #[async_trait]
 impl Actor for ActorScheduler {
     async fn started(&mut self, _ctx: &mut ActorContext) {
-        tracing::trace!(target: "ActorScheduler", "started on system {}", self.system_id);
+        tracing::trace!("started on system {}", self.system_id);
     }
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {
@@ -59,14 +64,22 @@ impl Actor for ActorScheduler {
         let start_time = Instant::now();
         let stop_results =
             futures::future::join_all(self.actors.iter().map(|(id, actor)| async move {
-                debug!(target: "ActorScheduler", "stopping actor (id={})", &actor.actor_id());
+                debug!("stopping actor (id={})", &actor.actor_id());
                 (id.clone(), actor.stop().await)
             }))
             .await;
 
-        debug!(target: "ActorScheduler", "stopped {} actors in {:?}", stop_results.len(), start_time.elapsed());
+        debug!(
+            "stopped {} actors in {:?}",
+            stop_results.len(),
+            start_time.elapsed()
+        );
         for stop_result in stop_results {
-            debug!(target: "ActorScheduler", "stopped actor (id={}, stop_successful={})", stop_result.0, stop_result.1.is_ok());
+            debug!(
+                "stopped actor (id={}, stop_successful={})",
+                stop_result.0,
+                stop_result.1.is_ok()
+            );
         }
 
         debug!("scheduler stopped");
@@ -167,7 +180,7 @@ where
 impl Handler<SetRemote> for ActorScheduler {
     async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
         self.remote = Some(message.0);
-        trace!(target: "ActorScheduler", "actor scheduler is now configured for remoting");
+        trace!("actor scheduler is now configured for remoting");
     }
 }
 
@@ -187,12 +200,11 @@ where
             return;
         }
 
-        debug!(target: "ActorScheduler", "actor {} registered", &actor_id);
+        debug!("actor {} registered", &actor_id);
 
         #[cfg(feature = "remote")]
         if let Some(remote) = &self.remote {
             debug!(
-                target: "ActorScheduler",
                 "[node={}] registering actor with remote registry, actor_id={}",
                 remote.node_id(),
                 &actor_id
@@ -207,9 +219,9 @@ where
 impl Handler<DeregisterActor> for ActorScheduler {
     async fn handle(&mut self, msg: DeregisterActor, _ctx: &mut ActorContext) -> () {
         if let Some(_a) = self.actors.remove(&msg.0) {
-            debug!(target: "ActorScheduler", "de-registered actor {}", msg.0);
+            debug!("de-registered actor {}", msg.0);
         } else {
-            warn!(target: "ActorScheduler", "actor {} not found to de-register", msg.0);
+            warn!("actor {} not found to de-register", msg.0);
         }
     }
 }
@@ -231,9 +243,18 @@ where
 
         #[cfg(feature = "remote")]
         if let Some(remote) = &self.remote {
-            debug!(target: "ActorScheduler", "[node={}] GetActor(actor_id={}) actor_found={}", remote.node_id(), &message.id, actor_ref.is_some())
+            debug!(
+                "[node={}] GetActor(actor_id={}) actor_found={}",
+                remote.node_id(),
+                &message.id,
+                actor_ref.is_some()
+            )
         } else {
-            debug!(target: "ActorScheduler", "[no-remote-attached] GetActor(actor_id={}) actor_found={}", &message.id, actor_ref.is_some())
+            debug!(
+                "[no-remote-attached] GetActor(actor_id={}) actor_found={}",
+                &message.id,
+                actor_ref.is_some()
+            )
         }
 
         actor_ref
@@ -247,6 +268,7 @@ pub fn start_actor<A: Actor>(
     on_start: Option<tokio::sync::oneshot::Sender<()>>,
     system: Option<ActorSystem>,
     parent_ref: Option<BoxedActorRef>,
+    path: ActorPath,
 ) -> LocalActorRef<A>
 where
     A: 'static + Send + Sync,
@@ -272,17 +294,11 @@ where
     //     node_id = node_id,
     // );
 
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-
+    let (tx, rx) = mpsc::unbounded_channel();
     let system_id = system.as_ref().map(|s| *s.system_id());
-
-    let actor_ref = LocalActorRef {
-        id,
-        sender: tx,
-        system_id,
-    };
-
+    let actor_ref = LocalActorRef::new(id, tx, system_id, path);
     let cloned_ref = actor_ref.clone();
+
     tokio::spawn(async move {
         ActorLoop::run(
             actor, actor_type, rx, on_start, cloned_ref, parent_ref, system,

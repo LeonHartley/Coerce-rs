@@ -116,6 +116,8 @@ impl Default for RecoveryFailurePolicy {
 
 impl Default for PersistFailurePolicy {
     fn default() -> Self {
-        PersistFailurePolicy::ReturnErr
+        PersistFailurePolicy::Retry(Retry::UntilSuccess {
+            delay: Some(Duration::from_millis(500)),
+        })
     }
 }

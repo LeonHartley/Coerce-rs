@@ -147,7 +147,7 @@ pub async fn server_loop(
         match accept(&listener, cancellation_token.clone()).await {
             Some(Ok((stream, addr))) => {
                 let remote_server_config = remote_server_config.clone();
-                trace!(target: "RemoteServer", "client accepted {}", addr);
+                trace!("client accepted {}", addr);
                 let session_id = uuid::Uuid::new_v4();
 
                 // TODO: Before creating a session, we need to validate the received token.
@@ -162,10 +162,13 @@ pub async fn server_loop(
                     .await;
 
                 if let Err(e) = session {
-                    error!(target: "RemoteServer", "error creating session actor (session_id={}, addr={}), error: {:?}", session_id, addr, e);
+                    error!(
+                        "error creating session actor (session_id={}, addr={}), error: {:?}",
+                        session_id, addr, e
+                    );
                 }
             }
-            Some(Err(e)) => error!(target: "RemoteServer", "error accepting client: {:?}", e),
+            Some(Err(e)) => error!("error accepting client: {:?}", e),
             None => break,
         }
     }

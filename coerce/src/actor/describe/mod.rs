@@ -2,7 +2,9 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorScheduler;
 use crate::actor::supervised::{ChildRef, Supervised};
-use crate::actor::{Actor, ActorId, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef};
+use crate::actor::{
+    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, ToActorId,
+};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -10,14 +12,14 @@ use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 use tokio::time::Instant;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Describe {
     pub options: Arc<DescribeOptions>,
     pub sender: Option<Sender<ActorDescription>>,
     pub current_depth: usize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DescribeOptions {
     pub max_depth: Option<usize>,
     pub max_children: Option<usize>,
@@ -59,6 +61,7 @@ impl DescribeResult {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ActorDescription {
     pub actor_id: ActorId,
+    pub path: ActorPath,
     pub actor_type_name: String,
     pub actor_context_id: u64,
     pub tags: ActorTags,
@@ -77,9 +80,9 @@ pub struct SupervisedDescription {
 impl<A: Actor> Handler<Describe> for A {
     async fn handle(&mut self, message: Describe, ctx: &mut ActorContext) {
         let start = Instant::now();
-
         let description = ActorDescription {
             actor_id: ctx.id().clone(),
+            path: ctx.path().clone(),
             actor_type_name: A::type_name().to_string(),
             actor_context_id: ctx.ctx_id(),
             tags: ctx.tags(),
@@ -91,9 +94,12 @@ impl<A: Actor> Handler<Describe> for A {
 
         if let Some(supervised) = ctx.supervised() {
             let next_depth = message.current_depth + 1;
-            if message.options.max_depth > Some(next_depth) {
-                let _ = sender.send(description);
-                return;
+
+            if let Some(max_depth) = message.options.max_depth {
+                if max_depth < next_depth {
+                    let _ = sender.send(description);
+                    return;
+                }
             }
 
             let describable_actors = get_describable_actors(

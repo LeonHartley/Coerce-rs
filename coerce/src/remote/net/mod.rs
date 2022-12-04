@@ -13,6 +13,7 @@ use tokio_util::codec::FramedRead;
 pub mod client;
 pub mod codec;
 pub mod message;
+pub mod metrics;
 pub mod proto;
 pub mod server;
 
@@ -70,7 +71,7 @@ where
         Poll::Ready(match result {
             Some(Ok(message)) => Some(Some(message)),
             Some(Err(e)) => {
-                error!(target: "RemoteStream", "{:?}", e);
+                error!("{:?}", e);
                 Some(None)
             }
             None => None,

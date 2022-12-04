@@ -4,7 +4,7 @@ use crate::actor::{Actor, ActorId, IntoActorId, LocalActorRef};
 use crate::remote::actor::message::NodeTerminated;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::discovery::{Discover, Seed};
-use crate::remote::cluster::node::RemoteNode;
+use crate::remote::cluster::node::{NodeAttributes, RemoteNode};
 use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{
     datetime_to_timestamp, timestamp_to_datetime, ClientEvent, SessionEvent,
@@ -81,17 +81,7 @@ impl Actor for RemoteSession {
             .get_nodes()
             .await
             .into_iter()
-            .map(|node| RemoteNodeProto {
-                node_id: node.id,
-                addr: node.addr,
-                tag: node.tag,
-                node_started_at: node
-                    .node_started_at
-                    .as_ref()
-                    .map(datetime_to_timestamp)
-                    .into(),
-                ..RemoteNodeProto::default()
-            })
+            .map(|node| node.into())
             .collect::<Vec<RemoteNodeProto>>();
 
         let capabilities = system.config().get_capabilities();
@@ -109,6 +99,12 @@ impl Actor for RemoteSession {
             node_started_at: Some(datetime_to_timestamp(system.started_at())).into(),
             peers: peers.into(),
             capabilities: capabilities.into(),
+            attributes: system
+                .config()
+                .get_attributes()
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             ..Default::default()
         }))
         .await;
@@ -148,15 +144,15 @@ impl RemoteSession {
     pub async fn write(&mut self, message: ClientEvent) {
         match message.write_to_bytes() {
             Some(msg) => {
-                trace!(target: "RemoteSession", "message encoded");
+                trace!("message encoded");
                 if self.write.send(&msg).await.is_ok() {
-                    trace!(target: "RemoteSession", "message sent");
+                    trace!("message sent");
                 } else {
-                    error!(target: "RemoteSession", "failed to send message");
+                    error!("failed to send message");
                 }
             }
             None => {
-                warn!(target: "RemoteSession", "failed to encode message");
+                warn!("failed to encode message");
             }
         }
     }
@@ -206,11 +202,21 @@ impl StreamReceiver for SessionMessageReceiver {
                 let _system = sys.clone();
                 let _session = self.session.clone();
 
-                trace!(target: "RemoteServer", "received identify from node (id={}, tag={}), session_id={}", &identify.source_node_id, &identify.source_node_tag, &self.session_id);
+                trace!(
+                    "received identify from node (id={}, tag={}), session_id={}",
+                    &identify.source_node_id,
+                    &identify.source_node_tag,
+                    &self.session_id
+                );
             }
 
             SessionEvent::Handshake(msg) => {
-                trace!(target: "RemoteServer", "handshake {}, {:?}, type: {:?}", &msg.node_id, &msg.nodes, &msg.client_type);
+                trace!(
+                    "handshake {}, {:?}, type: {:?}",
+                    &msg.node_id,
+                    &msg.nodes,
+                    &msg.client_type
+                );
 
                 tokio::spawn(session_handshake(
                     sys.clone(),
@@ -223,7 +229,11 @@ impl StreamReceiver for SessionMessageReceiver {
             }
 
             SessionEvent::FindActor(find_actor) => {
-                trace!(target: "RemoteServer", "actor lookup {}, {}", &self.session_id, &find_actor.actor_id);
+                trace!(
+                    "actor lookup {}, {}",
+                    &self.session_id,
+                    &find_actor.actor_id
+                );
                 tokio::spawn(session_handle_lookup(
                     Uuid::from_str(&find_actor.message_id).unwrap(),
                     find_actor.actor_id.into_actor_id(),
@@ -235,7 +245,7 @@ impl StreamReceiver for SessionMessageReceiver {
 
             SessionEvent::RegisterActor(actor) => {
                 if let Some(node_id) = actor.node_id.into_option() {
-                    trace!(target: "RemoteServer", "register actor {}, {}", &actor.actor_id, &node_id.value);
+                    trace!("register actor {}, {}", &actor.actor_id, &node_id.value);
                     let node_id = node_id.value;
                     sys.register_actor(actor.actor_id.into_actor_id(), Some(node_id));
                 }
@@ -252,7 +262,7 @@ impl StreamReceiver for SessionMessageReceiver {
 
             SessionEvent::Ping(ping) => {
                 if sys.actor_system().is_terminated() {
-                    warn!(target: "RemoteServer", "Ping received but system is terminated. Closing connection (session_id={})", self.session_id);
+                    warn!("Ping received but system is terminated. Closing connection (session_id={})", self.session_id);
 
                     let _ = self.session.notify_stop();
                     self.close().await;
@@ -262,10 +272,13 @@ impl StreamReceiver for SessionMessageReceiver {
                 if ping.system_terminated {
                     let _ = sys.heartbeat().notify(NodeTerminated(ping.node_id));
 
-                    debug!(target: "RemoteServer", "Notified registry - node_id={} is terminated (session_id={})", &ping.node_id, &self.session_id);
+                    debug!(
+                        "Notified registry - node_id={} is terminated (session_id={})",
+                        &ping.node_id, &self.session_id
+                    );
                     self.close();
                 } else {
-                    trace!(target: "RemoteServer", "ping received, sending pong");
+                    trace!("ping received, sending pong");
                     self.session
                         .send(SessionWrite(
                             self.session_id,
@@ -282,7 +295,7 @@ impl StreamReceiver for SessionMessageReceiver {
             SessionEvent::Pong(_id) => {}
 
             SessionEvent::CreateActor(msg) => {
-                trace!(target: "RemoteServer", "create actor {}, {:?}", self.session_id, &msg.actor_id);
+                trace!("create actor {}, {:?}", self.session_id, &msg.actor_id);
                 tokio::spawn(session_create_actor(
                     msg,
                     self.session_id,
@@ -292,7 +305,7 @@ impl StreamReceiver for SessionMessageReceiver {
             }
 
             SessionEvent::StreamPublish(msg) => {
-                trace!(target: "RemoteServer", "stream publish {}, {:?}", self.session_id, &msg);
+                trace!("stream publish {}, {:?}", self.session_id, &msg);
                 tokio::spawn(session_stream_publish(msg, sys.clone()));
             }
 
@@ -304,7 +317,12 @@ impl StreamReceiver for SessionMessageReceiver {
                         let _ = res_tx.send(RemoteResponse::Ok(res.result));
                     }
                     None => {
-                        warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request result (id={})", sys.node_tag(), sys.node_id(), res.message_id);
+                        warn!(
+                            "node_tag={}, node_id={}, received unknown request result (id={})",
+                            sys.node_tag(),
+                            sys.node_id(),
+                            res.message_id
+                        );
                     }
                 }
             }
@@ -315,7 +333,12 @@ impl StreamReceiver for SessionMessageReceiver {
                         let _ = res_tx.send(RemoteResponse::Err(e));
                     }
                     None => {
-                        warn!(target: "RemoteServer", "node_tag={}, node_id={}, received unknown request err (id={})", sys.node_tag(), sys.node_id(), e);
+                        warn!(
+                            "node_tag={}, node_id={}, received unknown request err (id={})",
+                            sys.node_tag(),
+                            sys.node_id(),
+                            e
+                        );
                     }
                 }
             }
@@ -375,22 +398,10 @@ async fn session_handshake(
         node_id: ctx.node_id(),
         node_tag: ctx.node_tag().to_string(),
         node_started_at: Some(datetime_to_timestamp(ctx.started_at())).into(),
+        trace_id: handshake.trace_id.clone(),
+        nodes: nodes.into_iter().map(|n| n.into()).collect(),
         ..ClientHandshake::default()
     };
-
-    for node in nodes {
-        response.nodes.push(RemoteNodeProto {
-            node_id: node.id,
-            addr: node.addr,
-            tag: node.tag,
-            node_started_at: node
-                .node_started_at
-                .as_ref()
-                .map(datetime_to_timestamp)
-                .into(),
-            ..RemoteNodeProto::default()
-        });
-    }
 
     let self_id = ctx.node_id();
 
@@ -410,7 +421,13 @@ async fn session_handshake(
                 } else {
                     n.addr
                 };
-            RemoteNode::new(n.node_id, addr, n.tag, started_at)
+
+            let attributes: NodeAttributes = n
+                .attributes
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect();
+            RemoteNode::new(n.node_id, addr, n.tag, started_at, attributes.into())
         })
         .collect();
 
@@ -476,7 +493,7 @@ async fn session_handle_message(
             }
         }
         Err(e) => {
-            error!(target: "RemoteSession", "[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &actor_id, e);
+            error!("[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &actor_id, e);
             let _ = ctx
                 .notify_rpc_err(msg.message_id.parse().unwrap(), e, msg.origin_node_id)
                 .await;
@@ -492,7 +509,7 @@ async fn session_handle_lookup(
     session: LocalActorRef<RemoteSession>,
 ) {
     let node_id = ctx.locate_actor_node(id.clone()).await;
-    trace!(target: "RemoteSession", "sending actor lookup result: {:?}", node_id);
+    trace!("sending actor lookup result: {:?}", node_id);
 
     let response = ActorAddress {
         actor_id: id.to_string(),
@@ -503,7 +520,7 @@ async fn session_handle_lookup(
     match response.write_to_bytes() {
         Ok(buf) => send_result(msg_id, buf, session_id, session).await,
         Err(_) => {
-            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+            error!("failed to handle message, todo: send err");
         }
     }
 }
@@ -521,14 +538,20 @@ async fn session_create_actor(
         Some(msg.actor_id.into_actor_id())
     };
 
-    trace!(target: "RemoteSession", "node_tag={}, node_id={}, message_id={}, received request to create actor (actor_id={})", ctx.node_tag(), ctx.node_id(), &msg.message_id, actor_id.as_ref().map_or_else(|| "N/A", |s| s));
+    trace!(
+        "node_tag={}, node_id={}, message_id={}, received request to create actor (actor_id={})",
+        ctx.node_tag(),
+        ctx.node_id(),
+        &msg.message_id,
+        actor_id.as_ref().map_or_else(|| "N/A", |s| s)
+    );
     match ctx
         .handle_create_actor(actor_id, msg.actor_type, msg.recipe, None)
         .await
     {
         Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, session).await,
         Err(_) => {
-            error!(target: "RemoteSession", "failed to handle message, todo: send err");
+            error!("failed to handle message, todo: send err");
         }
     }
 }
@@ -546,7 +569,7 @@ async fn send_result(
     session_id: Uuid,
     session: LocalActorRef<RemoteSession>,
 ) {
-    trace!(target: "RemoteSession", "sending result");
+    trace!("sending result");
 
     let event = ClientEvent::Result(ClientResult {
         message_id: msg_id.to_string(),
@@ -555,8 +578,8 @@ async fn send_result(
     });
 
     if session.send(SessionWrite(session_id, event)).await.is_ok() {
-        trace!(target: "RemoteSession", "sent result successfully");
+        trace!("sent result successfully");
     } else {
-        error!(target: "RemoteSession", "failed to send result");
+        error!("failed to send result");
     }
 }

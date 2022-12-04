@@ -3,9 +3,12 @@ use crate::remote::system::NodeId;
 use hashring::HashRing;
 
 use crate::remote::actor::SystemCapabilities;
+use crate::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
+use crate::remote::net::proto::network;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub struct RemoteNodeStore {
@@ -27,6 +30,10 @@ impl NodeStatus {
     }
 }
 
+pub type NodeAttributes = HashMap<Arc<str>, Arc<str>>;
+
+pub type NodeAttributesRef = Arc<NodeAttributes>;
+
 #[derive(Debug, Clone)]
 pub struct RemoteNodeState {
     pub id: NodeId,
@@ -36,14 +43,25 @@ pub struct RemoteNodeState {
     pub last_heartbeat: Option<DateTime<Utc>>,
     pub node_started_at: Option<DateTime<Utc>>,
     pub status: NodeStatus,
+    pub attributes: NodeAttributesRef,
 }
 
-#[derive(Hash, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct RemoteNode {
     pub id: NodeId,
     pub addr: String,
     pub tag: String,
     pub node_started_at: Option<DateTime<Utc>>,
+    pub attributes: NodeAttributesRef,
+}
+
+impl Hash for RemoteNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.addr.hash(state);
+        self.tag.hash(state);
+        self.node_started_at.hash(state);
+    }
 }
 
 #[derive(Clone)]
@@ -95,8 +113,8 @@ impl RemoteNodeStore {
 
     pub fn remove(&mut self, node_id: &NodeId) -> Option<RemoteNode> {
         self.nodes.remove(&node_id).and_then(|node| {
-            self.table
-                .remove(&RemoteNode::new(node.id, node.addr, node.tag, None))
+            let node = node.into();
+            self.table.remove(&node)
         })
     }
 
@@ -114,12 +132,7 @@ impl RemoteNodeStore {
             .into_iter()
             .map(|n| {
                 let node = n.clone();
-                self.table.add(RemoteNode::new(
-                    n.id,
-                    n.addr,
-                    node.tag.clone(),
-                    node.node_started_at,
-                ));
+                self.table.add(n.into());
                 (node.id, node)
             })
             .collect();
@@ -145,6 +158,7 @@ impl RemoteNodeState {
             ping_latency: None,
             last_heartbeat: None,
             status: NodeStatus::Joining,
+            attributes: node.attributes.clone(),
         }
     }
 }
@@ -156,6 +170,96 @@ impl From<RemoteNodeState> for RemoteNode {
             addr: s.addr,
             tag: s.tag,
             node_started_at: s.node_started_at,
+            attributes: s.attributes.clone(),
+        }
+    }
+}
+
+impl From<network::RemoteNode> for RemoteNode {
+    fn from(n: network::RemoteNode) -> Self {
+        Self {
+            id: n.node_id,
+            addr: n.addr,
+            tag: n.tag,
+            node_started_at: n.node_started_at.into_option().map(timestamp_to_datetime),
+            attributes: n
+                .attributes
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect::<NodeAttributes>()
+                .into(),
+        }
+    }
+}
+
+impl From<RemoteNode> for network::RemoteNode {
+    fn from(n: RemoteNode) -> Self {
+        Self {
+            node_id: n.id,
+            addr: n.addr,
+            tag: n.tag,
+            node_started_at: n.node_started_at.as_ref().map(datetime_to_timestamp).into(),
+            attributes: n
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+            ..Self::default()
+        }
+    }
+}
+
+impl From<&RemoteNode> for network::RemoteNode {
+    fn from(n: &RemoteNode) -> Self {
+        Self {
+            node_id: n.id,
+            addr: n.addr.clone(),
+            tag: n.tag.clone(),
+            node_started_at: n.node_started_at.as_ref().map(datetime_to_timestamp).into(),
+            attributes: n
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+            ..Self::default()
+        }
+    }
+}
+
+impl From<RemoteNodeState> for network::RemoteNode {
+    fn from(s: RemoteNodeState) -> Self {
+        Self {
+            node_id: s.id,
+            addr: s.addr.clone(),
+            tag: s.tag.clone(),
+            node_started_at: s.node_started_at.as_ref().map(datetime_to_timestamp).into(),
+            attributes: s
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+            ..Self::default()
+        }
+    }
+}
+
+impl From<&network::NodeIdentity> for RemoteNode {
+    fn from(n: &network::NodeIdentity) -> Self {
+        RemoteNode {
+            id: n.node_id,
+            addr: n.addr.clone(),
+            tag: n.node_tag.clone(),
+            node_started_at: n
+                .node_started_at
+                .clone()
+                .into_option()
+                .map(timestamp_to_datetime),
+            attributes: n
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.clone().into(), v.clone().into()))
+                .collect::<NodeAttributes>()
+                .into(),
         }
     }
 }
@@ -170,6 +274,7 @@ impl Default for RemoteNodeState {
             ping_latency: None,
             last_heartbeat: None,
             node_started_at: None,
+            attributes: Arc::new(NodeAttributes::new()),
         }
     }
 }
@@ -180,12 +285,14 @@ impl RemoteNode {
         addr: String,
         tag: String,
         node_started_at: Option<DateTime<Utc>>,
+        attributes: NodeAttributesRef,
     ) -> RemoteNode {
         RemoteNode {
             id,
             addr,
             tag,
             node_started_at,
+            attributes,
         }
     }
 }

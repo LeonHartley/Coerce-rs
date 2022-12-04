@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
             ),
             (
                 "coerce/src/protocol/sharding.proto",
-                "coerce/src/remote/cluster/sharding/proto",
+                "coerce/src/sharding/proto",
             ),
             (
                 "coerce/src/protocol/persistent/journal.proto",

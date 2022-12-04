@@ -2,7 +2,7 @@
 name = "coerce"
 description = "Async actor runtime and distributed systems framework"
 license = "Apache-2.0"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2021"
 readme = "README.md"
@@ -35,7 +35,11 @@ persistence = [
     "dep:parking_lot"
 ]
 
-metrics = ["dep:metrics"]
+metrics = [
+    "dep:metrics",
+    "dep:metrics-exporter-prometheus",
+    "dep:metrics-util"
+]
 
 sharding = [
     "remote",
@@ -47,7 +51,7 @@ api = ["remote", "dep:axum"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1.21.2", features = ["full"] }
+tokio = { version = "1.22.0", features = ["full"] }
 tokio-util = { version = "0.7.4", features = ["full"] }
 tokio-stream = { version = "0.1", optional = true }
 tracing = { version = "0.1", features = ["valuable"] }
@@ -65,9 +69,11 @@ protobuf = { version = "3.2.0", optional = true }
 anyhow = { version = "1.0", optional = true }
 rand = "0.8.5"
 parking_lot = { version = "0.12.1", optional = true }
-axum = { version = "0.5", features = ["query"], optional = true }
+axum = { version = "0.6.0", features = ["query"], optional = true }
 metrics = { version = "0.20.1", optional = true }
 valuable = { version = "0.1", features = ["derive"] }
+metrics-exporter-prometheus = { version = "0.11", optional = true }
+metrics-util = { version = "0.14", optional = true }
 
 ## todo: Add back when they release the version with updated tokio
 #trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }

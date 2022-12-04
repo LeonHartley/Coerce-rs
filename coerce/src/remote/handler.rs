@@ -257,12 +257,12 @@ where
                             Ok(buffer) => {
                                 let send_res = res.send(Ok(buffer));
                                 if let Err(_) = send_res {
-                                    error!(target: "RemoteHandler", "failed to send result back to sender");
+                                    error!("failed to send result back to sender");
                                 }
                             }
 
                             Err(e) => {
-                                error!(target: "RemoteHandler", "failed to encode message result");
+                                error!("failed to encode message result");
                                 let _ = res.send(Err(ActorRefErr::Serialisation(e)));
                             }
                         }
@@ -270,7 +270,7 @@ where
                 }
 
                 Err(e) => {
-                    error!(target: "RemoteHandler", "failed to decode message ({})", M::type_name());
+                    error!("failed to decode message ({})", M::type_name());
                     let _ = res.send(Err(ActorRefErr::Deserialisation(e)));
                 }
             };
@@ -320,23 +320,27 @@ where
                     match result {
                         Ok(Ok(result)) => {
                             if res.send(Ok(result)).is_err() {
-                                error!(target: "RemoteHandler", "failed to send message")
+                                error!("failed to send message")
                             } else {
-                                trace!(target: "RemoteHandler", "handled message (actor_type={}, message_type={})", &actor_type, M::type_name());
+                                trace!(
+                                    "handled message (actor_type={}, message_type={})",
+                                    &actor_type,
+                                    M::type_name()
+                                );
                             }
                         }
                         Ok(Err(e)) => {
-                            error!(target: "RemoteHandler", "failed to encode message result: {}", &e);
+                            error!("failed to encode message result: {}", &e);
                             let _ = res.send(Err(ActorRefErr::Serialisation(e)));
                         }
                         Err(e) => {
-                            error!(target: "RemoteHandler", "failed to send message");
+                            error!("failed to send message");
                             let _ = res.send(Err(e));
                         }
                     }
                 }
                 None => {
-                    trace!(target: "RemoteHandler", "no result consumer, notifying actor");
+                    trace!("no result consumer, notifying actor");
                     let _res = actor.notify(message);
                 }
             },
@@ -380,9 +384,9 @@ where
     match msg.write_to_bytes() {
         Ok(buffer) => {
             if res.send(buffer).is_err() {
-                error!(target: "RemoteHandler", "failed to send message")
+                error!("failed to send message")
             }
         }
-        Err(e) => error!(target: "RemoteHandler", "failed to encode message result - {}", e),
+        Err(e) => error!("failed to encode message result - {}", e),
     }
 }

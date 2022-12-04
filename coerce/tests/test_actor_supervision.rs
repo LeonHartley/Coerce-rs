@@ -4,7 +4,9 @@ use coerce::actor::message::{Handler, Message};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, ActorId, CoreActorRef, IntoActor, IntoActorId};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::oneshot;
+use tokio::time::timeout;
 
 pub mod util;
 
@@ -82,7 +84,7 @@ impl Actor for SpawnedActor {
 
         let _child = ctx
             .spawn(
-                "spawned".into_actor_id(),
+                format!("spawned-{}", self.depth).into_actor_id(),
                 SpawnedActor {
                     depth: self.depth + 1,
                     max_depth: self.max_depth,
@@ -131,9 +133,11 @@ pub async fn test_actor_child_spawn_and_stop() {
 
     let _ = test_actor.notify(StopAll);
 
-    on_all_child_actors_stopped
-        .await
-        .expect("parent didn't receive the child-terminated notification");
+    timeout(Duration::from_secs(5), async move {
+        on_all_child_actors_stopped.await
+    })
+    .await
+    .expect("parent didn't receive the child-terminated notification");
 
     let (tx, rx) = oneshot::channel();
     let _ = test_actor.describe(Describe {

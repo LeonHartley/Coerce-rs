@@ -20,6 +20,8 @@ use std::net::SocketAddr;
 
 use coerce::actor::LocalActorRef;
 use coerce::remote::api::builder::HttpApiBuilder;
+use coerce::remote::api::metrics::MetricsApi;
+use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 use std::str::FromStr;
 use tokio::task::JoinHandle;
 
@@ -66,13 +68,17 @@ impl ShardedChat {
             .start(system.actor_system())
             .await;
 
-        let http_api_actor = HttpApiBuilder::new()
+        let mut api_builder = HttpApiBuilder::new()
             .listen_addr(SocketAddr::from_str(&config.cluster_api_listen_addr).unwrap())
             .routes(cluster_api)
             .routes(sharding_api)
-            .routes(system_api)
-            .start(system.actor_system())
-            .await;
+            .routes(system_api);
+
+        if let Ok(metrics_api) = MetricsApi::new(system.clone()) {
+            api_builder = api_builder.routes(metrics_api);
+        }
+
+        let http_api_actor = api_builder.start(system.actor_system()).await;
 
         ShardedChat {
             system,
@@ -102,20 +108,22 @@ impl ShardedChat {
 }
 
 async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, RemoteServer) {
-    let system = ActorSystem::new().to_persistent(
-        /*match &config.persistence {
+    let actor_system = ActorSystem::new();
+    let system = actor_system.to_persistent(match &config.persistence {
         ShardedChatPersistence::Redis { host: Some(host) } => Persistence::from(
-            RedisStorageProvider::connect(RedisStorageConfig {
-                address: host.to_string(),
-                key_prefix: "".to_string(),
-                use_key_hashtags: false,
-            })
+            RedisStorageProvider::connect(
+                RedisStorageConfig {
+                    nodes: vec![host.to_string()],
+                    cluster: false,
+                    key_prefix: "sharded-chat:".to_string(),
+                    use_key_hashtags: false,
+                },
+                &actor_system,
+            )
             .await,
         ),
-        _ => */
-        Persistence::from(InMemoryStorageProvider::new()), /*,
-                                                           }*/
-    );
+        _ => Persistence::from(InMemoryStorageProvider::new()),
+    });
 
     let mut seed_addr = config.remote_seed_addr.clone();
     let is_running_in_k8s = std::env::var("KUBERNETES_SERVICE_HOST").is_ok();
@@ -171,6 +179,12 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
                 .with_handler::<ChatStream, Join>("ChatStream.Join")
                 .with_handler::<ChatStream, ChatMessage>("ChatStream.ChatMessage")
         })
+        .attribute(
+            "http_api_addr",
+            format!("http://{}", &config.cluster_api_listen_addr),
+        )
+        .attribute("environment", "dev")
+        .attribute("hello", "world")
         .build()
         .await;
 
@@ -191,5 +205,6 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
     }
 
     let server = cluster_worker.start().await;
+
     (remote_system, server)
 }

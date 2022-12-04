@@ -177,12 +177,6 @@ impl Handler<BeginHandshake> for RemoteClient {
                     &self.addr, &message.request_id
                 );
 
-                // TODO: Instead of writing all nodes as one, we should write all nodes apart from this one,
-                //       and then allow the receiving end to use the connecting IP address rather
-                //       than a hostname. we could make this configurable in-case users want to use
-                //       a proxy/non-k8s load balancer of some sort?
-
-                //       UPDATE: it's been done server-side
                 write_bytes(
                     SessionEvent::Handshake(proto::SessionHandshake {
                         node_id,
@@ -193,17 +187,7 @@ impl Handler<BeginHandshake> for RemoteClient {
                         nodes: message
                             .seed_nodes
                             .into_iter()
-                            .map(|node| proto::RemoteNode {
-                                node_id: node.id,
-                                addr: node.addr,
-                                tag: node.tag,
-                                node_started_at: node
-                                    .node_started_at
-                                    .as_ref()
-                                    .map(datetime_to_timestamp)
-                                    .into(),
-                                ..proto::RemoteNode::default()
-                            })
+                            .map(|node| node.into())
                             .collect(),
                         ..proto::SessionHandshake::default()
                     })

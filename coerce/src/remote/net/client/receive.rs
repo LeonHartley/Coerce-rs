@@ -3,7 +3,7 @@ use std::io::Error;
 
 use crate::actor::LocalActorRef;
 use crate::remote::actor::{RemoteResponse, SystemCapabilities};
-use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
+use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef, NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::message::{timestamp_to_datetime, ClientEvent};
@@ -102,7 +102,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     .await
                     .is_ok()
                 {
-                    warn!(target: "RemoteClient", "error sending handshake_tx");
+                    warn!("error sending handshake_tx");
                 }
             }
             ClientEvent::Result(res) => {
@@ -111,10 +111,12 @@ impl StreamReceiver for ClientMessageReceiver {
                         let _ = res_tx.send(RemoteResponse::Ok(res.result));
                     }
                     None => {
-                        trace!(target: "RemoteClient", "node_tag={}, node_id={}, received unknown request result (id={})",
+                        trace!(
+                            "node_tag={}, node_id={}, received unknown request result (id={})",
                             sys.node_tag(),
                             sys.node_id(),
-                            res.message_id);
+                            res.message_id
+                        );
                     }
                 }
             }
@@ -126,7 +128,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     }
                     None => {
                         //                                          :P
-                        warn!(target: "RemoteClient", "received unsolicited pong");
+                        warn!("received unsolicited pong");
                     }
                 }
             }
@@ -145,7 +147,7 @@ impl StreamReceiver for ClientMessageReceiver {
                     }
                     None => {
                         //                                          :P
-                        warn!(target: "RemoteClient", "received unsolicited pong");
+                        warn!("received unsolicited pong");
                     }
                 }
             }
@@ -174,31 +176,5 @@ impl StreamReceiver for ClientMessageReceiver {
 
     fn should_close(&self) -> bool {
         self.should_close
-    }
-}
-
-impl From<proto::network::RemoteNode> for RemoteNode {
-    fn from(n: proto::network::RemoteNode) -> Self {
-        RemoteNode {
-            id: n.node_id,
-            addr: n.addr,
-            tag: n.tag,
-            node_started_at: n.node_started_at.into_option().map(timestamp_to_datetime),
-        }
-    }
-}
-
-impl From<&proto::network::NodeIdentity> for RemoteNode {
-    fn from(n: &proto::network::NodeIdentity) -> Self {
-        RemoteNode {
-            id: n.node_id,
-            addr: n.addr.clone(),
-            tag: n.node_tag.clone(),
-            node_started_at: n
-                .node_started_at
-                .clone()
-                .into_option()
-                .map(timestamp_to_datetime),
-        }
     }
 }

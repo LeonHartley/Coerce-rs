@@ -69,7 +69,11 @@ impl RemoteActorSystem {
         // );
         // let _enter = span.enter();
 
-        trace!(target: "LocateActorNode", "locating actor node (current_node={}, actor_id={})", self.node_tag(), &actor_id);
+        trace!(
+            "locating actor node (current_node={}, actor_id={})",
+            self.node_tag(),
+            &actor_id
+        );
         let (tx, rx) = oneshot::channel();
         match self
             .inner
@@ -84,21 +88,26 @@ impl RemoteActorSystem {
                 // TODO: configurable timeouts (?)
                 match tokio::time::timeout(tokio::time::Duration::from_secs(5), rx).await {
                     Ok(Ok(res)) => {
-                        trace!(target: "LocateActorNode", "received actor node (current_node={}, actor_id={}, actor_node={:?})", self.node_tag(), &actor_id, &res);
+                        trace!(
+                            "received actor node (current_node={}, actor_id={}, actor_node={:?})",
+                            self.node_tag(),
+                            &actor_id,
+                            &res
+                        );
                         res
                     }
                     Ok(Err(e)) => {
-                        error!(target: "LocateActorNode", "error receiving result, {}", e);
+                        error!("error receiving result, {}", e);
                         None
                     }
                     Err(e) => {
-                        error!(target: "LocateActorNode", "error receiving result, {}", e);
+                        error!("error receiving result, {}", e);
                         None
                     }
                 }
             }
             Err(_e) => {
-                error!(target: "LocateActorNode", "error sending message");
+                error!("error sending message");
                 None
             }
         }
@@ -180,14 +189,14 @@ impl RemoteActorSystem {
 
         if let Some(actor_id) = &actor_id {
             if let Some(node_id) = self.locate_actor_node(actor_id.clone()).await {
-                warn!(target: "ActorDeploy", "actor {} already exists on node: {}", &actor_id, &node_id);
+                warn!("actor {} already exists on node: {}", &actor_id, &node_id);
                 return Err(RemoteActorErr::ActorExists);
             }
         }
 
         let actor_id = actor_id.map_or_else(new_actor_id, |id| id);
 
-        trace!(target: "ActorDeploy", "creating actor (actor_id={})", &actor_id);
+        trace!("creating actor (actor_id={})", &actor_id);
         let handler = self.inner.config.actor_handler(&actor_type);
 
         if let Some(handler) = handler {
@@ -208,21 +217,21 @@ impl RemoteActorSystem {
                         ..ActorAddress::default()
                     };
 
-                    trace!(target: "RemoteHandler", "sending created actor ref");
+                    trace!("sending created actor ref");
                     send_proto_result(result, tx);
                 }
                 Err(_) => return Err(RemoteActorErr::ActorUnavailable),
             }
         } else {
-            trace!(target: "ActorDeploy", "No handler found with the type: {}", &actor_type);
+            trace!("No handler found with the type: {}", &actor_type);
             return Err(RemoteActorErr::ActorNotSupported);
         }
 
-        trace!(target: "ActorDeploy", "waiting for actor to start");
+        trace!("waiting for actor to start");
 
         match rx.await {
             Ok(res) => {
-                trace!(target: "ActorDeploy", "actor started (actor_id={})", &actor_id);
+                trace!("actor started (actor_id={})", &actor_id);
 
                 Ok(res)
             }

@@ -4,18 +4,24 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::{start_actor, ActorType};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
+use crate::actor::{
+    Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, CoreActorRef, IntoActorPath,
+    LocalActorRef, ToActorId,
+};
 
 #[derive(Debug)]
 pub struct Supervised {
-    pub actor_id: String,
+    pub actor_id: ActorId,
+    pub path: ActorPath,
     pub children: HashMap<ActorId, ChildRef>,
 }
 
 impl Supervised {
-    pub fn new(actor_id: String) -> Supervised {
+    pub fn new(actor_id: ActorId, path: ActorPath) -> Supervised {
+        let path = format!("{}/{}", &path, actor_id).into_actor_path();
         Self {
             actor_id,
+            path,
             children: HashMap::new(),
         }
     }
@@ -70,6 +76,7 @@ impl Supervised {
             Some(tx),
             Some(system),
             Some(parent_ref),
+            self.path.clone(),
         );
 
         self.children

@@ -38,15 +38,7 @@ impl From<NewNodeEvent> for SystemEvent {
     fn from(message: NewNodeEvent) -> Self {
         let node = message.node.unwrap();
 
-        SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(RemoteNode {
-            id: node.node_id,
-            addr: node.addr,
-            tag: node.tag,
-            node_started_at: node
-                .node_started_at
-                .into_option()
-                .map(|d| timestamp_to_datetime(d)),
-        })))
+        SystemEvent::Cluster(ClusterEvent::NodeAdded(Arc::new(node.into())))
     }
 }
 
@@ -54,15 +46,7 @@ impl From<NodeRemovedEvent> for SystemEvent {
     fn from(message: NodeRemovedEvent) -> Self {
         let node = message.node.unwrap();
 
-        SystemEvent::Cluster(ClusterEvent::NodeRemoved(Arc::new(RemoteNode {
-            id: node.node_id,
-            addr: node.addr,
-            tag: node.tag,
-            node_started_at: node
-                .node_started_at
-                .into_option()
-                .map(|d| timestamp_to_datetime(d)),
-        })))
+        SystemEvent::Cluster(ClusterEvent::NodeRemoved(Arc::new(node.into())))
     }
 }
 impl From<LeaderChangedEvent> for SystemEvent {
@@ -97,7 +81,7 @@ impl StreamData for SystemEvent {
             SystemEvent::Cluster(cluster) => match cluster {
                 ClusterEvent::NodeAdded(node) => {
                     let event = NewNodeEvent {
-                        node: Some(get_proto_node(node.as_ref())).into(),
+                        node: Some(node.as_ref().into()).into(),
                         ..NewNodeEvent::default()
                     };
 
@@ -105,7 +89,7 @@ impl StreamData for SystemEvent {
                 }
                 ClusterEvent::NodeRemoved(node) => {
                     let event = NodeRemovedEvent {
-                        node: Some(get_proto_node(node.as_ref())).into(),
+                        node: Some(node.as_ref().into()).into(),
                         ..NodeRemovedEvent::default()
                     };
 
@@ -122,21 +106,6 @@ impl StreamData for SystemEvent {
             },
         }
     }
-}
-
-fn get_proto_node(node: &RemoteNode) -> proto::RemoteNode {
-    proto::RemoteNode {
-        node_id: node.id,
-        addr: node.addr.clone(),
-        tag: node.tag.clone(),
-        node_started_at: node
-            .node_started_at
-            .as_ref()
-            .map(datetime_to_timestamp)
-            .into(),
-        ..proto::RemoteNode::default()
-    }
-    .into()
 }
 
 fn write_event(system_event: SysEvent, message: Result<Vec<u8>, Error>) -> Option<Vec<u8>> {

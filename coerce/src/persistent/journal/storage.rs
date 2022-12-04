@@ -1,5 +1,4 @@
 use crate::persistent::journal::proto::journal::JournalEntry as ProtoJournalEntry;
-use crate::remote::net::StreamData;
 use anyhow::Result;
 use protobuf::Message;
 use std::sync::Arc;
@@ -30,8 +29,8 @@ pub trait JournalStorage: Send + Sync {
 
 pub type JournalStorageRef = Arc<dyn JournalStorage>;
 
-impl StreamData for JournalEntry {
-    fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
+impl JournalEntry {
+    pub fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         let journal_entry = ProtoJournalEntry::parse_from_bytes(&data);
         if let Ok(journal_entry) = journal_entry {
             Some(JournalEntry {
@@ -44,7 +43,7 @@ impl StreamData for JournalEntry {
         }
     }
 
-    fn write_to_bytes(&self) -> Option<Vec<u8>> {
+    pub fn write_to_bytes(&self) -> Option<Vec<u8>> {
         let journal_entry = self;
         let proto = ProtoJournalEntry {
             sequence: journal_entry.sequence,

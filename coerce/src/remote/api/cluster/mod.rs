@@ -1,9 +1,10 @@
 use crate::remote::api::Routes;
-use crate::remote::cluster::node::NodeStatus;
+use crate::remote::cluster::node::{NodeAttributesRef, NodeStatus};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
+use std::collections::HashMap;
 
 pub struct ClusterApi {
     system: RemoteActorSystem,
@@ -33,6 +34,7 @@ pub struct ClusterNode {
     pub last_heartbeat: Option<String>,
     pub node_started_at: Option<String>,
     pub status: NodeStatus,
+    pub attributes: NodeAttributesRef,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,6 +58,7 @@ async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
             last_heartbeat: node.last_heartbeat.map(|h| format!("{:?}", h)),
             node_started_at: node.node_started_at.map(|p| format!("{:?}", p)),
             status: node.status,
+            attributes: node.attributes.clone(),
         })
         .collect();
 

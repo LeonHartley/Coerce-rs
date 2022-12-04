@@ -143,7 +143,7 @@ impl RemoteClientRef {
                 Err(ActorRefErr::Timeout { .. }) => {
                     warn!(
                         "handshake request to node (addr={}) timed out",
-                        &self.client.id
+                        &self.client.actor_id(),
                     );
                 }
 

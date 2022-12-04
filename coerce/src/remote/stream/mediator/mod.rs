@@ -113,7 +113,7 @@ impl StreamMediator {
         if let Some(topic) = receiver.subscriber_store_mut() {
             debug!(
                 "actor_id={} subscribing to topic {} (key=\"{}\")",
-                receiver_ref.id,
+                receiver_ref.actor_id(),
                 T::topic_name().to_string(),
                 &topic_key
             );
@@ -123,7 +123,7 @@ impl StreamMediator {
         } else {
             error!(
                 "actor_id={} failed to subscribe to topic {} (key=\"{}\")",
-                &receiver_ref.id,
+                &receiver_ref.actor_id(),
                 T::topic_name().to_string(),
                 &topic_key
             );
@@ -156,6 +156,7 @@ impl Handler<Receive<SystemTopic>> for StreamMediator {
                         new_node.id
                     );
                 }
+
                 ClusterEvent::NodeRemoved(removed_node) => {
                     // TODO: instead of just removing a node when
                     //       we receive notification that a node was removed from the cluster,

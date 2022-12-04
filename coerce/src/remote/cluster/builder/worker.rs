@@ -1,5 +1,5 @@
 use crate::remote::cluster::discovery::{Discover, Seed};
-use crate::remote::cluster::node::RemoteNode;
+use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef, RemoteNode};
 use crate::remote::net::server::{RemoteServer, RemoteServerConfig};
 use crate::remote::system::RemoteActorSystem;
 use std::env;
@@ -21,7 +21,6 @@ impl ClusterWorkerBuilder {
         let server_listen_addr = "0.0.0.0:30101".to_owned();
         let seed_addr = None;
         let server_external_addr = None;
-
         ClusterWorkerBuilder {
             server_listen_addr,
             server_external_addr,
@@ -50,12 +49,14 @@ impl ClusterWorkerBuilder {
     pub async fn start(mut self) -> RemoteServer {
         let started_at = *self.system.started_at();
         let cluster_node_addr = self.cluster_node_addr();
+
         self.system
             .register_node(RemoteNode::new(
                 self.system.node_id(),
                 cluster_node_addr.clone(),
                 self.system.node_tag().to_string(),
                 Some(started_at),
+                self.system.config().get_attributes().clone(),
             ))
             .await;
 
@@ -68,24 +69,27 @@ impl ClusterWorkerBuilder {
             &cluster_node_addr
         );
 
-        let discover_peers = self.seed_addr.as_ref() != Some(&cluster_node_addr);
-
         // TODO: Allow all of this to be overridden via environment variables
 
         let listen_addr = self.server_listen_addr.clone();
         let override_incoming_node_addr = env::var("COERCE_OVERRIDE_INCOMING_NODE_ADDR")
             .map_or(false, |s| s == "1" || s.to_lowercase() == "true");
 
-        let config =
-            RemoteServerConfig::new(listen_addr, cluster_node_addr, override_incoming_node_addr);
+        let config = RemoteServerConfig::new(
+            listen_addr,
+            cluster_node_addr.clone(),
+            override_incoming_node_addr,
+        );
 
         server
             .start(config, system)
             .await
             .expect("failed to start server");
 
-        if discover_peers {
-            self.discover_peers().await;
+        if let Some(seed_addr) = self.seed_addr.take() {
+            if self.seed_addr.as_ref() != Some(&cluster_node_addr) {
+                discover_peers(seed_addr, &self.system).await;
+            }
         }
 
         server
@@ -96,48 +100,49 @@ impl ClusterWorkerBuilder {
             .as_ref()
             .map_or_else(|| self.server_listen_addr.clone(), |s| s.clone())
     }
+}
 
-    async fn discover_peers(&mut self) {
-        if let Some(seed_addr) = self.seed_addr.take() {
-            const SEED_RESOLVE_MAX_ATTEMPTS: usize = 10;
-            const SEED_RESOLVE_RETRY_DELAY: Duration = Duration::from_secs(5);
+async fn discover_peers(seed_addr: String, system: &RemoteActorSystem) {
+    const SEED_RESOLVE_MAX_ATTEMPTS: usize = 10;
+    const SEED_RESOLVE_RETRY_DELAY: Duration = Duration::from_secs(5);
 
-            let mut attempts = 1;
-            loop {
-                if attempts >= 10 {
-                    error!("Cannot resolve DNS for address: {} after 10 attempts, peer discovery cancelled", &seed_addr);
-                    return;
-                }
-
-                if seed_addr_resolves(&seed_addr).await {
-                    break;
-                }
-
-                warn!(
-                    "Cannot resolve DNS for address: {}, retrying in {}s",
-                    &seed_addr,
-                    &SEED_RESOLVE_RETRY_DELAY.as_secs()
-                );
-                sleep(SEED_RESOLVE_RETRY_DELAY).await;
-                attempts += 1;
-            }
-
-            let (tx, rx) = oneshot::channel();
-
-            let _ = self.system.node_discovery().notify(Discover {
-                seed: Seed::Addr(seed_addr.clone()),
-                on_discovery_complete: Some(tx),
-            });
-
-            info!("discover_peers - waiting for discovery to complete");
-
-            let _ = rx
-                .await
-                .expect(&format!("unable to discover nodes from addr={}", seed_addr));
-
-            info!("discover_peers - discovered peers successfully");
+    let mut attempts = 1;
+    loop {
+        if attempts >= SEED_RESOLVE_MAX_ATTEMPTS {
+            error!(
+                "Cannot resolve DNS for address: {} after 10 attempts, peer discovery cancelled",
+                &seed_addr
+            );
+            return;
         }
+
+        if seed_addr_resolves(&seed_addr).await {
+            break;
+        }
+
+        warn!(
+            "Cannot resolve DNS for address: {}, retrying in {}s",
+            &seed_addr,
+            &SEED_RESOLVE_RETRY_DELAY.as_secs()
+        );
+        sleep(SEED_RESOLVE_RETRY_DELAY).await;
+        attempts += 1;
     }
+
+    let (tx, rx) = oneshot::channel();
+
+    let _ = system.node_discovery().notify(Discover {
+        seed: Seed::Addr(seed_addr.clone()),
+        on_discovery_complete: Some(tx),
+    });
+
+    info!("discover_peers - waiting for discovery to complete");
+
+    let _ = rx
+        .await
+        .expect(&format!("unable to discover nodes from addr={}", seed_addr));
+
+    info!("discover_peers - discovered peers successfully");
 }
 
 async fn seed_addr_resolves(seed_addr: &str) -> bool {
