@@ -26,9 +26,9 @@ pub struct RemoteRegistry {
 }
 
 impl RemoteRegistry {
-    pub async fn new(ctx: &ActorSystem, system_tag: &str) -> LocalActorRef<RemoteRegistry> {
+    pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteRegistry> {
         ctx.new_actor(
-            format!("RemoteRegistry-{}", &system_tag),
+            "RemoteRegistry",
             RemoteRegistry {
                 actors: HashMap::new(),
                 nodes: RemoteNodeStore::new(vec![]),

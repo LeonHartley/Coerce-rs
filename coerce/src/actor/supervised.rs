@@ -18,7 +18,6 @@ pub struct Supervised {
 
 impl Supervised {
     pub fn new(actor_id: ActorId, path: ActorPath) -> Supervised {
-        let path = format!("{}/{}", &path, actor_id).into_actor_path();
         Self {
             actor_id,
             path,
@@ -96,10 +95,7 @@ impl Supervised {
     }
 
     pub fn child<A: Actor>(&self, id: &ActorId) -> Option<LocalActorRef<A>> {
-        self.children
-            .get(id)
-            .map_or(None, |a| a.actor_ref().as_actor())
-            .map(|a| a.clone())
+        self.children.get(id).and_then(|a| a.actor_ref().as_actor())
     }
 
     pub fn child_boxed(&self, id: &ActorId) -> Option<BoxedActorRef> {

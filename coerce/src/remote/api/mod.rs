@@ -5,6 +5,7 @@ pub mod system;
 #[cfg(feature = "metrics")]
 pub mod metrics;
 
+pub mod openapi;
 #[cfg(feature = "sharding")]
 pub mod sharding;
 

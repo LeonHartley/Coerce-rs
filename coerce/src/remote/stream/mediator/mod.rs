@@ -4,7 +4,6 @@ use crate::actor::{Actor, LocalActorRef};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::StreamPublishEvent;
-use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::{
     Receive, Subscription, Topic, TopicEmitter, TopicSubscriberStore,
 };

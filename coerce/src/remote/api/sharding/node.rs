@@ -1,23 +1,14 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
+use crate::actor::LocalActorRef;
 use crate::remote::api::sharding::ShardingApi;
 use crate::remote::system::NodeId;
 use crate::sharding::coordinator::ShardId;
 use crate::sharding::host::stats::GetStats as GetHostStats;
-use crate::sharding::shard::stats::ShardStats;
-use std::collections::HashMap;
-
-#[derive(Serialize, Deserialize)]
-pub struct GetShardTypes;
-
-#[derive(Serialize, Deserialize)]
-pub struct ShardTypes {
-    entities: Vec<String>,
-}
-
-impl Message for GetShardTypes {
-    type Result = ShardTypes;
-}
+use axum::extract::Path;
+use axum::response::IntoResponse;
+use axum::Json;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Serialize, Deserialize)]
 pub struct GetStats(pub String);
@@ -28,29 +19,26 @@ pub struct GetAllStats;
 #[derive(Serialize, Deserialize)]
 pub struct RebalanceEntity(pub String);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct Stats {
     entity: String,
     total_shards: usize,
-    hosted_shards: HashMap<ShardId, ShardStats>,
-    remote_shards: HashMap<ShardId, NodeId>,
+    hosted_shards: HashMap<u32, ShardStats>,
+    remote_shards: HashMap<u32, u64>,
 }
 
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct ShardStats {
+    pub shard_id: u32,
+    pub node_id: u64,
+    pub entities: Vec<String>,
+}
 impl Message for GetStats {
     type Result = Option<Stats>;
 }
 
 impl Message for GetAllStats {
     type Result = HashMap<String, Stats>;
-}
-
-#[async_trait]
-impl Handler<GetShardTypes> for ShardingApi {
-    async fn handle(&mut self, _message: GetShardTypes, _ctx: &mut ActorContext) -> ShardTypes {
-        ShardTypes {
-            entities: self.shard_hosts.keys().cloned().collect(),
-        }
-    }
 }
 
 #[async_trait]
@@ -119,4 +107,26 @@ impl Handler<GetAllStats> for ShardingApi {
 
         stats
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/sharding/stats/node/{entity}",
+    responses(
+        (status = 200, description = "ShardHost stats for the the chosen entity type", body = Stats),
+    ),
+    params(
+        ("entity" = String, Path, description = "Sharded entity type name"),
+    )
+)]
+pub async fn get_node_stats(
+    actor_ref: LocalActorRef<ShardingApi>,
+    Path(entity): Path<String>,
+) -> impl IntoResponse {
+    Json(
+        actor_ref
+            .send(GetStats(entity))
+            .await
+            .expect("unable to get stats"),
+    )
 }

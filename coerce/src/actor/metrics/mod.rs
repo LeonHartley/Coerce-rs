@@ -52,10 +52,14 @@ impl ActorMetrics {
                 LABEL_MESSAGE_TYPE => msg_type
             );
 
-            histogram!(METRIC_ACTOR_MESSAGE_WAIT_TIME, wait_time, LABEL_ACTOR_TYPE => actor_type,
+            histogram!(METRIC_ACTOR_MESSAGE_WAIT_TIME,
+                wait_time,
+                LABEL_ACTOR_TYPE => actor_type,
                 LABEL_MESSAGE_TYPE => msg_type);
 
-            histogram!(METRIC_ACTOR_MESSAGE_PROCESSING_TIME, processing_time, LABEL_ACTOR_TYPE => actor_type,
+            histogram!(METRIC_ACTOR_MESSAGE_PROCESSING_TIME,
+                processing_time,
+                LABEL_ACTOR_TYPE => actor_type,
                 LABEL_MESSAGE_TYPE => msg_type)
         }
     }

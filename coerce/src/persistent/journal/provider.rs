@@ -36,21 +36,19 @@ pub mod inmemory {
         }
     }
 
+    #[derive(Default)]
     pub struct InMemoryJournalStorage {
         store: RwLock<HashMap<String, ActorJournal>>,
     }
 
+    #[derive(Default)]
     pub struct InMemoryStorageProvider {
         store: Arc<InMemoryJournalStorage>,
     }
 
     impl InMemoryStorageProvider {
         pub fn new() -> InMemoryStorageProvider {
-            InMemoryStorageProvider {
-                store: Arc::new(InMemoryJournalStorage {
-                    store: RwLock::new(HashMap::new()),
-                }),
-            }
+            Self::default()
         }
     }
 

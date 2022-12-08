@@ -11,6 +11,10 @@ extern crate lazy_static;
 #[macro_use]
 extern crate metrics;
 
+#[cfg(feature = "api")]
+#[macro_use]
+extern crate utoipa;
+
 #[macro_use]
 extern crate tracing;
 

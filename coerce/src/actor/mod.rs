@@ -17,6 +17,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
+use tracing::Instrument;
 use uuid::Uuid;
 
 #[cfg(feature = "remote")]
@@ -525,14 +526,13 @@ impl<A: Actor> LocalActorRef<A> {
         &self.inner.path
     }
 
+    #[instrument(skip(msg))]
     pub async fn send<Msg: Message>(&self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
     {
         let message_type = msg.name();
         let actor_type = A::type_name();
-        // let span = tracing::trace_span!("LocalActorRef::send", actor_type, message_type);
-        // let _enter = span.enter();
 
         ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
 
@@ -549,7 +549,7 @@ impl<A: Actor> LocalActorRef<A> {
         {
             Ok(_) => match rx.await {
                 Ok(res) => {
-                    tracing::trace!(
+                    trace!(
                         "recv result (msg_type={msg_type} actor_type={actor_type})",
                         msg_type = message_type,
                         actor_type = actor_type

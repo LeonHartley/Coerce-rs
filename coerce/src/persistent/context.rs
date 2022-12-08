@@ -36,6 +36,7 @@ impl ActorPersistence {
             .downcast_ref()
             .unwrap()
     }
+
     pub fn journal_mut<A: PersistentActor>(&mut self) -> &mut Journal<A> {
         self.journal
             .as_mut()

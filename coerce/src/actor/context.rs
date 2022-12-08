@@ -2,13 +2,11 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::system::ActorSystem;
 use crate::actor::{
-    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, LocalActorRef,
+    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, IntoActorPath,
+    LocalActorRef,
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
-use std::iter;
-use std::iter::empty;
-use std::sync::atomic::AtomicU64;
 use tokio::sync::oneshot::Sender;
 use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
@@ -34,15 +32,14 @@ pub struct ActorContext {
     system: Option<ActorSystem>,
     on_actor_stopped: Option<Vec<Sender<()>>>,
     tags: Option<ActorTags>,
+    full_path: ActorPath,
 
     #[cfg(feature = "persistence")]
     persistence: Option<ActorPersistence>,
 }
 
-static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] = &[
-    NamedField::new("actor_addr"),
-    NamedField::new("actor_type"),
-];
+static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] =
+    &[NamedField::new("actor_path"), NamedField::new("actor_type")];
 
 impl Structable for ActorContext {
     fn definition(&self) -> StructDef<'_> {
@@ -59,7 +56,7 @@ impl Valuable for ActorContext {
         v.visit_named_fields(&NamedValues::new(
             ACTOR_CONTEXT_FIELDS,
             &[
-                Value::String(format!("{}/{}", self.boxed_ref.actor_path(), self.id()).as_str()),
+                Value::String(self.full_path.as_ref()),
                 Value::String(self.boxed_ref.actor_type()),
             ],
         ));
@@ -73,17 +70,19 @@ impl ActorContext {
         boxed_ref: BoxedActorRef,
     ) -> ActorContext {
         let context_id = system.as_ref().map_or_else(|| 0, |s| s.next_context_id());
+        let full_path =
+            format!("{}/{}", boxed_ref.actor_path(), boxed_ref.actor_id()).into_actor_path();
 
         ActorContext {
             boxed_ref,
             status,
             system,
             context_id,
+            full_path,
             supervised: None,
             boxed_parent_ref: None,
             on_actor_stopped: None,
             tags: None,
-
             #[cfg(feature = "persistence")]
             persistence: None,
         }
@@ -95,6 +94,10 @@ impl ActorContext {
 
     pub fn path(&self) -> &ActorPath {
         self.boxed_ref.actor_path()
+    }
+
+    pub fn full_path(&self) -> &ActorPath {
+        &self.full_path
     }
 
     pub fn ctx_id(&self) -> u64 {
@@ -212,7 +215,8 @@ impl ActorContext {
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
         let supervised = {
             if self.supervised.is_none() {
-                self.supervised = Some(Supervised::new(self.id().clone(), self.path().clone()));
+                self.supervised =
+                    Some(Supervised::new(self.id().clone(), self.full_path().clone()));
             }
 
             self.supervised.as_mut().unwrap()

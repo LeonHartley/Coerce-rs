@@ -32,13 +32,13 @@ impl<W: Actor + Clone> Worker<W> {
             );
         }
 
-        Ok(system
+        system
             .new_actor(
                 format!("{}-supervisor", name_prefix),
                 Worker { workers },
                 Anonymous,
             )
-            .await?)
+            .await
     }
 }
 

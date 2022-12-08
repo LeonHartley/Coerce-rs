@@ -7,8 +7,8 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, ActorId, ActorTags, BoxedActorRef, LocalActorRef};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
-use valuable::Valuable;
 use tracing::Instrument;
+use valuable::Valuable;
 
 use tokio::sync::oneshot::Sender;
 
@@ -61,28 +61,18 @@ impl ActorLoop {
             .system_id()
             .map_or("system-creation".to_string(), |s| s.to_string());
 
-        trace!(
-            "[{}/{}] starting on system: {}",
-            ctx.path(),
-            ctx.id(),
-            system_id
-        );
+        trace!("[{}] starting on system: {}", ctx.full_path(), system_id);
 
         actor.started(&mut ctx).await;
-
         ActorMetrics::incr_actor_created(A::type_name());
 
-        match ctx.get_status() {
-            Stopping => {
-                return actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx)
-                    .await
-            }
-            _ => {}
-        };
+        if ctx.get_status() == &Stopping {
+            return actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await;
+        }
 
         ctx.set_status(Started);
 
-        trace!("[{}/{}] ready", ctx.path(), ctx.id(),);
+        trace!("[{}] ready", ctx.full_path());
 
         if let Some(on_start) = on_start.take() {
             let _ = on_start.send(());
@@ -90,30 +80,48 @@ impl ActorLoop {
 
         while let Some(mut msg) = receiver.recv().await {
             {
-                let msg_type = msg.name();
-
+                #[cfg(feature = "actor-tracing-info")]
                 let span = tracing::info_span!(
                     "actor.recv",
                     ctx = ctx.as_value(),
-                    message_type = msg_type,
+                    message_type = msg.name(),
                 );
 
-                trace!("[{}/{}] received {}", ctx.path(), &actor_id, msg.name(),);
+                #[cfg(feature = "actor-tracing-debug")]
+                let span = tracing::debug_span!(
+                    "actor.recv",
+                    ctx = ctx.as_value(),
+                    message_type = msg.name(),
+                );
 
-                msg.handle(&mut actor, &mut ctx).instrument(span).await;
+                #[cfg(feature = "actor-tracing-trace")]
+                let span = tracing::trace_span!(
+                    "actor.recv",
+                    ctx = ctx.as_value(),
+                    message_type = msg.name(),
+                );
 
-                trace!("[{}/{}] processed {}", ctx.path(), &actor_id, msg.name());
+                trace!("[{}] received {}", ctx.full_path(), msg.name(),);
+
+                let handle_fut = msg.handle(&mut actor, &mut ctx);
+
+                #[cfg(feature = "actor-tracing")]
+                let handle_fut = handle_fut.instrument(span);
+
+                handle_fut.await;
+
+                trace!("[{}] processed {}", ctx.full_path(), msg.name());
             }
 
-            match ctx.get_status() {
-                Stopping => break,
-                _ => {}
+            if ctx.get_status() == &Stopping {
+                break;
             }
         }
 
-        trace!("[{}/{}] stopping", ctx.path(), &actor_id);
+        trace!("[{}] stopping", ctx.full_path());
 
         ctx.set_status(Stopping);
+
         actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await
     }
 }

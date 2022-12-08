@@ -16,7 +16,9 @@ full = [
     "persistence",
     "metrics",
     "sharding",
-    "api"
+    "api",
+    "actor-tracing",
+    "actor-tracing-info",
 ]
 
 remote = [
@@ -46,7 +48,18 @@ sharding = [
     "persistence"
 ]
 
-api = ["remote", "dep:axum"]
+actor-tracing = []
+
+# When this feature is enabled, actor spans will be created at INFO level
+actor-tracing-info = ["actor-tracing"]
+
+# When this feature is enabled, actor spans will be created at TRACE level
+actor-tracing-trace = ["actor-tracing"]
+
+# When this feature is enabled, actor spans will be created at DEBUG level
+actor-tracing-debug = ["actor-tracing"]
+
+api = ["remote", "dep:axum", "dep:utoipa", "dep:utoipa-swagger-ui"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -69,15 +82,15 @@ protobuf = { version = "3.2.0", optional = true }
 anyhow = { version = "1.0", optional = true }
 rand = "0.8.5"
 parking_lot = { version = "0.12.1", optional = true }
-axum = { version = "0.6.0", features = ["query"], optional = true }
 metrics = { version = "0.20.1", optional = true }
 valuable = { version = "0.1", features = ["derive"] }
 metrics-exporter-prometheus = { version = "0.11", optional = true }
 metrics-util = { version = "0.14", optional = true }
 
-## todo: Add back when they release the version with updated tokio
-#trust-dns-proto = { version = "0.19", features = ["tokio-runtime"] }
-#trust-dns-client = { version = "0.19" }
+# API dependencies
+axum = { version = "0.6.0", features = ["query"], optional = true }
+utoipa = { version = "2.4.2", features = ["axum_extras"], optional = true }
+utoipa-swagger-ui = { version = "3.0.1", features = ["axum"], optional = true }
 
 [dev-dependencies]
 coerce-macros = { version = "0.2.0" }

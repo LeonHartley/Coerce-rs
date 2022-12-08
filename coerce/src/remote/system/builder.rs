@@ -132,31 +132,33 @@ impl RemoteActorSystemBuilder {
             rand.next_u64()
         });
 
-        let system_tag = self.node_tag.clone().unwrap_or_else(|| node_id.to_string());
-        let config =
-            config_builder.build(self.node_tag, self.server_auth_token, self.node_attributes);
+        let system_tag = self
+            .node_tag
+            .clone()
+            .unwrap_or_else(|| inner.system_name().to_string());
+        let config = config_builder.build(
+            Some(system_tag.clone()),
+            self.server_auth_token,
+            self.node_attributes,
+        );
 
         let handler_ref = Arc::new(parking_lot::Mutex::new(RemoteHandler::new()));
-        let registry_ref = RemoteRegistry::new(&inner, &system_tag).await;
-        let clients_ref = RemoteClientRegistry::new(&mut inner, &system_tag).await;
+        let registry_ref = RemoteRegistry::new(&inner).await;
+        let clients_ref = RemoteClientRegistry::new(&mut inner).await;
         let registry_ref_clone = registry_ref.clone();
 
         let discovery_ref = NodeDiscovery::default()
-            .into_anon_actor(Some(format!("NodeDiscovery-{}", system_tag)), &inner)
+            .into_actor(Some("NodeDiscovery"), &inner)
             .await
             .expect("unable to create NodeDiscovery actor");
 
-        let heartbeat_ref = Heartbeat::start(&system_tag, &inner).await;
+        let heartbeat_ref = Heartbeat::start(&inner).await;
 
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
             Some(
                 inner
-                    .new_actor(
-                        format!("PubSubMediator-{}", &system_tag),
-                        mediator,
-                        ActorType::Anonymous,
-                    )
+                    .new_actor("StreamMediator", mediator, ActorType::Anonymous)
                     .await
                     .expect("unable to start mediator actor"),
             )

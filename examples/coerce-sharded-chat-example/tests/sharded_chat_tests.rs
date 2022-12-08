@@ -159,12 +159,7 @@ pub async fn test_sharded_chat_join_and_chat() {
 pub async fn stress_test_sharded_chat_servers() {
     logger();
 
-    let nodes = vec![
-        "ws://localhost:31102",
-        "ws://localhost:32102",
-        "ws://localhost:33102",
-        "ws://localhost:34102",
-    ];
+    let nodes = vec!["ws://localhost:31102"];
 
     let chat_stream_count = 10000;
     let connections = Arc::new(AtomicU64::new(0));
@@ -191,6 +186,8 @@ pub async fn stress_test_sharded_chat_servers() {
                             },
                         )
                         .await;
+
+                    // TODO: Wait for acknowledgement of joining the stream before joining another
                 }
 
                 loop {

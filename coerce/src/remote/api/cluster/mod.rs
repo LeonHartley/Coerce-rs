@@ -1,6 +1,5 @@
 use crate::remote::api::Routes;
-use crate::remote::cluster::node::{NodeAttributesRef, NodeStatus};
-use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::system::RemoteActorSystem;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -25,26 +24,53 @@ impl Routes for ClusterApi {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ClusterNode {
-    pub id: NodeId,
+    pub id: u64,
     pub addr: String,
     pub tag: String,
     pub ping_latency: Option<String>,
     pub last_heartbeat: Option<String>,
     pub node_started_at: Option<String>,
     pub status: NodeStatus,
-    pub attributes: NodeAttributesRef,
+    pub attributes: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ClusterNodes {
-    node_id: NodeId,
-    leader_node: Option<NodeId>,
+    node_id: u64,
+    leader_node: Option<u64>,
     leader_node_tag: Option<String>,
     nodes: Vec<ClusterNode>,
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub enum NodeStatus {
+    Joining,
+    Healthy,
+    Unhealthy,
+    Terminated,
+}
+
+impl From<crate::remote::cluster::node::NodeStatus> for NodeStatus {
+    fn from(value: crate::remote::cluster::node::NodeStatus) -> Self {
+        match value {
+            crate::remote::cluster::node::NodeStatus::Joining => Self::Joining,
+            crate::remote::cluster::node::NodeStatus::Healthy => Self::Healthy,
+            crate::remote::cluster::node::NodeStatus::Unhealthy => Self::Unhealthy,
+            crate::remote::cluster::node::NodeStatus::Terminated => Self::Terminated,
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/cluster/nodes",
+    responses(
+    (
+        status = 200, description = "All known Coerce cluster nodes", body = ClusterNodes),
+    )
+)]
 async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
     let node_id = system.node_id();
     let leader_node = system.current_leader();
@@ -59,8 +85,12 @@ async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
             ping_latency: node.ping_latency.map(|p| format!("{:?}", p)),
             last_heartbeat: node.last_heartbeat.map(|h| format!("{:?}", h)),
             node_started_at: node.node_started_at.map(|p| format!("{:?}", p)),
-            status: node.status,
-            attributes: node.attributes.clone(),
+            status: node.status.into(),
+            attributes: node
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
         })
         .collect();
 

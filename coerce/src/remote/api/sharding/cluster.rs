@@ -2,11 +2,10 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{ActorRef, ActorRefErr, LocalActorRef};
 use crate::remote::api::sharding::ShardingApi;
-use crate::remote::system::NodeId;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use crate::sharding::coordinator::stats::{GetShardingStats, NodeStats};
-use crate::sharding::coordinator::{ShardHostStatus, ShardId};
-use crate::sharding::host::stats::{GetStats, HostStats};
+use crate::sharding::host::stats::{GetStats, HostStats, RemoteShard};
 use crate::sharding::host::{shard_actor_id, GetCoordinator};
 use crate::sharding::shard::stats::GetShardStats;
 use crate::sharding::shard::stats::ShardStats as ShardActorStats;
@@ -37,27 +36,41 @@ impl Message for GetHostStats {
     type Result = Option<HostStatsReceiver>;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, ToSchema)]
+pub enum ShardHostStatus {
+    Unknown,
+    Starting,
+    Ready,
+    Unavailable,
+}
+
+impl ShardHostStatus {
+    pub fn is_available(&self) -> bool {
+        matches!(&self, Self::Ready)
+    }
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct ShardingNode {
-    pub node_id: NodeId,
+    pub node_id: u64,
     pub shard_count: u64,
     pub status: ShardHostStatus,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, ToSchema)]
 pub struct Entity {
     actor_id: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ShardStats {
-    shard_id: ShardId,
-    node_id: NodeId,
+    shard_id: u32,
+    node_id: u64,
     entity_count: u32,
     entities: Vec<Entity>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ShardingClusterStats {
     pub entity_type: String,
     pub total_shards: u64,
@@ -123,36 +136,20 @@ impl Handler<GetClusterStats> for ShardingApi {
 
             if let Ok(coordinator) = coordinator {
                 let sharding_stats = coordinator.send(GetShardingStats).await.unwrap();
-
-                let mut shards: Vec<ActorRef<Shard>> = vec![];
-                let self_node_id = remote.node_id();
-                for shard in sharding_stats.shards {
-                    let actor_id = shard_actor_id(&message.entity_type, shard.shard_id);
-                    let shard_actor_ref = if shard.node_id == self_node_id {
-                        let local_actor = remote.actor_system().get_tracked_actor(actor_id).await;
-                        if let Some(actor) = local_actor {
-                            actor.into()
-                        } else {
-                            warn!(
-                                "could not find local shard actor (actor_id={})",
-                                shard_actor_id(&message.entity_type, shard.shard_id)
-                            );
-                            continue;
-                        }
-                    } else {
-                        RemoteActorRef::<Shard>::new(actor_id, shard.node_id, remote.clone()).into()
-                    };
-
-                    shards.push(shard_actor_ref);
-                }
-
+                let shards: Vec<ActorRef<Shard>> =
+                    get_shards(&message.entity_type, &remote, sharding_stats.shards).await;
                 let nodes: Vec<ShardingNode> =
                     sharding_stats.nodes.into_iter().map(|s| s.into()).collect();
-                let results: Vec<Result<ShardActorStats, ActorRefErr>> =
-                    join_all(shards.iter().map(|f| f.send(GetShardStats))).await;
-
                 let shards: Vec<ShardStats> =
-                    results.into_iter().map(|s| s.unwrap().into()).collect();
+                    join_all(shards.iter().map(|f| f.send(GetShardStats)))
+                        .await
+                        .into_iter()
+                        .map(|s| {
+                            s /*todo: this unwrap may not be safe..*/
+                                .unwrap()
+                                .into()
+                        })
+                        .collect();
 
                 let _ = tx.send(Some(ShardingClusterStats {
                     entity_type: sharding_stats.entity_type,
@@ -173,6 +170,48 @@ impl Handler<GetClusterStats> for ShardingApi {
     }
 }
 
+async fn get_shards(
+    shard_entity: &String,
+    remote: &RemoteActorSystem,
+    shards: Vec<RemoteShard>,
+) -> Vec<ActorRef<Shard>> {
+    let mut actor_refs = vec![];
+    for shard in shards {
+        let actor_id = shard_actor_id(shard_entity, shard.shard_id);
+        let shard_actor_ref = if shard.node_id == remote.node_id() {
+            // TODO: Can we grab the refs directly from the ShardHost rather than having to look them up one by one?
+            //       OR can we grab a batch of refs from ActorScheduler?
+
+            let local_actor = remote.actor_system().get_tracked_actor(actor_id).await;
+            if let Some(actor) = local_actor {
+                actor.into()
+            } else {
+                warn!(
+                    "could not find local shard actor (actor_id={})",
+                    shard_actor_id(&shard_entity, shard.shard_id)
+                );
+                continue;
+            }
+        } else {
+            RemoteActorRef::<Shard>::new(actor_id, shard.node_id, remote.clone()).into()
+        };
+
+        actor_refs.push(shard_actor_ref);
+    }
+
+    actor_refs
+}
+
+#[utoipa::path(
+    get,
+    path = "/sharding/stats/cluster/{entity}",
+    responses(
+        (status = 200, description = "Sharding stats for the the chosen entity type", body = ShardingClusterStats),
+    ),
+    params(
+        ("entity" = String, Path, description = "Sharded entity type name"),
+    )
+)]
 pub async fn get_sharding_stats(
     sharding_api: LocalActorRef<ShardingApi>,
     Path(entity_type): Path<String>,
@@ -220,12 +259,23 @@ impl From<ShardActorStats> for ShardStats {
     }
 }
 
+impl From<crate::sharding::coordinator::ShardHostStatus> for ShardHostStatus {
+    fn from(value: crate::sharding::coordinator::ShardHostStatus) -> Self {
+        match value {
+            crate::sharding::coordinator::ShardHostStatus::Unknown => Self::Unknown,
+            crate::sharding::coordinator::ShardHostStatus::Starting => Self::Starting,
+            crate::sharding::coordinator::ShardHostStatus::Ready => Self::Ready,
+            crate::sharding::coordinator::ShardHostStatus::Unavailable => Self::Unavailable,
+        }
+    }
+}
+
 impl From<NodeStats> for ShardingNode {
     fn from(node: NodeStats) -> Self {
         Self {
             node_id: node.node_id,
             shard_count: node.shard_count,
-            status: node.status,
+            status: node.status.into(),
         }
     }
 }

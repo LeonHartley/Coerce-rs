@@ -3,7 +3,8 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorScheduler;
 use crate::actor::supervised::{ChildRef, Supervised};
 use crate::actor::{
-    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, ToActorId,
+    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, IntoActorPath,
+    ToActorId,
 };
 
 use std::sync::Arc;
@@ -44,10 +45,12 @@ pub enum DescribeResult {
     Err {
         error: ActorRefErr,
         actor_id: ActorId,
+        actor_path: ActorPath,
         actor_type: String,
     },
     Timeout {
         actor_id: ActorId,
+        actor_path: ActorPath,
         actor_type: String,
     },
 }
@@ -82,7 +85,7 @@ impl<A: Actor> Handler<Describe> for A {
         let start = Instant::now();
         let description = ActorDescription {
             actor_id: ctx.id().clone(),
-            path: ctx.path().clone(),
+            path: ctx.full_path().clone(),
             actor_type_name: A::type_name().to_string(),
             actor_context_id: ctx.ctx_id(),
             tags: ctx.tags(),
@@ -162,12 +165,16 @@ pub async fn describe_all(
             match actor.describe(describe) {
                 Ok(_) => {
                     // TODO: Apply a timeout to `rx.await`
-                    let description = rx.await;
-                    match description {
-                        Ok(description) => DescribeResult::Ok(description),
-                        Err(_) => {
-                            DescribeResult::from_err(ActorRefErr::ResultChannelClosed, &actor)
+                    let description = tokio::time::timeout(Duration::from_secs(10), rx).await;
+                    if let Ok(description) = description {
+                        match description {
+                            Ok(description) => DescribeResult::Ok(description),
+                            Err(_) => {
+                                DescribeResult::from_err(ActorRefErr::ResultChannelClosed, &actor)
+                            }
                         }
+                    } else {
+                        DescribeResult::from_timeout_err(&actor)
                     }
                 }
 
@@ -240,17 +247,21 @@ impl Clone for Describe {
 impl DescribeResult {
     #[inline]
     pub fn from_err(e: ActorRefErr, actor_ref: &BoxedActorRef) -> Self {
+        let actor_path = format!("{}/{}", actor_ref.actor_path(), actor_ref.actor_id());
         DescribeResult::Err {
             error: e,
             actor_id: actor_ref.actor_id().clone(),
+            actor_path: actor_path.into_actor_path(),
             actor_type: actor_ref.actor_type().to_string(),
         }
     }
 
     #[inline]
     pub fn from_timeout_err(actor_ref: &BoxedActorRef) -> Self {
+        let actor_path = format!("{}/{}", actor_ref.actor_path(), actor_ref.actor_id());
         DescribeResult::Timeout {
             actor_id: actor_ref.actor_id().clone(),
+            actor_path: actor_path.into_actor_path(),
             actor_type: actor_ref.actor_type().to_string(),
         }
     }

@@ -36,7 +36,7 @@ pub struct HeartbeatConfig {
 }
 
 impl Heartbeat {
-    pub async fn start(node_tag: &str, sys: &ActorSystem) -> LocalActorRef<Heartbeat> {
+    pub async fn start(sys: &ActorSystem) -> LocalActorRef<Heartbeat> {
         Heartbeat {
             system: None,
             heartbeat_timer: None,
@@ -44,7 +44,7 @@ impl Heartbeat {
             node_pings: HashMap::new(),
             on_next_leader_changed: VecDeque::new(),
         }
-        .into_actor(Some(format!("heartbeat-{}", &node_tag)), sys)
+        .into_actor(Some("Heartbeat"), sys)
         .await
         .expect("heartbeat actor")
     }
