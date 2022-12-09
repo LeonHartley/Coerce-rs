@@ -161,11 +161,17 @@ pub async fn describe_all(
             describe
         };
 
+        let timeout = if message.current_depth > 0 {
+            Duration::from_secs(5)
+        } else {
+            Duration::from_secs(10)
+        };
+
         async move {
             match actor.describe(describe) {
                 Ok(_) => {
                     // TODO: Apply a timeout to `rx.await`
-                    let description = tokio::time::timeout(Duration::from_secs(10), rx).await;
+                    let description = tokio::time::timeout(timeout, rx).await;
                     if let Ok(description) = description {
                         match description {
                             Ok(description) => DescribeResult::Ok(description),
@@ -247,21 +253,19 @@ impl Clone for Describe {
 impl DescribeResult {
     #[inline]
     pub fn from_err(e: ActorRefErr, actor_ref: &BoxedActorRef) -> Self {
-        let actor_path = format!("{}/{}", actor_ref.actor_path(), actor_ref.actor_id());
         DescribeResult::Err {
             error: e,
             actor_id: actor_ref.actor_id().clone(),
-            actor_path: actor_path.into_actor_path(),
+            actor_path: actor_ref.actor_path().clone(),
             actor_type: actor_ref.actor_type().to_string(),
         }
     }
 
     #[inline]
     pub fn from_timeout_err(actor_ref: &BoxedActorRef) -> Self {
-        let actor_path = format!("{}/{}", actor_ref.actor_path(), actor_ref.actor_id());
         DescribeResult::Timeout {
             actor_id: actor_ref.actor_id().clone(),
-            actor_path: actor_path.into_actor_path(),
+            actor_path: actor_ref.actor_path().clone(),
             actor_type: actor_ref.actor_type().to_string(),
         }
     }

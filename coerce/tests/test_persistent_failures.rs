@@ -1,9 +1,9 @@
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::ActorRefErr::ActorUnavailable;
+
 use coerce::actor::{ActorRefErr, IntoActor, ToActorId};
-use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
+
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, JournalStorageRef};
 use coerce::persistent::journal::types::JournalTypes;
@@ -12,7 +12,7 @@ use coerce::persistent::{
 };
 use coerce_macros::JsonMessage;
 use parking_lot::Mutex;
-use protobuf::MessageField;
+
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::error::Error;
@@ -113,7 +113,7 @@ pub async fn test_persistent_actor_recovery_failure_retry_until_success() {
     persistence.set_next_err(MockErr.into());
     persistence.set_next_err(MockErr.into());
 
-    let actor = TestActor {
+    let _actor = TestActor {
         recovery_policy: RecoveryFailurePolicy::Retry(Retry::UntilSuccess { delay: None }),
         persist_policy: Default::default(),
         recovered_message: None,
@@ -211,8 +211,8 @@ impl MockPersistence {
 impl JournalStorage for MockPersistence {
     async fn write_snapshot(
         &self,
-        persistence_id: &str,
-        entry: JournalEntry,
+        _persistence_id: &str,
+        _entry: JournalEntry,
     ) -> anyhow::Result<()> {
         let mut state = self.state.lock();
         if let Some(error) = state.next_errors.pop_front() {
@@ -222,7 +222,11 @@ impl JournalStorage for MockPersistence {
         }
     }
 
-    async fn write_message(&self, persistence_id: &str, entry: JournalEntry) -> anyhow::Result<()> {
+    async fn write_message(
+        &self,
+        _persistence_id: &str,
+        _entry: JournalEntry,
+    ) -> anyhow::Result<()> {
         let mut state = self.state.lock();
         if let Some(error) = state.next_errors.pop_front() {
             Err(error)
@@ -233,7 +237,7 @@ impl JournalStorage for MockPersistence {
 
     async fn read_latest_snapshot(
         &self,
-        persistence_id: &str,
+        _persistence_id: &str,
     ) -> anyhow::Result<Option<JournalEntry>> {
         let mut state = self.state.lock();
         if let Some(error) = state.next_errors.pop_front() {
@@ -245,8 +249,8 @@ impl JournalStorage for MockPersistence {
 
     async fn read_latest_messages(
         &self,
-        persistence_id: &str,
-        from_sequence: i64,
+        _persistence_id: &str,
+        _from_sequence: i64,
     ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
         let mut state = self.state.lock();
         if let Some(error) = state.next_errors.pop_front() {
@@ -256,7 +260,7 @@ impl JournalStorage for MockPersistence {
         }
     }
 
-    async fn delete_all(&self, persistence_id: &str) -> anyhow::Result<()> {
+    async fn delete_all(&self, _persistence_id: &str) -> anyhow::Result<()> {
         Ok(())
     }
 }

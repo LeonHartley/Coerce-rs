@@ -48,7 +48,7 @@ pub async fn test_timer() {
     let start = Instant::now();
     let timer = Timer::start(
         actor_ref.clone(),
-        Duration::from_secs(TICK_DURATION as u64),
+        Duration::from_secs(TICK_DURATION),
         TestTimer {},
     );
 
@@ -63,11 +63,11 @@ pub async fn test_timer() {
     for tick in &ticks_after_stopping {
         if let Some(previous_tick) = previous_tick {
             tracing::info!("{}", tick.duration_since(previous_tick).as_secs());
-            assert!(tick.duration_since(previous_tick).as_secs() as u64 >= TICK_DURATION);
+            assert!(tick.duration_since(previous_tick).as_secs() >= TICK_DURATION);
         } else {
             previous_tick = Some(*tick);
             tracing::info!("{}", tick.duration_since(start).as_secs());
-            assert!(tick.duration_since(start).as_secs() as u64 >= TICK_DURATION);
+            assert!(tick.duration_since(start).as_secs() >= TICK_DURATION);
         }
     }
     assert_eq!(ticks_after_stopping.len(), ticks_after_stopping_and_waiting);

@@ -44,7 +44,7 @@ impl Heartbeat {
             node_pings: HashMap::new(),
             on_next_leader_changed: VecDeque::new(),
         }
-        .into_actor(Some("Heartbeat"), sys)
+        .into_actor(Some("heartbeat"), sys)
         .await
         .expect("heartbeat actor")
     }

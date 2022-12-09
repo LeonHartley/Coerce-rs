@@ -53,6 +53,6 @@ fn compile_proto<I: Iterator<Item = (&'static str, &'static str)>>(
             .input(file.0)
             .include(include_dir)
             .run()
-            .expect(&format!("protoc {}", file.0));
+            .unwrap_or_else(|_| panic!("protoc {}", file.0));
     }
 }

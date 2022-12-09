@@ -148,7 +148,7 @@ impl RemoteActorSystemBuilder {
         let registry_ref_clone = registry_ref.clone();
 
         let discovery_ref = NodeDiscovery::default()
-            .into_actor(Some("NodeDiscovery"), &inner)
+            .into_actor(Some("node-discovery"), &inner)
             .await
             .expect("unable to create NodeDiscovery actor");
 
@@ -158,7 +158,7 @@ impl RemoteActorSystemBuilder {
             trace!("mediator set");
             Some(
                 inner
-                    .new_actor("StreamMediator", mediator, ActorType::Anonymous)
+                    .new_actor("pubsub-mediator", mediator, ActorType::Tracked)
                     .await
                     .expect("unable to start mediator actor"),
             )

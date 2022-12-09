@@ -27,7 +27,7 @@ impl Actor for RemoteClientRegistry {
 impl RemoteClientRegistry {
     pub async fn new(ctx: &ActorSystem) -> LocalActorRef<RemoteClientRegistry> {
         ctx.new_actor(
-            "RemoteClientRegistry",
+            "remote-client-registry",
             RemoteClientRegistry {
                 node_addr_registry: HashMap::new(),
                 node_id_registry: HashMap::new(),

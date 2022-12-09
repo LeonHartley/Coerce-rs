@@ -24,7 +24,7 @@ impl Default for KubernetesDiscoveryConfig {
                     .map_or_else(|_e| "app=coerce".to_string(), |s| s),
             ),
             coerce_remote_port_name: std::env::var("COERCE_K8S_PORT_NAME")
-                .map_or_else(|_e| Some("coerce".to_string()), |s| Some(s)),
+                .map_or_else(|_e| Some("coerce".to_string()), Some),
             cluster_node_address: std::env::var("COERCE_K8S_ADDR_MODE").map_or_else(
                 |_e| Address::PodIp,
                 |s| {

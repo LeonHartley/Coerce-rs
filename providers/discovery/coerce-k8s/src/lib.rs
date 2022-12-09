@@ -54,7 +54,7 @@ impl KubernetesDiscovery {
                         let hostname = pod_spec.hostname.unwrap();
                         let subdomain = pod_spec.subdomain.unwrap();
 
-                        format!("{}.{}", hostname, subdomain)
+                        format!("{hostname}.{subdomain}")
                     }
                 };
 
@@ -63,8 +63,7 @@ impl KubernetesDiscovery {
                         .ports
                         .unwrap()
                         .into_iter()
-                        .filter(|p| p.name == config.coerce_remote_port_name)
-                        .next();
+                        .find(|p| p.name == config.coerce_remote_port_name);
                     if let Some(port) = port {
                         cluster_nodes.push(format!("{}:{}", addr, port.container_port));
                     }

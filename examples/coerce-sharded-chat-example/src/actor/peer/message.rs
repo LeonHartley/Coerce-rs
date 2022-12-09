@@ -57,19 +57,19 @@ impl Message for JoinChat {
 #[derive(Clone)]
 pub struct SendChatMessage(pub ChatMessage);
 
-impl Into<protocol::chat::ChatMessage> for ChatMessage {
-    fn into(self) -> protocol::chat::ChatMessage {
+impl From<ChatMessage> for protocol::chat::ChatMessage {
+    fn from(val: ChatMessage) -> Self {
         protocol::chat::ChatMessage {
-            chat_stream_id: self.chat_stream_id,
-            message_id: self.message_id.map(|id| id.into()).into(),
-            sender: self
+            chat_stream_id: val.chat_stream_id,
+            message_id: val.message_id.map(|id| id.into()).into(),
+            sender: val
                 .sender
                 .map(|sender| StringValue {
                     value: sender,
                     ..Default::default()
                 })
                 .into(),
-            message: self.message,
+            message: val.message,
             ..Default::default()
         }
     }

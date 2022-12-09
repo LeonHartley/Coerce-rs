@@ -142,10 +142,10 @@ impl Recover<ChatMessage> for ChatStream {
 
 impl ActorRecipe for CreateChatStream {
     fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
-        serde_json::from_slice(bytes).map_or(None, |m| Some(m))
+        serde_json::from_slice(bytes).ok()
     }
 
     fn write_to_bytes(&self) -> Option<Vec<u8>> {
-        serde_json::to_vec(&self).map_or(None, |m| Some(m))
+        serde_json::to_vec(&self).ok()
     }
 }

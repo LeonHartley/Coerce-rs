@@ -194,10 +194,7 @@ pub async fn test_pubsub_distributed() {
         let received_stream_messages_2 =
             actor_2.exec(|a| a.received_stream_messages).await.unwrap();
 
-        panic!(
-            "received {}/10, {}/10",
-            received_stream_messages, received_stream_messages_2
-        );
+        panic!("received {received_stream_messages}/10, {received_stream_messages_2}/10");
     }
 }
 

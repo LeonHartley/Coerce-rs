@@ -79,7 +79,7 @@ async fn create_shard_coordinator<T: Actor>(
     });
 
     let shard_coordinator = shard_coordinator
-        .into_actor(Some("ShardCoordinator".to_string()), remote.actor_system())
+        .into_actor(Some("shard-coordinator".to_string()), remote.actor_system())
         .await
         .expect("ShardCoordinator start");
 
@@ -108,7 +108,7 @@ pub async fn test_shard_coordinator_shard_allocation() {
         handler.new_boxed(),
         None,
     )
-    .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
+    .into_actor(Some("ShardHost".to_string()), remote.actor_system())
     .await
     .expect("ShardHost start")
     .into();
@@ -145,7 +145,7 @@ pub async fn test_shard_coordinator_shard_allocation() {
         handler.new_boxed(),
         None,
     )
-    .into_actor(Some("ShardHost".to_string()), &remote.actor_system())
+    .into_actor(Some("shard-host".to_string()), remote.actor_system())
     .await
     .expect("ShardHost start")
     .into();
@@ -170,7 +170,7 @@ pub async fn test_shard_coordinator_shard_allocation() {
         host_stats
             .hosted_shards
             .keys()
-            .map(|k| *k)
+            .copied()
             .collect::<Vec<ShardId>>(),
         [SHARD_ID]
     );
@@ -241,7 +241,7 @@ pub async fn test_shard_host_actor_request() {
 
     // stop the system, and start a new one (sharing the same persistence backplane)
 
-    let mut server = server;
+    let server = server;
     server.stop();
     remote.actor_system().shutdown().await;
 

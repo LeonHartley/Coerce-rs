@@ -89,9 +89,9 @@ where
 
             match data {
                 Ok(data) => {
-                    let _ = message.1.send(Ok(data.map_or(None, |b| {
-                        b.into_iter().next().map_or(None, |b| read_journal_entry(b))
-                    })));
+                    let _ = message.1.send(Ok(
+                        data.and_then(|b| b.into_iter().next().and_then(read_journal_entry))
+                    ));
                 }
                 Err(err) => {
                     let err = anyhow::Error::new(err);
@@ -122,9 +122,9 @@ where
 
             match data {
                 Ok(data) => {
-                    let _ = message.result_channel.send(Ok(data.map_or(None, |b| {
-                        b.into_iter().map(|b| read_journal_entry(b)).collect()
-                    })));
+                    let _ = message.result_channel.send(Ok(
+                        data.and_then(|b| b.into_iter().map(read_journal_entry).collect())
+                    ));
                 }
                 Err(err) => {
                     let err = anyhow::Error::new(err);

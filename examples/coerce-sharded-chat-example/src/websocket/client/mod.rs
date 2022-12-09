@@ -72,9 +72,7 @@ impl ChatClient {
     }
 
     pub async fn read<M: Message>(&mut self) -> Option<M> {
-        if self.websocket_messages.is_none() {
-            return None;
-        }
+        self.websocket_messages.as_ref()?;
 
         let message = tokio::time::timeout(
             Duration::from_secs(3),
@@ -103,8 +101,7 @@ impl ChatClient {
         let mut buffer = message.as_bytes().unwrap();
         buffer.insert(0, id);
 
-        let _ = self
-            .websocket_writer
+        self.websocket_writer
             .send(WebSocketMessage::Binary(buffer))
             .await
             .unwrap();

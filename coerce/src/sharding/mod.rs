@@ -51,17 +51,11 @@ impl<A: ActorFactory> Sharding<A> {
         system: RemoteActorSystem,
         allocator: Option<Box<dyn ShardAllocator>>,
     ) -> Self {
-        let coordinator_spawner_actor_id = Some(
-            format!(
-                "ShardCoordinator-{}-Spawner-{}",
-                &shard_entity,
-                system.node_id()
-            )
-            .into_actor_id(),
-        );
+        let coordinator_spawner_actor_id =
+            Some(format!("shard-coordinator-spawner-{}", &shard_entity,).into_actor_id());
 
         let host_actor_id =
-            Some(format!("ShardHost-{}-{}", &shard_entity, system.node_id()).into_actor_id());
+            Some(format!("shard-host-{}-{}", &shard_entity, system.node_id()).into_actor_id());
 
         let actor_handler = match system
             .config()

@@ -1,7 +1,6 @@
 use clap::{arg, Command};
 
 use coerce_sharded_chat_example::websocket::client::ChatClient;
-use std::env;
 
 use std::str::FromStr;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -26,7 +25,7 @@ pub async fn main() {
 
     let mut client = ChatClient::connect(&websocket_url, &name)
         .await
-        .expect(&format!("connect to websocket (url={})", &websocket_url));
+        .unwrap_or_else(|_| panic!("connect to websocket (url={})", &websocket_url));
 
     let mut current_chat = None;
 
@@ -73,9 +72,7 @@ async fn process_command(line: String, client: &mut ChatClient, current_chat: &m
             if let Some(current_chat) = current_chat {
                 let mut i = 0;
                 loop {
-                    client
-                        .chat(current_chat.to_string(), format!("{}", i))
-                        .await;
+                    client.chat(current_chat.to_string(), format!("{i}")).await;
 
                     i += 1;
                 }

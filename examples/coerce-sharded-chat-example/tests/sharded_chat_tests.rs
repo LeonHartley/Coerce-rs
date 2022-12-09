@@ -12,7 +12,7 @@ use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
-use tokio::signal::ctrl_c;
+
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 6)]
@@ -159,7 +159,7 @@ pub async fn test_sharded_chat_join_and_chat() {
 pub async fn stress_test_sharded_chat_servers() {
     logger();
 
-    let nodes = vec!["ws://localhost:31102"];
+    let nodes = vec!["ws://localhost:32102"];
 
     let chat_stream_count = 10000;
     let connections = Arc::new(AtomicU64::new(0));
@@ -171,7 +171,7 @@ pub async fn stress_test_sharded_chat_servers() {
             tasks.push(async move {
                 connections.clone().fetch_add(1, Relaxed);
 
-                let client_name = format!("client-{}-{}", i, n);
+                let client_name = format!("client-{i}-{n}");
                 let mut client = ChatClient::connect(node, &client_name)
                     .await
                     .expect("connect");
@@ -181,7 +181,7 @@ pub async fn stress_test_sharded_chat_servers() {
                         .write(
                             0,
                             JoinChat {
-                                chat_stream_id: format!("chat-stream-{}", c),
+                                chat_stream_id: format!("chat-stream-{c}"),
                                 join_token: None,
                             },
                         )
@@ -196,7 +196,7 @@ pub async fn stress_test_sharded_chat_servers() {
                             .write(
                                 1,
                                 SendChatMessage(ChatMessage {
-                                    chat_stream_id: format!("chat-stream-{}", c),
+                                    chat_stream_id: format!("chat-stream-{c}"),
                                     message_id: None,
                                     sender: None,
                                     message: "hi".to_string(),

@@ -142,7 +142,7 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
             }
         }
 
-        let pod_ordinal = pod_name.split("-").last();
+        let pod_ordinal = pod_name.split('-').last();
         if let Some(Ok(pod_ordinal)) = pod_ordinal.map(|i| i.parse()) {
             let listen_addr_base = SocketAddr::from_str(&config.remote_listen_addr).unwrap();
             let port = listen_addr_base.port();
@@ -183,7 +183,7 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
             "http_api_addr",
             format!("http://{}", &config.cluster_api_listen_addr),
         )
-        .attribute("cluster", format!("sharded-chat-dev"))
+        .attribute("cluster", "sharded-chat-dev".to_string())
         .attribute("environment", "dev")
         .attribute("hello", "world")
         .build()
@@ -198,11 +198,11 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
         cluster_worker = cluster_worker.external_addr(external_addr);
     } else {
         cluster_worker =
-            cluster_worker.external_addr(&config.remote_listen_addr.replace("0.0.0.0", "127.0.0.1"))
+            cluster_worker.external_addr(config.remote_listen_addr.replace("0.0.0.0", "127.0.0.1"))
     }
 
     if let Some(seed_addr) = seed_addr {
-        cluster_worker = cluster_worker.with_seed_addr(seed_addr.clone());
+        cluster_worker = cluster_worker.with_seed_addr(seed_addr);
     }
 
     let server = cluster_worker.start().await;

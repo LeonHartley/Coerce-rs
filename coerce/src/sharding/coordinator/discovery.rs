@@ -47,7 +47,7 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
                     node_tag: new_node.tag.clone(),
                     shards: Default::default(),
                     actor: RemoteActorRef::<ShardHost>::new(
-                        format!("ShardHost-{}-{}", &self.shard_entity, new_node.id).into_actor_id(),
+                        format!("shard-host-{}-{}", &self.shard_entity, new_node.id).into_actor_id(),
                         new_node.id,
                         remote,
                     )

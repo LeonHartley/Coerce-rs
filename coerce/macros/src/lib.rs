@@ -46,7 +46,7 @@ pub(crate) fn get_attribute_type_multiple(
             }
         })
         .ok_or_else(|| {
-            syn::Error::new(Span::call_site(), format!("Expect a attribute `{}`", name))
+            syn::Error::new(Span::call_site(), format!("Expect a attribute `{name}`"))
         })?;
 
     if let syn::Meta::List(ref list) = attr {
@@ -58,7 +58,7 @@ pub(crate) fn get_attribute_type_multiple(
     } else {
         return Err(syn::Error::new_spanned(
             attr,
-            format!("The correct syntax is #[{}(type, type, ...)]", name),
+            format!("The correct syntax is #[{name}(type, type, ...)]"),
         ));
     }
 }
@@ -105,9 +105,7 @@ pub fn coerce_test(
     for attr in attrs {
         if attr.path.is_ident("test") {
             let msg = "second test attribute is supplied";
-            return syn::Error::new_spanned(&attr, msg)
-                .to_compile_error()
-                .into();
+            return syn::Error::new_spanned(attr, msg).to_compile_error().into();
         }
     }
 

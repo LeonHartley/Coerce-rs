@@ -27,7 +27,7 @@ async fn handle_connection(
             let handshake: Handshake = Handshake::from_bytes(handshake.into_data()).unwrap();
 
             match Peer::new(handshake.name, peer_addr, reader, writer, sharding)
-                .into_anon_actor(Some(format!("peer-{}", peer_addr)), &actor_system)
+                .into_anon_actor(Some(format!("peer-{peer_addr}")), &actor_system)
                 .await
             {
                 Ok(actor_ref) => {

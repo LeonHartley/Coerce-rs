@@ -29,7 +29,7 @@ impl ShardingApi {
     }
 
     pub async fn start(self, actor_system: &ActorSystem) -> LocalActorRef<ShardingApi> {
-        self.into_actor(Some("ShardingApi".into_actor_id()), actor_system)
+        self.into_actor(Some("sharding-api".into_actor_id()), actor_system)
             .await
             .expect("unable to start ShardingApi actor")
     }

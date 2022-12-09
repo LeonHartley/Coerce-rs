@@ -299,7 +299,7 @@ pub struct DefaultAllocator {
 
 impl Default for DefaultAllocator {
     fn default() -> Self {
-        DefaultAllocator { max_shards: 1000 }
+        DefaultAllocator { max_shards: 100 }
     }
 }
 

@@ -83,7 +83,7 @@ pub async fn test_remote_cluster_heartbeat() {
     assert_eq!(node_b_2.status, Healthy);
 
     {
-        let mut server = server;
+        let server = server;
         let remote = remote;
         server.stop();
         remote.actor_system().shutdown().await;

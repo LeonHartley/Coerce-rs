@@ -3,7 +3,7 @@ use coerce::actor::describe::Describe;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, ActorId, CoreActorRef, IntoActor, IntoActorId};
-use std::sync::Arc;
+
 use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
@@ -37,7 +37,7 @@ impl Actor for TestSupervisor {
         for i in 0..self.count {
             let _child = ctx
                 .spawn(
-                    format!("spawned-{}", i).into_actor_id(),
+                    format!("spawned-{i}").into_actor_id(),
                     SpawnedActor {
                         depth: 1,
                         max_depth: self.max_depth,

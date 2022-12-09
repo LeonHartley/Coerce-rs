@@ -24,11 +24,11 @@ pub struct TestActorRecipe {
 
 impl ActorRecipe for TestActorRecipe {
     fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
-        serde_json::from_slice(&bytes).unwrap()
+        serde_json::from_slice(bytes).unwrap()
     }
 
     fn write_to_bytes(&self) -> Option<Vec<u8>> {
-        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+        serde_json::to_vec(&self).ok()
     }
 }
 
@@ -55,11 +55,11 @@ pub struct EchoActorRecipe {}
 
 impl ActorRecipe for EchoActorRecipe {
     fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self> {
-        serde_json::from_slice(&bytes).unwrap()
+        serde_json::from_slice(bytes).unwrap()
     }
 
     fn write_to_bytes(&self) -> Option<Vec<u8>> {
-        serde_json::to_vec(&self).map_or(None, |b| Some(b))
+        serde_json::to_vec(&self).ok()
     }
 }
 

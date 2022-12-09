@@ -1,9 +1,7 @@
 use coerce::actor::context::ActorStatus;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{ActorRefErr, IntoActor};
+use coerce::actor::ActorRefErr;
 
-use std::time::Duration;
-use tokio::time::sleep;
 use util::*;
 
 pub mod util;

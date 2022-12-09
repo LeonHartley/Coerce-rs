@@ -37,7 +37,7 @@ impl CoordinatorSpawner {
         let coordinator =
             ShardCoordinator::new(self.shard_entity.clone(), self.local_shard_host.clone())
                 .into_actor(
-                    Some(format!("ShardCoordinator-{}", &self.shard_entity)),
+                    Some(format!("shard-coordinator-{}", &self.shard_entity)),
                     &ctx.system(),
                 )
                 .await;

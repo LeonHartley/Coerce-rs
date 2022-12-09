@@ -101,7 +101,7 @@ async fn create_system(
     let sys = ActorSystem::new().to_persistent(persistence);
     let remote = RemoteActorSystem::builder()
         .with_actor_system(sys)
-        .with_tag(format!("node-{}", node_id))
+        .with_tag(format!("node-{node_id}"))
         .with_actors(|a| {
             a.with_actor(TestActorFactory)
                 .with_handler::<TestActor, GetStatusRequest>("GetStatusRequest")
@@ -135,7 +135,8 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
     util::create_trace_logger();
 
     let persistence = Persistence::from(InMemoryStorageProvider::new());
-    let (remote_a, server_a) = create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;
+    let (remote_a, _server_a) =
+        create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;
 
     let (remote_b, _server_b) = create_system(
         persistence.clone(),
@@ -149,7 +150,7 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
         .build()
         .await;
 
-    let sharding_b = Sharding::<TestActorFactory>::builder(remote_b.clone())
+    let _sharding_b = Sharding::<TestActorFactory>::builder(remote_b.clone())
         .build()
         .await;
 

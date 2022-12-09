@@ -33,7 +33,7 @@ impl HttpApiBuilder {
             .expect("listen_addr is required, no default is defined yet (TODO)");
 
         RemoteHttpApi::new(listen_addr, self.routes)
-            .into_actor(Some("RemoteHttpApi"), system)
+            .into_actor(Some("http-api"), system)
             .await
             .unwrap()
     }

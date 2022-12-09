@@ -161,7 +161,7 @@ pub fn create_trace_logger() {
         .with_span_events(FmtSpan::NONE)
         .with_ansi(false)
         .with_max_level(
-            Level::from_str(&LOG_LEVEL.as_str()).expect("invalid `LOG_LEVEL` environment variable"),
+            Level::from_str(LOG_LEVEL.as_str()).expect("invalid `LOG_LEVEL` environment variable"),
         )
         // sets this to be the default, global collector for this application.
         .try_init();

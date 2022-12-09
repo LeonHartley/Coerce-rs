@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct GetAll {
     pub max_depth: Option<usize>,
     pub max_children: Option<usize>,
@@ -83,10 +83,10 @@ impl Default for ActorDescription {
 )]
 pub(super) async fn get_all(
     system: RemoteActorSystem,
-    options: Query<GetAll>,
+    Query(options): Query<GetAll>,
 ) -> impl IntoResponse {
     // TODO: pass in through query parameters or something?
-    let options = Arc::new(options.0.into());
+    let options = Arc::new(options.into());
 
     let (tx, rx) = oneshot::channel();
     let _ = system

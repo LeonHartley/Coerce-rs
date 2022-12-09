@@ -113,7 +113,7 @@ impl PersistentActor for ShardCoordinator {
                     node_tag: String::default(),
                     shards: HashSet::new(),
                     actor: RemoteActorRef::<ShardHost>::new(
-                        format!("ShardHost-{}-{}", &self.shard_entity, host.id).into_actor_id(),
+                        format!("shard-host-{}-{}", &self.shard_entity, host.id).into_actor_id(),
                         host.id,
                         remote.clone(),
                     )

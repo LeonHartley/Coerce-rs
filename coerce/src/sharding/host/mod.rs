@@ -77,7 +77,7 @@ impl ShardHost {
     }
 
     pub async fn get_coordinator(&self, ctx: &ActorContext) -> ActorRef<ShardCoordinator> {
-        let actor_id = format!("ShardCoordinator-{}", &self.shard_entity).into_actor_id();
+        let actor_id = format!("shard-coordinator-{}", &self.shard_entity).into_actor_id();
         let remote = ctx.system().remote();
         let leader = remote.current_leader();
         if leader == Some(remote.node_id()) {
