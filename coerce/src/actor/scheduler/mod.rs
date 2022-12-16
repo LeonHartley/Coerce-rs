@@ -9,7 +9,7 @@ use crate::actor::lifecycle::ActorLoop;
 use crate::actor::system::{ActorSystem, DEFAULT_ACTOR_PATH};
 
 #[cfg(feature = "remote")]
-use crate::remote::{actor::message::SetRemote, system::RemoteActorSystem};
+use crate::remote::{actor::message::SetRemote, heartbeat::Heartbeat, system::RemoteActorSystem};
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -39,7 +39,7 @@ impl ActorScheduler {
                 #[cfg(feature = "remote")]
                 remote: None,
             },
-            "ActorScheduler-0".into_actor_id(),
+            "actor-scheduler".into_actor_id(),
             ActorType::Anonymous,
             None,
             None,
@@ -178,7 +178,7 @@ where
 #[cfg(feature = "remote")]
 #[async_trait]
 impl Handler<SetRemote> for ActorScheduler {
-    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         self.remote = Some(message.0);
         trace!("actor scheduler is now configured for remoting");
     }

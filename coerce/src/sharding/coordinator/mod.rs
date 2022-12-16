@@ -10,6 +10,7 @@ use crate::remote::system::NodeId;
 
 use crate::actor::message::Handler;
 use crate::remote::cluster::node::NodeStatus::{Healthy, Joining};
+use crate::remote::heartbeat::Heartbeat;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::SystemTopic;
 use crate::remote::RemoteActorRef;
@@ -79,6 +80,8 @@ impl PersistentActor for ShardCoordinator {
 
     async fn pre_recovery(&mut self, ctx: &mut ActorContext) {
         let remote = ctx.system().remote();
+        Heartbeat::register(ctx.boxed_actor_ref(), remote);
+
         let node_id = remote.node_id();
         let node_tag = remote.node_tag().to_string();
 
@@ -126,6 +129,10 @@ impl PersistentActor for ShardCoordinator {
                 });
             }
         }
+    }
+
+    async fn stopped(&mut self, ctx: &mut ActorContext) {
+        Heartbeat::remove(ctx.id(), ctx.system().remote());
     }
 }
 

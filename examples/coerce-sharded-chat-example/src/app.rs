@@ -8,20 +8,18 @@ use coerce::remote::api::cluster::ClusterApi;
 use coerce::remote::api::sharding::ShardingApi;
 use coerce::remote::api::system::SystemApi;
 use coerce::remote::api::RemoteHttpApi;
+use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::builder::RemoteActorSystemBuilder;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
 use coerce::sharding::Sharding;
-
-use coerce::remote::net::server::RemoteServer;
 use coerce_k8s::config::KubernetesDiscoveryConfig;
 use coerce_k8s::KubernetesDiscovery;
-
-use std::net::SocketAddr;
 
 use coerce::actor::LocalActorRef;
 use coerce::remote::api::builder::HttpApiBuilder;
 use coerce::remote::api::metrics::MetricsApi;
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
+use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::task::JoinHandle;
 
@@ -108,7 +106,10 @@ impl ShardedChat {
 }
 
 async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, RemoteServer) {
-    let actor_system = ActorSystem::new();
+    let (seed_addr, node_id, node_tag, external_addr) = get_node_info(&config).await;
+
+    let actor_system = ActorSystem::builder().system_name(&node_tag).build();
+
     let system = actor_system.to_persistent(match &config.persistence {
         ShardedChatPersistence::Redis { host: Some(host) } => Persistence::from(
             RedisStorageProvider::connect(
@@ -125,6 +126,56 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
         _ => Persistence::from(InMemoryStorageProvider::new()),
     });
 
+    info!(
+        "starting cluster node (node_id={}, node_tag={}, listen_addr={}, external_addr={:?})",
+        node_id, &node_tag, &config.remote_listen_addr, &external_addr
+    );
+
+    let remote_system = RemoteActorSystemBuilder::new()
+        .with_id(node_id)
+        .with_tag(node_tag)
+        .with_version(env!("CARGO_PKG_VERSION"))
+        .with_actor_system(system)
+        .with_handlers(|handlers| {
+            handlers
+                .with_actor(ChatStreamFactory)
+                .with_handler::<ChatStream, Join>("ChatStream.Join")
+                .with_handler::<ChatStream, ChatMessage>("ChatStream.ChatMessage")
+        })
+        .attribute(
+            "http_api_addr",
+            format!("http://{}", &config.cluster_api_listen_addr),
+        )
+        .attribute("cluster", "sharded-chat-dev".to_string())
+        .attribute("environment", "dev")
+        .attribute("hello", "world")
+        .build()
+        .await;
+
+    let mut cluster_worker = remote_system
+        .clone()
+        .cluster_worker()
+        .listen_addr(&config.remote_listen_addr);
+
+    if let Some(external_addr) = external_addr {
+        cluster_worker = cluster_worker.external_addr(external_addr);
+    } else {
+        cluster_worker =
+            cluster_worker.external_addr(config.remote_listen_addr.replace("0.0.0.0", "127.0.0.1"))
+    }
+
+    if let Some(seed_addr) = seed_addr {
+        cluster_worker = cluster_worker.with_seed_addr(seed_addr);
+    }
+
+    let server = cluster_worker.start().await;
+
+    (remote_system, server)
+}
+
+async fn get_node_info(
+    config: &&ShardedChatConfig,
+) -> (Option<String>, NodeId, String, Option<String>) {
     let mut seed_addr = config.remote_seed_addr.clone();
     let is_running_in_k8s = std::env::var("KUBERNETES_SERVICE_HOST").is_ok();
     let (node_id, node_tag, external_addr) = if is_running_in_k8s {
@@ -164,48 +215,5 @@ async fn create_actor_system(config: &ShardedChatConfig) -> (RemoteActorSystem, 
         )
     };
 
-    info!(
-        "starting cluster node (node_id={}, node_tag={}, listen_addr={}, external_addr={:?})",
-        node_id, &node_tag, &config.remote_listen_addr, &external_addr
-    );
-
-    let remote_system = RemoteActorSystemBuilder::new()
-        .with_id(node_id)
-        .with_tag(node_tag)
-        .with_actor_system(system)
-        .with_handlers(|handlers| {
-            handlers
-                .with_actor(ChatStreamFactory)
-                .with_handler::<ChatStream, Join>("ChatStream.Join")
-                .with_handler::<ChatStream, ChatMessage>("ChatStream.ChatMessage")
-        })
-        .attribute(
-            "http_api_addr",
-            format!("http://{}", &config.cluster_api_listen_addr),
-        )
-        .attribute("cluster", "sharded-chat-dev".to_string())
-        .attribute("environment", "dev")
-        .attribute("hello", "world")
-        .build()
-        .await;
-
-    let mut cluster_worker = remote_system
-        .clone()
-        .cluster_worker()
-        .listen_addr(&config.remote_listen_addr);
-
-    if let Some(external_addr) = external_addr {
-        cluster_worker = cluster_worker.external_addr(external_addr);
-    } else {
-        cluster_worker =
-            cluster_worker.external_addr(config.remote_listen_addr.replace("0.0.0.0", "127.0.0.1"))
-    }
-
-    if let Some(seed_addr) = seed_addr {
-        cluster_worker = cluster_worker.with_seed_addr(seed_addr);
-    }
-
-    let server = cluster_worker.start().await;
-
-    (remote_system, server)
+    (seed_addr, node_id, node_tag, external_addr)
 }

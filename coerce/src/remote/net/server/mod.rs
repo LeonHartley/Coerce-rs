@@ -1,5 +1,5 @@
-use crate::actor::scheduler::ActorType::Anonymous;
-use crate::actor::LocalActorRef;
+use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
+use crate::actor::{IntoActor, LocalActorRef};
 use crate::remote::net::server::session::store::{NewSession, RemoteSessionStore};
 use crate::remote::net::server::session::RemoteSession;
 use crate::remote::system::RemoteActorSystem;
@@ -88,13 +88,8 @@ impl RemoteServer {
 
         let listener = tokio::net::TcpListener::bind(&config.listen_addr).await?;
 
-        let session_store = system
-            .actor_system()
-            .new_actor(
-                format!("RemoteSessionStore-{}", system.node_tag()),
-                RemoteSessionStore::new(),
-                Anonymous,
-            )
+        let session_store = RemoteSessionStore::new()
+            .into_actor(Some("remote-session-store"), &system.actor_system())
             .await
             .unwrap();
 

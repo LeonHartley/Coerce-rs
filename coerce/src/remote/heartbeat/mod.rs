@@ -1,8 +1,11 @@
+pub mod health;
+
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, IntoActor, LocalActorRef};
+use crate::actor::{Actor, BoxedActorRef, IntoActor, LocalActorRef};
+use crate::actor::{ActorId, CoreActorRef};
 use crate::remote::actor::message::{NodeTerminated, SetRemote};
 use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
 use crate::remote::net::proto::network::PongEvent;
@@ -17,7 +20,11 @@ use std::collections::{HashMap, VecDeque};
 
 use std::ops::Add;
 
+use crate::remote::heartbeat::health::{
+    GetHealth, RegisterHealthCheck, RemoveHealthCheck, SystemHealth,
+};
 use std::time::{Duration, Instant};
+use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
 pub struct Heartbeat {
@@ -26,6 +33,7 @@ pub struct Heartbeat {
     last_heartbeat: Option<DateTime<Utc>>,
     node_pings: HashMap<NodeId, NodePing>,
     on_next_leader_changed: VecDeque<Sender<NodeId>>,
+    health_check_actors: Vec<BoxedActorRef>,
 }
 
 pub struct HeartbeatConfig {
@@ -43,10 +51,28 @@ impl Heartbeat {
             last_heartbeat: None,
             node_pings: HashMap::new(),
             on_next_leader_changed: VecDeque::new(),
+            health_check_actors: Vec::new(),
         }
         .into_actor(Some("heartbeat"), sys)
         .await
         .expect("heartbeat actor")
+    }
+
+    /// Registers an actor to be part of the health check.
+    pub fn register<T: Into<BoxedActorRef>>(actor: T, system: &RemoteActorSystem) {
+        let _ = system.heartbeat().notify(RegisterHealthCheck(actor.into()));
+    }
+
+    pub fn remove(actor_id: &ActorId, system: &RemoteActorSystem) {
+        let _ = system
+            .heartbeat()
+            .notify(RemoveHealthCheck(actor_id.clone()));
+    }
+
+    pub async fn get_system_health(system: &RemoteActorSystem) -> SystemHealth {
+        let (tx, rx) = oneshot::channel();
+        let _ = system.heartbeat().notify(GetHealth(tx));
+        rx.await.unwrap()
     }
 }
 
@@ -67,7 +93,22 @@ impl Handler<SetRemote> for Heartbeat {
             HeartbeatTick,
         ));
 
+        // Default system actors that will form the initial health check.
+        let mut actors: Vec<BoxedActorRef> = vec![
+            system.actor_system().scheduler().clone().into(),
+            system.heartbeat().clone().into(),
+            system.registry().clone().into(),
+            system.client_registry().clone().into(),
+            system.node_discovery().clone().into(),
+        ];
+
+        if let Some(stream_mediator) = system.stream_mediator() {
+            actors.push(stream_mediator.clone().into());
+        }
+
         self.system = Some(system);
+        self.health_check_actors = actors;
+
         let _ = self.actor_ref(ctx).notify(HeartbeatTick);
     }
 }

@@ -6,7 +6,6 @@ use crate::actor::{
     Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, IntoActorPath,
     ToActorId,
 };
-
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
@@ -68,7 +67,9 @@ pub struct ActorDescription {
     pub actor_type_name: String,
     pub actor_context_id: u64,
     pub tags: ActorTags,
+    // pub last_message_timestamp: Option<i64>,
     pub supervised: Option<SupervisedDescription>,
+    pub time_taken: Option<Duration>,
 }
 
 impl Message for Describe {
@@ -89,7 +90,9 @@ impl<A: Actor> Handler<Describe> for A {
             actor_type_name: A::type_name().to_string(),
             actor_context_id: ctx.ctx_id(),
             tags: ctx.tags(),
+            // last_message_timestamp: ctx.last_message_timestamp,
             supervised: None,
+            time_taken: None,
         };
 
         let mut message = message;
@@ -168,13 +171,18 @@ pub async fn describe_all(
         };
 
         async move {
+            let start = Instant::now();
             match actor.describe(describe) {
                 Ok(_) => {
                     // TODO: Apply a timeout to `rx.await`
                     let description = tokio::time::timeout(timeout, rx).await;
                     if let Ok(description) = description {
                         match description {
-                            Ok(description) => DescribeResult::Ok(description),
+                            Ok(description) => DescribeResult::Ok({
+                                let mut description = description;
+                                description.time_taken = Some(start.elapsed());
+                                description
+                            }),
                             Err(_) => {
                                 DescribeResult::from_err(ActorRefErr::ResultChannelClosed, &actor)
                             }
@@ -215,9 +223,13 @@ impl Message for DescribeAll {
 
 #[async_trait]
 impl Handler<DescribeAll> for ActorScheduler {
-    async fn handle(&mut self, message: DescribeAll, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: DescribeAll, ctx: &mut ActorContext) {
         let start = Instant::now();
-        let actors: Vec<BoxedActorRef> = self.actors.values().cloned().collect();
+        let actors = {
+            let mut actors: Vec<BoxedActorRef> = self.actors.values().cloned().collect();
+            actors.push(ctx.boxed_actor_ref());
+            actors
+        };
 
         trace!("describing actors (count={})", actors.len());
         tokio::spawn(async move {

@@ -7,6 +7,7 @@ use coerce::persistent::journal::storage::{JournalEntry, JournalStorage, Journal
 
 use redis::aio::ConnectionLike;
 
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 use tokio::sync::oneshot;
@@ -87,10 +88,17 @@ async fn create_provider<C: 'static + ConnectionLike + Send + Sync>(
 where
     C: Clone,
 {
+    const REDIS_JOURNAL_COUNTER: AtomicU32 = AtomicU32::new(1);
     let config = Arc::new(config);
 
     let redis_journal = RedisJournal(redis)
-        .into_anon_actor(Option::<String>::None, system)
+        .into_actor(
+            Some(format!(
+                "redis-journal-{}",
+                REDIS_JOURNAL_COUNTER.fetch_add(1, Ordering::Relaxed)
+            )),
+            system,
+        )
         .await
         .expect("start journal actor");
 

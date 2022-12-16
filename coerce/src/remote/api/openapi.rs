@@ -5,6 +5,7 @@ use crate::remote::api::system::actors;
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        system::health,
         system::get_stats,
         actors::get_all,
         cluster::get_nodes,
@@ -14,6 +15,9 @@ use crate::remote::api::system::actors;
     ),
     components(
         schemas(
+            system::SystemHealth,
+            system::HealthStatus,
+            system::SystemStats,
             system::SystemStats,
             system::actors::GetAll,
             system::actors::Actors,

@@ -1,4 +1,5 @@
 use crate::remote::api::Routes;
+use crate::remote::cluster::node::RemoteNodeState;
 use crate::remote::system::RemoteActorSystem;
 use axum::response::IntoResponse;
 use axum::routing::get;
@@ -78,20 +79,7 @@ async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
         .get_nodes()
         .await
         .into_iter()
-        .map(|node| ClusterNode {
-            id: node.id,
-            addr: node.addr,
-            tag: node.tag,
-            ping_latency: node.ping_latency.map(|p| format!("{:?}", p)),
-            last_heartbeat: node.last_heartbeat.map(|h| format!("{:?}", h)),
-            node_started_at: node.node_started_at.map(|p| format!("{:?}", p)),
-            status: node.status.into(),
-            attributes: node
-                .attributes
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
-        })
+        .map(|node| node.into())
         .collect();
 
     nodes.sort_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
@@ -112,4 +100,23 @@ async fn get_nodes(system: RemoteActorSystem) -> impl IntoResponse {
         leader_node_tag,
         nodes,
     })
+}
+
+impl From<RemoteNodeState> for ClusterNode {
+    fn from(node: RemoteNodeState) -> Self {
+        ClusterNode {
+            id: node.id,
+            addr: node.addr,
+            tag: node.tag,
+            ping_latency: node.ping_latency.map(|p| format!("{:?}", p)),
+            last_heartbeat: node.last_heartbeat.map(|h| format!("{:?}", h)),
+            node_started_at: node.node_started_at.map(|p| format!("{:?}", p)),
+            status: node.status.into(),
+            attributes: node
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        }
+    }
 }

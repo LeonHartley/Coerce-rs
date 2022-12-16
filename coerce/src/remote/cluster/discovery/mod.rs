@@ -3,6 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::Actor;
 use crate::remote::actor::message::SetRemote;
 use crate::remote::cluster::node::{NodeIdentity, NodeStatus, RemoteNode};
+use crate::remote::heartbeat::Heartbeat;
 use crate::remote::net::client::RemoteClientRef;
 use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
@@ -46,7 +47,7 @@ impl Message for Forget {
 
 #[async_trait]
 impl Handler<SetRemote> for NodeDiscovery {
-    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         self.remote_system = Some(message.0);
     }
 }

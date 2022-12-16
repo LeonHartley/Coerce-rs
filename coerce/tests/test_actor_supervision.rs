@@ -149,5 +149,12 @@ pub async fn test_actor_child_spawn_and_stop() {
     let x = rx.await;
     info!("{:#?}", x);
 
+    let actor_count = x
+        .unwrap()
+        .supervised
+        .map_or(0, |s| s.actors.iter().filter(|n| n.is_ok()).count());
+
+    assert_eq!(0, actor_count);
+
     system.shutdown().await;
 }

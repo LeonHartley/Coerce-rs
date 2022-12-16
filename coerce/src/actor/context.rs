@@ -7,6 +7,7 @@ use crate::actor::{
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
+use std::time::Instant;
 use tokio::sync::oneshot::Sender;
 use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
@@ -22,6 +23,10 @@ pub enum ActorStatus {
     Stopping,
     Stopped,
 }
+//
+// struct LastMessage {
+//     received_at: DateTime<Utc>,
+// }
 
 pub struct ActorContext {
     context_id: u64,
@@ -38,29 +43,9 @@ pub struct ActorContext {
     persistence: Option<ActorPersistence>,
 }
 
-static ACTOR_CONTEXT_FIELDS: &[NamedField<'static>] =
-    &[NamedField::new("actor_path"), NamedField::new("actor_type")];
-
-impl Structable for ActorContext {
-    fn definition(&self) -> StructDef<'_> {
-        StructDef::new_static("ActorContext", Fields::Named(ACTOR_CONTEXT_FIELDS))
-    }
-}
-
-impl Valuable for ActorContext {
-    fn as_value(&self) -> Value<'_> {
-        Value::Structable(self)
-    }
-
-    fn visit(&self, v: &mut dyn Visit) {
-        v.visit_named_fields(&NamedValues::new(
-            ACTOR_CONTEXT_FIELDS,
-            &[
-                Value::String(self.full_path.as_ref()),
-                Value::String(self.boxed_ref.actor_type()),
-            ],
-        ));
-    }
+pub struct LogContext {
+    pub actor_path: ActorPath,
+    pub actor_type: &'static str,
 }
 
 impl ActorContext {
@@ -83,6 +68,7 @@ impl ActorContext {
             boxed_parent_ref: None,
             on_actor_stopped: None,
             tags: None,
+            // last_message_timestamp: None,
             #[cfg(feature = "persistence")]
             persistence: None,
         }
@@ -259,6 +245,38 @@ impl ActorContext {
     pub fn take_on_stopped_handlers(&mut self) -> Option<Vec<Sender<()>>> {
         self.on_actor_stopped.take()
     }
+
+    pub fn log(&self) -> LogContext {
+        LogContext {
+            actor_path: self.full_path.clone(),
+            actor_type: self.boxed_ref.actor_type(),
+        }
+    }
+}
+
+static LOG_CONTEXT_FIELDS: &[NamedField<'static>] =
+    &[NamedField::new("actor_path"), NamedField::new("actor_type")];
+
+impl Structable for LogContext {
+    fn definition(&self) -> StructDef<'_> {
+        StructDef::new_static("Context", Fields::Named(LOG_CONTEXT_FIELDS))
+    }
+}
+
+impl Valuable for LogContext {
+    fn as_value(&self) -> Value<'_> {
+        Value::Structable(self)
+    }
+
+    fn visit(&self, v: &mut dyn Visit) {
+        v.visit_named_fields(&NamedValues::new(
+            LOG_CONTEXT_FIELDS,
+            &[
+                Value::String(self.actor_path.as_ref()),
+                Value::String(self.actor_type),
+            ],
+        ));
+    }
 }
 
 impl Drop for ActorContext {
@@ -277,12 +295,7 @@ impl Drop for ActorContext {
                 on_context_dropped(&boxed_ref, &parent_ref, &status, &system);
             });
         } else {
-            on_context_dropped(
-                &self.boxed_ref,
-                &self.boxed_parent_ref,
-                &self.status,
-                &self.system,
-            );
+            on_context_dropped(&self.boxed_ref, &parent_ref, &self.status, &self.system);
         }
     }
 }

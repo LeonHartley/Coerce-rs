@@ -212,6 +212,10 @@ lazy_static! {
     static ref ACTOR_REF_CACHE: ActorRefCache = ActorRefCache::new();
 }
 
+pub fn actor_ref_cache_size() -> usize {
+    ACTOR_REF_CACHE.len()
+}
+
 async fn get_actor_ref<A: Actor>(
     system: &ActorSystem,
     actor_id: &ActorId,

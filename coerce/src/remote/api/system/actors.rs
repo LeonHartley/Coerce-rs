@@ -49,6 +49,7 @@ pub struct ActorDescription {
     pub actor_context_id: Option<u64>,
     pub tags: Option<ActorTags>,
     pub supervised: Option<SupervisedDescription>,
+    pub time_taken: Option<Duration>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]
@@ -66,6 +67,7 @@ impl Default for ActorDescription {
             actor_context_id: None,
             tags: None,
             supervised: None,
+            time_taken: None,
         }
     }
 }
@@ -125,6 +127,7 @@ impl From<describe::DescribeResult> for ActorDescription {
                 actor_context_id: Some(value.actor_context_id),
                 tags: Some(value.tags.into()),
                 supervised: value.supervised.map(|s| s.into()),
+                time_taken: value.time_taken,
             },
 
             describe::DescribeResult::Err {

@@ -78,26 +78,27 @@ impl ActorLoop {
             let _ = on_start.send(());
         }
 
+        let log = ctx.log();
         while let Some(mut msg) = receiver.recv().await {
             {
                 #[cfg(feature = "actor-tracing-info")]
                 let span = tracing::info_span!(
                     "actor.recv",
-                    ctx = ctx.as_value(),
+                    ctx = log.as_value(),
                     message_type = msg.name(),
                 );
 
                 #[cfg(feature = "actor-tracing-debug")]
                 let span = tracing::debug_span!(
                     "actor.recv",
-                    ctx = ctx.as_value(),
+                    ctx = log.as_value(),
                     message_type = msg.name(),
                 );
 
                 #[cfg(feature = "actor-tracing-trace")]
                 let span = tracing::trace_span!(
                     "actor.recv",
-                    ctx = ctx.as_value(),
+                    ctx = log.as_value(),
                     message_type = msg.name(),
                 );
 

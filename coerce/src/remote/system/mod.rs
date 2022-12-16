@@ -69,12 +69,6 @@ impl RemoteSystemCore {
     }
 }
 
-impl Drop for RemoteSystemCore {
-    fn drop(&mut self) {
-        info!("dropped remotesystem(id={})", self.node_id);
-    }
-}
-
 impl RemoteActorSystem {
     pub fn builder() -> RemoteActorSystemBuilder {
         RemoteActorSystemBuilder::new()
@@ -94,6 +88,10 @@ impl RemoteActorSystem {
 
     pub fn node_tag(&self) -> &str {
         self.inner.config.node_tag()
+    }
+
+    pub fn node_version(&self) -> &str {
+        self.inner.config.node_version()
     }
 
     pub fn node_id(&self) -> NodeId {

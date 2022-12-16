@@ -28,6 +28,7 @@ use uuid::Uuid;
 pub struct RemoteActorSystemBuilder {
     node_id: Option<NodeId>,
     node_tag: Option<String>,
+    node_version: Option<String>,
     inner: Option<ActorSystem>,
     config_builders: Vec<ConfigBuilderFn>,
     mediator: Option<StreamMediator>,
@@ -43,6 +44,7 @@ impl RemoteActorSystemBuilder {
         RemoteActorSystemBuilder {
             node_id: None,
             node_tag: None,
+            node_version: None,
             inner: None,
             config_builders: vec![
                 #[cfg(feature = "sharding")]
@@ -63,6 +65,13 @@ impl RemoteActorSystemBuilder {
 
     pub fn with_id(mut self, id: NodeId) -> Self {
         self.node_id = Some(id);
+
+        self
+    }
+
+    pub fn with_version(mut self, version: impl ToString) -> Self {
+        info!("setting version={}", version.to_string());
+        self.node_version = Some(version.to_string());
 
         self
     }
@@ -138,6 +147,7 @@ impl RemoteActorSystemBuilder {
             .unwrap_or_else(|| inner.system_name().to_string());
         let config = config_builder.build(
             Some(system_tag.clone()),
+            self.node_version,
             self.server_auth_token,
             self.node_attributes,
         );
@@ -278,6 +288,7 @@ impl RemoteSystemConfigBuilder {
     pub fn build(
         self,
         tag: Option<String>,
+        version: Option<String>,
         server_auth_token: Option<String>,
         attributes: HashMap<String, String>,
     ) -> Arc<RemoteSystemConfig> {
@@ -293,19 +304,23 @@ impl RemoteSystemConfigBuilder {
         }
 
         let node_tag = tag.map_or_else(|| format!("cluster-node-{}", Uuid::new_v4()), |t| t);
+        let node_version = version.unwrap_or_else(|| "0.0.0".to_string());
+        let attributes = attributes
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect::<NodeAttributes>()
+            .into();
+
         Arc::new(RemoteSystemConfig::new(
             node_tag,
+            node_version,
             actor_types,
             handler_types,
             self.handlers,
             self.actors,
             self.heartbeat.unwrap_or_default(),
             server_auth_token,
-            attributes
-                .into_iter()
-                .map(|(k, v)| (k.into(), v.into()))
-                .collect::<NodeAttributes>()
-                .into(),
+            attributes,
         ))
     }
 }

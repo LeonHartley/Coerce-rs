@@ -12,6 +12,7 @@ use crate::sharding::shard::Shard;
 use protobuf::Message as ProtoMessage;
 
 use crate::remote::actor::BoxedActorHandler;
+use crate::remote::heartbeat::Heartbeat;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -54,7 +55,12 @@ impl Message for LeaderAllocated {
     type Result = ();
 }
 
-impl Actor for ShardHost {}
+#[async_trait]
+impl Actor for ShardHost {
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        Heartbeat::register(ctx.boxed_actor_ref(), ctx.system().remote());
+    }
+}
 
 impl ShardHost {
     pub fn new(

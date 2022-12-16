@@ -50,7 +50,7 @@ impl Handler<NewSession> for RemoteSessionStore {
 
         let session_actor = ctx
             .spawn(
-                format!("RemoteSession-{}", session_id.to_string()).into_actor_id(),
+                format!("session-{}", session_id.to_string()).into_actor_id(),
                 session,
             )
             .await

@@ -2,6 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, LocalActorRef};
 use crate::remote::actor::message::SetRemote;
+use crate::remote::heartbeat::Heartbeat;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::StreamPublishEvent;
 use crate::remote::net::StreamData;
@@ -134,6 +135,8 @@ impl StreamMediator {
 #[async_trait]
 impl Handler<SetRemote> for StreamMediator {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+        Heartbeat::register(ctx.boxed_actor_ref(), &message.0);
+
         self.remote = Some(message.0);
         self.system_subscription = Some(self.subscribe(SystemTopic, self.actor_ref(ctx)).unwrap())
     }

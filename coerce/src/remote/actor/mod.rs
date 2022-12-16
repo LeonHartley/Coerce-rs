@@ -29,6 +29,7 @@ pub(crate) type BoxedMessageHandler = Box<dyn ActorMessageHandler + Send + Sync>
 
 pub struct RemoteSystemConfig {
     node_tag: String,
+    node_version: String,
     actor_types: HashMap<TypeId, String>,
     handler_types: HashMap<TypeId, String>,
     message_handlers: HashMap<String, BoxedMessageHandler>,
@@ -41,6 +42,7 @@ pub struct RemoteSystemConfig {
 impl RemoteSystemConfig {
     pub fn new(
         node_tag: String,
+        node_version: String,
         actor_types: HashMap<TypeId, String>,
         handler_types: HashMap<TypeId, String>,
         message_handlers: HashMap<String, BoxedMessageHandler>,
@@ -51,6 +53,7 @@ impl RemoteSystemConfig {
     ) -> RemoteSystemConfig {
         RemoteSystemConfig {
             node_tag,
+            node_version,
             actor_types,
             handler_types,
             message_handlers,
@@ -63,6 +66,10 @@ impl RemoteSystemConfig {
 
     pub fn node_tag(&self) -> &str {
         &self.node_tag
+    }
+
+    pub fn node_version(&self) -> &str {
+        &self.node_version
     }
 
     pub fn handler_name<A: Actor, M: Message>(&self) -> Option<String> {

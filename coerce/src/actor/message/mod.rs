@@ -114,6 +114,8 @@ where
 
         let msg = self.msg.take();
         let result = actor.handle(msg.unwrap(), ctx).await;
+
+        // ctx.last_message_timestamp = Some(start);
         let message_processing_took = start.elapsed();
 
         ActorMetrics::incr_messages_processed(
