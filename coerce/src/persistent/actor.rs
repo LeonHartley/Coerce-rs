@@ -1,21 +1,15 @@
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::Message;
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, BoxedActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef};
 
 use crate::persistent::failure::{should_retry, PersistFailurePolicy, RecoveryFailurePolicy};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
-use crate::persistent::journal::{PersistErr, RecoveredPayload, RecoveryErr};
+use crate::persistent::journal::{PersistErr, RecoveryErr};
 use crate::persistent::recovery::{ActorRecovery, RecoveryResult};
 
-use crate::persistent::RecoveredJournal;
-use std::error::Error;
-use std::fmt;
-use std::fmt::{Debug, Display, Formatter};
-use std::ops::Add;
 use std::sync::Arc;
-use std::time::Duration;
 
 #[async_trait]
 pub trait Recover<M: Message> {
@@ -120,6 +114,8 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
     async fn on_recovery_err(&mut self, _err: RecoveryErr, _ctx: &mut ActorContext) {}
 
     async fn on_recovery_failed(&mut self, _ctx: &mut ActorContext) {}
+
+    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {}
 }
 
 async fn check<A: PersistentActor>(
@@ -242,7 +238,10 @@ where
 
     async fn stopped(&mut self, ctx: &mut ActorContext) {
         trace!("persistent actor stopped");
-
         self.stopped(ctx).await
+    }
+
+    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {
+        self.on_child_stopped(id, ctx).await
     }
 }

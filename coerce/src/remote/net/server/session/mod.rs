@@ -394,7 +394,7 @@ async fn session_handshake(
     );
 
     let nodes = ctx.get_nodes().await;
-    let mut response = ClientHandshake {
+    let response = ClientHandshake {
         node_id: ctx.node_id(),
         node_tag: ctx.node_tag().to_string(),
         node_started_at: Some(datetime_to_timestamp(ctx.started_at())).into(),
@@ -546,7 +546,7 @@ async fn session_create_actor(
         actor_id.as_ref().map_or_else(|| "N/A", |s| s)
     );
     match ctx
-        .handle_create_actor(actor_id, msg.actor_type, msg.recipe, None)
+        .handle_create_actor(actor_id, msg.actor_type, msg.recipe)
         .await
     {
         Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, session).await,

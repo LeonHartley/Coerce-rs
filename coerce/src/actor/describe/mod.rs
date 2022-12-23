@@ -1,10 +1,9 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorScheduler;
-use crate::actor::supervised::{ChildRef, Supervised};
+use crate::actor::supervised::ChildRef;
 use crate::actor::{
-    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef, IntoActorPath,
-    ToActorId,
+    Actor, ActorId, ActorPath, ActorRefErr, ActorTags, BoxedActorRef, CoreActorRef,
 };
 use std::sync::Arc;
 use std::time::Duration;

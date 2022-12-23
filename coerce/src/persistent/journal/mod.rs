@@ -4,7 +4,7 @@ pub mod storage;
 pub mod types;
 
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Message, MessageUnwrapErr, MessageWrapErr};
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::storage::{JournalEntry, JournalStorageRef};
 use crate::persistent::journal::types::{init_journal_types, JournalTypes};

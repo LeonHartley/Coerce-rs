@@ -91,6 +91,7 @@ impl Handler<EntityRequest> for ShardHost {
                 shard_id, buffered_requests.len());
 
             let host_ref = self.actor_ref(ctx);
+
             tokio::spawn(async move {
                 let allocation = leader
                     .send(AllocateShard {
@@ -98,8 +99,21 @@ impl Handler<EntityRequest> for ShardHost {
                         rebalancing: false,
                     })
                     .await;
-                if let Ok(AllocateShardResult::Allocated(shard_id, node_id)) = allocation {
-                    let _ = host_ref.notify(ShardAllocated(shard_id, node_id));
+                match allocation {
+                    Ok(result) => match result {
+                        AllocateShardResult::Allocated(shard_id, node_id)
+                        | AllocateShardResult::AlreadyAllocated(shard_id, node_id) => {
+                            let _ = host_ref.notify(ShardAllocated(shard_id, node_id));
+                        }
+                        AllocateShardResult::NotAllocated => {
+                            // No hosts available?
+                            error!("shard(#{}) not allocated, no hosts available?", shard_id);
+                        }
+                        AllocateShardResult::Err(e) => {
+                            error!("shard(#{}) failed to allocate: {}", shard_id, e);
+                        }
+                    },
+                    Err(e) => {}
                 }
             });
         } else {

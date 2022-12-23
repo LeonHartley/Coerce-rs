@@ -4,8 +4,8 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, ActorTags, BoxedActorRef, LocalActorRef};
-use std::sync::Arc;
+use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::Instrument;
 use valuable::Valuable;

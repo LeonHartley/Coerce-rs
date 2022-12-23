@@ -62,7 +62,7 @@ pub async fn test_remote_cluster_heartbeat() {
 
     // ensure both nodes have run a heartbeat atleast once.
     // TODO: We need the ability to hook into an on-cluster-joined event/future
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::time::sleep(Duration::from_millis(750)).await;
 
     let nodes_a = remote.get_nodes().await;
     let nodes_b = remote_2.get_nodes().await;
@@ -72,7 +72,7 @@ pub async fn test_remote_cluster_heartbeat() {
     let node_b_2 = nodes_b.iter().find(|n| n.id == 2).cloned().unwrap();
 
     let leader_1_id = remote.current_leader();
-    let leader_2_id = remote.current_leader();
+    let leader_2_id = remote_2.current_leader();
 
     assert_eq!(leader_1_id, Some(remote.node_id()));
     assert_eq!(leader_2_id, Some(remote.node_id()));

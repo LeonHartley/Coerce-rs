@@ -21,7 +21,7 @@ use std::sync::Arc;
 use crate::actor::scheduler::ActorType;
 use crate::remote::cluster::discovery::NodeDiscovery;
 
-use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef};
+use crate::remote::cluster::node::NodeAttributes;
 use chrono::Utc;
 use uuid::Uuid;
 

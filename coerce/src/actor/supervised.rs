@@ -5,8 +5,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::{start_actor, ActorType};
 use crate::actor::system::ActorSystem;
 use crate::actor::{
-    Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, CoreActorRef, IntoActorPath,
-    LocalActorRef, ToActorId,
+    Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef, ToActorId,
 };
 
 #[derive(Debug)]
@@ -105,6 +104,11 @@ impl Supervised {
     pub fn attach_child_ref(&mut self, boxed_ref: BoxedActorRef) {
         self.children
             .insert(boxed_ref.actor_id().clone(), ChildRef::attached(boxed_ref));
+    }
+
+    pub fn add_child_ref(&mut self, boxed_ref: BoxedActorRef) -> Option<ChildRef> {
+        self.children
+            .insert(boxed_ref.actor_id().clone(), ChildRef::spawned(boxed_ref))
     }
 
     pub async fn stop_all(&mut self) {

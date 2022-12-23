@@ -129,8 +129,8 @@ pub async fn test_shard_coordinator_shard_allocation() {
         .await;
 
     let initial_allocation = allocation.expect("shard allocation");
-
-    shard_coordinator.stop().await;
+    let res = shard_coordinator.stop().await;
+    assert!(res.is_ok());
 
     let host_stats = shard_host
         .send(GetStats)

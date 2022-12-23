@@ -1,7 +1,7 @@
 use crate::actor::system::ActorSystem;
 use crate::actor::{IntoActor, LocalActorRef};
 use crate::remote::api::{RemoteHttpApi, Routes};
-use axum::Router;
+
 use std::net::SocketAddr;
 
 pub struct HttpApiBuilder {

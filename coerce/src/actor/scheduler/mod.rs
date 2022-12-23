@@ -1,15 +1,14 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{
-    Actor, ActorId, ActorPath, BoxedActorRef, CoreActorRef, IntoActorId, IntoActorPath,
-    LocalActorRef,
+    Actor, ActorId, ActorPath, BoxedActorRef, CoreActorRef, IntoActorId, LocalActorRef,
 };
 
 use crate::actor::lifecycle::ActorLoop;
-use crate::actor::system::{ActorSystem, DEFAULT_ACTOR_PATH};
+use crate::actor::system::ActorSystem;
 
 #[cfg(feature = "remote")]
-use crate::remote::{actor::message::SetRemote, heartbeat::Heartbeat, system::RemoteActorSystem};
+use crate::remote::{actor::message::SetRemote, system::RemoteActorSystem};
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -178,7 +177,7 @@ where
 #[cfg(feature = "remote")]
 #[async_trait]
 impl Handler<SetRemote> for ActorScheduler {
-    async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SetRemote, _ctx: &mut ActorContext) {
         self.remote = Some(message.0);
         trace!("actor scheduler is now configured for remoting");
     }
@@ -273,27 +272,6 @@ pub fn start_actor<A: Actor>(
 where
     A: 'static + Send + Sync,
 {
-    let _actor_id_clone = id.clone();
-    // let actor_id = actor_id_clone.as_str();
-    let _actor_type_name = A::type_name();
-
-    // let node_id = if let Some(system) = &system {
-    //     if system.is_remote() {
-    //         system.remote().node_id()
-    //     } else {
-    //         0
-    //     }
-    // } else {
-    //     0
-    // };
-    //
-    // tracing::trace_span!(
-    //     "ActorScheduler::start_actor",
-    //     actor_id = actor_id,
-    //     actor_type_name = actor_type_name,
-    //     node_id = node_id,
-    // );
-
     let (tx, rx) = mpsc::unbounded_channel();
     let system_id = system.as_ref().map(|s| *s.system_id());
     let actor_ref = LocalActorRef::new(id, tx, system_id, path);

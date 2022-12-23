@@ -36,6 +36,7 @@ impl Message for RemoveHealthCheck {
 
 pub struct GetHealth(pub oneshot::Sender<SystemHealth>);
 
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum HealthStatus {
     Healthy,
     Degraded,

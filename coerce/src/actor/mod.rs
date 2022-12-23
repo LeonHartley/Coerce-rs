@@ -17,7 +17,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
-use tracing::Instrument;
+
 use uuid::Uuid;
 
 #[cfg(feature = "remote")]
@@ -811,7 +811,7 @@ pub trait ToActorId {
 }
 
 pub trait IntoActorPath {
-    fn into_actor_path(&self) -> ActorPath;
+    fn into_actor_path(self) -> ActorPath;
 }
 
 impl<T: ToString + Send + Sync> IntoActorId for T {
@@ -827,7 +827,7 @@ impl<T: ToString + Send + Sync> ToActorId for T {
 }
 
 impl<T: ToString + Send + Sync> IntoActorPath for T {
-    fn into_actor_path(&self) -> ActorPath {
+    fn into_actor_path(self) -> ActorPath {
         self.to_string().into()
     }
 }

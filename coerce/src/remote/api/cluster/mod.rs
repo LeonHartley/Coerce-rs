@@ -5,6 +5,7 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
 use std::collections::HashMap;
+use std::time::Duration;
 
 pub struct ClusterApi {
     system: RemoteActorSystem,
@@ -25,24 +26,24 @@ impl Routes for ClusterApi {
     }
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct ClusterNode {
     pub id: u64,
     pub addr: String,
     pub tag: String,
-    pub ping_latency: Option<String>,
+    pub ping_latency: Option<Duration>,
     pub last_heartbeat: Option<String>,
     pub node_started_at: Option<String>,
     pub status: NodeStatus,
     pub attributes: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct ClusterNodes {
-    node_id: u64,
-    leader_node: Option<u64>,
-    leader_node_tag: Option<String>,
-    nodes: Vec<ClusterNode>,
+    pub node_id: u64,
+    pub leader_node: Option<u64>,
+    pub leader_node_tag: Option<String>,
+    pub nodes: Vec<ClusterNode>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -108,7 +109,7 @@ impl From<RemoteNodeState> for ClusterNode {
             id: node.id,
             addr: node.addr,
             tag: node.tag,
-            ping_latency: node.ping_latency.map(|p| format!("{:?}", p)),
+            ping_latency: node.ping_latency,
             last_heartbeat: node.last_heartbeat.map(|h| format!("{:?}", h)),
             node_started_at: node.node_started_at.map(|p| format!("{:?}", p)),
             status: node.status.into(),

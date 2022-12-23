@@ -117,8 +117,10 @@ impl StreamMediator {
                 T::topic_name().to_string(),
                 &topic_key
             );
+
             let receiver = topic.receiver(topic_key);
             let subscription = Subscription::new(receiver, receiver_ref);
+
             Ok(subscription)
         } else {
             error!(
@@ -127,6 +129,7 @@ impl StreamMediator {
                 T::topic_name().to_string(),
                 &topic_key
             );
+
             Err(SubscribeErr::Err)
         }
     }
@@ -152,11 +155,7 @@ impl Handler<Receive<SystemTopic>> for StreamMediator {
                         self.nodes.insert(new_node.id);
                     }
 
-                    info!(
-                        "[node={}] node added (node_id={})",
-                        self.remote().node_id(),
-                        new_node.id
-                    );
+                    info!("node added (node_id={})", new_node.id);
                 }
 
                 ClusterEvent::NodeRemoved(removed_node) => {
@@ -167,11 +166,8 @@ impl Handler<Receive<SystemTopic>> for StreamMediator {
                     //       it will receive any messages it may have missed.
 
                     let _ = self.nodes.remove(&removed_node.id);
-                    info!(
-                        "[node={}] node removed (node_id={})",
-                        self.remote().node_id(),
-                        removed_node.id
-                    );
+
+                    info!("node removed (node_id={})", removed_node.id);
                 }
                 _ => {}
             },

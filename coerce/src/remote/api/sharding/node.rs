@@ -2,13 +2,12 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::LocalActorRef;
 use crate::remote::api::sharding::ShardingApi;
-use crate::remote::system::NodeId;
-use crate::sharding::coordinator::ShardId;
+
 use crate::sharding::host::stats::GetStats as GetHostStats;
 use axum::extract::Path;
 use axum::response::IntoResponse;
 use axum::Json;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct GetStats(pub String);

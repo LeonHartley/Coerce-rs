@@ -63,6 +63,7 @@ impl Heartbeat {
         let _ = system.heartbeat().notify(RegisterHealthCheck(actor.into()));
     }
 
+    // Removes an actor that was registered to be part of the health check.
     pub fn remove(actor_id: &ActorId, system: &RemoteActorSystem) {
         let _ = system
             .heartbeat()

@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use std::error::Error;
+
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;

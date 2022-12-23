@@ -1,10 +1,9 @@
 use crate::actor::LocalActorRef;
 use crate::remote::api::sharding::cluster::{get_shard_host_stats, get_sharding_stats};
-use crate::remote::api::sharding::node::{get_node_stats, GetAllStats, GetStats};
+use crate::remote::api::sharding::node::{get_node_stats, GetAllStats};
 use crate::remote::api::sharding::{get_sharding_types, ShardingApi};
 use crate::remote::api::Routes;
-use axum::extract::Path;
-use axum::response::IntoResponse;
+
 use axum::routing::get;
 use axum::{Json, Router};
 

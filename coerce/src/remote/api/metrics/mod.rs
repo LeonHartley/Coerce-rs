@@ -1,16 +1,12 @@
-use crate::actor::{Actor, LocalActorRef};
-use crate::remote::api::sharding::ShardingApi;
 use crate::remote::api::Routes;
 use crate::remote::system::RemoteActorSystem;
-use axum::extract::Path;
+
 use axum::response::IntoResponse;
 use axum::routing::get;
-use axum::{Json, Router};
-use metrics_exporter_prometheus::{
-    BuildError, PrometheusBuilder, PrometheusHandle, PrometheusRecorder,
-};
+use axum::Router;
+use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use metrics_util::MetricKindMask;
-use std::net::SocketAddr;
+
 use std::time::Duration;
 
 pub struct MetricsApi {

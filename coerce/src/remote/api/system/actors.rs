@@ -23,7 +23,7 @@ fn child_describe_attached_default() -> bool {
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct Actors {
-    actors: Vec<ActorDescription>,
+    pub actors: Vec<ActorDescription>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]

@@ -1,10 +1,10 @@
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{
-    new_actor_id, Actor, ActorId, ActorPath, ActorRefErr, IntoActorId, LocalActorRef,
+    new_actor_id, Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, IntoActorId, LocalActorRef,
 };
-use rand::RngCore;
+
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -71,7 +71,7 @@ impl ActorSystemBuilder {
         let system_name: Arc<str> = self.system_name.map_or_else(
             || {
                 std::env::var("COERCE_ACTOR_SYSTEM").map_or_else(
-                    |e| format!("{}", system_id).into(),
+                    |_e| format!("{}", system_id).into(),
                     |v| v.to_string().into(),
                 )
             },
@@ -154,19 +154,6 @@ impl ActorSystem {
         actor: A,
         actor_type: ActorType,
     ) -> Result<LocalActorRef<A>, ActorRefErr> {
-        let _actor_type_name = A::type_name();
-        // let span = tracing::trace_span!(
-        //     "ActorSystem::new_actor",
-        //     actor_type = match actor_type {
-        //         ActorType::Anonymous => "Anonymous",
-        //         _ => "Tracked",
-        //     },
-        //     actor_type_name = actor_type_name,
-        //     actor_id = id.as_str(),
-        // );
-        //
-        // let _enter = span.enter();
-
         let id = id.into_actor_id();
         let (tx, rx) = tokio::sync::oneshot::channel();
         let actor_ref = start_actor(
@@ -189,6 +176,37 @@ impl ActorSystem {
                 })
                 .await;
         }
+
+        match rx.await {
+            Ok(_) => Ok(actor_ref),
+            Err(_e) => {
+                error!(
+                    "actor not started, actor_id={}, type={}",
+                    &id,
+                    A::type_name()
+                );
+                Err(ActorRefErr::ActorStartFailed)
+            }
+        }
+    }
+
+    pub async fn new_supervised_actor<I: IntoActorId, A: Actor>(
+        &self,
+        id: I,
+        actor: A,
+        parent_ref: BoxedActorRef,
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
+        let id = id.into_actor_id();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let actor_ref = start_actor(
+            actor,
+            id.clone(),
+            ActorType::Anonymous,
+            Some(tx),
+            Some(self.clone()),
+            Some(parent_ref),
+            self.core.system_name.clone(),
+        );
 
         match rx.await {
             Ok(_) => Ok(actor_ref),

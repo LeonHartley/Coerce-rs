@@ -1,10 +1,7 @@
 use crate::actor::context::ActorContext;
-use crate::persistent::failure::{should_retry, RecoveryFailurePolicy, Retry};
+use crate::persistent::failure::{should_retry, RecoveryFailurePolicy};
 use crate::persistent::journal::{RecoveredPayload, RecoveryErr};
 use crate::persistent::PersistentActor;
-use std::error::Error;
-use std::fmt;
-use std::fmt::{Display, Formatter};
 
 #[async_trait]
 pub trait ActorRecovery: PersistentActor {

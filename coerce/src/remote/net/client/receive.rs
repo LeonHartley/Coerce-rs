@@ -3,12 +3,12 @@ use std::io::Error;
 
 use crate::actor::LocalActorRef;
 use crate::remote::actor::{RemoteResponse, SystemCapabilities};
-use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef, NodeIdentity, RemoteNode};
+use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::net::message::{timestamp_to_datetime, ClientEvent};
 use crate::remote::net::proto::network::PongEvent;
-use crate::remote::net::{proto, StreamReceiver};
+use crate::remote::net::StreamReceiver;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc};
 use protobuf::Message as ProtoMessage;

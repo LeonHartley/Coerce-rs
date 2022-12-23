@@ -46,12 +46,7 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
                     node_id: new_node.id,
                     node_tag: new_node.tag.clone(),
                     shards: Default::default(),
-                    actor: RemoteActorRef::<ShardHost>::new(
-                        format!("shard-host-{}-{}", &self.shard_entity, new_node.id).into_actor_id(),
-                        new_node.id,
-                        remote,
-                    )
-                    .into(),
+                    actor: ShardHost::remote_ref(&self.shard_entity, new_node.id, &remote),
                     status: ShardHostStatus::Ready/*TODO: shard hosts may not be immediately ready*/,
                 });
 

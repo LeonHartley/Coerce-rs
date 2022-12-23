@@ -7,11 +7,11 @@ use crate::actor::{
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
-use std::time::Instant;
+
 use tokio::sync::oneshot::Sender;
 use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
-use crate::actor::supervised::Supervised;
+use crate::actor::supervised::{ChildRef, Supervised};
 
 #[cfg(feature = "persistence")]
 use crate::persistent::context::ActorPersistence;
@@ -192,6 +192,20 @@ impl ActorContext {
 
     pub fn supervised(&self) -> Option<&Supervised> {
         self.supervised.as_ref()
+    }
+
+    pub fn add_child_ref(&mut self, actor_ref: BoxedActorRef) -> Option<ChildRef> {
+        let supervised = {
+            if let Some(supervised) = self.supervised.as_mut() {
+                supervised
+            } else {
+                self.supervised =
+                    Some(Supervised::new(self.id().clone(), self.full_path().clone()));
+                self.supervised.as_mut().unwrap()
+            }
+        };
+
+        supervised.add_child_ref(actor_ref)
     }
 
     pub async fn spawn<A: Actor>(

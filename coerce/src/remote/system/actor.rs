@@ -135,8 +135,9 @@ impl RemoteActorSystem {
         let mut actor_addr = None;
         if node == self_id {
             let local_create = self
-                .handle_create_actor(Some(id.clone()), actor_type, recipe, None)
+                .handle_create_actor(Some(id.clone()), actor_type, recipe)
                 .await;
+
             if local_create.is_ok() {
                 actor_addr = Some(ActorAddress::parse_from_bytes(&local_create.unwrap()).unwrap());
             } else {
@@ -183,7 +184,6 @@ impl RemoteActorSystem {
         actor_id: Option<ActorId>,
         actor_type: String,
         raw_recipe: Vec<u8>,
-        supervisor_ctx: Option<&mut ActorContext>,
     ) -> Result<Vec<u8>, RemoteActorErr> {
         let (tx, rx) = oneshot::channel();
 
@@ -204,7 +204,7 @@ impl RemoteActorSystem {
                 .create(
                     Some(actor_id.clone()),
                     &raw_recipe,
-                    supervisor_ctx,
+                    None,
                     Some(self.actor_system()),
                 )
                 .await;

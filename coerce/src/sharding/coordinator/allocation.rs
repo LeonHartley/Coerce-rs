@@ -9,6 +9,7 @@ use crate::sharding::proto::sharding as proto;
 use futures::future::join_all;
 use protobuf::Message as ProtoMessage;
 use std::collections::hash_map::{DefaultHasher, Entry, VacantEntry};
+use std::fmt::{Display, Formatter};
 
 use crate::sharding::proto::sharding::allocate_shard_result;
 use std::hash::{Hash, Hasher};
@@ -146,7 +147,10 @@ pub async fn broadcast_allocation(
     for host in hosts.into_iter() {
         if host.node_id() == Some(node_id) {
             if let Err(_e) = host.send(ShardAllocated(shard_id, node_id)).await {
-                warn!("")
+                warn!(
+                    "failed to notify node of shard allocation (shard_id={}, node_id={})",
+                    shard_id, node_id
+                );
             }
         } else {
             futures.push(async move {
@@ -193,6 +197,19 @@ pub async fn broadcast_reallocation(shard_id: ShardId, hosts: Vec<ActorRef<Shard
 
     let _results = join_all(futures).await;
     trace!("broadcast to all nodes complete");
+}
+
+impl Display for AllocateShardErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            AllocateShardErr::Unknown => {
+                write!(f, "AllocateShardErr::Unknown - Unknown error occurred")
+            }
+            AllocateShardErr::Persistence => {
+                write!(f, "AllocateShardErr::Persistence - failed to persist event")
+            }
+        }
+    }
 }
 
 impl Message for AllocateShard {

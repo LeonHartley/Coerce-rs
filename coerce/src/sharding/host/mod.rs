@@ -1,13 +1,12 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef, ToActorId};
+use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::RemoteActorRef;
 use crate::sharding::coordinator::allocation::DefaultAllocator;
 use crate::sharding::coordinator::{ShardCoordinator, ShardId};
 use crate::sharding::host::request::{handle_request, EntityRequest};
 use crate::sharding::proto::sharding as proto;
-
-use crate::remote::system::NodeId;
-use crate::remote::RemoteActorRef;
 use crate::sharding::shard::Shard;
 use protobuf::Message as ProtoMessage;
 
@@ -43,6 +42,25 @@ pub struct ShardHost {
     requests_pending_leader_allocation: VecDeque<EntityRequest>,
     requests_pending_shard_allocation: HashMap<ShardId, Vec<EntityRequest>>,
     allocator: Box<dyn ShardAllocator>,
+}
+
+impl ShardHost {
+    pub fn actor_id(entity_type: &str, node_id: NodeId) -> ActorId {
+        format!("shard-host-{}-{}", &entity_type, node_id).into_actor_id()
+    }
+
+    pub fn remote_ref(
+        entity_type: &str,
+        node_id: NodeId,
+        remote: &RemoteActorSystem,
+    ) -> ActorRef<Self> {
+        RemoteActorRef::<ShardHost>::new(
+            Self::actor_id(entity_type, node_id),
+            node_id,
+            remote.clone(),
+        )
+        .into()
+    }
 }
 
 pub trait ShardAllocator: 'static + Send + Sync {
@@ -124,19 +142,6 @@ pub struct StopShard {
     pub shard_id: ShardId,
     pub origin_node_id: NodeId,
     pub request_id: Uuid,
-}
-
-pub struct StartEntity {
-    pub actor_id: ActorId,
-    pub recipe: Arc<Vec<u8>>,
-}
-
-pub struct RemoveEntity {
-    pub actor_id: ActorId,
-}
-
-pub struct PassivateEntity {
-    pub actor_id: ActorId,
 }
 
 pub struct GetShards;
@@ -303,6 +308,7 @@ impl Handler<StopShard> for ShardHost {
             origin_node_id: message.origin_node_id,
             request_id: message.request_id,
         };
+
         match shard_entry {
             Entry::Occupied(mut shard_entry) => {
                 // TODO: is this correct? if the status is starting, should we not update that rather than re-inserting `Stopping`?
@@ -461,95 +467,6 @@ impl Message for StopShard {
                 shard_id: r.shard_id,
                 request_id: Uuid::parse_str(&r.request_id).unwrap(),
                 origin_node_id: r.origin_node_id,
-            })
-            .map_err(|_e| MessageUnwrapErr::DeserializationErr)
-    }
-
-    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
-        Ok(())
-    }
-
-    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
-        Ok(vec![])
-    }
-}
-
-impl Message for StartEntity {
-    type Result = ();
-
-    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
-        proto::StartEntity {
-            actor_id: self.actor_id.to_string(),
-            recipe: self.recipe.as_ref().clone(),
-            ..Default::default()
-        }
-        .write_to_bytes()
-        .map_err(|_| MessageWrapErr::SerializationErr)
-    }
-
-    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        proto::StartEntity::parse_from_bytes(&b)
-            .map(|r| Self {
-                actor_id: r.actor_id.to_actor_id(),
-                recipe: Arc::new(r.recipe),
-            })
-            .map_err(|_e| MessageUnwrapErr::DeserializationErr)
-    }
-
-    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
-        Ok(())
-    }
-
-    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
-        Ok(vec![])
-    }
-}
-
-impl Message for RemoveEntity {
-    type Result = ();
-
-    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
-        proto::RemoveEntity {
-            actor_id: self.actor_id.to_string(),
-            ..Default::default()
-        }
-        .write_to_bytes()
-        .map_err(|_| MessageWrapErr::SerializationErr)
-    }
-
-    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        proto::RemoveEntity::parse_from_bytes(&b)
-            .map(|r| Self {
-                actor_id: r.actor_id.into_actor_id(),
-            })
-            .map_err(|_e| MessageUnwrapErr::DeserializationErr)
-    }
-
-    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
-        Ok(())
-    }
-
-    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
-        Ok(vec![])
-    }
-}
-
-impl Message for PassivateEntity {
-    type Result = ();
-
-    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
-        proto::PassivateEntity {
-            actor_id: self.actor_id.to_string(),
-            ..Default::default()
-        }
-        .write_to_bytes()
-        .map_err(|_| MessageWrapErr::SerializationErr)
-    }
-
-    fn from_bytes(b: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
-        proto::PassivateEntity::parse_from_bytes(&b)
-            .map(|r| Self {
-                actor_id: r.actor_id.into_actor_id(),
             })
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)
     }

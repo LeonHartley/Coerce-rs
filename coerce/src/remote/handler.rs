@@ -23,7 +23,7 @@ pub trait ActorHandler: 'static + Any + Sync + Send {
         &self,
         actor_id: Option<ActorId>,
         raw_recipe: &Vec<u8>,
-        supervisor_ctx: Option<&mut ActorContext>,
+        parent_ref: Option<BoxedActorRef>,
         system: Option<&ActorSystem>,
     ) -> Result<BoxedActorRef, ActorRefErr>;
 
@@ -137,7 +137,7 @@ where
         &self,
         actor_id: Option<ActorId>,
         recipe: &Vec<u8>,
-        supervisor_ctx: Option<&mut ActorContext>,
+        parent_ref: Option<BoxedActorRef>,
         system: Option<&ActorSystem>,
     ) -> Result<BoxedActorRef, ActorRefErr> {
         let system = system.clone();
@@ -146,8 +146,11 @@ where
         let recipe = F::Recipe::read_from_bytes(recipe);
         if let Some(recipe) = recipe {
             if let Ok(state) = self.factory.create(recipe).await {
-                let actor_ref = if let Some(supervisor_ctx) = supervisor_ctx {
-                    supervisor_ctx.spawn(actor_id, state).await
+                let actor_ref = if let Some(parent_ref) = parent_ref {
+                    system
+                        .expect("ActorSystem ref")
+                        .new_supervised_actor(actor_id, state, parent_ref)
+                        .await
                 } else {
                     system
                         .expect(

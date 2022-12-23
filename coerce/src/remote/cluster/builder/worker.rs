@@ -1,5 +1,5 @@
 use crate::remote::cluster::discovery::{Discover, Seed};
-use crate::remote::cluster::node::{NodeAttributes, NodeAttributesRef, RemoteNode};
+use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::server::{RemoteServer, RemoteServerConfig};
 use crate::remote::system::RemoteActorSystem;
 use std::env;
@@ -68,8 +68,6 @@ impl ClusterWorkerBuilder {
             &self.server_listen_addr,
             &cluster_node_addr
         );
-
-        // TODO: Allow all of this to be overridden via environment variables
 
         let listen_addr = self.server_listen_addr.clone();
         let override_incoming_node_addr = env::var("COERCE_OVERRIDE_INCOMING_NODE_ADDR")

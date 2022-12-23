@@ -115,12 +115,7 @@ impl PersistentActor for ShardCoordinator {
                     node_id: host.id,
                     node_tag: String::default(),
                     shards: HashSet::new(),
-                    actor: RemoteActorRef::<ShardHost>::new(
-                        format!("shard-host-{}-{}", &self.shard_entity, host.id).into_actor_id(),
-                        host.id,
-                        remote.clone(),
-                    )
-                    .into(),
+                    actor: ShardHost::remote_ref(&self.shard_entity, host.id, remote),
                     status: if host.status == Healthy || host.status == Joining {
                         ShardHostStatus::Ready
                     } else {

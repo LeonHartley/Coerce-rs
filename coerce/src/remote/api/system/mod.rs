@@ -2,7 +2,7 @@ pub mod actors;
 
 use crate::remote::api::Routes;
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::actor::scheduler::ActorCount;
 use crate::remote::system::{NodeId, RemoteActorSystem};
@@ -10,16 +10,12 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
-use futures::future::join_all;
-use tokio::sync::oneshot;
 
-use crate::actor::context::ActorStatus;
-use crate::actor::lifecycle::Status;
-use crate::actor::{ActorPath, BoxedActorRef, CoreActorRef, IntoActorPath};
+use crate::actor::{ActorPath, CoreActorRef};
 use crate::remote::api::cluster::ClusterNode;
 use crate::remote::api::openapi::ApiDoc;
 use crate::remote::heartbeat::{health, Heartbeat};
-use crate::remote::stream::pubsub::PubSub;
+
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -52,24 +48,24 @@ impl Routes for SystemApi {
     }
 }
 
-#[derive(Serialize, ToSchema, Eq, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, ToSchema, Eq, PartialEq, Clone, Copy)]
 pub enum HealthStatus {
     Healthy,
     Degraded,
     Unhealthy,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct SystemHealth {
-    status: HealthStatus,
-    node_id: u64,
-    node_tag: String,
-    node_version: String,
-    node_started_at: DateTime<Utc>,
-    runtime_version: &'static str,
-    actor_response_times: HashMap<ActorPath, Option<Duration>>,
-    current_leader: Option<NodeId>,
-    nodes: Vec<ClusterNode>,
+    pub status: HealthStatus,
+    pub node_id: u64,
+    pub node_tag: String,
+    pub node_version: String,
+    pub node_started_at: DateTime<Utc>,
+    pub runtime_version: String,
+    pub actor_response_times: HashMap<ActorPath, Option<Duration>>,
+    pub current_leader: Option<NodeId>,
+    pub nodes: Vec<ClusterNode>,
 }
 
 #[utoipa::path(
@@ -91,7 +87,7 @@ impl From<health::SystemHealth> for SystemHealth {
             node_tag: value.node_tag,
             node_version: value.node_version,
             node_started_at: value.node_started_at,
-            runtime_version: value.runtime_version,
+            runtime_version: value.runtime_version.to_string(),
             actor_response_times: value.actor_response_times,
             current_leader: value.current_leader,
             nodes: value.nodes.into_iter().map(|n| n.into()).collect(),

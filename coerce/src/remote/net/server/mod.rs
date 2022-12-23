@@ -1,4 +1,3 @@
-use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::actor::{IntoActor, LocalActorRef};
 use crate::remote::net::server::session::store::{NewSession, RemoteSessionStore};
 use crate::remote::net::server::session::RemoteSession;

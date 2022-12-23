@@ -51,12 +51,6 @@ impl<A: ActorFactory> Sharding<A> {
         system: RemoteActorSystem,
         allocator: Option<Box<dyn ShardAllocator>>,
     ) -> Self {
-        let coordinator_spawner_actor_id =
-            Some(format!("shard-coordinator-spawner-{}", &shard_entity,).into_actor_id());
-
-        let host_actor_id =
-            Some(format!("shard-host-{}-{}", &shard_entity, system.node_id()).into_actor_id());
-
         let actor_handler = match system
             .config()
             .actor_handler(A::Actor::type_name()) {
@@ -65,13 +59,19 @@ impl<A: ActorFactory> Sharding<A> {
         };
 
         let host = ShardHost::new(shard_entity.clone(), actor_handler, allocator)
-            .into_actor(host_actor_id, system.actor_system())
+            .into_actor(
+                Some(ShardHost::actor_id(&shard_entity, system.node_id())),
+                system.actor_system(),
+            )
             .await
             .expect("create ShardHost actor");
 
         let coordinator_spawner =
             CoordinatorSpawner::new(system.node_id(), shard_entity.clone(), host.clone())
-                .into_actor(coordinator_spawner_actor_id, system.actor_system())
+                .into_actor(
+                    Some(format!("shard-coordinator-spawner-{}", &shard_entity).into_actor_id()),
+                    system.actor_system(),
+                )
                 .await
                 .expect("create ShardCoordinator spawner");
 

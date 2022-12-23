@@ -46,7 +46,10 @@ impl Handler<Rebalance> for ShardCoordinator {
                             i += 1;
                         }
 
-                        debug!("rebalancing {} shards from node={} - total={} - fair_shard_count_per_node={}", i, node_id, shard_host.shards.len(), fair_shard_count_per_node);
+                        debug!(
+                            "rebalancing {} shards from node={} - total={} - fair_shard_count_per_node={}",
+                            i, node_id, shard_host.shards.len(), fair_shard_count_per_node
+                        );
                     }
                 }
 

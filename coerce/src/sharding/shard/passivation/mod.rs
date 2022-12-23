@@ -1,7 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::{Timer, TimerTick};
-
 use crate::actor::{Actor, LocalActorRef};
 use crate::sharding::shard::Shard;
 
@@ -57,5 +56,8 @@ impl Actor for PassivationWorker {
 }
 #[async_trait]
 impl Handler<PassivationTimerTick> for PassivationWorker {
-    async fn handle(&mut self, _message: PassivationTimerTick, _ctx: &mut ActorContext) {}
+    async fn handle(&mut self, _message: PassivationTimerTick, _ctx: &mut ActorContext) {
+        // Still not sure if we should let entities themselves handle their own passivation
+        // or if we have some sort of shard-level passivation timer here..
+    }
 }
