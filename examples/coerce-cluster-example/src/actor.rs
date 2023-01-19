@@ -1,17 +1,16 @@
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
+use coerce_macros::JsonMessage;
 
 pub struct EchoActor;
 
 impl Actor for EchoActor {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(JsonMessage, Serialize, Deserialize)]
+#[result("String")]
 pub struct Echo(pub String);
 
-impl Message for Echo {
-    type Result = String;
-}
 
 #[async_trait]
 impl Handler<Echo> for EchoActor {
