@@ -7,8 +7,6 @@ use crate::actor::{
 };
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 
-use crate::actor::context::ActorContext;
-
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::marker::PhantomData;

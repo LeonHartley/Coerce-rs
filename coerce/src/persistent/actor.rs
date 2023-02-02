@@ -12,16 +12,6 @@ use crate::persistent::recovery::{ActorRecovery, RecoveryResult};
 use std::sync::Arc;
 
 #[async_trait]
-pub trait Recover<M: Message> {
-    async fn recover(&mut self, message: M, ctx: &mut ActorContext);
-}
-
-#[async_trait]
-pub trait RecoverSnapshot<S: Snapshot> {
-    async fn recover(&mut self, snapshot: S, ctx: &mut ActorContext);
-}
-
-#[async_trait]
 pub trait PersistentActor: 'static + Sized + Send + Sync {
     fn persistence_key(&self, ctx: &ActorContext) -> String {
         ctx.id().to_string()
@@ -115,7 +105,17 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
 
     async fn on_recovery_failed(&mut self, _ctx: &mut ActorContext) {}
 
-    async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {}
+    async fn on_child_stopped(&mut self, _id: &ActorId, _ctx: &mut ActorContext) {}
+}
+
+#[async_trait]
+pub trait Recover<M: Message> {
+    async fn recover(&mut self, message: M, ctx: &mut ActorContext);
+}
+
+#[async_trait]
+pub trait RecoverSnapshot<S: Snapshot> {
+    async fn recover(&mut self, snapshot: S, ctx: &mut ActorContext);
 }
 
 async fn check<A: PersistentActor>(
@@ -169,13 +169,11 @@ where
     A: Sized,
 {
     fn new_context(
+        &self,
         system: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
-    ) -> ActorContext
-    where
-        Self: Sized,
-    {
+    ) -> ActorContext {
         ActorContext::new(system, status, boxed_ref).with_persistence()
     }
 

@@ -5,8 +5,6 @@ use crate::sharding::coordinator::balancing::Rebalance;
 use crate::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardHostStatus};
 use crate::sharding::host::ShardHost;
 
-use crate::actor::IntoActorId;
-use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 

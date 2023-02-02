@@ -6,7 +6,7 @@ use coerce::actor::{Actor, IntoActor};
 use coerce::remote::heartbeat::health::HealthStatus;
 use coerce::remote::heartbeat::Heartbeat;
 use coerce::remote::system::RemoteActorSystem;
-use protobuf::VERSION;
+
 use std::time::Duration;
 
 #[tokio::test]

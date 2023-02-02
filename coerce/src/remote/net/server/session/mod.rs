@@ -1,4 +1,4 @@
-use crate::actor::context::ActorContext;
+use crate::actor::context::{ActorContext, LogContext};
 use crate::actor::message::Handler;
 use crate::actor::{Actor, ActorId, IntoActorId, LocalActorRef};
 use crate::remote::actor::message::NodeTerminated;
@@ -20,7 +20,7 @@ use crate::remote::net::{receive_loop, StreamData, StreamReceiver};
 use crate::remote::stream::mediator::PublishRaw;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::CARGO_PKG_VERSION;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use protobuf::well_known_types::wrappers::UInt64Value;
 use protobuf::{Message as ProtoMessage, MessageField};
 
@@ -34,6 +34,7 @@ use tokio::sync::oneshot;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
+use valuable::Valuable;
 
 pub mod store;
 
@@ -70,12 +71,20 @@ impl RemoteSession {
 #[async_trait]
 impl Actor for RemoteSession {
     async fn started(&mut self, ctx: &mut ActorContext) {
-        let system = ctx.system().remote();
+        let log = ctx.log();
+        let system = ctx.system().remote_owned();
 
         debug!(
-            "session started (addr={}, session_id={})",
-            &self.addr, &self.id
+            ctx = log.as_value(),
+            "session started (addr={}, session_id={}), validating token", &self.addr, &self.id
         );
+
+        if let Some(read) = &mut self.read {
+            if !validate_session_token(ctx, log, &system, read).await {
+                ctx.stop(None);
+                return;
+            }
+        }
 
         let peers = system
             .get_nodes()
@@ -127,10 +136,67 @@ impl Actor for RemoteSession {
             &self.addr, &self.id
         );
 
+        let _ = self.write.close().await;
+
         if let Some(session_store) = ctx.parent::<RemoteSessionStore>() {
+            info!("session closed");
             let _ = session_store.send(SessionClosed(self.id)).await;
+        } else {
+            info!("no sessionstore parent");
         }
     }
+}
+
+async fn validate_session_token(
+    ctx: &mut ActorContext,
+    log: LogContext,
+    system: &RemoteActorSystem,
+    read: &mut FramedRead<ReadHalf<TcpStream>, NetworkCodec>,
+) -> bool {
+    let bytes = read.next().await;
+    if let Some(Ok(bytes)) = bytes {
+        match SessionEvent::read_from_bytes(bytes) {
+            Some(SessionEvent::Identify(identify)) => {
+                let token = identify.token;
+                let valid = system
+                    .config()
+                    .security()
+                    .client_authentication()
+                    .validate_token(token.as_str());
+
+                if !valid {
+                    error!(
+                        ctx = log.as_value(),
+                        "invalid token received, disconnecting session({}) - token=\"{}\"",
+                        ctx.id(),
+                        token
+                    );
+                } else {
+                    info!(
+                        ctx = log.as_value(),
+                        "token ({}) validated - connection accepted", &token,
+                    );
+
+                    return true;
+                }
+            }
+
+            None | Some(_) => {
+                error!(
+                    ctx = log.as_value(),
+                    "initial payload invalid, expected SessionEvent::Identify, disconnecting session({})",
+                    ctx.id(),
+                );
+            }
+        }
+    } else {
+        error!(
+            ctx = log.as_value(),
+            "unable to read initial authentication payload"
+        );
+    }
+
+    false
 }
 
 #[async_trait]

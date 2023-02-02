@@ -1,4 +1,4 @@
-use crate::actor::message::{EnvelopeType, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Message, MessageUnwrapErr, MessageWrapErr};
 use crate::actor::{ActorId, ActorRefErr, BoxedActorRef, IntoActorId};
 use crate::sharding::proto::sharding as proto;
 use crate::sharding::shard::RecipeRef;

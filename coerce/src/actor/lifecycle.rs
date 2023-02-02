@@ -1,3 +1,5 @@
+//! Actor lifecycle and [`ActorLoop`][ActorLoop] implementation
+
 use crate::actor::context::ActorStatus::{Started, Starting, Stopped, Stopping};
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::message::{Handler, Message, MessageHandler};
@@ -12,7 +14,7 @@ use valuable::Valuable;
 
 use tokio::sync::oneshot::Sender;
 
-pub struct Status();
+pub struct Status;
 
 pub struct Stop(pub Option<Sender<()>>);
 
@@ -54,7 +56,8 @@ impl ActorLoop {
         mut system: Option<ActorSystem>,
     ) {
         let actor_id = actor_ref.actor_id().clone();
-        let mut ctx = A::new_context(system.clone(), Starting, actor_ref.clone().into())
+        let mut ctx = actor
+            .new_context(system.clone(), Starting, actor_ref.clone().into())
             .with_parent(parent_ref);
 
         let system_id = actor_ref

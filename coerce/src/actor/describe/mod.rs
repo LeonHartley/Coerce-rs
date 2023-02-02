@@ -1,3 +1,6 @@
+//! Interrogate the [`ActorSystem`][super::system::ActorSystem] by using [`Describe`][Describe]
+//! to analyse the actor hierarchy
+//!
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorScheduler;

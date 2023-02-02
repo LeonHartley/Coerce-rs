@@ -1,3 +1,5 @@
+//! Actor Context
+
 use crate::actor::message::{Handler, Message};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::system::ActorSystem;

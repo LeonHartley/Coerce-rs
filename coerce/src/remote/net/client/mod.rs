@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use futures::SinkExt;
 use std::collections::VecDeque;
+use std::fmt::{Display, Formatter};
 use std::time::{Duration, Instant};
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
@@ -269,6 +270,19 @@ pub enum HandshakeStatus {
 pub enum RemoteClientErr {
     Encoding,
     StreamErr(tokio::io::Error),
+}
+
+impl Display for RemoteClientErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            RemoteClientErr::Encoding => {
+                write!(f, "a (de)serialisation error occurred")
+            }
+            RemoteClientErr::StreamErr(e) => {
+                write!(f, "a stream error occurred (error={}", e)
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

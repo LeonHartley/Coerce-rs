@@ -23,6 +23,7 @@ use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 use tokio_util::codec::{FramedRead, FramedWrite};
+use valuable::Valuable;
 
 pub struct Connect;
 
@@ -34,10 +35,14 @@ impl RemoteClient {
         _connect: Connect,
         ctx: &mut ActorContext,
     ) -> Option<ConnectionState> {
+        let log_ctx = ctx.log();
         let stream = TcpStream::connect(&self.addr).await;
         if stream.is_err() {
             let error = stream.unwrap_err();
-            error!("connection to {} failed, error: {}", &self.addr, error);
+            error!(
+                ctx = log_ctx.as_value(),
+                "connection to {} failed, error: {}", &self.addr, error
+            );
             return None;
         }
 
@@ -45,16 +50,35 @@ impl RemoteClient {
         let (read, writer) = tokio::io::split(stream);
 
         let reader = FramedRead::new(read, NetworkCodec);
-        let write = FramedWrite::new(writer, NetworkCodec);
+        let mut write = FramedWrite::new(writer, NetworkCodec);
 
         let (identity_tx, identity_rx) = oneshot::channel();
 
         let remote = ctx.system().remote_owned();
-        let _identify = SessionEvent::Identify(IdentifyEvent {
+
+        let identify = SessionEvent::Identify(IdentifyEvent {
+            source_node_id: remote.node_id(),
+            source_node_tag: remote.node_tag().to_string(),
+            token: remote
+                .config()
+                .security()
+                .client_authentication()
+                .generate_token(),
             ..Default::default()
         });
 
-        // TODO: send identify message, session won't be accepted until identify is sent and validated
+        match write_bytes(&identify.write_to_bytes().unwrap(), &mut write).await {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    ctx = log_ctx.as_value(),
+                    "failed to write identify message to begin authentication, error={}", e
+                );
+                return None;
+            }
+        };
+
+        // TODO: read a token ACK before we proceed
 
         let receive_task = tokio::spawn(receive_loop(
             remote.clone(),
@@ -71,7 +95,10 @@ impl RemoteClient {
         let identity = match identity_rx.await {
             Ok(identity) => identity,
             Err(_) => {
-                warn!("no identity received (addr={})", &self.addr);
+                warn!(
+                    ctx = log_ctx.as_value(),
+                    "no identity received (addr={})", &self.addr
+                );
                 return None;
             }
         };

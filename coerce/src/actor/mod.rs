@@ -1,3 +1,5 @@
+//! Coerce Actor Runtime
+
 use crate::actor::context::{ActorContext, ActorStatus};
 use crate::actor::describe::Describe;
 use crate::actor::lifecycle::{Status, Stop};
@@ -26,8 +28,10 @@ use crate::actor::message::Envelope;
 #[cfg(feature = "remote")]
 use crate::remote::{system::NodeId, RemoteActorRef};
 
+pub mod blocking;
 pub mod context;
 pub mod describe;
+// pub mod event;
 pub mod lifecycle;
 pub mod message;
 pub mod metrics;
@@ -36,29 +40,43 @@ pub mod supervised;
 pub mod system;
 pub mod worker;
 
+/// A reference to a string-based `ActorId`
 pub type ActorId = Arc<str>;
 
+/// A reference to a string-based `ActorPath`
 pub type ActorPath = Arc<str>;
 
+/// Actor definition, with specific lifecycle hooks.
 #[async_trait]
 pub trait Actor: 'static + Send + Sync {
+    /// Creates a new [`ActorContext`], allowing actor implementations to override
+    /// specific parts of the [`ActorContext`], before the actor is started.
+    ///
+    /// [`ActorContext`]: context::ActorContext
     fn new_context(
+        &self,
         system: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
-    ) -> ActorContext
-    where
-        Self: Sized,
-    {
+    ) -> ActorContext {
         ActorContext::new(system, status, boxed_ref)
     }
 
+    /// Called once the Actor has been started
     async fn started(&mut self, _ctx: &mut ActorContext) {}
 
+    /// Called once the Actor has stopped
     async fn stopped(&mut self, _ctx: &mut ActorContext) {}
 
+    /// Called when a supervised actor has stopped
     async fn on_child_stopped(&mut self, _id: &ActorId, _ctx: &mut ActorContext) {}
 
+    /// Returns a [`LocalActorRef<Self>`] instance of the current actor,
+    /// automatically casting from the [`ActorContext`][context::ActorContext]'s [`BoxedActorRef`][BoxedActorRef].
+    ///
+    /// [`LocalActorRef<Self>`]: LocalActorRef
+    /// [`ActorContext`]: context::ActorContext
+    /// [`BoxedActorRef`]: BoxedActorRef,
     fn actor_ref(&self, ctx: &ActorContext) -> LocalActorRef<Self>
     where
         Self: Sized,
@@ -66,6 +84,7 @@ pub trait Actor: 'static + Send + Sync {
         ctx.actor_ref()
     }
 
+    /// Returns the actor's type name string
     fn type_name() -> &'static str
     where
         Self: Sized,
@@ -74,6 +93,7 @@ pub trait Actor: 'static + Send + Sync {
     }
 }
 
+/// Trait allowing the creation of an [`Actor`][Actor] directly from itself
 #[async_trait]
 pub trait IntoActor: Actor + Sized {
     async fn into_actor<'a, I: 'a + IntoActorId + Send>(
@@ -89,6 +109,7 @@ pub trait IntoActor: Actor + Sized {
     ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 }
 
+/// Trait allowing the creation of a supervised [`Actor`][Actor] directly from itself
 #[async_trait]
 pub trait IntoChild: Actor + Sized {
     async fn into_child(
@@ -98,7 +119,9 @@ pub trait IntoChild: Actor + Sized {
     ) -> Result<LocalActorRef<Self>, ActorRefErr>;
 }
 
+/// The error returned when a factory has failed to create the requested actor.
 pub enum ActorCreationErr {
+    /// Recipe provided was invalid, possibly a de-serialisation issue.
     InvalidRecipe(String),
 }
 
@@ -111,12 +134,32 @@ impl<A: Actor> Deref for LocalActorRef<A> {
     }
 }
 
+/// Trait that defines how a specific [`Actor`] implementation can be created, allowing
+/// things like distributed sharding and remoting to initialise [`Actor`]s from a
+/// pre-defined [`ActorRecipe`].
+///
+/// [`Actor`]: Actor
+/// [`ActorRecipe`]: ActorRecipe
+#[async_trait]
+pub trait ActorFactory: Clone {
+    /// [`Actor`][Actor] type that is created by the [`ActorFactory`][ActorFactory]
+    type Actor: Actor + 'static + Sync + Send;
+
+    /// The [`ActorRecipe`][ActorRecipe] type to be used
+    type Recipe: ActorRecipe + 'static + Sync + Send;
+
+    /// Creates an [`Actor`][Actor] implementation from a provided [`ActorRecipe`][ActorRecipe]
+    async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr>;
+}
+
+/// Trait that defines the arguments used to initialise specific [`Actor`][Actor] implementations
 pub trait ActorRecipe: Sized {
     fn read_from_bytes(bytes: &Vec<u8>) -> Option<Self>;
 
     fn write_to_bytes(&self) -> Option<Vec<u8>>;
 }
 
+/// Default implementation for (), allowing actors to be created with no [`ActorRecipe`][ActorRecipe].
 impl ActorRecipe for () {
     fn read_from_bytes(_: &Vec<u8>) -> Option<Self> {
         Some(())
@@ -127,14 +170,7 @@ impl ActorRecipe for () {
     }
 }
 
-#[async_trait]
-pub trait ActorFactory: Clone {
-    type Actor: Actor + 'static + Sync + Send;
-    type Recipe: ActorRecipe + 'static + Sync + Send;
-
-    async fn create(&self, recipe: Self::Recipe) -> Result<Self::Actor, ActorCreationErr>;
-}
-
+/// Creates an actor using the global [`ActorSystem`][system::ActorSystem]
 pub async fn new_actor<A: Actor>(actor: A) -> Result<LocalActorRef<A>, ActorRefErr>
 where
     A: 'static + Sync + Send,
@@ -142,6 +178,7 @@ where
     ActorSystem::global_system().new_tracked_actor(actor).await
 }
 
+/// Gets an actor reference from the global [`ActorSystem`][system::ActorSystem]
 pub async fn get_actor<A: Actor>(id: ActorId) -> Option<LocalActorRef<A>>
 where
     A: 'static + Sync + Send,
@@ -167,6 +204,12 @@ impl<A: Actor> Clone for Ref<A> {
     }
 }
 
+/// Location-transparent reference to an [`Actor`][Actor].
+///
+/// Supported targets:
+/// - [`LocalActorRef<A>`][LocalActorRef]
+/// - [`RemoteActorRef<A>`][crate::remote::RemoteActorRef]
+///
 pub struct ActorRef<A: Actor> {
     inner_ref: Ref<A>,
 }
@@ -220,6 +263,8 @@ impl<A: Actor> Clone for ActorRef<A> {
     }
 }
 
+/// Trait allowing the type-omission of [`Actor`][Actor] types but still allowing
+/// statically-typed message transmission
 #[async_trait]
 pub trait MessageReceiver<M: Message>: 'static + Send + Sync {
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
@@ -244,6 +289,8 @@ where
     }
 }
 
+/// Allows type-omission of [`Actor`][Actor] types but still allowing
+/// statically-typed message transmission
 pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
 
 impl<M: Message> Receiver<M> {
@@ -365,6 +412,7 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
     }
 }
 
+/// Trait defining the core functionality of an [`ActorRef`][ActorRef].
 #[async_trait]
 pub trait CoreActorRef: Any {
     fn actor_id(&self) -> &ActorId;
@@ -388,6 +436,7 @@ pub trait CoreActorRef: Any {
     fn as_any(&self) -> &dyn Any;
 }
 
+/// A type-omitted reference to an [`Actor`][Actor]
 #[derive(Clone)]
 pub struct BoxedActorRef(Arc<dyn CoreActorRef + Send + Sync>);
 
@@ -408,10 +457,12 @@ impl Display for BoxedActorRef {
     }
 }
 
+/// A reference to a local [`Actor`][Actor] instance
 pub struct LocalActorRef<A: Actor> {
     inner: Arc<LocalActorRefInner<A>>,
 }
 
+/// Internal shared data of a local [`Actor`][Actor] reference
 pub struct LocalActorRefInner<A: Actor> {
     pub id: ActorId,
     path: ActorPath,
@@ -452,6 +503,7 @@ impl<A: Actor> Clone for LocalActorRef<A> {
     }
 }
 
+/// The error type used for [`Coerce`][crate]'s actor-related APIs
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum ActorRefErr {
     ActorUnavailable,
@@ -506,6 +558,10 @@ impl Display for ActorRefErr {
 impl std::error::Error for ActorRefErr {}
 
 impl<A: Actor> LocalActorRef<A> {
+    /// Creates a LocalActorRef instance from an [`ActorId`][ActorId], `UnboundSender<MessageHandler<A>>`,
+    /// a system_id (`Uuid`) and an [`ActorPath`][ActorPath].
+    ///
+    /// Generally this should not be used directly.
     pub fn new(
         id: ActorId,
         sender: UnboundedSender<MessageHandler<A>>,
@@ -522,10 +578,40 @@ impl<A: Actor> LocalActorRef<A> {
         }
     }
 
+    /// Returns a reference to the [`ActorId`][ActorId] of the target [`Actor`][Actor]
+    ///
+    /// [`Actor`]: coerce::Actor
+    pub fn actor_id(&self) -> &ActorId {
+        &self.inner.id
+    }
+
+    /// Returns a reference to the [`ActorPath`][ActorPath] of the target [`Actor`][Actor]
     pub fn actor_path(&self) -> &ActorPath {
         &self.inner.path
     }
 
+    /// Sends a message to the target [`Actor`][Actor] and waits for the message to be processed and for
+    /// a result to be available.
+    ///
+    /// # Example
+    ///
+    /// Send a [`Status`][lifecycle::Status] message (a built-in message that every actor can handle), and return the result,
+    /// which is an [`ActorStatus`].
+    /// ```rust
+    /// use coerce::actor::{
+    ///     Actor,
+    ///     LocalActorRef,
+    ///     context::ActorStatus,
+    ///     lifecycle::Status
+    /// };
+    ///
+    /// async fn get_status<A: Actor>(actor: &LocalActorRef<A>) -> Option<ActorStatus> {
+    ///     actor.send(Status).await.ok()
+    /// }
+    ///
+    /// ```
+    ///
+    /// [ActorStatus]: context::ActorStatus
     #[instrument(skip(msg))]
     pub async fn send<Msg: Message>(&self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
@@ -541,7 +627,7 @@ impl<A: Actor> LocalActorRef<A> {
         //     info!("message(type={}, actor_type={}) has taken longer than 1000ms", message_type, actor_type);
         // });
 
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = oneshot::channel();
         match self
             .inner
             .sender
@@ -563,19 +649,31 @@ impl<A: Actor> LocalActorRef<A> {
         }
     }
 
+    /// Sends a message to the target [`Actor`][Actor] but doesn't wait for the message to be processed.
+    ///
+    /// # Example
+    ///
+    /// Send a [`Stop`][lifecycle::Stop] message, which is a message every actor can handle, but don't wait for it
+    /// to be processed.
+    ///
+    /// ```rust
+    /// use coerce::actor::{
+    ///     Actor,
+    ///     LocalActorRef,
+    ///     lifecycle::Stop,
+    /// };
+    ///
+    /// fn stop_actor<A: Actor>(actor: &LocalActorRef<A>) {
+    ///     let _ = actor.notify(Stop(None));
+    /// }
+    ///
+    /// ```
+    ///
+    #[instrument(skip(msg))]
     pub fn notify<Msg: Message>(&self, msg: Msg) -> Result<(), ActorRefErr>
     where
         A: Handler<Msg>,
     {
-        // let message_type = msg.name();
-        // let span = tracing::span!(
-        //     tracing::Level::TRACE,
-        //     "LocalActorRef::notify",
-        //     message_type = message_type
-        // );
-        //
-        // let _enter = span.enter();
-
         ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
 
         match self
@@ -603,14 +701,12 @@ impl<A: Actor> LocalActorRef<A> {
         self.notify(Exec::new(f))
     }
 
-    pub fn actor_id(&self) -> &ActorId {
-        &self.inner.id
-    }
-
+    /// Sends a [`Status`][lifecycle::Status] message, returning the current [`ActorStatus`][context::ActorStatus]
     pub async fn status(&self) -> Result<ActorStatus, ActorRefErr> {
-        self.send(Status {}).await
+        self.send(Status).await
     }
 
+    /// Attempts to stop the target `Actor`, waiting for completion
     pub async fn stop(&self) -> Result<(), ActorRefErr> {
         let (tx, rx) = oneshot::channel();
         let res = self.notify(Stop(Some(tx)));
@@ -629,10 +725,12 @@ impl<A: Actor> LocalActorRef<A> {
         !self.inner.sender.is_closed()
     }
 
+    /// Attempts to stop the target `Actor`, without waiting for completion
     pub fn notify_stop(&self) -> Result<(), ActorRefErr> {
         self.notify(Stop(None))
     }
 
+    /// Returns a reference to the ID of the `ActorSystem` was created in
     pub fn system_id(&self) -> Option<&Uuid> {
         self.inner.system_id.as_ref()
     }
@@ -724,6 +822,9 @@ impl CoreActorRef for BoxedActorRef {
     }
 }
 
+/// A handle to a scheduled notification, which can be created via [`scheduled_notify`].
+///
+/// [`scheduled_notify`]: LocalActorRef::scheduled_notify
 pub struct ScheduledNotify<A: Actor, M: Message> {
     cancellation_token: CancellationToken,
     _a: PhantomData<A>,
@@ -731,7 +832,7 @@ pub struct ScheduledNotify<A: Actor, M: Message> {
 }
 
 impl<A: Actor, M: Message> ScheduledNotify<A, M> {
-    pub fn new(cancellation_token: CancellationToken) -> Self {
+    pub(crate) fn new(cancellation_token: CancellationToken) -> Self {
         ScheduledNotify {
             cancellation_token,
             _a: PhantomData,
@@ -739,12 +840,17 @@ impl<A: Actor, M: Message> ScheduledNotify<A, M> {
         }
     }
 
+    /// Cancels the scheduled notification
     pub fn cancel(&self) {
         self.cancellation_token.cancel();
     }
 }
 
 impl<A: Actor> LocalActorRef<A> {
+    /// Spawns an asynchronous task that sleeps for the provided duration and finally sends
+    /// the provided message to the target `Actor`.
+    ///
+    /// Returns a handle to the scheduled notification for cancellation.
     pub fn scheduled_notify<M: Message>(&self, message: M, delay: Duration) -> ScheduledNotify<A, M>
     where
         A: Handler<M>,
@@ -765,8 +871,12 @@ impl<A: Actor> LocalActorRef<A> {
     }
 }
 
+/// A reference to a string-based `ActorTag`
 pub type ActorTag = Box<str>;
 
+/// An [`Actor`][Actor] can return self-defined tags, which can be retrieved
+/// by sending a [`Describe`][describe::Describe] to the target [`Actor`][Actor]
+/// or by calling [`describe()`][LocalActorRef::describe] on the target [`Actor`][Actor]'s reference.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ActorTags {
     None,
@@ -798,18 +908,25 @@ impl From<Vec<String>> for ActorTags {
     }
 }
 
+/// Creates a new random [`ActorId`][ActorId]
 pub fn new_actor_id() -> ActorId {
     Uuid::new_v4().into_actor_id()
 }
 
+/// Trait allowing the conversion of a type into [`ActorId`][ActorId], by consuming the input
 pub trait IntoActorId {
     fn into_actor_id(self) -> ActorId;
 }
 
+///
+/// Trait allowing the conversion of a type into [`ActorId`][ActorId], by borrowing the input
+///
 pub trait ToActorId {
     fn to_actor_id(&self) -> ActorId;
 }
 
+/// Trait allowing the conversion of a type into [`ActorPath`][ActorPath], by consuming the input
+///
 pub trait IntoActorPath {
     fn into_actor_path(self) -> ActorPath;
 }

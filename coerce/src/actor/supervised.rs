@@ -1,3 +1,5 @@
+//! Actor supervision and child spawning
+
 use std::collections::HashMap;
 
 use crate::actor::context::ActorContext;
@@ -5,7 +7,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::{start_actor, ActorType};
 use crate::actor::system::ActorSystem;
 use crate::actor::{
-    Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef, ToActorId,
+    Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef,
 };
 
 #[derive(Debug)]

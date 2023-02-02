@@ -1,6 +1,9 @@
+//! Coerce Remoting
+
 pub mod actor;
 pub mod actor_ref;
 pub mod cluster;
+pub mod config;
 pub mod handler;
 pub mod heartbeat;
 pub mod net;

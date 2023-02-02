@@ -1,6 +1,9 @@
+//! Actor System
+//!
 use crate::actor::scheduler::{start_actor, ActorScheduler, ActorType, GetActor, RegisterActor};
 use crate::actor::{
-    new_actor_id, Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, IntoActorId, LocalActorRef,
+    new_actor_id, Actor, ActorId, ActorPath, ActorRefErr, BoxedActorRef, IntoActorId,
+    LocalActorRef, ToActorId,
 };
 
 use std::sync::atomic::Ordering::Relaxed;
@@ -25,7 +28,7 @@ pub struct ActorSystem {
 }
 
 #[derive(Clone)]
-pub struct ActorSystemCore {
+pub(crate) struct ActorSystemCore {
     system_id: Uuid,
     system_name: Arc<str>,
     scheduler: LocalActorRef<ActorScheduler>,
@@ -115,7 +118,7 @@ impl ActorSystem {
         &self.core.system_id
     }
 
-    pub fn system_name(&self) -> &str {
+    pub fn system_name(&self) -> &Arc<str> {
         &self.core.system_name
     }
 
@@ -163,7 +166,7 @@ impl ActorSystem {
             Some(tx),
             Some(self.clone()),
             None,
-            self.core.system_name.clone(),
+            self.system_name().to_actor_id(),
         );
 
         if actor_type.is_tracked() {

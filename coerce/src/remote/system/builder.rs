@@ -4,7 +4,7 @@ use crate::actor::{Actor, ActorFactory, IntoActor};
 use crate::remote::actor::message::SetRemote;
 use crate::remote::actor::{
     clients::RemoteClientRegistry, registry::RemoteRegistry, BoxedActorHandler,
-    BoxedMessageHandler, RemoteHandler, RemoteSystemConfig,
+    BoxedMessageHandler, RemoteHandler,
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
@@ -17,11 +17,15 @@ use rand::RngCore;
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::actor::scheduler::ActorType;
 use crate::remote::cluster::discovery::NodeDiscovery;
 
 use crate::remote::cluster::node::NodeAttributes;
+use crate::remote::config::{RemoteSystemConfig, RemoteSystemSecurity};
+use crate::remote::net::security::jwt::Jwt;
+use crate::remote::net::security::ClientAuth;
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -32,7 +36,7 @@ pub struct RemoteActorSystemBuilder {
     inner: Option<ActorSystem>,
     config_builders: Vec<ConfigBuilderFn>,
     mediator: Option<StreamMediator>,
-    server_auth_token: Option<String>,
+    client_auth: Option<ClientAuth>,
     single_node_cluster: bool,
     node_attributes: HashMap<String, String>,
 }
@@ -52,7 +56,7 @@ impl RemoteActorSystemBuilder {
             ],
             mediator: Some(mediator),
             single_node_cluster: false,
-            server_auth_token: None,
+            client_auth: None,
             node_attributes: Default::default(),
         }
     }
@@ -110,8 +114,13 @@ impl RemoteActorSystemBuilder {
         self
     }
 
-    pub fn server_auth_token(mut self, server_auth_token: Option<impl ToString>) -> Self {
-        self.server_auth_token = server_auth_token.map(|s| s.to_string());
+    #[cfg(feature = "client-auth-jwt")]
+    pub fn client_auth_jwt<S: Into<Vec<u8>>>(
+        mut self,
+        secret: S,
+        token_ttl: Option<Duration>,
+    ) -> Self {
+        self.client_auth = Some(ClientAuth::Jwt(Jwt::from_secret(secret, token_ttl)));
         self
     }
 
@@ -148,7 +157,7 @@ impl RemoteActorSystemBuilder {
         let config = config_builder.build(
             Some(system_tag.clone()),
             self.node_version,
-            self.server_auth_token,
+            self.client_auth,
             self.node_attributes,
         );
 
@@ -289,7 +298,7 @@ impl RemoteSystemConfigBuilder {
         self,
         tag: Option<String>,
         version: Option<String>,
-        server_auth_token: Option<String>,
+        client_auth: Option<ClientAuth>,
         attributes: HashMap<String, String>,
     ) -> Arc<RemoteSystemConfig> {
         let mut handler_types = HashMap::new();
@@ -319,8 +328,8 @@ impl RemoteSystemConfigBuilder {
             self.handlers,
             self.actors,
             self.heartbeat.unwrap_or_default(),
-            server_auth_token,
             attributes,
+            RemoteSystemSecurity::new(client_auth.unwrap_or_default()),
         ))
     }
 }

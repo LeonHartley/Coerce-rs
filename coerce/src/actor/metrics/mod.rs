@@ -1,3 +1,4 @@
+//! Actor Metrics
 use std::time::Duration;
 
 pub const METRIC_ACTOR_CREATED: &str = "coerce_actor_created";

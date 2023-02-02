@@ -33,7 +33,7 @@ pub struct ClusterNode {
     pub tag: String,
     pub ping_latency: Option<Duration>,
     pub last_heartbeat: Option<String>,
-    pub node_started_at: Option<String>,
+    pub node_started_at: Option<chrono::DateTime<chrono::Utc>>,
     pub status: NodeStatus,
     pub attributes: HashMap<String, String>,
 }
@@ -46,7 +46,7 @@ pub struct ClusterNodes {
     pub nodes: Vec<ClusterNode>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub enum NodeStatus {
     Joining,
     Healthy,
@@ -111,7 +111,7 @@ impl From<RemoteNodeState> for ClusterNode {
             tag: node.tag,
             ping_latency: node.ping_latency,
             last_heartbeat: node.last_heartbeat.map(|h| format!("{:?}", h)),
-            node_started_at: node.node_started_at.map(|p| format!("{:?}", p)),
+            node_started_at: node.node_started_at.map(|p| p),
             status: node.status.into(),
             attributes: node
                 .attributes

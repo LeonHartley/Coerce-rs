@@ -1,3 +1,6 @@
+//! Workers are a collection of actors that can work as a pool of [`Worker`] actors,  distributing
+//! incoming tasks amongst them
+
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorType::Anonymous;

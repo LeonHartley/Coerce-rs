@@ -1,3 +1,5 @@
+//! Coerce Distributed Sharding
+
 use crate::actor::message::{Handler, Message};
 use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,

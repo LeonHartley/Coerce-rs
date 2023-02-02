@@ -2,7 +2,7 @@ use crate::actor::message::Message;
 use std::io::Error;
 
 use crate::actor::LocalActorRef;
-use crate::remote::actor::{RemoteResponse, SystemCapabilities};
+use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::RemoteClient;
@@ -15,6 +15,7 @@ use protobuf::Message as ProtoMessage;
 
 use std::str::FromStr;
 
+use crate::remote::config::SystemCapabilities;
 use tokio::sync::oneshot::Sender;
 use uuid::Uuid;
 

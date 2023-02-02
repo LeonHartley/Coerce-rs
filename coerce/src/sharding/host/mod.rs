@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef, ToActorId};
+use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use crate::sharding::coordinator::allocation::DefaultAllocator;
@@ -14,7 +14,7 @@ use crate::remote::actor::BoxedActorHandler;
 use crate::remote::heartbeat::Heartbeat;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
+
 use uuid::Uuid;
 
 pub mod request;

@@ -1,3 +1,4 @@
+//! Actor Scheduling and [`ActorRef`][super::ActorRef] registry
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{

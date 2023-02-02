@@ -10,7 +10,7 @@ extern crate async_trait;
 extern crate coerce_macros;
 
 use coerce::actor::system::ActorSystem;
-use coerce::remote::system::builder::RemoteSystemConfigBuilder;
+
 use coerce::remote::system::RemoteActorSystem;
 
 use coerce::actor::{ActorCreationErr, ActorFactory, ActorRecipe};
@@ -88,7 +88,7 @@ pub async fn test_remote_cluster_workers() {
         .with_tag("remote-1")
         .with_id(1)
         .with_actor_system(system)
-        .with_handlers(build_handlers)
+        .client_auth_jwt("token2", None)
         .build()
         .await;
 
@@ -98,7 +98,7 @@ pub async fn test_remote_cluster_workers() {
         .with_tag("remote-2")
         .with_id(2)
         .with_actor_system(ActorSystem::new())
-        .with_handlers(build_handlers)
+        .client_auth_jwt("token2", None)
         .build()
         .await;
 
@@ -108,7 +108,7 @@ pub async fn test_remote_cluster_workers() {
         .with_tag("remote-3")
         .with_id(3)
         .with_actor_system(ActorSystem::new())
-        .with_handlers(build_handlers)
+        .client_auth_jwt("token2", None)
         .build()
         .await;
 
@@ -142,6 +142,10 @@ pub async fn test_remote_cluster_workers() {
     tracing::info!("b: {:?}", &nodes_b);
     tracing::info!("c: {:?}", &nodes_c);
 
+    assert_eq!(nodes_a.len(), 3);
+    assert_eq!(nodes_b.len(), 3);
+    assert_eq!(nodes_c.len(), 3);
+
     let nodes_a_in_b = nodes_a.iter().filter(|n| nodes_b.contains(n)).count();
     let nodes_a_in_c = nodes_a.iter().filter(|n| nodes_c.contains(n)).count();
     let nodes_b_in_a = nodes_b.iter().filter(|n| nodes_a.contains(n)).count();
@@ -155,13 +159,4 @@ pub async fn test_remote_cluster_workers() {
     assert_eq!(nodes_b_in_c, nodes_b.len());
     assert_eq!(nodes_c_in_a, nodes_c.len());
     assert_eq!(nodes_c_in_b, nodes_c.len());
-}
-
-fn build_handlers(handlers: &mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder {
-    handlers
-        .with_actor::<TestActorFactory>(TestActorFactory {})
-        .with_actor::<EchoActorFactory>(EchoActorFactory {})
-        .with_handler::<TestActor, SetStatusRequest>("TestActor.SetStatusRequest")
-        .with_handler::<TestActor, GetStatusRequest>("TestActor.GetStatusRequest")
-        .with_handler::<EchoActor, GetCounterRequest>("EchoActor.GetCounterRequest")
 }

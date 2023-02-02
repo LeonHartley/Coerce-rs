@@ -15,6 +15,7 @@ pub mod codec;
 pub mod message;
 pub mod metrics;
 pub mod proto;
+pub mod security;
 pub mod server;
 
 pub trait StreamData: 'static + Send + Sync + Sized {

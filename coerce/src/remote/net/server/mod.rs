@@ -32,24 +32,6 @@ pub struct RemoteServerConfig {
     /// used by the inbound client, rather than the address provided by
     /// the node via the handshake.
     pub override_incoming_node_addr: bool,
-
-    /// The guard used for incoming connections
-    pub connection_guard: ConnectionGuard,
-}
-
-#[derive(Debug)]
-pub enum ConnectionGuard {
-    /// All connections will be allowed, no token validation will take place.
-    None,
-
-    /// Connections will be verified by checking the incoming join token, can be validated using the configured token.
-    Jwt { secret: Vec<u8> },
-}
-
-impl Default for ConnectionGuard {
-    fn default() -> ConnectionGuard {
-        Self::None
-    }
 }
 
 impl RemoteServerConfig {
@@ -62,7 +44,6 @@ impl RemoteServerConfig {
             listen_addr,
             external_node_addr,
             override_incoming_node_addr,
-            connection_guard: ConnectionGuard::default(),
         }
     }
 }
@@ -137,10 +118,9 @@ pub async fn server_loop(
         match accept(&listener, cancellation_token.clone()).await {
             Some(Ok((stream, addr))) => {
                 let remote_server_config = remote_server_config.clone();
-                trace!("client accepted {}", addr);
-                let session_id = uuid::Uuid::new_v4();
 
-                // TODO: Before creating a session, we need to validate the received token.
+                let session_id = uuid::Uuid::new_v4();
+                trace!("client accepted {}, session_id={}", addr, session_id);
 
                 let session = session_store
                     .send(NewSession(RemoteSession::new(

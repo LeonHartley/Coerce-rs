@@ -23,7 +23,7 @@ impl Topic for ShardingTopic {
 }
 
 impl StreamData for ShardingEvent {
-    fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
+    fn read_from_bytes(_data: Vec<u8>) -> Option<Self> {
         todo!()
     }
 

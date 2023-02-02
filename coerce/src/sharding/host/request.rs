@@ -113,7 +113,7 @@ impl Handler<EntityRequest> for ShardHost {
                             error!("shard(#{}) failed to allocate: {}", shard_id, e);
                         }
                     },
-                    Err(e) => {}
+                    Err(_e) => {}
                 }
             });
         } else {

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::actor::system::ActorSystem;
 use crate::actor::LocalActorRef;
 use crate::remote::actor::{
-    clients::RemoteClientRegistry, registry::RemoteRegistry, RemoteHandler, RemoteSystemConfig,
+    clients::RemoteClientRegistry, registry::RemoteRegistry, RemoteHandler,
 };
 use crate::remote::cluster::builder::client::ClusterClientBuilder;
 use crate::remote::cluster::builder::worker::ClusterWorkerBuilder;
@@ -20,6 +20,7 @@ pub mod cluster;
 pub mod raft;
 pub mod rpc;
 
+use crate::remote::config::RemoteSystemConfig;
 pub use actor::*;
 pub use cluster::*;
 pub use rpc::*;

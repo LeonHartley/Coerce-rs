@@ -1,15 +1,15 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Envelope, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, IntoActorId};
-use crate::persistent::journal::snapshot::Snapshot;
+use crate::actor::message::Handler;
+use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef};
+
 use crate::persistent::journal::types::JournalTypes;
-use crate::persistent::journal::PersistErr;
-use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
+
+use crate::persistent::PersistentActor;
 use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
-use crate::remote::system::NodeId;
+
 use crate::sharding::coordinator::ShardId;
 use crate::sharding::host::request::{EntityRequest, RemoteEntityRequest};
-use crate::sharding::proto::sharding as proto;
+
 use crate::sharding::shard::message::{
     EntityStartResult, PassivateEntity, RemoveEntity, StartEntity,
 };

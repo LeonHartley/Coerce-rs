@@ -2,7 +2,7 @@ use crate::remote::system::NodeId;
 
 use hashring::HashRing;
 
-use crate::remote::actor::SystemCapabilities;
+use crate::remote::config::SystemCapabilities;
 use crate::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
 use crate::remote::net::proto::network;
 use chrono::{DateTime, Utc};

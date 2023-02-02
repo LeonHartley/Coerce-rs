@@ -1,4 +1,3 @@
-use crate::actor::context::ActorContext;
 use crate::actor::message::Message;
 use crate::actor::{
     new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, IntoActorId,
