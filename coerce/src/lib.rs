@@ -38,7 +38,7 @@
 //!
 //! [Asynchronous Actors]: crate::actor
 //! [Actor References]: crate::actor::ActorRef
-//! [Asynchronous Message Handling]: crate::actor::message::Handler
+//! [Asynchronous Message Handling]: crate::actor::message
 //! [Actor Supervision]: crate::actor::supervised
 //! [Actor Persistence]: crate::persistent::actor::PersistentActor
 //! [Event sourcing]: crate::persistent::actor::Recover

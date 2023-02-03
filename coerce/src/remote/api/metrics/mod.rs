@@ -17,13 +17,21 @@ impl MetricsApi {
     pub fn new(system: RemoteActorSystem) -> Result<MetricsApi, BuildError> {
         let prometheus_builder = PrometheusBuilder::new();
 
-        let recorder = prometheus_builder
-            .idle_timeout(
-                MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM,
-                Some(Duration::from_secs(60 * 30)),
-            )
+        let mut builder = prometheus_builder.idle_timeout(
+            MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM,
+            Some(Duration::from_secs(60 * 30)),
+        );
+
+        let node_attributes = system.config().get_attributes();
+        if let Some(cluster_name) = node_attributes.get("cluster") {
+            builder = builder.add_global_label("cluster", cluster_name.to_string());
+        }
+
+        builder = builder
             .add_global_label("node_id", system.node_id().to_string())
-            .install_recorder()?;
+            .add_global_label("node_tag", system.node_tag());
+
+        let recorder = builder.install_recorder()?;
 
         Ok(Self {
             recorder_handle: recorder,

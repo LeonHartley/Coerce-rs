@@ -1,5 +1,42 @@
 //! Actor Messaging primitives
-
+//!
+//! Messages in [Coerce] are described by implementing the [`Message`] trait.
+//!
+//! ## Message Handlers
+//! All message handlers in [Coerce] are defined by the [`Handler`] trait. While handling a message,
+//! a mutable reference to the actor's state is provided, plus the actor's context, which gives you access
+//! to the [`ActorSystem`] the actor was spawned into, a means to spawn [`Supervised`] actors and more utilities.
+//!
+//! ### Example
+//! ```rust,no_run
+//! use coerce::actor::message::Handler;
+//! use coerce::actor::context::ActorContext;
+//!
+//! #[async_trait]
+//! impl Handler<MyMessage> for MyActor {
+//!     async fn handle(&mut self, message: MyMessage, ctx: &mut ActorContext) {
+//!         println!("handling the message!");
+//!     }
+//! }
+//! ```
+//!
+//! ## Message Serialisation
+//! Messages that need to be transmitted remotely or persisted must be convertable to an [`Envelope::Remote`].
+//! This is achieved by overriding the [`Message::as_bytes`] and [`Message::from_bytes`] methods respectively.
+//!
+//! If the message has a non-default (i.e not `()`) - [`Message::read_remote_result`]
+//! and [`Message::write_remote_result`] must also be implemented.
+//!
+//! [Coerce]: crate
+//! [`Message`]: Message
+//! [`Handler`]: Handler
+//! [`ActorSystem`]: super::system::ActorSystem
+//! [`Supervised`]: super::supervised
+//! [`Message::as_bytes`]: Message::as_bytes
+//! [`Message::from_bytes`]: Message::as_bytes
+//! [`Message::read_remote_result`]: Message::read_remote_result
+//! [`Message::write_remote_result`]: Message::write_remote_result
+//!
 use crate::actor::context::ActorContext;
 use crate::actor::Actor;
 use std::error::Error;
@@ -64,7 +101,7 @@ where
     async fn handle(&mut self, message: M, ctx: &mut ActorContext) -> M::Result;
 }
 
-pub struct ActorMessage<A: Actor, M: Message>
+pub(crate) struct ActorMessage<A: Actor, M: Message>
 where
     A: Handler<M>,
 {
@@ -95,7 +132,7 @@ where
     }
 }
 
-pub(crate) type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
+pub type MessageHandler<A> = Box<dyn ActorMessageHandler<A> + Sync + Send>;
 
 impl<A: Actor, M: Message> ActorMessage<A, M>
 where

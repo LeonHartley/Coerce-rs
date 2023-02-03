@@ -139,10 +139,7 @@ impl Actor for RemoteSession {
         let _ = self.write.close().await;
 
         if let Some(session_store) = ctx.parent::<RemoteSessionStore>() {
-            info!("session closed");
             let _ = session_store.send(SessionClosed(self.id)).await;
-        } else {
-            info!("no sessionstore parent");
         }
     }
 }
@@ -158,13 +155,13 @@ async fn validate_session_token(
         match SessionEvent::read_from_bytes(bytes) {
             Some(SessionEvent::Identify(identify)) => {
                 let token = identify.token;
-                let valid = system
+                let token_valid = system
                     .config()
                     .security()
                     .client_authentication()
                     .validate_token(token.as_str());
 
-                if !valid {
+                if !token_valid {
                     error!(
                         ctx = log.as_value(),
                         "invalid token received, disconnecting session({}) - token=\"{}\"",
@@ -181,11 +178,11 @@ async fn validate_session_token(
                 }
             }
 
-            None | Some(_) => {
+            value => {
                 error!(
                     ctx = log.as_value(),
-                    "initial payload invalid, expected SessionEvent::Identify, disconnecting session({})",
-                    ctx.id(),
+                    "initial payload invalid, expected SessionEvent::Identify, disconnecting session({}), value={:?}",
+                    ctx.id(), value
                 );
             }
         }
