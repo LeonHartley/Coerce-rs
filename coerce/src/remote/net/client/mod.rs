@@ -60,7 +60,7 @@ impl RemoteClient {
         system: RemoteActorSystem,
         client_type: ClientType,
     ) -> LocalActorRef<Self> {
-        let actor_id = Some(format!("RemoteClient-{}", &addr));
+        let actor_id = Some(format!("remote-client-{}", &addr));
         debug!(
             "Creating RemoteClient (actor_id={})",
             actor_id.as_ref().unwrap()
@@ -80,7 +80,7 @@ impl RemoteClient {
             on_handshake_ack_callbacks: vec![],
             ping_timer: None,
         }
-        .into_anon_actor(actor_id, system.actor_system())
+        .into_actor(actor_id, system.actor_system())
         .await
         .unwrap()
     }
