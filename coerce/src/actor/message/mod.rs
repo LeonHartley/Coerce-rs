@@ -9,8 +9,17 @@
 //!
 //! ### Example
 //! ```rust,no_run
-//! use coerce::actor::message::Handler;
+//! use coerce::actor::Actor;
+//! use coerce::actor::message::{Message, Handler};
 //! use coerce::actor::context::ActorContext;
+//!
+//! struct MyActor;
+//!
+//! impl Actor for MyActor { }
+//!
+//! struct MyMessage;
+//!
+//! impl Message for MyMessage { type Result = (); }
 //!
 //! #[async_trait]
 //! impl Handler<MyMessage> for MyActor {

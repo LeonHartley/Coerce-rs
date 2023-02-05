@@ -2,8 +2,9 @@
 //!
 //! Coerce clusters are identified by a [`NodeId`] and a string-based node tag.
 //!
-//! The easiest way to create a full, batteries-included clustered actor system, is by using the [`RemoteActorSystemBuilder`].
-//! From here, you can configure and create a [`RemoteActorSystem`].
+//! The easiest way to create a full, batteries-included clustered actor system, is by
+//! using the [`RemoteActorSystemBuilder`]. From here, you can customise and
+//! create a [`RemoteActorSystem`].
 //!
 //! ## Remote-enabled messages
 //! Messages are not available to be handled remotely by default, and do require being registered
@@ -33,7 +34,12 @@
 //! of a message of type `MyMessageType` registered, with the actor that processes the
 //! message as type `MyActorType`.
 //!
-//! ```rust,no_run
+//! Note that a prerequisite for messages to be able to be transmitted remotely is that as part
+//! of defining the message, it must define how to serialise and deserialise to and from a `Vec<u8>`.
+//!
+//! ```rust
+//! use coerce::actor::Actor;
+//! use coerce::actor::message::{Message, MessageUnwrapErr, MessageWrapErr};
 //! use coerce::remote::system::RemoteActorSystem;
 //!
 //! let remote_system = RemoteActorSystem::builder()
@@ -44,6 +50,24 @@
 //!          handlers
 //!              .with_handler::<MyActorType, MyMessageType>("MyActorType.MyMessageType")
 //!       });
+//!
+//! struct MyActor;
+//!
+//! impl Actor for MyActor { }
+//!
+//! struct MyMessage;
+//!
+//! impl Message for MyMessage {
+//!     type Result = ();
+//!
+//!     fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
+//!         Ok(vec![])
+//!     }
+//!
+//!     fn from_bytes(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+//!         Ok(Self)
+//!     }
+//! }
 //! ```
 //!
 //! [`NodeId`]: system::NodeId

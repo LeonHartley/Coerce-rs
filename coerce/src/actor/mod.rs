@@ -54,7 +54,11 @@
 //! use async_trait::async_trait;
 //! use tokio::sync::oneshot::{channel, Sender};
 //!
-//! struct ParentActor { child_count: usize, completed_actors: usize, on_work_completed: Option<Sender<usize>>, }
+//! struct ParentActor {
+//!    child_count: usize,
+//!    completed_actors: usize,
+//!    on_work_completed: Option<Sender<usize>>,
+//! }
 //!
 //! struct ChildActor;
 //!
