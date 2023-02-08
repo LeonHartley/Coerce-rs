@@ -94,9 +94,9 @@ hmac = { version = "0.12.1", optional = true }
 sha2 = { version = "0.10.6", optional = true }
 
 # API dependencies
-axum = { version = "0.6.1", features = ["query"], optional = true }
-utoipa = { version = "2.4.2", features = ["axum_extras"], optional = true }
-utoipa-swagger-ui = { version = "3.0.1", features = ["axum"], optional = true }
+axum = { version = "0.6.4", features = ["query"], optional = true }
+utoipa = { version = "3.0.1", features = ["axum_extras"], optional = true }
+utoipa-swagger-ui = { version = "3.0.2", features = ["axum"], optional = true }
 
 [dev-dependencies]
 coerce-macros = { version = "0.2.0" }
