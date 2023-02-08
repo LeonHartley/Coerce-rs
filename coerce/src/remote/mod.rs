@@ -38,24 +38,39 @@
 //! of defining the message, it must define how to serialise and deserialise to and from a `Vec<u8>`.
 //!
 //! ```rust
-//! use coerce::actor::Actor;
-//! use coerce::actor::message::{Message, MessageUnwrapErr, MessageWrapErr};
+//! use coerce::actor::{Actor, system::ActorSystem};
+//! use coerce::actor::context::ActorContext;
+//! use coerce::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 //! use coerce::remote::system::RemoteActorSystem;
+//! use async_trait::async_trait;
 //!
-//! let remote_system = RemoteActorSystem::builder()
-//!      .with_id(1)
-//!      .with_tag("node_name")
-//!      .with_actor_system(system)
-//!      .with_handlers(|handlers| {
-//!          handlers
-//!              .with_handler::<MyActorType, MyMessageType>("MyActorType.MyMessageType")
-//!       });
+//! #[tokio::main]
+//! pub async fn main() {
+//!     let system = ActorSystem::new();
+//!     let remote_system = RemoteActorSystem::builder()
+//!          .with_id(1)
+//!          .with_tag("node_name")
+//!          .with_actor_system(system)
+//!          .with_handlers(|handlers| {
+//!              handlers
+//!                  .with_handler::<MyActor, MyMessage>("MyActor.MyMessage")
+//!           });
+//!
+//!     // start servers, create actors etc
+//! }
 //!
 //! struct MyActor;
 //!
 //! impl Actor for MyActor { }
 //!
 //! struct MyMessage;
+//!
+//! #[async_trait]
+//! impl Handler<MyMessage> for MyActor {
+//!     async fn handle(&mut self, message: MyMessage, ctx: &mut ActorContext) {
+//!         // handle the msg
+//!     }
+//! }
 //!
 //! impl Message for MyMessage {
 //!     type Result = ();

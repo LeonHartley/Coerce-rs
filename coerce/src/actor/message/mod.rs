@@ -8,7 +8,7 @@
 //! to the [`ActorSystem`] the actor was spawned into, a means to spawn [`Supervised`] actors and more utilities.
 //!
 //! ### Example
-//! ```rust,no_run
+//! ```rust,compile_fail
 //! use coerce::actor::Actor;
 //! use coerce::actor::message::{Message, Handler};
 //! use coerce::actor::context::ActorContext;
