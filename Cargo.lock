@@ -258,32 +258,6 @@ dependencies = [
 
 [[package]]
 name = "coerce"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "180bfcd06792ad7980497c874bb544a1eea6c8f09ad395d2d871de549142122a"
-dependencies = [
- "async-trait",
- "byteorder",
- "bytes",
- "chrono",
- "futures",
- "hashring",
- "lazy_static",
- "parking_lot",
- "protobuf",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "uuid",
- "valuable",
-]
-
-[[package]]
-name = "coerce"
 version = "0.8.6"
 dependencies = [
  "anyhow",
@@ -320,6 +294,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d3f4bffb75f1c6bc0d3e18eeb98d888e7b3fe8818fe59a2939bb02cd0b22881"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "futures",
+ "hashring",
+ "lazy_static",
+ "parking_lot",
+ "protobuf",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "uuid",
+ "valuable",
+]
+
+[[package]]
 name = "coerce-cluster-example"
 version = "0.1.0"
 dependencies = [
@@ -338,9 +339,9 @@ dependencies = [
 
 [[package]]
 name = "coerce-k8s"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
- "coerce 0.8.3",
+ "coerce 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi",
  "kube",
  "tracing",
@@ -381,7 +382,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
- "coerce 0.8.6",
+ "coerce 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis",
  "tokio",
 ]

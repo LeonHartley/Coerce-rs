@@ -1,5 +1,3 @@
-use crate::remote::net::security::jwt::Jwt;
-
 #[cfg(feature = "client-auth-jwt")]
 pub mod jwt;
 
@@ -7,7 +5,7 @@ pub enum ClientAuth {
     None,
 
     #[cfg(feature = "client-auth-jwt")]
-    Jwt(Jwt),
+    Jwt(jwt::Jwt),
 }
 
 impl Default for ClientAuth {
