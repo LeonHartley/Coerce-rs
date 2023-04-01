@@ -1,6 +1,7 @@
 //! Coerce Actor Persistence
 
 pub mod actor;
+pub mod batch;
 pub mod context;
 pub mod failure;
 pub mod inspect;
@@ -9,6 +10,7 @@ pub mod recovery;
 
 pub use actor::*;
 pub use failure::*;
+pub use journal::*;
 pub use recovery::*;
 
 use std::any::TypeId;
@@ -21,6 +23,12 @@ use std::sync::Arc;
 pub struct Persistence {
     default_provider: StorageProviderRef,
     actor_type_specific_providers: HashMap<TypeId, StorageProviderRef>,
+}
+
+impl<S: StorageProvider> From<S> for Persistence {
+    fn from(value: S) -> Self {
+        Persistence::from(value)
+    }
 }
 
 impl Persistence {

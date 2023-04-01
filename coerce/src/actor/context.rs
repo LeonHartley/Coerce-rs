@@ -25,10 +25,6 @@ pub enum ActorStatus {
     Stopping,
     Stopped,
 }
-//
-// struct LastMessage {
-//     received_at: DateTime<Utc>,
-// }
 
 pub struct ActorContext {
     context_id: u64,
@@ -210,6 +206,11 @@ impl ActorContext {
         supervised.add_child_ref(actor_ref)
     }
 
+    /// Spawns the supervised actor and waits for the actor to be started before returning
+    /// the LocalActorRef.
+    ///
+    /// Note: this waits for the actor to be spawned and the `Actor::started` hook to complete, if
+    ///       the actor is persistent, this includes all time spent recovering.
     pub async fn spawn<A: Actor>(
         &mut self,
         id: ActorId,
@@ -227,6 +228,31 @@ impl ActorContext {
         let system = self.system.as_ref().unwrap().clone();
         let parent_ref = self.boxed_ref.clone();
         supervised.spawn(id, actor, system, parent_ref).await
+    }
+
+    /// Spawns the supervised actor but doesn't wait for the actor to be completely started before
+    /// completing, and returning the LocalActorRef.
+    ///
+    /// This can be helpful when you don't want the supervisor to be blocked until the child
+    /// has fully recovered.
+    pub fn spawn_deferred<A: Actor>(
+        &mut self,
+        id: ActorId,
+        actor: A,
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
+        let supervised = {
+            if self.supervised.is_none() {
+                self.supervised =
+                    Some(Supervised::new(self.id().clone(), self.full_path().clone()));
+            }
+
+            self.supervised.as_mut().unwrap()
+        };
+
+        let system = self.system.as_ref().unwrap().clone();
+        let parent_ref = self.boxed_ref.clone();
+
+        supervised.spawn_deferred(id, actor, system, parent_ref)
     }
 
     pub fn supervised_count(&self) -> usize {

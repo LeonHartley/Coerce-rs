@@ -91,6 +91,33 @@ impl Supervised {
         }
     }
 
+    pub fn spawn_deferred<A: Actor>(
+        &mut self,
+        id: ActorId,
+        actor: A,
+        system: ActorSystem,
+        parent_ref: BoxedActorRef,
+    ) -> Result<LocalActorRef<A>, ActorRefErr> {
+        if let Some(_) = self.children.get(&id) {
+            return Err(ActorRefErr::AlreadyExists(id));
+        }
+
+        let actor_ref = start_actor(
+            actor,
+            id.clone(),
+            ActorType::Anonymous,
+            None,
+            Some(system),
+            Some(parent_ref),
+            self.path.clone(),
+        );
+
+        self.children
+            .insert(id.clone(), ChildRef::spawned(actor_ref.clone().into()));
+
+        Ok(actor_ref)
+    }
+
     pub fn count(&self) -> usize {
         self.children.len()
     }

@@ -15,8 +15,8 @@ lazy_static! {
 }
 
 pub struct JournalTypes<A: PersistentActor> {
-    message_type_map: HashMap<TypeId, String>,
-    snapshot_type_map: HashMap<TypeId, String>,
+    message_type_map: HashMap<TypeId, Arc<str>>,
+    snapshot_type_map: HashMap<TypeId, Arc<str>>,
     recoverable_messages: HashMap<String, RecoveryHandlerRef<A>>,
     recoverable_snapshots: HashMap<String, RecoveryHandlerRef<A>>,
 }
@@ -47,7 +47,7 @@ impl<A: PersistentActor> JournalTypes<A> {
         );
 
         self.message_type_map
-            .insert(TypeId::of::<M>(), identifier.to_string());
+            .insert(TypeId::of::<M>(), identifier.into());
 
         self
     }
@@ -62,16 +62,16 @@ impl<A: PersistentActor> JournalTypes<A> {
         );
 
         self.snapshot_type_map
-            .insert(TypeId::of::<S>(), identifier.to_string());
+            .insert(TypeId::of::<S>(), identifier.into());
 
         self
     }
 
-    pub fn snapshot_type_mapping<S: Snapshot>(&self) -> Option<String> {
+    pub fn snapshot_type_mapping<S: Snapshot>(&self) -> Option<Arc<str>> {
         self.snapshot_type_map.get(&TypeId::of::<S>()).cloned()
     }
 
-    pub fn message_type_mapping<M: Message>(&self) -> Option<String> {
+    pub fn message_type_mapping<M: Message>(&self) -> Option<Arc<str>> {
         self.message_type_map.get(&TypeId::of::<M>()).cloned()
     }
 

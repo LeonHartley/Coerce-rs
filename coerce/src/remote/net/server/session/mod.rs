@@ -5,7 +5,6 @@ use crate::remote::actor::message::NodeTerminated;
 use crate::remote::actor::RemoteResponse;
 use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::{NodeAttributes, RemoteNode};
-use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::{
     datetime_to_timestamp, timestamp_to_datetime, ClientEvent, SessionEvent,
 };
@@ -24,6 +23,7 @@ use futures::{SinkExt, StreamExt};
 use protobuf::well_known_types::wrappers::UInt64Value;
 use protobuf::{Message as ProtoMessage, MessageField};
 
+use bytes::Bytes;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -31,7 +31,7 @@ use std::sync::Arc;
 use tokio::io::{ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
-use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 use valuable::Valuable;
@@ -41,8 +41,8 @@ pub mod store;
 pub struct RemoteSession {
     id: Uuid,
     addr: SocketAddr,
-    write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
-    read: Option<FramedRead<ReadHalf<TcpStream>, NetworkCodec>>,
+    write: FramedWrite<WriteHalf<TcpStream>, LengthDelimitedCodec>,
+    read: Option<FramedRead<ReadHalf<TcpStream>, LengthDelimitedCodec>>,
     read_cancellation_token: Option<CancellationToken>,
     remote_server_config: RemoteServerConfigRef,
 }
@@ -55,8 +55,8 @@ impl RemoteSession {
         remote_server_config: RemoteServerConfigRef,
     ) -> RemoteSession {
         let (read, write) = tokio::io::split(stream);
-        let read = Some(FramedRead::new(read, NetworkCodec));
-        let write = FramedWrite::new(write, NetworkCodec);
+        let read = Some(FramedRead::new(read, LengthDelimitedCodec::new()));
+        let write = FramedWrite::new(write, LengthDelimitedCodec::new());
         RemoteSession {
             id,
             addr,
@@ -148,11 +148,11 @@ async fn validate_session_token(
     ctx: &mut ActorContext,
     log: LogContext,
     system: &RemoteActorSystem,
-    read: &mut FramedRead<ReadHalf<TcpStream>, NetworkCodec>,
+    read: &mut FramedRead<ReadHalf<TcpStream>, LengthDelimitedCodec>,
 ) -> bool {
     let bytes = read.next().await;
     if let Some(Ok(bytes)) = bytes {
-        match SessionEvent::read_from_bytes(bytes) {
+        match SessionEvent::read_from_bytes(bytes.to_vec()) {
             Some(SessionEvent::Identify(identify)) => {
                 let token = identify.token;
                 let token_valid = system
@@ -208,7 +208,7 @@ impl RemoteSession {
         match message.write_to_bytes() {
             Some(msg) => {
                 trace!("message encoded");
-                if self.write.send(&msg).await.is_ok() {
+                if self.write.send(Bytes::from(msg)).await.is_ok() {
                     trace!("message sent");
                 } else {
                     error!("failed to send message");

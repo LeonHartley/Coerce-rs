@@ -149,6 +149,7 @@ use crate::actor::supervised::Terminated;
 use crate::actor::system::ActorSystem;
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -603,16 +604,29 @@ pub struct LocalActorRef<A: Actor> {
 pub struct LocalActorRefInner<A: Actor> {
     pub id: ActorId,
     path: ActorPath,
-    system_id: Option<Uuid>,
     sender: UnboundedSender<MessageHandler<A>>,
 }
+
+impl<A: Actor> Hash for LocalActorRef<A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.path.hash(state);
+    }
+}
+
+impl<A: Actor> PartialEq<Self> for LocalActorRef<A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path && self.id == other.id
+    }
+}
+
+impl<A: Actor> Eq for LocalActorRef<A> {}
 
 impl<A: Actor> Debug for LocalActorRef<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct(&format!("LocalActorRef<{}>", A::type_name()))
             .field("path", &self.inner.path)
             .field("actor_id", &self.inner.id)
-            .field("system_id", &self.inner.system_id)
             .finish()
     }
 }
@@ -706,12 +720,7 @@ impl<A: Actor> LocalActorRef<A> {
         path: ActorPath,
     ) -> Self {
         Self {
-            inner: Arc::new(LocalActorRefInner {
-                id,
-                path,
-                system_id,
-                sender,
-            }),
+            inner: Arc::new(LocalActorRefInner { id, path, sender }),
         }
     }
 
@@ -865,11 +874,6 @@ impl<A: Actor> LocalActorRef<A> {
     /// Attempts to stop the target `Actor`, without waiting for completion
     pub fn notify_stop(&self) -> Result<(), ActorRefErr> {
         self.notify(Stop(None))
-    }
-
-    /// Returns a reference to the ID of the `ActorSystem` was created in
-    pub fn system_id(&self) -> Option<&Uuid> {
-        self.inner.system_id.as_ref()
     }
 }
 

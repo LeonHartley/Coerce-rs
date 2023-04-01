@@ -3,15 +3,14 @@ use crate::remote::system::RemoteActorSystem;
 use std::future::Future;
 use std::io::Error;
 
+use bytes::BytesMut;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use crate::remote::net::codec::NetworkCodec;
 use futures::StreamExt;
-use tokio_util::codec::FramedRead;
+use tokio_util::codec::{FramedRead, LengthDelimitedCodec};
 
 pub mod client;
-pub mod codec;
 pub mod message;
 pub mod metrics;
 pub mod proto;
@@ -42,13 +41,13 @@ pub trait StreamReceiver {
 }
 
 pub struct StreamReceiverFuture<S: tokio::io::AsyncRead> {
-    stream: FramedRead<S, NetworkCodec>,
+    stream: FramedRead<S, LengthDelimitedCodec>,
     stop_rx: tokio::sync::oneshot::Receiver<bool>,
 }
 
 impl<S: tokio::io::AsyncRead> StreamReceiverFuture<S> {
     pub fn new(
-        stream: FramedRead<S, NetworkCodec>,
+        stream: FramedRead<S, LengthDelimitedCodec>,
         stop_rx: tokio::sync::oneshot::Receiver<bool>,
     ) -> StreamReceiverFuture<S> {
         StreamReceiverFuture { stream, stop_rx }
@@ -59,14 +58,14 @@ impl<S: tokio::io::AsyncRead> tokio_stream::Stream for StreamReceiverFuture<S>
 where
     S: Unpin,
 {
-    type Item = Option<Vec<u8>>;
+    type Item = Option<BytesMut>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Option<Vec<u8>>>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Option<BytesMut>>> {
         if let Poll::Ready(Ok(true)) = Pin::new(&mut self.stop_rx).poll(cx) {
             return Poll::Ready(None);
         }
 
-        let result: Option<Result<Vec<u8>, Error>> =
+        let result: Option<Result<BytesMut, Error>> =
             futures::ready!(Pin::new(&mut self.stream).poll_next(cx));
 
         Poll::Ready(match result {
@@ -82,7 +81,7 @@ where
 
 pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
     mut system: RemoteActorSystem,
-    read: FramedRead<S, NetworkCodec>,
+    read: FramedRead<S, LengthDelimitedCodec>,
     mut receiver: R,
 ) where
     R: Send,
@@ -90,7 +89,7 @@ pub async fn receive_loop<R: StreamReceiver, S: tokio::io::AsyncRead + Unpin>(
     let mut reader = read;
     while let Some(res) = reader.next().await {
         match res {
-            Ok(res) => match R::Message::read_from_bytes(res) {
+            Ok(res) => match R::Message::read_from_bytes(res.to_vec()) {
                 Some(msg) => {
                     receiver.on_receive(msg, &system).await;
                     if receiver.should_close() {

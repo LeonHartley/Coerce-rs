@@ -1,11 +1,13 @@
 use coerce::actor::context::ActorContext;
+use std::sync::Arc;
 
 use coerce::actor::message::Handler;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::IntoActor;
 
 use coerce::persistent::journal::provider::inmemory::InMemoryStorageProvider;
-
+use coerce::persistent::journal::provider::StorageProvider;
+use coerce::persistent::journal::storage::JournalEntry;
 use coerce::persistent::journal::types::JournalTypes;
 use coerce::persistent::{Persistence, PersistentActor, Recover, RecoverSnapshot};
 use coerce_macros::{JsonMessage, JsonSnapshot};
@@ -71,6 +73,59 @@ impl Recover<Msg> for TestActor {
         info!("recovered a number: {}", message.0);
         self.received_numbers.push(message.0);
     }
+}
+
+#[tokio::test]
+pub async fn test_in_memory_delete_messages() {
+    util::create_trace_logger();
+    let storage = InMemoryStorageProvider::new();
+    let journal = storage.journal_storage().unwrap();
+    journal
+        .write_message(
+            "1",
+            JournalEntry {
+                sequence: 1,
+                payload_type: "hello".into(),
+                bytes: Arc::new(vec![]),
+            },
+        )
+        .await
+        .unwrap();
+
+    journal
+        .write_message(
+            "1",
+            JournalEntry {
+                sequence: 2,
+                payload_type: "hello".into(),
+                bytes: Arc::new(vec![]),
+            },
+        )
+        .await
+        .unwrap();
+
+    journal
+        .write_message(
+            "1",
+            JournalEntry {
+                sequence: 3,
+                payload_type: "hello".into(),
+                bytes: Arc::new(vec![]),
+            },
+        )
+        .await
+        .unwrap();
+
+    let messages = journal.read_latest_messages("1", 0).await.unwrap().unwrap();
+    assert_eq!(messages.len(), 3);
+
+    journal.delete_messages_to("1", 3).await.unwrap();
+    let messages = journal.read_latest_messages("1", 0).await.unwrap().unwrap();
+    assert_eq!(messages.len(), 1);
+
+    journal.delete_messages_to("1", 4).await.unwrap();
+    let messages = journal.read_latest_messages("1", 0).await.unwrap().unwrap();
+    assert_eq!(messages.len(), 0);
 }
 
 #[tokio::test]

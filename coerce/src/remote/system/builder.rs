@@ -8,9 +8,7 @@ use crate::remote::actor::{
 };
 use crate::remote::handler::{RemoteActorHandler, RemoteActorMessageHandler};
 use crate::remote::heartbeat::{Heartbeat, HeartbeatConfig};
-
 use crate::remote::stream::mediator::StreamMediator;
-
 use crate::remote::system::{AtomicNodeId, NodeId, RemoteActorSystem, RemoteSystemCore};
 
 use rand::RngCore;
@@ -24,7 +22,7 @@ use crate::remote::cluster::discovery::NodeDiscovery;
 
 use crate::remote::cluster::node::NodeAttributes;
 use crate::remote::config::{RemoteSystemConfig, RemoteSystemSecurity};
-use crate::remote::net::security::jwt::Jwt;
+
 use crate::remote::net::security::ClientAuth;
 use chrono::Utc;
 use uuid::Uuid;
@@ -120,6 +118,8 @@ impl RemoteActorSystemBuilder {
         secret: S,
         token_ttl: Option<Duration>,
     ) -> Self {
+        use crate::remote::net::security::jwt::Jwt;
+
         self.client_auth = Some(ClientAuth::Jwt(Jwt::from_secret(secret, token_ttl)));
         self
     }

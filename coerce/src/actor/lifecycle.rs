@@ -60,11 +60,7 @@ impl ActorLoop {
             .new_context(system.clone(), Starting, actor_ref.clone().into())
             .with_parent(parent_ref);
 
-        let system_id = actor_ref
-            .system_id()
-            .map_or("system-creation".to_string(), |s| s.to_string());
-
-        trace!("[{}] starting on system: {}", ctx.full_path(), system_id);
+        trace!("[{}] starting", ctx.full_path());
 
         actor.started(&mut ctx).await;
         ActorMetrics::incr_actor_created(A::type_name());

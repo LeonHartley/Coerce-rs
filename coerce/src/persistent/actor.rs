@@ -7,8 +7,11 @@ use crate::persistent::failure::{should_retry, PersistFailurePolicy, RecoveryFai
 use crate::persistent::journal::snapshot::Snapshot;
 use crate::persistent::journal::types::JournalTypes;
 use crate::persistent::journal::{PersistErr, RecoveryErr};
-use crate::persistent::recovery::{ActorRecovery, RecoveryResult};
+use crate::persistent::recovery::{ActorRecovery, Recovery};
 
+use crate::persistent::batch::EventBatch;
+use crate::persistent::storage::JournalEntry;
+use crate::persistent::ReadMessages;
 use std::sync::Arc;
 
 #[async_trait]
@@ -55,6 +58,28 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
         }
     }
 
+    async fn persist_batch(
+        &self,
+        batch: EventBatch<Self>,
+        ctx: &mut ActorContext,
+    ) -> Result<(), PersistErr> {
+        if batch.entries().is_empty() {
+            return Ok(());
+        }
+        let mut attempts = 1;
+        loop {
+            let result = ctx
+                .persistence_mut()
+                .journal_mut::<Self>()
+                .persist_batch(&batch)
+                .await;
+
+            if let Some(res) = check(result, &mut attempts, self, ctx).await {
+                return res;
+            }
+        }
+    }
+
     async fn snapshot<S: Snapshot>(
         &self,
         snapshot: S,
@@ -81,16 +106,37 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
                     }
                 }
             }
+
             Err(e) => return Err(PersistErr::Serialisation(e)),
         }
     }
 
-    async fn recover_journal(
-        &mut self,
-        persistence_key: String,
-        ctx: &mut ActorContext,
-    ) -> RecoveryResult<Self> {
+    async fn recover(&mut self, persistence_key: String, ctx: &mut ActorContext) -> Recovery<Self> {
         ActorRecovery::recover_journal(self, Some(persistence_key), ctx).await
+    }
+
+    fn last_sequence_id(&self, ctx: &mut ActorContext) -> i64 {
+        ctx.persistence_mut()
+            .journal_mut::<Self>()
+            .last_sequence_id()
+    }
+
+    async fn read_messages<'a>(
+        &self,
+        args: ReadMessages<'a>,
+        ctx: &mut ActorContext,
+    ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
+        ctx.persistence_mut()
+            .journal_mut::<Self>()
+            .read_messages(args)
+            .await
+    }
+
+    async fn clear_old_messages(&mut self, ctx: &mut ActorContext) -> bool {
+        ctx.persistence_mut()
+            .journal_mut::<Self>()
+            .clear_old_messages()
+            .await
     }
 
     fn recovery_failure_policy(&self) -> RecoveryFailurePolicy {
@@ -99,6 +145,10 @@ pub trait PersistentActor: 'static + Sized + Send + Sync {
 
     fn persist_failure_policy(&self) -> PersistFailurePolicy {
         PersistFailurePolicy::default()
+    }
+
+    fn event_batch(&self, ctx: &ActorContext) -> EventBatch<Self> {
+        EventBatch::create(ctx)
     }
 
     async fn on_recovery_err(&mut self, _err: RecoveryErr, _ctx: &mut ActorContext) {}
@@ -179,27 +229,38 @@ where
 
     async fn started(&mut self, ctx: &mut ActorContext) {
         trace!("persistent actor starting, loading journal");
+
         self.pre_recovery(ctx).await;
 
         let persistence_key = self.persistence_key(ctx);
         let (snapshot, messages) = {
-            let journal = self.recover_journal(persistence_key.clone(), ctx).await;
+            let journal = self.recover(persistence_key.clone(), ctx).await;
             match journal {
-                RecoveryResult::Recovered(journal) => (journal.snapshot, journal.messages),
-                RecoveryResult::Failed => {
+                Recovery::Recovered(journal) => {
+                    trace!(
+                        "persistent actor ({}) recovered {} snapshot(s) and {} message(s)",
+                        &persistence_key,
+                        if journal.snapshot.is_some() { 1 } else { 0 },
+                        journal.messages.as_ref().map_or(0, |m| m.len()),
+                    );
+
+                    (journal.snapshot, journal.messages)
+                }
+                Recovery::Disabled => {
+                    trace!(
+                        "persistent actor ({}) disabled message recovery",
+                        &persistence_key,
+                    );
+
+                    (None, None)
+                }
+                Recovery::Failed => {
                     trace!("recovery failed, ctx_status={:?}", ctx.get_status());
                     self.on_recovery_failed(ctx).await;
                     return;
                 }
             }
         };
-
-        trace!(
-            "persistent actor ({}) recovered {} snapshot(s) and {} message(s)",
-            &persistence_key,
-            if snapshot.is_some() { 1 } else { 0 },
-            messages.as_ref().map_or(0, |m| m.len()),
-        );
 
         if let Some(snapshot) = snapshot {
             if let Err(e) = snapshot.recover(self, ctx).await {

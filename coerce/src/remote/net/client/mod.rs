@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use futures::SinkExt;
 use std::collections::VecDeque;
@@ -8,7 +9,7 @@ use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::{Receiver, Sender};
 use tokio::task::JoinHandle;
-use tokio_util::codec::FramedWrite;
+use tokio_util::codec::{FramedWrite, LengthDelimitedCodec};
 use uuid::Uuid;
 
 use crate::actor::context::ActorContext;
@@ -20,7 +21,6 @@ use crate::remote::cluster::node::{NodeIdentity, RemoteNode};
 use crate::remote::net::client::connect::Connect;
 use crate::remote::net::client::receive::HandshakeAcknowledge;
 use crate::remote::net::client::send::write_bytes;
-use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network as proto;
 use crate::remote::net::proto::network::PingEvent;
@@ -221,7 +221,7 @@ impl Actor for RemoteClient {
                         });
 
                         let _ = write_bytes(
-                            &ping_event.write_to_bytes().unwrap(),
+                            Bytes::from(ping_event.write_to_bytes().unwrap()),
                             &mut connection.write,
                         )
                         .await;
@@ -256,7 +256,7 @@ pub enum ClientState {
 pub struct ConnectionState {
     identity: NodeIdentity,
     handshake: HandshakeStatus,
-    write: FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
+    write: FramedWrite<WriteHalf<TcpStream>, LengthDelimitedCodec>,
     receive_task: JoinHandle<()>,
 }
 

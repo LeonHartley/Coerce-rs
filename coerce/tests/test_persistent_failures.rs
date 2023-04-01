@@ -235,6 +235,14 @@ impl JournalStorage for MockPersistence {
         }
     }
 
+    async fn write_message_batch(
+        &self,
+        persistent_id: &str,
+        entries: Vec<JournalEntry>,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
+
     async fn read_latest_snapshot(
         &self,
         _persistence_id: &str,
@@ -258,6 +266,31 @@ impl JournalStorage for MockPersistence {
         } else {
             Ok(state.messages.clone())
         }
+    }
+
+    async fn read_message(
+        &self,
+        persistence_id: &str,
+        sequence_id: i64,
+    ) -> anyhow::Result<Option<JournalEntry>> {
+        todo!()
+    }
+
+    async fn read_messages(
+        &self,
+        persistence_id: &str,
+        from_sequence: i64,
+        to_sequence: i64,
+    ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
+        todo!()
+    }
+
+    async fn delete_messages_to(
+        &self,
+        persistence_id: &str,
+        to_sequence: i64,
+    ) -> anyhow::Result<()> {
+        todo!()
     }
 
     async fn delete_all(&self, _persistence_id: &str) -> anyhow::Result<()> {

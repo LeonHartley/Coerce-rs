@@ -12,9 +12,11 @@ use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
 
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::Actor;
+use crate::persistent::batch::EventBatch;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
+use std::ops::Range;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -23,6 +25,7 @@ pub mod proto;
 pub struct Journal<A: PersistentActor> {
     persistence_id: String,
     last_sequence_id: i64,
+    last_snapshot_sequence_id: Option<i64>,
     storage: JournalStorageRef,
     types: Arc<JournalTypes<A>>,
 }
@@ -30,13 +33,23 @@ pub struct Journal<A: PersistentActor> {
 impl<A: PersistentActor> Journal<A> {
     pub fn new(persistence_id: String, storage: JournalStorageRef) -> Self {
         let last_sequence_id = 0;
+        let last_snapshot_sequence_id = None;
         let types = init_journal_types::<A>();
         Self {
             persistence_id,
             last_sequence_id,
+            last_snapshot_sequence_id,
             storage,
             types,
         }
+    }
+
+    pub fn get_types(&self) -> Arc<JournalTypes<A>> {
+        self.types.clone()
+    }
+
+    pub fn last_sequence_id(&self) -> i64 {
+        self.last_sequence_id
     }
 }
 
@@ -162,7 +175,82 @@ impl Error for PersistErr {}
 
 type BytesRef = Arc<Vec<u8>>;
 
+#[derive(Clone, Debug)]
+pub struct ReadMessages<'a> {
+    pub persistence_id: Option<&'a str>,
+    pub read: Read,
+}
+
+impl<'a> ReadMessages<'a> {
+    pub fn message(persistence_id: Option<&'a str>, sequence_id: i64) -> Self {
+        Self {
+            persistence_id,
+            read: Read::Message { sequence_id },
+        }
+    }
+
+    pub fn range(persistence_id: Option<&'a str>, range: Range<i64>) -> Self {
+        Self {
+            persistence_id,
+            read: Read::Range(range),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Read {
+    Message { sequence_id: i64 },
+    Range(Range<i64>),
+}
+
 impl<A: PersistentActor> Journal<A> {
+    pub async fn persist_batch(&mut self, batch: &EventBatch<A>) -> Result<(), PersistErr> {
+        let mut sequence_id = self.last_sequence_id;
+        let batch = batch
+            .entries()
+            .iter()
+            .map(|e| {
+                sequence_id += 1;
+                JournalEntry {
+                    sequence: sequence_id,
+                    payload_type: e.payload_type.clone(),
+                    bytes: e.bytes.clone(),
+                }
+            })
+            .collect();
+
+        let res = self
+            .storage
+            .write_message_batch(&self.persistence_id, batch)
+            .await
+            .map_err(|e| PersistErr::Storage(e));
+
+        if res.is_ok() {
+            self.last_sequence_id = sequence_id;
+        }
+
+        res
+    }
+
+    pub async fn read_messages(
+        &mut self,
+        args: ReadMessages<'_>,
+    ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
+        let persistence_id = args.persistence_id.unwrap_or(self.persistence_id.as_ref());
+        match args.read {
+            Read::Message { sequence_id } => Ok(self
+                .storage
+                .read_message(persistence_id, sequence_id)
+                .await?
+                .map(|m| vec![m])),
+
+            Read::Range(range) => Ok(self
+                .storage
+                .read_messages(persistence_id, range.start, range.end)
+                .await?),
+        }
+    }
+
     pub async fn persist_message<M: Message>(&mut self, bytes: BytesRef) -> Result<(), PersistErr>
     where
         A: Recover<M>,
@@ -178,13 +266,11 @@ impl<A: PersistentActor> Journal<A> {
             .message_type_mapping::<M>()
             .expect("message type not configured");
 
-        let sequence = self.last_sequence_id + 1;
-
         self.storage
             .write_message(
                 &self.persistence_id,
                 JournalEntry {
-                    sequence,
+                    sequence: self.last_sequence_id,
                     payload_type: payload_type.clone(),
                     bytes,
                 },
@@ -197,7 +283,7 @@ impl<A: PersistentActor> Journal<A> {
             M::type_name()
         );
 
-        self.last_sequence_id = sequence;
+        self.last_sequence_id += 1;
         Ok(())
     }
 
@@ -229,6 +315,7 @@ impl<A: PersistentActor> Journal<A> {
             .await?;
 
         self.last_sequence_id = sequence;
+        self.last_snapshot_sequence_id = Some(sequence);
         Ok(())
     }
 
@@ -241,13 +328,14 @@ impl<A: PersistentActor> Journal<A> {
             let handler = self
                 .types
                 .recoverable_snapshots()
-                .get(&raw_snapshot.payload_type);
+                .get(raw_snapshot.payload_type.as_ref());
 
             let sequence = raw_snapshot.sequence;
             let bytes =
                 Arc::try_unwrap(raw_snapshot.bytes).map_or_else(|e| e.as_ref().clone(), |s| s);
 
             self.last_sequence_id = sequence;
+            self.last_snapshot_sequence_id = Some(sequence);
 
             debug!(
                 "snapshot recovered (persistence_id={}), last sequence={}, type={}",
@@ -280,7 +368,11 @@ impl<A: PersistentActor> Journal<A> {
             for entry in messages {
                 self.last_sequence_id = entry.sequence;
 
-                if let Some(handler) = self.types.recoverable_messages().get(&entry.payload_type) {
+                if let Some(handler) = self
+                    .types
+                    .recoverable_messages()
+                    .get(entry.payload_type.as_ref())
+                {
                     trace!(
                         "message recovered (persistence_id={}), sequence={}, starting_sequence={} type={}",
                         &self.persistence_id,
@@ -318,10 +410,20 @@ impl<A: PersistentActor> Journal<A> {
         }
     }
 
-    pub async fn delete_messages(&mut self) -> bool {
-        let delete_result = self.storage.delete_all(&self.persistence_id).await;
+    pub async fn clear(&mut self) -> bool {
+        self.storage.delete_all(&self.persistence_id).await.is_ok()
+    }
 
-        delete_result.is_ok()
+    pub async fn clear_old_messages(&mut self) -> bool {
+        if let Some(snapshot_sequence_id) = self.last_snapshot_sequence_id {
+            self.storage
+                .delete_messages_to(&self.persistence_id, snapshot_sequence_id)
+                .await
+                .is_ok()
+        } else {
+            // no messages to delete
+            false
+        }
     }
 }
 
@@ -347,7 +449,7 @@ where
 
         let start = Instant::now();
 
-        actor.recover(message, ctx).await;
+        Recover::recover(actor, message, ctx).await;
         let message_processing_took = start.elapsed();
 
         ActorMetrics::incr_messages_processed(
@@ -373,18 +475,19 @@ where
         bytes: Vec<u8>,
         ctx: &mut ActorContext,
     ) -> Result<(), RecoveryErr> {
-        actor
-            .recover(
-                S::from_remote_envelope(bytes).map_err(|error| {
-                    RecoveryErr::SnapshotDeserialisation {
-                        error,
-                        snapshot_type: S::type_name(),
-                        actor_type: A::type_name(),
-                    }
-                })?,
-                ctx,
-            )
-            .await;
+        RecoverSnapshot::recover(
+            actor,
+            S::from_remote_envelope(bytes).map_err(|error| {
+                RecoveryErr::SnapshotDeserialisation {
+                    error,
+                    snapshot_type: S::type_name(),
+                    actor_type: A::type_name(),
+                }
+            })?,
+            ctx,
+        )
+        .await;
+
         Ok(())
     }
 }

@@ -12,6 +12,22 @@ scalable, fault-tolerant modern actor-driven application.
 | [coerce-macros](https://crates.io/crates/coerce-macros) | Useful macros allowing for quick implementations of snapshots, JSON-serialisable remote messages and more.                            | ![crates.io](https://img.shields.io/crates/v/coerce-macros.svg) |
 | [coerce-k8s](https://crates.io/crates/coerce-k8s)       | Kubernetes discovery provider, automatically discover cluster peers hosted in Kubernetes, based on a configurable pod-selection label | ![crates.io](https://img.shields.io/crates/v/coerce-k8s.svg)    |
 
+# Using Coerce in your own project
+First step to using Coerce in your project is to add the coerce crate dependency, this can be done by adding the following
+to your Cargo.toml:
+
+```toml
+[dependencies]
+coerce = { version = "0.8", features = ["full"] }
+```
+
+Coerce currently relies on an unstable feature from the `tracing` crate, `valuable`, used for enriching logs with
+information on the actor context, which can be enabled by adding the following to your `.cargo/config.toml` file:
+```
+[build]
+rustflags = ["--cfg", "tracing_unstable"]
+```
+
 ## Features
 
 ### Actors
@@ -47,8 +63,10 @@ scalable, fault-tolerant modern actor-driven application.
 
 - Easily accessible metrics and information useful for diagnosis
 
-# How to build
+
+# Building and testing the Coerce libraries
 Building Coerce is easy. All you need is the latest Rust stable or nightly installed, along with Cargo.
+
 ```shell
 # Clone the repository
 git clone https://github.com/leonhartley/coerce-rs && cd coerce-rs
@@ -57,7 +75,7 @@ git clone https://github.com/leonhartley/coerce-rs && cd coerce-rs
 cargo build
 
 ## Alternatively, if you'd like to build the library, dependencies and run the tests
-cargo test
+cargo test --all-features
 ```
 
 # How to run the examples

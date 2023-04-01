@@ -9,11 +9,12 @@ pub trait ActorRecovery: PersistentActor {
         &mut self,
         persistence_key: Option<String>,
         ctx: &mut ActorContext,
-    ) -> RecoveryResult<Self>;
+    ) -> Recovery<Self>;
 }
 
-pub enum RecoveryResult<A: PersistentActor> {
+pub enum Recovery<A: PersistentActor> {
     Recovered(RecoveredJournal<A>),
+    Disabled,
     Failed,
 }
 
@@ -23,7 +24,7 @@ impl<A: PersistentActor> ActorRecovery for A {
         &mut self,
         persistence_key: Option<String>,
         ctx: &mut ActorContext,
-    ) -> RecoveryResult<Self> {
+    ) -> Recovery<Self> {
         let mut journal = None;
         let mut attempts = 1;
 
@@ -53,12 +54,12 @@ impl<A: PersistentActor> ActorRecovery for A {
                     match policy {
                         RecoveryFailurePolicy::StopActor => {
                             ctx.stop(None);
-                            return RecoveryResult::Failed;
+                            return Recovery::Failed;
                         }
 
                         RecoveryFailurePolicy::Retry(retry_policy) => {
                             if !should_retry(ctx, &attempts, retry_policy).await {
-                                return RecoveryResult::Failed;
+                                return Recovery::Failed;
                             }
                         }
 
@@ -71,7 +72,7 @@ impl<A: PersistentActor> ActorRecovery for A {
         }
 
         let journal = journal.expect("no journal loaded");
-        RecoveryResult::Recovered(journal)
+        Recovery::Recovered(journal)
     }
 }
 

@@ -1,4 +1,6 @@
-use crate::journal::actor::{Delete, ReadMessages, ReadSnapshot, RedisJournal, Write};
+use crate::journal::actor::{
+    Delete, DeleteRange, ReadMessage, ReadMessages, ReadSnapshot, RedisJournal, Write, WriteBatch,
+};
 
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{IntoActor, LocalActorRef};
@@ -14,6 +16,7 @@ use tokio::sync::oneshot;
 
 pub(crate) mod actor;
 
+#[derive(Clone)]
 pub struct RedisStorageProvider {
     redis: JournalStorageRef,
 }
@@ -156,6 +159,23 @@ where
         rx.await?
     }
 
+    async fn write_message_batch(
+        &self,
+        persistence_id: &str,
+        entries: Vec<JournalEntry>,
+    ) -> anyhow::Result<()> {
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
+
+        self.redis_journal.notify(WriteBatch {
+            key,
+            entries,
+            result_channel,
+        })?;
+
+        rx.await?
+    }
+
     async fn read_latest_snapshot(
         &self,
         persistence_id: &str,
@@ -178,15 +198,69 @@ where
         let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
         self.redis_journal.notify(ReadMessages {
             key,
-            from_sequence,
+            start_sequence: Some(from_sequence),
+            end_sequence: None,
             result_channel,
         })?;
+
+        rx.await?
+    }
+
+    async fn read_message(
+        &self,
+        persistence_id: &str,
+        sequence_id: i64,
+    ) -> anyhow::Result<Option<JournalEntry>> {
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
+
+        self.redis_journal.notify(ReadMessage {
+            key,
+            sequence_id,
+            result_channel,
+        })?;
+
+        rx.await?
+    }
+
+    async fn read_messages(
+        &self,
+        persistence_id: &str,
+        from_sequence: i64,
+        to_sequence: i64,
+    ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
+        self.redis_journal.notify(ReadMessages {
+            key,
+            start_sequence: Some(from_sequence),
+            end_sequence: Some(to_sequence),
+            result_channel,
+        })?;
+
+        rx.await?
+    }
+
+    async fn delete_messages_to(
+        &self,
+        persistence_id: &str,
+        to_sequence: i64,
+    ) -> anyhow::Result<()> {
+        let (result_channel, rx) = oneshot::channel();
+        let key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
+        self.redis_journal.notify(DeleteRange {
+            key,
+            start_sequence: 0,
+            end_sequence: to_sequence,
+            result_channel,
+        })?;
+
         rx.await?
     }
 
     async fn delete_all(&self, persistence_id: &str) -> anyhow::Result<()> {
-        let journal_key = get_redis_key(persistence_id, "journal", self.config.as_ref());
-        let snapshot_key = get_redis_key(persistence_id, "snapshot", self.config.as_ref());
+        let journal_key = (self.key_provider_fn)(persistence_id, "journal", self.config.as_ref());
+        let snapshot_key = (self.key_provider_fn)(persistence_id, "snapshot", self.config.as_ref());
 
         self.redis_journal
             .send(Delete(vec![journal_key, snapshot_key]))

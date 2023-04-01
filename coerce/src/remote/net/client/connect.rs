@@ -12,17 +12,17 @@ use crate::remote::net::client::{
     BeginHandshake, ClientState, ConnectionState, HandshakeAckCallback, HandshakeStatus,
     RemoteClient,
 };
-use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::message::SessionEvent;
 use crate::remote::net::proto::network::{self as proto, IdentifyEvent};
 use crate::remote::net::{receive_loop, StreamData};
 
+use bytes::Bytes;
 use protobuf::EnumOrUnknown;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
-use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use valuable::Valuable;
 
 pub struct Connect;
@@ -49,8 +49,9 @@ impl RemoteClient {
         let stream = stream.unwrap();
         let (read, writer) = tokio::io::split(stream);
 
-        let reader = FramedRead::new(read, NetworkCodec);
-        let mut write = FramedWrite::new(writer, NetworkCodec);
+        let codec = LengthDelimitedCodec::new();
+        let reader = FramedRead::new(read, codec.clone());
+        let mut write = FramedWrite::new(writer, codec.clone());
 
         let (identity_tx, identity_rx) = oneshot::channel();
 
@@ -67,7 +68,7 @@ impl RemoteClient {
             ..Default::default()
         });
 
-        match write_bytes(&identify.write_to_bytes().unwrap(), &mut write).await {
+        match write_bytes(Bytes::from(identify.write_to_bytes().unwrap()), &mut write).await {
             Ok(_) => {}
             Err(e) => {
                 error!(
@@ -205,22 +206,23 @@ impl Handler<BeginHandshake> for RemoteClient {
                 );
 
                 write_bytes(
-                    SessionEvent::Handshake(proto::SessionHandshake {
-                        node_id,
-                        node_tag,
-                        token: vec![],
-                        client_type: EnumOrUnknown::new(self.client_type.into()),
-                        trace_id: message.request_id.to_string(),
-                        nodes: message
-                            .seed_nodes
-                            .into_iter()
-                            .map(|node| node.into())
-                            .collect(),
-                        ..proto::SessionHandshake::default()
-                    })
-                    .write_to_bytes()
-                    .unwrap()
-                    .as_ref(),
+                    Bytes::from(
+                        SessionEvent::Handshake(proto::SessionHandshake {
+                            node_id,
+                            node_tag,
+                            token: vec![],
+                            client_type: EnumOrUnknown::new(self.client_type.into()),
+                            trace_id: message.request_id.to_string(),
+                            nodes: message
+                                .seed_nodes
+                                .into_iter()
+                                .map(|node| node.into())
+                                .collect(),
+                            ..proto::SessionHandshake::default()
+                        })
+                        .write_to_bytes()
+                        .unwrap(),
+                    ),
                     &mut connection.write,
                 )
                 .await

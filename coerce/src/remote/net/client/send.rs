@@ -2,12 +2,12 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::{ClientState, ConnectionState, RemoteClient, RemoteClientErr};
-use crate::remote::net::codec::NetworkCodec;
 use crate::remote::net::StreamData;
+use bytes::{Bytes, BytesMut};
 use futures::SinkExt;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
-use tokio_util::codec::FramedWrite;
+use tokio_util::codec::{FramedWrite, LengthDelimitedCodec};
 
 pub struct Write<M: StreamData>(pub M);
 
@@ -28,9 +28,9 @@ impl<M: StreamData> Handler<Write<M>> for RemoteClient {
 
 impl ConnectionState {
     pub async fn write(&mut self, bytes: Vec<u8>) -> Result<(), Option<Vec<u8>>> {
-        if let Err(e) = write_bytes(&bytes, &mut self.write).await {
+        if let Err(e) = write_bytes(Bytes::from(bytes), &mut self.write).await {
             match e {
-                RemoteClientErr::StreamErr(_e) => Err(Some(bytes)),
+                RemoteClientErr::StreamErr(_e) => Err(Some(vec![])),
                 _ => Err(None),
             }
         } else {
@@ -54,10 +54,11 @@ impl RemoteClient {
 
         while let Some(buffered_message) = self.write_buffer.pop_front() {
             let len = buffered_message.len();
-            if let Ok(()) = write_bytes(&buffered_message, &mut connection_state.write).await {
+            let bytes = Bytes::from(buffered_message);
+            if let Ok(()) = write_bytes(bytes.clone(), &mut connection_state.write).await {
                 self.write_buffer_bytes_total -= len;
             } else {
-                self.write_buffer.push_front(buffered_message);
+                self.write_buffer.push_front(bytes.to_vec());
 
                 // write failed, no point trying again - break and reconnect/retry later
                 break;
@@ -94,7 +95,8 @@ impl RemoteClient {
                 }
 
                 ClientState::Connected(state) => {
-                    if let Err(e) = write_bytes(&bytes, &mut state.write).await {
+                    let bytes = Bytes::from(bytes);
+                    if let Err(e) = write_bytes(bytes.clone(), &mut state.write).await {
                         match e {
                             RemoteClientErr::StreamErr(_e) => {
                                 warn!("node {} (addr={}) is unreachable but marked as connected, buffering message (total_buffered={})",
@@ -102,7 +104,7 @@ impl RemoteClient {
                                     &self.addr,
                                     self.write_buffer.len());
 
-                                buffer_message = Some(bytes);
+                                buffer_message = Some(bytes.to_vec());
 
                                 true
                             }
@@ -131,8 +133,8 @@ impl RemoteClient {
 }
 
 pub(crate) async fn write_bytes(
-    bytes: &Vec<u8>,
-    writer: &mut FramedWrite<WriteHalf<TcpStream>, NetworkCodec>,
+    bytes: Bytes,
+    writer: &mut FramedWrite<WriteHalf<TcpStream>, LengthDelimitedCodec>,
 ) -> Result<(), RemoteClientErr> {
     match writer.send(bytes).await {
         Ok(()) => Ok(()),
