@@ -7,11 +7,6 @@ use crate::remote::api::system::actors;
     paths(
         system::health,
         system::get_stats,
-        actors::get_all,
-        cluster::get_nodes,
-        sharding::get_sharding_types,
-        sharding::get_sharding_stats,
-        sharding::get_node_stats,
     ),
     components(
         schemas(
@@ -19,35 +14,81 @@ use crate::remote::api::system::actors;
             system::HealthStatus,
             system::SystemStats,
             system::SystemStats,
+        )
+    ),
+    tags(
+        (name = "system", description = "System API"),
+    )
+)]
+pub struct SystemApiDoc;
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        actors::get_all,
+    ),
+    components(
+        schemas(
+
             system::actors::GetAll,
             system::actors::Actors,
             system::actors::ActorDescription,
             system::actors::Status,
             system::actors::ActorTags,
             system::actors::SupervisedDescription,
+        )
+    ),
+    tags(
+        (name = "actors", description = "Actors API"),
+    )
+)]
+pub struct ActorsApiDoc;
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        cluster::get_nodes,
+    ),
+    components(
+        schemas(
             cluster::ClusterNodes,
             cluster::ClusterNode,
             cluster::NodeStatus,
-            sharding::cluster::ShardingClusterStats,
-            sharding::cluster::ShardingNode,
-            sharding::cluster::ShardStats,
-            sharding::cluster::ShardHostStatus,
-            sharding::cluster::Entity,
-            sharding::node::Stats,
-            sharding::node::ShardStats,
-            sharding::ShardTypes,
         )
     ),
     tags(
         (name = "cluster", description = "Cluster API"),
-        (name = "system", description = "System API"),
-        (name = "actors", description = "Actors API"),
-        (name = "sharding", description = "Sharding API"),
     )
 )]
-pub struct ApiDoc;
+pub struct ClusterApiDoc;
 
+#[cfg(feature = "sharding")]
 pub mod sharding {
+    #[derive(OpenApi)]
+    #[openapi(
+        paths(
+            get_sharding_types,
+            get_sharding_stats,
+            get_node_stats,
+        ),
+        components(
+            schemas(
+                cluster::ShardingClusterStats,
+                cluster::ShardingNode,
+                cluster::ShardStats,
+                cluster::ShardHostStatus,
+                cluster::Entity,
+                node::Stats,
+                node::ShardStats,
+                ShardTypes,
+            )
+        ),
+        tags(
+            (name = "sharding", description = "Sharding API"),
+        )
+    )]
+    pub struct ShardingApiDoc;
+
     use crate::remote::api::sharding as sharding_api;
     pub use sharding_api::ShardTypes;
 

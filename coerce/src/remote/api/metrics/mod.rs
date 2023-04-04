@@ -13,6 +13,12 @@ pub struct MetricsApi {
     recorder_handle: PrometheusHandle,
 }
 
+impl From<PrometheusHandle> for MetricsApi {
+    fn from(recorder_handle: PrometheusHandle) -> Self {
+        Self { recorder_handle }
+    }
+}
+
 impl MetricsApi {
     pub fn new(system: RemoteActorSystem) -> Result<MetricsApi, BuildError> {
         let prometheus_builder = PrometheusBuilder::new();

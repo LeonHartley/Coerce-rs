@@ -113,6 +113,7 @@ impl Handler<GetHostStats> for ShardingApi {
         Some(rx)
     }
 }
+
 #[async_trait]
 impl Handler<GetClusterStats> for ShardingApi {
     async fn handle(

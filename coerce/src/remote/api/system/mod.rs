@@ -13,11 +13,11 @@ use chrono::{DateTime, Utc};
 
 use crate::actor::{ActorPath, CoreActorRef};
 use crate::remote::api::cluster::ClusterNode;
-use crate::remote::api::openapi::ApiDoc;
+use crate::remote::api::openapi::{ActorsApiDoc, ClusterApiDoc, SystemApiDoc};
 use crate::remote::heartbeat::{health, Heartbeat};
 
 use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
+use utoipa_swagger_ui::{SwaggerUi, Url};
 
 pub struct SystemApi {
     system: RemoteActorSystem,
@@ -32,7 +32,25 @@ impl SystemApi {
 impl Routes for SystemApi {
     fn routes(&self, router: Router) -> Router {
         router
-            .merge(SwaggerUi::new("/swagger").url("/api-doc/openapi.json", ApiDoc::openapi()))
+            .merge(SwaggerUi::new("/swagger").urls(vec![
+                (
+                    Url::with_primary("system", "/api-docs/system.json", true),
+                    SystemApiDoc::openapi(),
+                ),
+                (
+                    Url::new("cluster", "/api-docs/cluster.json"),
+                    ClusterApiDoc::openapi(),
+                ),
+                (
+                    Url::new("actors", "/api-docs/actors.json"),
+                    ActorsApiDoc::openapi(),
+                ),
+                #[cfg(feature = "sharding")]
+                (
+                    Url::new("sharding", "/api-docs/sharding.json"),
+                    crate::remote::api::openapi::sharding::ShardingApiDoc::openapi(),
+                ),
+            ]))
             .route("/health", {
                 let system = self.system.clone();
                 get(move || health(system))
