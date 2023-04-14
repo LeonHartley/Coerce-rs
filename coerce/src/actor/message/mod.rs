@@ -119,7 +119,7 @@ where
     sender: Option<oneshot::Sender<M::Result>>,
     created_at: Instant,
     _a: PhantomData<A>,
-    parent_span: Span,
+    sender_span: Span,
 }
 
 #[async_trait]
@@ -155,7 +155,7 @@ where
             sender,
             created_at: Instant::now(),
             _a: PhantomData,
-            parent_span: Span::current(),
+            sender_span: Span::current(),
         }
     }
 
@@ -166,7 +166,7 @@ where
         let msg = self.msg.take();
         let result = actor
             .handle(msg.unwrap(), ctx)
-            .instrument(self.parent_span.clone())
+            .instrument(self.sender_span.clone())
             .await;
 
         // ctx.last_message_timestamp = Some(start);
