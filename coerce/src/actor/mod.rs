@@ -758,7 +758,7 @@ impl<A: Actor> LocalActorRef<A> {
     /// ```
     ///
     /// [ActorStatus]: context::ActorStatus
-    #[instrument(skip(msg))]
+    #[instrument(skip(msg), level="debug")]
     pub async fn send<Msg: Message>(&self, msg: Msg) -> Result<Msg::Result, ActorRefErr>
     where
         A: Handler<Msg>,
@@ -815,7 +815,7 @@ impl<A: Actor> LocalActorRef<A> {
     ///
     /// ```
     ///
-    #[instrument(skip(msg))]
+    #[instrument(skip(msg), level="debug")]
     pub fn notify<Msg: Message>(&self, msg: Msg) -> Result<(), ActorRefErr>
     where
         A: Handler<Msg>,
