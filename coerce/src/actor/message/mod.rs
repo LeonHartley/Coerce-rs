@@ -56,6 +56,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::marker::PhantomData;
 use std::time::Instant;
 use tokio::sync::oneshot;
+use tracing::{Span, Instrument};
 
 pub trait Message: 'static + Sync + Send + Sized {
     type Result: 'static + Sync + Send;
@@ -118,6 +119,7 @@ where
     sender: Option<oneshot::Sender<M::Result>>,
     created_at: Instant,
     _a: PhantomData<A>,
+    parent_span : Span
 }
 
 #[async_trait]
@@ -153,6 +155,7 @@ where
             sender,
             created_at: Instant::now(),
             _a: PhantomData,
+            parent_span: Span::current(),
         }
     }
 
@@ -161,8 +164,8 @@ where
         let start = Instant::now();
 
         let msg = self.msg.take();
-        let result = actor.handle(msg.unwrap(), ctx).await;
-
+        let result = actor.handle(msg.unwrap(), ctx).instrument(self.parent_span.clone()).await;
+        
         // ctx.last_message_timestamp = Some(start);
         let message_processing_took = start.elapsed();
 
