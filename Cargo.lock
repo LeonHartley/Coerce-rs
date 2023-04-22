@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "coerce"
-version = "0.8.7"
+version = "0.8.8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -295,9 +295,9 @@ dependencies = [
 
 [[package]]
 name = "coerce"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e177c9b2c32b9c64fa8af02621c66db47be1153fd0e4f9beeab9071befdd7cfd"
+checksum = "6c9d0b3750e2472ecb4712f3f9275c4a0452ff356588258ab631c188685e8a44"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -334,7 +334,7 @@ name = "coerce-cluster-example"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "coerce 0.8.7",
+ "coerce 0.8.8",
  "coerce-macros 0.2.0",
  "opentelemetry",
  "opentelemetry-jaeger",
@@ -350,7 +350,7 @@ dependencies = [
 name = "coerce-k8s"
 version = "0.1.4"
 dependencies = [
- "coerce 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi",
  "kube",
  "tracing",
@@ -362,7 +362,7 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1a9e728f28e9fd7f093d84db77bae88f2d9e461cc00cc4b983f471e55413e7c"
 dependencies = [
- "coerce 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi",
  "kube",
  "tracing",
@@ -403,7 +403,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
- "coerce 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis",
  "tokio",
 ]
@@ -417,7 +417,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
- "coerce 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis",
  "tokio",
 ]
@@ -429,7 +429,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap",
- "coerce 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "coerce-k8s 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "coerce-macros 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "coerce-redis 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
