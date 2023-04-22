@@ -176,7 +176,6 @@ pub async fn describe_all(
             let start = Instant::now();
             match actor.describe(describe) {
                 Ok(_) => {
-                    // TODO: Apply a timeout to `rx.await`
                     let description = tokio::time::timeout(timeout, rx).await;
                     if let Ok(description) = description {
                         match description {

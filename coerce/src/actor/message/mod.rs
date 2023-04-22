@@ -169,7 +169,6 @@ where
             .instrument(self.sender_span.clone())
             .await;
 
-        // ctx.last_message_timestamp = Some(start);
         let message_processing_took = start.elapsed();
 
         ActorMetrics::incr_messages_processed(

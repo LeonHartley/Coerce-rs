@@ -713,12 +713,7 @@ impl<A: Actor> LocalActorRef<A> {
     /// a system_id (`Uuid`) and an [`ActorPath`][ActorPath].
     ///
     /// Generally this should not be used directly.
-    pub fn new(
-        id: ActorId,
-        sender: UnboundedSender<MessageHandler<A>>,
-        system_id: Option<Uuid>,
-        path: ActorPath,
-    ) -> Self {
+    pub fn new(id: ActorId, sender: UnboundedSender<MessageHandler<A>>, path: ActorPath) -> Self {
         Self {
             inner: Arc::new(LocalActorRefInner { id, path, sender }),
         }

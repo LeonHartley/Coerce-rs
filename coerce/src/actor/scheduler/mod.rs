@@ -18,7 +18,6 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-pub mod describe;
 pub mod timer;
 
 pub struct ActorScheduler {
@@ -274,8 +273,7 @@ where
     A: 'static + Send + Sync,
 {
     let (tx, rx) = mpsc::unbounded_channel();
-    let system_id = system.as_ref().map(|s| *s.system_id());
-    let actor_ref = LocalActorRef::new(id, tx, system_id, path);
+    let actor_ref = LocalActorRef::new(id, tx, path);
     let cloned_ref = actor_ref.clone();
 
     tokio::spawn(async move {
