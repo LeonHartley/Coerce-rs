@@ -213,6 +213,46 @@ pub async fn test_actor_receiver() {
 }
 
 #[tokio::test]
+pub async fn test_actor_receiver_clone() {
+    let sys = ActorSystem::new();
+
+    let actor_a = NewActor
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("NewActor");
+    let actor_b = NewActor
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("NewActor");
+
+    let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
+
+    let mut results = vec![];
+
+    for receiver in receivers.iter_mut() {
+        let receiver_clone = receiver.clone();
+        let result = tokio::spawn(async move {
+            receiver_clone.send(GetStatusRequest).await.unwrap()
+        });
+        results.push(result);
+    }
+
+    let results = futures::future::join_all(results)
+        .await
+        .into_iter()
+        .map(|s| s.unwrap())
+        .collect::<Vec<GetStatusResponse>>();
+
+    assert_eq!(
+        results,
+        vec![
+            GetStatusResponse::Ok(TestActorStatus::Active),
+            GetStatusResponse::Ok(TestActorStatus::Active)
+        ]
+    )
+}
+
+#[tokio::test]
 pub async fn test_actor_receiver_notify() {
     let sys = ActorSystem::new();
 

@@ -404,9 +404,30 @@ impl<A: Actor> Clone for ActorRef<A> {
 /// Trait allowing the type-omission of [`Actor`][Actor] types but still allowing
 /// statically-typed message transmission
 #[async_trait]
-pub trait MessageReceiver<M: Message>: 'static + Send + Sync {
+pub trait MessageReceiver<M: Message>: 'static + Send + Sync + MessageReceiverClone<M>{
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
     fn notify(&self, msg: M) -> Result<(), ActorRefErr>;
+}
+
+/// Trait helping us to clone [`MessageReceiver`][MessageReceiver]s trait-objects.
+pub trait MessageReceiverClone<M: Message>: 'static + Send + Sync {
+    fn clone_box(&self) -> Box<dyn MessageReceiver<M>>;
+}
+
+impl<T, M> MessageReceiverClone<M> for T 
+where 
+    T: 'static + MessageReceiver<M> + Clone,
+    M: Message,
+    {
+        fn clone_box(&self) -> Box<dyn MessageReceiver<M>> {
+            Box::new(self.clone())
+        }
+    }
+
+impl<M: Message> Clone for Box<dyn MessageReceiver<M>> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 #[async_trait]
@@ -434,6 +455,7 @@ where
 
 /// Allows type-omission of [`Actor`][Actor] types but still allowing
 /// statically-typed message transmission
+#[derive(Clone)]
 pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
 
 impl<M: Message> Receiver<M> {
