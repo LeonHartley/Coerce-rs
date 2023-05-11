@@ -406,6 +406,7 @@ impl<A: Actor> Clone for ActorRef<A> {
 #[async_trait]
 pub trait MessageReceiver<M: Message>: 'static + Send + Sync {
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
+    fn notify(&self, msg: M) -> Result<(), ActorRefErr>;
 }
 
 #[async_trait]
@@ -415,6 +416,10 @@ where
 {
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.send(msg).await
+    }
+
+    fn notify(&self, msg: M) -> Result<(), ActorRefErr> {
+        self.notify(msg)
     }
 }
 
@@ -434,6 +439,10 @@ pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
 impl<M: Message> Receiver<M> {
     pub async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.0.send(msg).await
+    }
+
+    pub fn notify(&self, msg: M) -> Result<(), ActorRefErr> {
+        self.0.notify(msg)
     }
 }
 

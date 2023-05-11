@@ -349,6 +349,8 @@ dependencies = [
 [[package]]
 name = "coerce-k8s"
 version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1a9e728f28e9fd7f093d84db77bae88f2d9e461cc00cc4b983f471e55413e7c"
 dependencies = [
  "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi",
@@ -358,9 +360,7 @@ dependencies = [
 
 [[package]]
 name = "coerce-k8s"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1a9e728f28e9fd7f093d84db77bae88f2d9e461cc00cc4b983f471e55413e7c"
+version = "0.1.5"
 dependencies = [
  "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi",
@@ -399,18 +399,6 @@ dependencies = [
 [[package]]
 name = "coerce-redis"
 version = "0.4.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "bytes",
- "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "redis",
- "tokio",
-]
-
-[[package]]
-name = "coerce-redis"
-version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32402afa8277dfe03776a2b89d351a15897d6d7dd7928f10856ce0fd56cc9c0b"
 dependencies = [
@@ -418,7 +406,19 @@ dependencies = [
  "async-trait",
  "bytes",
  "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "redis",
+ "redis 0.22.3",
+ "tokio",
+]
+
+[[package]]
+name = "coerce-redis"
+version = "0.4.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redis 0.23.0",
  "tokio",
 ]
 
@@ -430,9 +430,9 @@ dependencies = [
  "chrono",
  "clap",
  "coerce 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "coerce-k8s 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-k8s 0.1.4",
  "coerce-macros 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "coerce-redis 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-redis 0.4.0",
  "env_logger",
  "futures",
  "futures-io",
@@ -1805,6 +1805,26 @@ name = "redis"
 version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa8455fa3621f6b41c514946de66ea0531f57ca017b2e6c7cc368035ea5b46df"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "combine",
+ "futures-util",
+ "itoa",
+ "percent-encoding",
+ "pin-project-lite",
+ "ryu",
+ "sha1_smol",
+ "tokio",
+ "tokio-util",
+ "url",
+]
+
+[[package]]
+name = "redis"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ea8c51b5dc1d8e5fd3350ec8167f464ec0995e79f2e90a075b63371500d557f"
 dependencies = [
  "async-trait",
  "bytes",
