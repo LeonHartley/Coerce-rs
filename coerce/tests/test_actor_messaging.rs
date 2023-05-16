@@ -3,6 +3,7 @@ use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWr
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, IntoActor, Receiver};
 use futures::FutureExt;
+use tokio::sync::mpsc::{channel, Sender};
 use util::*;
 
 pub mod util;
@@ -137,8 +138,13 @@ pub async fn test_actor_notify() {
 struct NewActor;
 struct OtherActor;
 
+struct ReportingActor {
+    tx: Sender<GetStatusRequest>,
+}
+
 impl Actor for NewActor {}
 impl Actor for OtherActor {}
+impl Actor for ReportingActor {}
 
 #[async_trait]
 impl Handler<GetStatusRequest> for NewActor {
@@ -158,6 +164,18 @@ impl Handler<GetStatusRequest> for OtherActor {
         _message: GetStatusRequest,
         _ctx: &mut ActorContext,
     ) -> <GetStatusRequest as Message>::Result {
+        GetStatusResponse::Ok(TestActorStatus::Active)
+    }
+}
+
+#[async_trait]
+impl Handler<GetStatusRequest> for ReportingActor {
+    async fn handle(
+        &mut self,
+        message: GetStatusRequest,
+        _ctx: &mut ActorContext,
+    ) -> <GetStatusRequest as Message>::Result {
+        let _ = self.tx.send(message).await;
         GetStatusResponse::Ok(TestActorStatus::Active)
     }
 }
@@ -190,6 +208,64 @@ pub async fn test_actor_receiver() {
             GetStatusResponse::Ok(TestActorStatus::Active)
         ]
     )
+}
+
+#[tokio::test]
+pub async fn test_actor_receiver_clone() {
+    let sys = ActorSystem::new();
+
+    let actor_a = NewActor
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("NewActor");
+    let actor_b = NewActor
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("NewActor");
+
+    let mut receivers: Vec<Receiver<GetStatusRequest>> = vec![actor_a.into(), actor_b.into()];
+
+    let mut results = vec![];
+
+    for receiver in receivers.iter_mut() {
+        let receiver_clone = receiver.clone();
+        let result =
+            tokio::spawn(async move { receiver_clone.send(GetStatusRequest).await.unwrap() });
+        results.push(result);
+    }
+
+    let results = futures::future::join_all(results)
+        .await
+        .into_iter()
+        .map(|s| s.unwrap())
+        .collect::<Vec<GetStatusResponse>>();
+
+    assert_eq!(
+        results,
+        vec![
+            GetStatusResponse::Ok(TestActorStatus::Active),
+            GetStatusResponse::Ok(TestActorStatus::Active)
+        ]
+    )
+}
+
+#[tokio::test]
+pub async fn test_actor_receiver_notify() {
+    let sys = ActorSystem::new();
+
+    let (tx, mut rx) = channel(1);
+    let actor = ReportingActor { tx }
+        .into_actor::<String>(None, &sys)
+        .await
+        .expect("ReportingActor");
+
+    let receiver: Receiver<GetStatusRequest> = actor.into();
+
+    receiver.notify(GetStatusRequest).unwrap();
+
+    let result = rx.recv().await.unwrap();
+
+    assert_eq!(result, GetStatusRequest);
 }
 
 #[derive(coerce_macros::JsonMessage, Serialize, Deserialize)]
