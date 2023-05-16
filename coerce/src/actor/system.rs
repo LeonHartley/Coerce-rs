@@ -150,7 +150,7 @@ impl ActorSystem {
         self.new_actor(id, actor, ActorType::Anonymous).await
     }
 
-    #[instrument(skip(self, id, actor))]
+    #[instrument(skip(self, id, actor), level="debug")]
     pub async fn new_actor<I: IntoActorId, A: Actor>(
         &self,
         id: I,
