@@ -3,7 +3,7 @@ use coerce::actor::message::{Envelope, EnvelopeType, Handler, Message, MessageWr
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{Actor, IntoActor, Receiver};
 use futures::FutureExt;
-use tokio::sync::mpsc::{Sender, channel};
+use tokio::sync::mpsc::{channel, Sender};
 use util::*;
 
 pub mod util;
@@ -169,8 +169,7 @@ impl Handler<GetStatusRequest> for OtherActor {
 }
 
 #[async_trait]
-impl Handler<GetStatusRequest> for ReportingActor
-{
+impl Handler<GetStatusRequest> for ReportingActor {
     async fn handle(
         &mut self,
         message: GetStatusRequest,
@@ -180,7 +179,6 @@ impl Handler<GetStatusRequest> for ReportingActor
         GetStatusResponse::Ok(TestActorStatus::Active)
     }
 }
-
 
 #[tokio::test]
 pub async fn test_actor_receiver() {
@@ -231,9 +229,8 @@ pub async fn test_actor_receiver_clone() {
 
     for receiver in receivers.iter_mut() {
         let receiver_clone = receiver.clone();
-        let result = tokio::spawn(async move {
-            receiver_clone.send(GetStatusRequest).await.unwrap()
-        });
+        let result =
+            tokio::spawn(async move { receiver_clone.send(GetStatusRequest).await.unwrap() });
         results.push(result);
     }
 
@@ -257,9 +254,7 @@ pub async fn test_actor_receiver_notify() {
     let sys = ActorSystem::new();
 
     let (tx, mut rx) = channel(1);
-    let actor = ReportingActor{
-        tx,
-    }
+    let actor = ReportingActor { tx }
         .into_actor::<String>(None, &sys)
         .await
         .expect("ReportingActor");
