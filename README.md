@@ -21,12 +21,14 @@ to your Cargo.toml:
 coerce = { version = "0.8", features = ["full"] }
 ```
 
-Coerce currently relies on an unstable feature from the `tracing` crate, `valuable`, used for enriching logs with
-information on the actor context, which can be enabled by adding the following to your `.cargo/config.toml` file:
+#### Optional: enabling `tracing/valuable`
+Coerce provides support for `tracing/valuable`, which can be used for enriching logs with information on the actor context. This is currently an unstable feature, which can be enabled by adding the `coerce/tracing-unstable` feature and the following section to your `.cargo/config.toml` file:
 ```
 [build]
 rustflags = ["--cfg", "tracing_unstable"]
 ```
+
+Note: if your project already depends on `tracing` crate, you'll need to enable the `valuable` feature too!
 
 ## Features
 
@@ -183,9 +185,6 @@ pub async fn run() {
 ```
 
 </details>
-
-# RemoteActorSystem
-
 
 
 [channel]: https://docs.rs/tokio/0.2.4/tokio/sync/mpsc/fn.channel.html
