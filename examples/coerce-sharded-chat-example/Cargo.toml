@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 coerce = { version = "0.8.10", features = ["full"] }
 coerce-macros = { version = "0.2.0" }
-coerce-redis = { path = "../../providers/persistence/coerce-redis" }
-coerce-k8s = { path = "../../providers/discovery/coerce-k8s" }
+coerce-redis = { version = "0.4.3" }
+coerce-k8s = { version = "0.1.7" }
 
 tokio = { version = "1.28.1", features = ["full"] }
 serde = { version = "1.0", features = ["derive", "rc"] }

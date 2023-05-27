@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "coerce"
-version = "0.8.9"
+version = "0.8.10"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -350,11 +350,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce"
+version = "0.8.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba30a4bf4bebf9112b9f42124de78b0e5dccad05c86181072663c7d8567aedec"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "futures",
+ "hashring",
+ "hmac",
+ "jwt",
+ "lazy_static",
+ "metrics 0.21.0",
+ "metrics-exporter-prometheus 0.12.1",
+ "metrics-util 0.15.0",
+ "parking_lot",
+ "protobuf",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "utoipa",
+ "utoipa-swagger-ui",
+ "uuid",
+ "valuable",
+]
+
+[[package]]
 name = "coerce-cluster-example"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "coerce",
+ "coerce 0.8.10",
  "coerce-macros 0.2.0",
  "opentelemetry",
  "opentelemetry-jaeger",
@@ -368,9 +404,21 @@ dependencies = [
 
 [[package]]
 name = "coerce-k8s"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
- "coerce",
+ "coerce 0.8.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "k8s-openapi",
+ "kube",
+ "tracing",
+]
+
+[[package]]
+name = "coerce-k8s"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "794b1185e927d99c1516ea3f5918a14e95e633c2c3659d426135c00c3c0e7c15"
+dependencies = [
+ "coerce 0.8.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi",
  "kube",
  "tracing",
@@ -406,12 +454,26 @@ dependencies = [
 
 [[package]]
 name = "coerce-redis"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
- "coerce",
+ "coerce 0.8.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redis",
+ "tokio",
+]
+
+[[package]]
+name = "coerce-redis"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e9c6e01a101da79c184a316334cd15f6618520706325c70d5bd1553801a8c48"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "coerce 0.8.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis",
  "tokio",
 ]
@@ -423,10 +485,10 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap",
- "coerce",
- "coerce-k8s",
+ "coerce 0.8.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "coerce-k8s 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "coerce-macros 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "coerce-redis",
+ "coerce-redis 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger",
  "futures",
  "futures-io",
