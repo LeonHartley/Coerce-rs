@@ -1,6 +1,6 @@
 [package]
 name = "coerce-redis"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2021"
 description = "Redis actor persistence provider for Coerce. Supports event sourcing and snapshots"
@@ -16,7 +16,7 @@ cluster = [
 ]
 
 [dependencies]
-coerce = { path = "../../../coerce", features = ["persistence"] }
+coerce = { version = "0.8.10", features = ["persistence"] }
 async-trait = { version = "0.1.64" }
 redis = { version = "0.23.0", features = ["tokio-comp"] }
 tokio = { version = "1.28.1", features = ["full"] }
