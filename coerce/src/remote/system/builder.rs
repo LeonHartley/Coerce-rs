@@ -72,7 +72,6 @@ impl RemoteActorSystemBuilder {
     }
 
     pub fn with_version(mut self, version: impl ToString) -> Self {
-        info!("setting version={}", version.to_string());
         self.node_version = Some(version.to_string());
 
         self

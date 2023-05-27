@@ -6,6 +6,7 @@ use crate::actor::{
     LocalActorRef, ToActorId,
 };
 
+use crate::actor::system::builder::ActorSystemBuilder;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
@@ -16,6 +17,8 @@ use crate::remote::system::RemoteActorSystem;
 
 #[cfg(feature = "persistence")]
 use crate::persistent::{journal::provider::StorageProvider, Persistence};
+
+pub mod builder;
 
 lazy_static! {
     pub static ref DEFAULT_ACTOR_PATH: ActorPath = String::default().into();
@@ -45,58 +48,6 @@ pub(crate) struct ActorSystemCore {
 impl Default for ActorSystem {
     fn default() -> Self {
         Self::builder().build()
-    }
-}
-
-#[derive(Default)]
-pub struct ActorSystemBuilder {
-    system_id: Option<Uuid>,
-    system_name: Option<String>,
-
-    #[cfg(feature = "persistence")]
-    persistence: Option<Arc<Persistence>>,
-}
-
-impl ActorSystemBuilder {
-    pub fn system_name(mut self, name: impl ToString) -> Self {
-        self.system_name = Some(name.to_string());
-        self
-    }
-
-    #[cfg(feature = "persistence")]
-    pub fn with_persistence<S: StorageProvider>(mut self, provider: S) -> Self {
-        self.persistence = Some(Persistence::from(provider).into());
-        self
-    }
-
-    pub fn build(self) -> ActorSystem {
-        let system_id = self.system_id.unwrap_or_else(|| Uuid::new_v4());
-        let system_name: Arc<str> = self.system_name.map_or_else(
-            || {
-                std::env::var("COERCE_ACTOR_SYSTEM").map_or_else(
-                    |_e| format!("{}", system_id).into(),
-                    |v| v.to_string().into(),
-                )
-            },
-            |s| s.into(),
-        );
-
-        let scheduler = ActorScheduler::new(system_id, system_name.clone());
-        ActorSystem {
-            core: Arc::new(ActorSystemCore {
-                system_id,
-                system_name,
-                scheduler,
-                is_terminated: Arc::new(AtomicBool::new(false)),
-                context_counter: Arc::new(AtomicU64::new(1)),
-
-                #[cfg(feature = "persistence")]
-                persistence: self.persistence,
-
-                #[cfg(feature = "remote")]
-                remote: None,
-            }),
-        }
     }
 }
 
@@ -150,7 +101,41 @@ impl ActorSystem {
         self.new_actor(id, actor, ActorType::Anonymous).await
     }
 
-    #[instrument(skip(self, id, actor), level="debug")]
+    /// Spawns a new actor and immediately returns the `LocalActorRef`, without waiting for
+    /// the actor to be started. If the `ActorType` is tracked, a ref is only returned once the
+    /// `ActorScheduler` has handled the actor registration
+    pub async fn new_actor_deferred<I: IntoActorId, A: Actor>(
+        &self,
+        id: I,
+        actor: A,
+        actor_type: ActorType,
+    ) -> LocalActorRef<A> {
+        let id = id.into_actor_id();
+        let actor_ref = start_actor(
+            actor,
+            id.clone(),
+            actor_type,
+            None,
+            Some(self.clone()),
+            None,
+            self.system_name().to_actor_id(),
+        );
+
+        if actor_type.is_tracked() {
+            let _ = self
+                .core
+                .scheduler
+                .send(RegisterActor {
+                    id: id.clone(),
+                    actor_ref: actor_ref.clone(),
+                })
+                .await;
+        }
+
+        actor_ref
+    }
+
+    #[instrument(skip(self, id, actor), level = "debug")]
     pub async fn new_actor<I: IntoActorId, A: Actor>(
         &self,
         id: I,

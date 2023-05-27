@@ -178,7 +178,7 @@ pub fn timestamp_to_datetime(
     timestamp: protobuf::well_known_types::timestamp::Timestamp,
 ) -> DateTime<Utc> {
     DateTime::<Utc>::from_utc(
-        NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
+        NaiveDateTime::from_timestamp_opt(timestamp.seconds, timestamp.nanos as u32).unwrap(),
         Utc,
     )
 }

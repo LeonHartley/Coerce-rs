@@ -60,8 +60,7 @@ impl<A: Actor> LocalActorRef<A> {
 
         let (tx, rx) = oneshot::channel();
         match self
-            .inner
-            .sender
+            .sender()
             .send(Box::new(ActorMessage::new(msg, Some(tx))))
         {
             Ok(_) => match rx.blocking_recv() {

@@ -165,6 +165,7 @@ impl<A: Actor> Sharded<A> {
             result_channel: Some(tx),
         });
 
+        error!("notified host");
         let result = rx.await;
         if let Ok(result) = result {
             let result =

@@ -39,7 +39,7 @@ use valuable::Valuable;
 pub mod store;
 
 pub struct RemoteSession {
-    id: Uuid,
+    id: i64,
     addr: SocketAddr,
     write: FramedWrite<WriteHalf<TcpStream>, LengthDelimitedCodec>,
     read: Option<FramedRead<ReadHalf<TcpStream>, LengthDelimitedCodec>>,
@@ -49,7 +49,7 @@ pub struct RemoteSession {
 
 impl RemoteSession {
     pub fn new(
-        id: Uuid,
+        id: i64,
         addr: SocketAddr,
         stream: TcpStream,
         remote_server_config: RemoteServerConfigRef,
@@ -164,14 +164,13 @@ async fn validate_session_token(
                 if !token_valid {
                     error!(
                         ctx = log.as_value(),
-                        "invalid token received, disconnecting session({}) - token=\"{}\"",
+                        "invalid token received, disconnecting session({})",
                         ctx.id(),
-                        token
                     );
                 } else {
                     info!(
                         ctx = log.as_value(),
-                        "token ({}) validated - connection accepted", &token,
+                        "token validated - connection accepted",
                     );
 
                     return true;
@@ -222,7 +221,7 @@ impl RemoteSession {
 }
 
 pub struct SessionMessageReceiver {
-    session_id: Uuid,
+    session_id: i64,
     session: LocalActorRef<RemoteSession>,
     node_id: Option<NodeId>,
     addr: SocketAddr,
@@ -238,7 +237,7 @@ pub enum RemoteSessionErr {
 
 impl SessionMessageReceiver {
     pub fn new(
-        session_id: Uuid,
+        session_id: i64,
         session: LocalActorRef<RemoteSession>,
         addr: SocketAddr,
         server_config: RemoteServerConfigRef,
@@ -438,7 +437,7 @@ impl StreamReceiver for SessionMessageReceiver {
 async fn session_handshake(
     ctx: RemoteActorSystem,
     handshake: SessionHandshake,
-    session_id: Uuid,
+    session_id: i64,
     session: LocalActorRef<RemoteSession>,
     session_addr: SocketAddr,
     server_config: RemoteServerConfigRef,
@@ -527,7 +526,7 @@ async fn session_handshake(
 
 async fn session_handle_message(
     msg: MessageRequest,
-    session_id: Uuid,
+    session_id: i64,
     ctx: RemoteActorSystem,
     session: LocalActorRef<RemoteSession>,
 ) {
@@ -567,7 +566,7 @@ async fn session_handle_message(
 async fn session_handle_lookup(
     msg_id: Uuid,
     id: ActorId,
-    session_id: Uuid,
+    session_id: i64,
     ctx: RemoteActorSystem,
     session: LocalActorRef<RemoteSession>,
 ) {
@@ -590,7 +589,7 @@ async fn session_handle_lookup(
 
 async fn session_create_actor(
     msg: CreateActorEvent,
-    session_id: Uuid,
+    session_id: i64,
     ctx: RemoteActorSystem,
     session: LocalActorRef<RemoteSession>,
 ) {
@@ -629,7 +628,7 @@ async fn session_stream_publish(msg: Arc<StreamPublishEvent>, sys: RemoteActorSy
 async fn send_result(
     msg_id: Uuid,
     res: Vec<u8>,
-    session_id: Uuid,
+    session_id: i64,
     session: LocalActorRef<RemoteSession>,
 ) {
     trace!("sending result");

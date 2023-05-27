@@ -43,7 +43,7 @@ impl Handler<GetStats> for ShardHost {
         let actors: Vec<LocalActorRef<Shard>> = self
             .hosted_shards
             .iter()
-            .filter_map(|s| s.1.actor_ref())
+            .filter_map(|s| s.1.actor_ref().cloned())
             .collect();
 
         let stats = HostStats {

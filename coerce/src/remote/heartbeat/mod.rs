@@ -13,7 +13,7 @@ use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::ClusterEvent::LeaderChanged;
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
-use chrono::{DateTime, Utc, MIN_DATETIME};
+use chrono::{DateTime, Utc};
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
@@ -246,8 +246,8 @@ impl Handler<HeartbeatTick> for Heartbeat {
 
         updates.sort_by(|a, b| {
             match Ord::cmp(
-                &a.node_started_at.unwrap_or(MIN_DATETIME),
-                &b.node_started_at.unwrap_or(MIN_DATETIME),
+                &a.node_started_at.unwrap_or(DateTime::<Utc>::MIN_UTC),
+                &b.node_started_at.unwrap_or(DateTime::<Utc>::MIN_UTC),
             ) {
                 Ordering::Equal => Ord::cmp(&a.id, &b.id),
                 ordering => ordering,
@@ -260,12 +260,12 @@ impl Handler<HeartbeatTick> for Heartbeat {
             match oldest_healthy_node {
                 None => {}
                 Some(oldest_healthy_node) => {
+                    let current_leader_id = system.current_leader();
                     if Some(oldest_healthy_node.id) != system.current_leader() {
                         info!(
-                            "[node={}] leader of cluster: {:?}, current_node_tag={}",
-                            system.node_id(),
-                            oldest_healthy_node,
-                            &node_tag
+                            new_leader_node_id = oldest_healthy_node.id,
+                            previous_leader_node_id = current_leader_id,
+                            "New cluster leader",
                         );
 
                         new_leader_id = Some(oldest_healthy_node.id)

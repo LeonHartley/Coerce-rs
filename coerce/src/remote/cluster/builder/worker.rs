@@ -85,6 +85,8 @@ impl ClusterWorkerBuilder {
             .expect("failed to start server");
 
         if let Some(seed_addr) = self.seed_addr.take() {
+            // TODO: this check only works if the listen addr & cluster node addr are equal, should we perform a resolution via `lookup_host` instead?
+
             if self.seed_addr.as_ref() != Some(&cluster_node_addr) {
                 discover_peers(seed_addr, &self.system).await;
             }
@@ -101,8 +103,11 @@ impl ClusterWorkerBuilder {
 }
 
 async fn discover_peers(seed_addr: String, system: &RemoteActorSystem) {
-    const SEED_RESOLVE_MAX_ATTEMPTS: usize = 10;
+    const SEED_RESOLVE_MAX_ATTEMPTS: usize = 12;
     const SEED_RESOLVE_RETRY_DELAY: Duration = Duration::from_secs(5);
+
+    // it's possible that the seed address DNS doesn't immediately resolve, but may resolve after a delay,
+    // which is common with deployments using dynamic DNS such as Kubernetes deployments
 
     let mut attempts = 1;
     loop {
@@ -119,10 +124,11 @@ async fn discover_peers(seed_addr: String, system: &RemoteActorSystem) {
         }
 
         warn!(
-            "Cannot resolve DNS for address: {}, retrying in {}s",
+            "Cannot resolve DNS for seed address: {}, retrying in {}s",
             &seed_addr,
             &SEED_RESOLVE_RETRY_DELAY.as_secs()
         );
+
         sleep(SEED_RESOLVE_RETRY_DELAY).await;
         attempts += 1;
     }
@@ -134,13 +140,13 @@ async fn discover_peers(seed_addr: String, system: &RemoteActorSystem) {
         on_discovery_complete: Some(tx),
     });
 
-    info!("discover_peers - waiting for discovery to complete");
+    info!("discovering cluster peers (seed={})", &seed_addr);
 
     let _ = rx
         .await
         .expect(&format!("unable to discover nodes from addr={}", seed_addr));
 
-    info!("discover_peers - discovered peers successfully");
+    info!("cluster peers discovered successfully");
 }
 
 async fn seed_addr_resolves(seed_addr: &str) -> bool {

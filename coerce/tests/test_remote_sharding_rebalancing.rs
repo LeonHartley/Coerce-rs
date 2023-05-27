@@ -4,7 +4,7 @@ use crate::util::{
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
-use tracing::info;
+use tracing::Level;
 
 use coerce::actor::describe::DescribeAll;
 use coerce::actor::describe::DescribeOptions;
@@ -36,6 +36,9 @@ extern crate async_trait;
 
 #[macro_use]
 extern crate coerce_macros;
+
+#[macro_use]
+extern crate tracing;
 
 pub struct TestActorRecipe;
 
@@ -132,11 +135,10 @@ async fn create_system(
 
 #[tokio::test]
 pub async fn test_shard_rebalancing_upon_node_termination() {
-    util::create_trace_logger();
+    util::create_logger(Some(Level::WARN));
 
     let persistence = Persistence::from(InMemoryStorageProvider::new());
-    let (remote_a, _server_a) =
-        create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;
+    let (remote_a, server_a) = create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;
 
     let (remote_b, _server_b) = create_system(
         persistence.clone(),
@@ -150,7 +152,7 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
         .build()
         .await;
 
-    let _sharding_b = Sharding::<TestActorFactory>::builder(remote_b.clone())
+    let sharding_b = Sharding::<TestActorFactory>::builder(remote_b.clone())
         .build()
         .await;
 
@@ -170,43 +172,25 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
     let expected_status = TestActorStatus::Active;
     assert_eq!(res, GetStatusResponse::Ok(expected_status));
 
-    let describe_options = Arc::new(DescribeOptions {
-        ..Default::default()
-    });
+    // stop the system, and start a new one (sharing the same persistence backplane)
+    {
+        let mut server_a = server_a;
+        server_a.stop();
+        remote_a.actor_system().shutdown().await;
+    }
 
-    let (tx, rx) = oneshot::channel();
-    let _ = remote_a.actor_system().scheduler().notify(DescribeAll {
-        options: describe_options.clone(),
-        sender: tx,
-    });
-    let description = rx.await.unwrap();
-    info!("{:#?}", description);
+    error!("stopped A successfully");
 
-    let (tx, rx) = oneshot::channel();
-    let _ = remote_b.actor_system().scheduler().notify(DescribeAll {
-        options: describe_options.clone(),
-        sender: tx,
-    });
-    let description = rx.await.unwrap();
-    info!("{:#?}", description);
-    //
-    // // stop the system, and start a new one (sharing the same persistence backplane)
-    //
-    // {
-    //     let mut server_a = server_a;
-    //     server_a.stop();
-    //     remote_a.actor_system().shutdown().await;
-    // }
-    //
-    // // tokio::time::sleep(Duration::from_secs(10)).await;
-    //
-    // // create a reference to the sharded actor without specifying a recipe, which stops the sharding internals from creating the actor if it isn't already running
-    // let sharded_actor = sharding_b.get("leon".to_string(), None);
-    // let res_after_losing_node_1 = sharded_actor
-    //     .send(SetStatusRequest {
-    //         status: TestActorStatus::Active,
-    //     })
-    //     .await;
-    //
-    // assert_eq!(res_after_losing_node_1.is_ok(), true);
+    // TODO: this should not require a sleep. the effect of losing a node should cause the coordinator to respawn immediately
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
+    // create a reference to the sharded actor without specifying a recipe, which stops the sharding internals from creating the actor if it isn't already running
+    let sharded_actor = sharding_b.get("leon".to_string(), None);
+    let res_after_losing_node_1 = sharded_actor
+        .send(SetStatusRequest {
+            status: TestActorStatus::Active,
+        })
+        .await;
+
+    assert_eq!(res_after_losing_node_1.is_ok(), true);
 }

@@ -21,6 +21,7 @@ use coerce::remote::api::metrics::MetricsApi;
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::time::Duration;
 use tokio::task::JoinHandle;
 
 pub struct ShardedChatConfig {
@@ -75,6 +76,16 @@ impl ShardedChat {
         if let Ok(metrics_api) = MetricsApi::new(system.clone()) {
             api_builder = api_builder.routes(metrics_api);
         }
+
+        let _stats_collector = tokio::spawn(async move {
+            let collector = metrics_process::Collector::default();
+            collector.describe();
+
+            loop {
+                collector.collect();
+                tokio::time::sleep(Duration::from_secs(1)).await
+            }
+        });
 
         let http_api_actor = api_builder.start(system.actor_system()).await;
 

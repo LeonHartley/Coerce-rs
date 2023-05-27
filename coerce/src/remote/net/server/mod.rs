@@ -114,12 +114,14 @@ pub async fn server_loop(
     cancellation_token: CancellationToken,
     remote_server_config: RemoteServerConfigRef,
 ) {
+    let mut session_count = 0;
     loop {
         match accept(&listener, cancellation_token.clone()).await {
             Some(Ok((stream, addr))) => {
                 let remote_server_config = remote_server_config.clone();
 
-                let session_id = uuid::Uuid::new_v4();
+                session_count += 1;
+                let session_id = session_count;
                 trace!("client accepted {}, session_id={}", addr, session_id);
 
                 let session = session_store

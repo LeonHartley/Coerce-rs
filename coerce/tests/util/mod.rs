@@ -166,3 +166,19 @@ pub fn create_trace_logger() {
         // sets this to be the default, global collector for this application.
         .try_init();
 }
+
+pub fn create_logger(level: Option<Level>) {
+    let _ = tracing_subscriber::fmt()
+        // enable everything
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(true)
+        .with_thread_names(true)
+        .with_span_events(FmtSpan::NONE)
+        .with_ansi(false)
+        .with_max_level(level.unwrap_or_else(|| {
+            Level::from_str(LOG_LEVEL.as_str()).expect("invalid `LOG_LEVEL` environment variable")
+        }))
+        // sets this to be the default, global collector for this application.
+        .try_init();
+}

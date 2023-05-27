@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 pub struct RemoteSessionStore {
-    sessions: HashMap<Uuid, LocalActorRef<RemoteSession>>,
+    sessions: HashMap<i64, LocalActorRef<RemoteSession>>,
 }
 
 impl Actor for RemoteSessionStore {}
@@ -22,9 +22,9 @@ impl RemoteSessionStore {
 
 pub struct NewSession(pub RemoteSession);
 
-pub struct SessionWrite(pub Uuid, pub ClientEvent);
+pub struct SessionWrite(pub i64, pub ClientEvent);
 
-pub struct SessionClosed(pub Uuid);
+pub struct SessionClosed(pub i64);
 
 impl Message for NewSession {
     type Result = LocalActorRef<RemoteSession>;

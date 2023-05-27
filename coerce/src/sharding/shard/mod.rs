@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Handler;
-use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef};
+use crate::actor::{Actor, ActorId, ActorRefErr, BoxedActorRef, CoreActorRef, LocalActorRef};
 
 use crate::persistent::journal::types::JournalTypes;
 
@@ -10,6 +10,7 @@ use crate::remote::actor::{BoxedActorHandler, BoxedMessageHandler};
 use crate::sharding::coordinator::ShardId;
 use crate::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 
+use crate::sharding::host::{ShardHost, ShardReady};
 use crate::sharding::shard::message::{
     EntityStartResult, PassivateEntity, RemoveEntity, StartEntity,
 };
@@ -39,10 +40,16 @@ pub struct Shard {
     recovered_snapshot: bool,
     entity_passivation: bool,
     entities: HashMap<ActorId, Entity>,
+    host: LocalActorRef<ShardHost>,
 }
 
 impl Shard {
-    pub fn new(shard_id: ShardId, handler: BoxedActorHandler, persistent_entities: bool) -> Shard {
+    pub fn new(
+        shard_id: ShardId,
+        handler: BoxedActorHandler,
+        persistent_entities: bool,
+        host: LocalActorRef<ShardHost>,
+    ) -> Shard {
         Shard {
             shard_id,
             handler,
@@ -50,6 +57,7 @@ impl Shard {
             entities: HashMap::new(),
             recovered_snapshot: false,
             entity_passivation: true,
+            host,
         }
     }
 }
@@ -162,11 +170,13 @@ impl PersistentActor for Shard {
         if self.entity_passivation {
             // TODO: Start entity passivation worker
         }
+
+        let _ = self
+            .host
+            .notify(ShardReady(self.shard_id, self.actor_ref(ctx)));
     }
 
-    async fn on_child_stopped(&mut self, id: &ActorId, _ctx: &mut ActorContext) {
-        info!("child stopped, id={}", id);
-    }
+    async fn on_child_stopped(&mut self, id: &ActorId, _ctx: &mut ActorContext) {}
 }
 
 impl Shard {

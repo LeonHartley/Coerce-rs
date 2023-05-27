@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{EnvelopeType, Handler, Message, MessageUnwrapErr, MessageWrapErr};
-use crate::actor::{Actor, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef};
+use crate::actor::{Actor, ActorId, ActorRef, IntoActorId, LocalActorRef};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use crate::sharding::coordinator::allocation::DefaultAllocator;
@@ -15,6 +15,7 @@ use crate::remote::heartbeat::Heartbeat;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 
+use crate::actor::scheduler::ActorType;
 use uuid::Uuid;
 
 pub mod request;
@@ -22,6 +23,7 @@ pub mod stats;
 
 pub enum ShardState {
     Starting {
+        actor_ref: LocalActorRef<Shard>,
         request_buffer: Vec<EntityRequest>,
         stop_requested: Option<StopRequested>,
     },
@@ -151,9 +153,10 @@ pub struct HostedShards {
 }
 
 impl ShardState {
-    pub fn actor_ref(&self) -> Option<LocalActorRef<Shard>> {
+    pub fn actor_ref(&self) -> Option<&LocalActorRef<Shard>> {
         match self {
-            ShardState::Ready(actor_ref) => Some(actor_ref.clone()),
+            ShardState::Ready(actor_ref) => Some(actor_ref),
+            ShardState::Starting { actor_ref, .. } => Some(actor_ref),
             _ => None,
         }
     }
@@ -196,9 +199,7 @@ impl Handler<ShardAllocated> for ShardHost {
         let shard_actor_id = shard_actor_id(&self.shard_entity, shard_id);
 
         if node_id == remote.node_id() {
-            if self.remote_shards.contains_key(&shard_id) {
-                let _ = self.remote_shards.remove(&shard_id);
-            }
+            let _ = self.remote_shards.remove(&shard_id);
 
             let self_ref = self.actor_ref(ctx);
 
@@ -206,23 +207,22 @@ impl Handler<ShardAllocated> for ShardHost {
             match hosted_shard_entry {
                 Entry::Occupied(_) => {
                     // already allocated locally
+                    debug!("local shard#{} already allocated", message.0);
                 }
 
                 Entry::Vacant(hosted_shard_entry) => {
                     let system = ctx.system().clone();
 
                     let handler = self.actor_handler.new_boxed();
+                    let shard = Shard::new(shard_id, handler, true, self_ref);
+                    let actor_ref = system
+                        .new_actor_deferred(shard_actor_id, shard, ActorType::Tracked)
+                        .await;
 
-                    tokio::spawn(async move {
-                        let shard = Shard::new(shard_id, handler, true)
-                            .into_actor(Some(shard_actor_id), &system)
-                            .await
-                            .expect("create shard actor");
-
-                        let _ = self_ref.notify(ShardReady(shard_id, shard));
-                    });
+                    ctx.attach_child_ref(actor_ref.clone().into());
 
                     hosted_shard_entry.insert(ShardState::Starting {
+                        actor_ref,
                         request_buffer: vec![],
                         stop_requested: None,
                     });
@@ -231,11 +231,15 @@ impl Handler<ShardAllocated> for ShardHost {
                 }
             }
         } else {
-            if self.hosted_shards.contains_key(&shard_id) {
-                error!(
-                    "shard#{} was allocated locally but now allocated remotely on node={}",
+            if let Some(shard) = self.hosted_shards.remove(&shard_id) {
+                debug!(
+                    "shard#{} was allocated locally but now allocated remotely on node={}, stopping shard",
                     shard_id, node_id
                 );
+
+                if let Some(shard_actor) = shard.actor_ref() {
+                    let _ = shard_actor.notify_stop();
+                }
             }
 
             let shard_actor =
@@ -275,6 +279,7 @@ impl Handler<ShardReady> for ShardHost {
             Some(ShardState::Starting {
                 request_buffer,
                 stop_requested,
+                ..
             }) => {
                 if let Some(stop_requested) = stop_requested {
                     // TODO: move the request buffer over to `requests_pending_shard_allocation`

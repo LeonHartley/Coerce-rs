@@ -41,6 +41,7 @@ pub struct ActorContext {
     persistence: Option<ActorPersistence>,
 }
 
+#[derive(Debug)]
 pub struct LogContext {
     pub actor_path: ActorPath,
     pub actor_type: &'static str,
@@ -299,12 +300,14 @@ impl ActorContext {
 static LOG_CONTEXT_FIELDS: &[NamedField<'static>] =
     &[NamedField::new("actor_path"), NamedField::new("actor_type")];
 
+#[cfg(feature = "tracing-unstable")]
 impl Structable for LogContext {
     fn definition(&self) -> StructDef<'_> {
         StructDef::new_static("Context", Fields::Named(LOG_CONTEXT_FIELDS))
     }
 }
 
+#[cfg(feature = "tracing-unstable")]
 impl Valuable for LogContext {
     fn as_value(&self) -> Value<'_> {
         Value::Structable(self)
@@ -318,6 +321,13 @@ impl Valuable for LogContext {
                 Value::String(self.actor_type),
             ],
         ));
+    }
+}
+
+#[cfg(not(feature = "tracing-unstable"))]
+impl LogContext {
+    pub fn as_value(&self) -> String {
+        format!("{:?}", &self)
     }
 }
 
@@ -350,8 +360,8 @@ fn on_context_dropped(
 ) {
     ActorMetrics::incr_actor_stopped(actor.actor_type());
 
-    let actor_id = actor.0.actor_id();
-    let actor_type = actor.0.actor_type();
+    let actor_id = actor.actor_id();
+    let actor_type = actor.actor_type();
     let system_terminated = system.as_ref().map(|s| s.is_terminated());
 
     match status {
