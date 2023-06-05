@@ -243,10 +243,22 @@ impl RemoteActorSystem {
     }
 
     pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader> {
-        self.handler_name::<A, M>()
+        let header = self
+            .handler_name::<A, M>()
             .map(|handler_type| RemoteMessageHeader {
                 actor_id: id.clone(),
                 handler_type,
-            })
+            });
+
+        if header.is_none() {
+            warn!(
+                    "no handler found, did you register it? (actor_id={} actor_type={} message_type={})",
+                    id,
+                    A::type_name(),
+                    M::type_name()
+                );
+        }
+
+        header
     }
 }
