@@ -1,6 +1,6 @@
 use crate::actor::message::Message;
 use crate::actor::{
-    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, CoreActorRef, IntoActorId,
+    new_actor_id, Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, IntoActorId,
 };
 use crate::remote::actor::message::{GetActorNode, RegisterActor};
 use crate::remote::handler::send_proto_result;
@@ -242,7 +242,10 @@ impl RemoteActorSystem {
         self.inner.config.handler_name::<A, M>()
     }
 
-    pub fn create_header<A: Actor, M: Message>(&self, id: &ActorId) -> Option<RemoteMessageHeader> {
+    pub fn create_header<A: Actor, M: Message>(
+        &self,
+        id: &ActorId,
+    ) -> Result<RemoteMessageHeader, ActorRefErr> {
         let header = self
             .handler_name::<A, M>()
             .map(|handler_type| RemoteMessageHeader {
@@ -250,15 +253,22 @@ impl RemoteActorSystem {
                 handler_type,
             });
 
-        if header.is_none() {
-            warn!(
-                    "no handler found, did you register it? (actor_id={} actor_type={} message_type={})",
-                    id,
-                    A::type_name(),
-                    M::type_name()
-                );
-        }
+        let message_type = M::type_name();
+        let actor_type = A::type_name();
 
-        header
+        match header {
+            Some(header) => Ok(header),
+            None => {
+                error!(
+                    "no handler registered actor_type={}, message_type={}",
+                    &actor_type, message_type
+                );
+                Err(ActorRefErr::NotSupported {
+                    actor_id: id.clone(),
+                    message_type: message_type.to_string(),
+                    actor_type: actor_type.to_string(),
+                })
+            }
+        }
     }
 }
