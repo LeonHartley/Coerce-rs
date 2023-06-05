@@ -4,6 +4,9 @@ on:
       - master
       - feature/**
       - dev
+  pull_request:
+    branches:
+      - master
 name: coerce-rs tests
 
 jobs:
