@@ -1,5 +1,4 @@
-use crate::actor::message::{Envelope, Handler, Message};
-use crate::actor::ActorRefErr::ActorUnavailable;
+use crate::actor::message::{Envelope, Handler, Message, MessageWrapErr};
 use crate::actor::{Actor, ActorId, ActorRefErr};
 use crate::remote::actor::RemoteResponse;
 use crate::remote::net::message::SessionEvent;
@@ -62,18 +61,10 @@ where
 
         let id = Uuid::new_v4();
 
-        let request = self.create_request(msg, String::new(), id, false);
+        let request = self.create_request(msg, String::new(), id, false)?;
+        self.system.notify_node(self.node_id, request).await;
 
-        // TODO: `notify` could propagate errors?
-
-        match request {
-            Some(request) => {
-                self.system.notify_node(self.node_id, request).await;
-                Ok(())
-            }
-
-            None => Err(ActorUnavailable),
-        }
+        Ok(())
     }
 
     pub async fn send<Msg: Message>(&self, msg: Envelope<Msg>) -> Result<Msg::Result, ActorRefErr>
@@ -88,42 +79,27 @@ where
         // let _enter = span.enter();
 
         let id = Uuid::new_v4();
-        let event = self.create_request(msg, String::new(), id, true);
 
         let (res_tx, res_rx) = oneshot::channel();
         self.system.push_request(id, res_tx);
 
-        match event {
-            Some(event) => {
-                // TODO: we could make this fail fast if the node is known to be terminated?
+        let event = self.create_request(msg, String::new(), id, true)?;
 
-                self.system.notify_node(self.node_id, event).await;
-                match res_rx.await {
-                    Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
-                        Ok(res) => Ok(res),
-                        Err(e) => {
-                            error!("failed to decode result");
-                            Err(ActorRefErr::Deserialisation(e))
-                        }
-                    },
-                    Err(e) => {
-                        error!("failed to receive result, e={}", e);
-                        Err(ActorRefErr::ResultChannelClosed)
-                    }
-                    Ok(RemoteResponse::Err(e)) => Err(e),
+        // TODO: we could make this fail fast if the node is known to be terminated?
+        self.system.notify_node(self.node_id, event).await;
+        match res_rx.await {
+            Ok(RemoteResponse::Ok(res)) => match Msg::read_remote_result(res) {
+                Ok(res) => Ok(res),
+                Err(e) => {
+                    error!("failed to decode result");
+                    Err(ActorRefErr::Deserialisation(e))
                 }
+            },
+            Err(e) => {
+                error!("failed to receive result, e={}", e);
+                Err(ActorRefErr::ResultChannelClosed)
             }
-            None => {
-                error!(
-                    "no handler registered actor_type={}, message_type={}",
-                    &actor_type, message_type
-                );
-                Err(ActorRefErr::NotSupported {
-                    actor_id: self.id.clone(),
-                    message_type: message_type.to_string(),
-                    actor_type: actor_type.to_string(),
-                })
-            }
+            Ok(RemoteResponse::Err(e)) => Err(e),
         }
     }
 
@@ -133,16 +109,16 @@ where
         trace_id: String,
         id: Uuid,
         requires_response: bool,
-    ) -> Option<SessionEvent>
+    ) -> Result<SessionEvent, ActorRefErr>
     where
         Msg: 'static + Send + Sync,
     {
         let message = match msg {
             Envelope::Remote(b) => b,
-            _ => return None,
+            _ => return Err(ActorRefErr::Serialisation(MessageWrapErr::NotTransmittable)),
         };
 
-        let event = self.system.create_header::<A, Msg>(&self.id).map(|header| {
+        self.system.create_header::<A, Msg>(&self.id).map(|header| {
             let handler_type = header.handler_type;
             let actor_id = header.actor_id.to_string();
             let origin_node_id = self.system.node_id();
@@ -156,9 +132,7 @@ where
                 origin_node_id,
                 ..Default::default()
             })
-        });
-
-        event
+        })
     }
 }
 
