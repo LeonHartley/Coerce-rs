@@ -10,7 +10,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
@@ -80,6 +80,28 @@ impl PubSub {
     ) {
         if let Some(mediator) = system.stream_mediator() {
             let reach = Reach::Local;
+
+            let _ = mediator
+                .send(Publish {
+                    topic,
+                    message,
+                    reach,
+                })
+                .await
+                .unwrap();
+        } else {
+            panic!("no stream mediator found, system not setup for distributed streams")
+        }
+    }
+
+    pub async fn publish_nodes<T: Topic>(
+        topic: T,
+        message: T::Message,
+        nodes: Vec<NodeId>,
+        system: &RemoteActorSystem,
+    ) {
+        if let Some(mediator) = system.stream_mediator() {
+            let reach = Reach::Nodes(nodes);
 
             let _ = mediator
                 .send(Publish {
