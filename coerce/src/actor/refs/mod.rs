@@ -278,7 +278,7 @@ impl<A: Actor> Clone for LocalActorRef<A> {
 }
 
 /// The error type used for [`Coerce`][crate]'s actor-related APIs
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub enum ActorRefErr {
     ActorUnavailable,
     NotFound(ActorId),

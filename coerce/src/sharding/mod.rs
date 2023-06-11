@@ -2,10 +2,13 @@
 
 use crate::actor::message::{Handler, Message};
 use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,
+    Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, IntoActor, IntoActorId,
+    LocalActorRef,
 };
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 
-use crate::remote::system::builder::RemoteSystemConfigBuilder;
+use crate::remote::system::builder::{RemoteActorSystemBuilder, RemoteSystemConfigBuilder};
 use crate::remote::system::RemoteActorSystem;
 use crate::sharding::coordinator::allocation::AllocateShard;
 use crate::sharding::coordinator::spawner::CoordinatorSpawner;
@@ -47,18 +50,35 @@ pub struct Sharded<A: Actor> {
     _a: PhantomData<A>,
 }
 
+#[derive(Debug, Clone)]
+pub enum StartupErr {
+    MissingActorFactory {
+        entity_name: String,
+        entity_type: &'static str,
+    },
+    CoordinatorErr {
+        entity_name: String,
+        err: ActorRefErr,
+    },
+    ShardHostErr {
+        entity_name: String,
+        err: ActorRefErr,
+    },
+}
+
 impl<A: ActorFactory> Sharding<A> {
-    pub async fn start(
+    pub async fn try_start(
         shard_entity: String,
         system: RemoteActorSystem,
         allocator: Option<Box<dyn ShardAllocator>>,
-    ) -> Self {
-        let actor_handler = match system
-            .config()
-            .actor_handler(A::Actor::type_name()) {
-            None => panic!("failed to initialise sharding for entity={}, factory not found for type={}, please register it via RemoteActorSystemBuilder", &shard_entity, A::Actor::type_name()),
-            Some(handler) => handler,
-        };
+    ) -> Result<Self, StartupErr> {
+        let actor_type = A::Actor::type_name();
+        let actor_handler = system.config().actor_handler(actor_type).ok_or_else(|| {
+            StartupErr::MissingActorFactory {
+                entity_name: shard_entity.clone(),
+                entity_type: actor_type,
+            }
+        })?;
 
         let host = ShardHost::new(shard_entity.clone(), actor_handler, allocator)
             .into_actor(
@@ -66,7 +86,7 @@ impl<A: ActorFactory> Sharding<A> {
                 system.actor_system(),
             )
             .await
-            .expect("create ShardHost actor");
+            .map_err(|e| e.into_host_err(&shard_entity))?;
 
         let coordinator_spawner =
             CoordinatorSpawner::new(system.node_id(), shard_entity.clone(), host.clone())
@@ -75,9 +95,9 @@ impl<A: ActorFactory> Sharding<A> {
                     system.actor_system(),
                 )
                 .await
-                .expect("create ShardCoordinator spawner");
+                .map_err(|e| e.into_coordinator_err(&shard_entity))?;
 
-        Self {
+        Ok(Self {
             core: Arc::new(ShardingCore {
                 host,
                 system,
@@ -85,7 +105,17 @@ impl<A: ActorFactory> Sharding<A> {
                 shard_entity,
             }),
             _a: PhantomData,
-        }
+        })
+    }
+
+    pub async fn start(
+        shard_entity: String,
+        system: RemoteActorSystem,
+        allocator: Option<Box<dyn ShardAllocator>>,
+    ) -> Self {
+        Self::try_start(shard_entity, system, allocator)
+            .await
+            .expect("start sharding")
     }
 
     pub fn get(&self, actor_id: impl IntoActorId, recipe: Option<A::Recipe>) -> Sharded<A::Actor> {
@@ -147,12 +177,13 @@ impl<A: Actor> Sharded<A> {
             Err(e) => return Err(ActorRefErr::Serialisation(e)),
         };
 
-        let message_type = self
-            .sharding
-            .system
-            .config()
-            .handler_name::<A, M>()
-            .expect("message not setup for remoting");
+        let message_type = self.sharding.system.handler_name::<A, M>().ok_or_else(|| {
+            ActorRefErr::NotSupported {
+                actor_id: self.actor_id.clone(),
+                message_type: M::type_name().to_string(),
+                actor_type: A::type_name().to_string(),
+            }
+        })?;
 
         let (tx, rx) = oneshot::channel();
 
@@ -188,4 +219,32 @@ pub fn sharding(builder: &mut RemoteSystemConfigBuilder) -> &mut RemoteSystemCon
         .with_handler::<ShardHost, StopShard>("ShardHost.StopShard")
         .with_handler::<Shard, RemoteEntityRequest>("Shard.RemoteEntityRequest")
         .with_handler::<Shard, GetShardStats>("Shard.GetShardStats")
+}
+
+impl Error for StartupErr {}
+
+impl Display for StartupErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            StartupErr::MissingActorFactory { entity_name, entity_type } => write!(f, "failed to initialise sharding for entity={}, factory not found for type={}, please register it via RemoteActorSystemBuilder", entity_name, entity_type),
+            StartupErr::ShardHostErr { entity_name, err,  } => write!(f, "failed to start ShardHost for entity={}, error={}", entity_name, err),
+            StartupErr::CoordinatorErr { entity_name, err } => write!(f, "failed to start ShardCoordinatotor spawner for entity={}, error={}", entity_name, err),
+        }
+    }
+}
+
+impl ActorRefErr {
+    pub fn into_host_err(self, entity: &str) -> StartupErr {
+        StartupErr::ShardHostErr {
+            entity_name: entity.to_string(),
+            err: self,
+        }
+    }
+
+    pub fn into_coordinator_err(self, entity: &str) -> StartupErr {
+        StartupErr::CoordinatorErr {
+            entity_name: entity.to_string(),
+            err: self,
+        }
+    }
 }
