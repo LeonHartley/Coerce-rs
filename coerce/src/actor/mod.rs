@@ -200,7 +200,7 @@ pub trait Actor: 'static + Send + Sync {
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
     ) -> ActorContext {
-        ActorContext::new(system, status, boxed_ref)
+        ActorContext::new(system, status, boxed_ref, Self::DEFAULT_TAGS)
     }
 
     /// Called once the Actor has been started
@@ -232,6 +232,13 @@ pub trait Actor: 'static + Send + Sync {
     {
         std::any::type_name::<Self>()
     }
+
+    fn tags(&self, ctx: &ActorContext) -> ActorTags {
+        ctx.tags()
+    }
+
+    /// Default tags used when creating the actor
+    const DEFAULT_TAGS: ActorTags = { ActorTags::None };
 }
 
 /// Trait allowing the creation of an [`Actor`][Actor] directly from itself
@@ -372,8 +379,13 @@ where
 
 /// Allows type-omission of [`Actor`][Actor] types but still allowing
 /// statically-typed message transmission
-#[derive(Clone)]
 pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
+
+impl<M: Message> Clone for Receiver<M> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
 
 impl<M: Message> Receiver<M> {
     pub async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {

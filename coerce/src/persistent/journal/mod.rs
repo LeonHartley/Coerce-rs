@@ -291,7 +291,7 @@ impl<A: PersistentActor> Journal<A> {
         &mut self,
         bytes: BytesRef,
     ) -> Result<(), PersistErr> {
-        info!(
+        debug!(
             "persisting snapshot, persistence_id={}",
             &self.persistence_id
         );

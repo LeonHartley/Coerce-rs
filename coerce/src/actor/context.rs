@@ -34,7 +34,7 @@ pub struct ActorContext {
     supervised: Option<Supervised>,
     system: Option<ActorSystem>,
     on_actor_stopped: Option<Vec<Sender<()>>>,
-    tags: Option<ActorTags>,
+    tags: ActorTags,
     full_path: ActorPath,
 
     #[cfg(feature = "persistence")]
@@ -52,6 +52,7 @@ impl ActorContext {
         system: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
+        tags: ActorTags,
     ) -> ActorContext {
         let context_id = system.as_ref().map_or_else(|| 0, |s| s.next_context_id());
         let full_path =
@@ -66,7 +67,7 @@ impl ActorContext {
             supervised: None,
             boxed_parent_ref: None,
             on_actor_stopped: None,
-            tags: None,
+            tags,
             // last_message_timestamp: None,
             #[cfg(feature = "persistence")]
             persistence: None,
@@ -91,11 +92,11 @@ impl ActorContext {
 
     pub fn set_tags(&mut self, tags: impl Into<ActorTags>) {
         let tags = tags.into();
-        self.tags = Some(tags);
+        self.tags = tags;
     }
 
     pub fn tags(&self) -> ActorTags {
-        self.tags.as_ref().map_or(ActorTags::None, |t| t.clone())
+        self.tags.clone()
     }
 
     pub fn stop(&mut self, on_stopped_handler: Option<Sender<()>>) {
