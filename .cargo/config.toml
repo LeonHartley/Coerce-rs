@@ -4,4 +4,3 @@ LOG_LEVEL = "TRACE"
 ## Required when running coerce with `--all-features` or enabling `tracing-unstable` feature.
 [build]
 rustflags = ["--cfg", "tracing_unstable"]
-jobs = 2
