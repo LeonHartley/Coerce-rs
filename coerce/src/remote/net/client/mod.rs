@@ -276,10 +276,10 @@ impl Display for RemoteClientErr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self {
             RemoteClientErr::Encoding => {
-                write!(f, "a (de)serialisation error occurred")
+                write!(f, "failed to encode/decode message")
             }
             RemoteClientErr::StreamErr(e) => {
-                write!(f, "a stream error occurred (error={}", e)
+                write!(f, "stream error (error={})", e)
             }
         }
     }

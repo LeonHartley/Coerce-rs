@@ -74,7 +74,8 @@ impl Handler<PingTick> for RemoteClient {
 
         let client_addr = self.addr.clone();
         let ping_start = Instant::now();
-        if self.write(ping_event, ctx).await.is_ok() {
+        let write_res = self.write(ping_event, ctx).await;
+        if write_res.is_ok() {
             tokio::spawn(async move {
                 let timeout = remote.config().heartbeat_config().ping_timeout;
                 let ping_result = match tokio::time::timeout(timeout, res_rx).await {
@@ -102,7 +103,8 @@ impl Handler<PingTick> for RemoteClient {
                 let _ = heartbeat.notify(ping);
             });
         } else {
-            warn!("(addr={}) ping write failed", &self.addr);
+            let error = write_res.unwrap_err();
+            warn!("(addr={}) ping write failed, error={}", &self.addr, error);
         }
     }
 }

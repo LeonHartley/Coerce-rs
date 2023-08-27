@@ -8,3 +8,5 @@ members = [
     "providers/persistence/coerce-redis",
     "providers/discovery/coerce-k8s"
 ]
+
+resolver = "2"
