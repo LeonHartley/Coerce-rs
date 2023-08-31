@@ -11,7 +11,7 @@ impl NetworkMetrics {
     pub fn incr_bytes_received(len: u64, src_addr: &str) {
         #[cfg(feature = "metrics")]
         increment_counter!(METRIC_NETWORK_BYTES_RECV,
-            LABEL_SRC_ADDR => src_addr
+            LABEL_SRC_ADDR => src_addr.to_owned()
         );
     }
 
@@ -19,7 +19,7 @@ impl NetworkMetrics {
     pub fn incr_bytes_sent(len: u64, dest_addr: &str) {
         #[cfg(feature = "metrics")]
         increment_counter!(METRIC_NETWORK_BYTES_SENT,
-            LABEL_DEST_ADDR => dest_addr
+            LABEL_DEST_ADDR => dest_addr.to_owned()
         );
     }
 }
