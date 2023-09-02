@@ -51,6 +51,8 @@ sharding = [
 
 actor-tracing = []
 
+actor-events = []
+
 tracing-unstable = [
     "tracing/valuable"
 ]

@@ -169,16 +169,28 @@ use crate::remote::{system::NodeId, RemoteActorRef};
 pub use refs::*;
 
 pub mod blocking;
+
 pub mod context;
+
 pub mod describe;
-// pub mod event;
+
+#[cfg(feature = "actor-events")]
+pub mod event;
+
 pub mod lifecycle;
+
 pub mod message;
+
 pub mod metrics;
+
 pub mod refs;
+
 pub mod scheduler;
+
 pub mod supervised;
+
 pub mod system;
+
 pub mod worker;
 
 /// A reference to a string-based `ActorId`
