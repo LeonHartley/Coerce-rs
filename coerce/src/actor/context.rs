@@ -9,11 +9,13 @@ use crate::actor::{
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
+use std::collections::HashMap;
 
 use tokio::sync::oneshot::Sender;
 use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
 use crate::actor::supervised::{ChildRef, Supervised};
+use crate::actor::watch::watchers::Watchers;
 
 #[cfg(feature = "persistence")]
 use crate::persistent::context::ActorPersistence;
@@ -36,6 +38,7 @@ pub struct ActorContext {
     on_actor_stopped: Option<Vec<Sender<()>>>,
     tags: ActorTags,
     full_path: ActorPath,
+    watchers: Option<Watchers>,
 
     #[cfg(feature = "persistence")]
     persistence: Option<ActorPersistence>,
@@ -67,6 +70,7 @@ impl ActorContext {
             supervised: None,
             boxed_parent_ref: None,
             on_actor_stopped: None,
+            watchers: None,
             tags,
             // last_message_timestamp: None,
             #[cfg(feature = "persistence")]
@@ -295,6 +299,14 @@ impl ActorContext {
             actor_path: self.full_path.clone(),
             actor_type: self.boxed_ref.actor_type(),
         }
+    }
+
+    pub fn watchers_mut(&mut self) -> &mut Watchers {
+        self.watchers.get_or_insert_with(|| Watchers::default())
+    }
+
+    pub fn take_watchers(&mut self) -> Option<Watchers> {
+        self.watchers.take()
     }
 }
 

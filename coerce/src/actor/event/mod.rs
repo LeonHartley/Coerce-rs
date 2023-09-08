@@ -1,3 +1,4 @@
+use crate::actor::message::Message;
 ///
 /// Actor events provide the ability to monitor the creation of actors, what types of messages
 /// they receive and monitor actors that are stopped.
@@ -8,7 +9,7 @@
 /// Applications such as dashboards can be created that can receive events as they happen, rather
 /// than having to poll.
 ///
-use crate::actor::BoxedActorRef;
+use crate::actor::{ActorId, BoxedActorRef};
 
 pub mod dispatcher;
 
@@ -33,8 +34,4 @@ pub enum ActorEvent {
     Started(ActorStarted),
     Stopped(ActorStopped),
     Received(ActorReceived),
-}
-
-impl Message for Arc<ActorEvent> {
-    type Result = ();
 }

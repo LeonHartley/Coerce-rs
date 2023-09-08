@@ -1,9 +1,6 @@
+use crate::actor::Actor;
 
-pub struct Dispatcher {
-    subscribers: Vec<Receiver<Arc<ActorEvent>>>
-}
+pub struct Dispatcher {}
 
 #[async_trait]
-impl Actor for Dispatcher {
-
-}
+impl Actor for Dispatcher {}

@@ -177,6 +177,8 @@ pub mod describe;
 #[cfg(feature = "actor-events")]
 pub mod event;
 
+pub mod watch;
+
 pub mod lifecycle;
 
 pub mod message;
@@ -341,7 +343,10 @@ where
 /// statically-typed message transmission
 #[async_trait]
 pub trait MessageReceiver<M: Message>: 'static + Send + Sync + MessageReceiverClone<M> {
+    fn actor_id(&self) -> &ActorId;
+
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
+
     fn notify(&self, msg: M) -> Result<(), ActorRefErr>;
 }
 
@@ -371,6 +376,10 @@ impl<A: Actor, M: Message> MessageReceiver<M> for LocalActorRef<A>
 where
     A: Handler<M>,
 {
+    fn actor_id(&self) -> &ActorId {
+        self.actor_id()
+    }
+
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.send(msg).await
     }
@@ -400,6 +409,10 @@ impl<M: Message> Clone for Receiver<M> {
 }
 
 impl<M: Message> Receiver<M> {
+    pub fn actor_id(&self) -> &ActorId {
+        self.0.actor_id()
+    }
+
     pub async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.0.send(msg).await
     }
