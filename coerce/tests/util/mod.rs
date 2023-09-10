@@ -3,8 +3,6 @@ use coerce::actor::message::{Handler, Message};
 use coerce::actor::Actor;
 use coerce_macros::JsonMessage;
 
-use serde::Serialize;
-
 use coerce::actor::system::ActorSystem;
 
 #[cfg(feature = "remote")]
@@ -13,6 +11,9 @@ use coerce::remote::system::{builder::RemoteSystemConfigBuilder, NodeId, RemoteA
 use std::str::FromStr;
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
+
+use serde::{Deserialize, Serialize};
+use async_trait::async_trait;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TestActorStatus {
