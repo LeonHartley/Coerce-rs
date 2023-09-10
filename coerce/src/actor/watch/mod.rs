@@ -10,21 +10,21 @@ pub mod watchers;
 
 #[async_trait]
 pub trait ActorWatch {
-    fn watch<A: Actor>(&self, actor: LocalActorRef<A>, ctx: &ActorContext);
+    fn watch<A: Actor>(&self, actor: &LocalActorRef<A>, ctx: &ActorContext);
 
-    fn unwatch<A: Actor>(&self, actor: LocalActorRef<A>, ctx: &ActorContext);
+    fn unwatch<A: Actor>(&self, actor: &LocalActorRef<A>, ctx: &ActorContext);
 }
 
 impl<A: Actor> ActorWatch for A
 where
     A: Handler<ActorTerminated>,
 {
-    fn watch<W: Actor>(&self, actor: LocalActorRef<W>, ctx: &ActorContext) {
+    fn watch<W: Actor>(&self, actor: &LocalActorRef<W>, ctx: &ActorContext) {
         let terminated_receiver = Receiver::<ActorTerminated>::from(self.actor_ref(ctx));
         let _ = actor.notify(Watch::from(terminated_receiver));
     }
 
-    fn unwatch<W: Actor>(&self, actor: LocalActorRef<W>, ctx: &ActorContext) {
+    fn unwatch<W: Actor>(&self, actor: &LocalActorRef<W>, ctx: &ActorContext) {
         let _ = actor.notify(Unwatch::from(ctx.id().clone()));
     }
 }
@@ -74,6 +74,12 @@ impl Message for Unwatch {
 #[derive(Clone)]
 pub struct ActorTerminated {
     actor_ref: BoxedActorRef,
+}
+
+impl ActorTerminated {
+    pub fn actor_ref(&self) -> &BoxedActorRef {
+        &self.actor_ref
+    }
 }
 
 impl From<BoxedActorRef> for ActorTerminated {
