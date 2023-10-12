@@ -12,8 +12,8 @@ use std::str::FromStr;
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
 
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum TestActorStatus {
