@@ -10,8 +10,6 @@ use tokio::sync::oneshot::Sender;
 
 pub mod util;
 
-
-
 pub struct Watchdog {
     target: LocalActorRef<TestActor>,
     on_actor_terminated: Option<Sender<ActorTerminated>>,
@@ -36,7 +34,10 @@ impl Handler<ActorTerminated> for Watchdog {
 #[tokio::test]
 pub async fn test_actor_watch_notifications() {
     let system = ActorSystem::new();
-    let actor = TestActor::new().into_actor(Option::<ActorId>::None, &system).await.unwrap();
+    let actor = TestActor::new()
+        .into_actor(Option::<ActorId>::None, &system)
+        .await
+        .unwrap();
     let (tx, rx) = oneshot::channel();
     let _watchdog = Watchdog {
         target: actor.clone(),
