@@ -171,7 +171,7 @@ impl Handler<Connect> for RemoteClient {
 #[async_trait]
 impl Handler<BeginHandshake> for RemoteClient {
     async fn handle(&mut self, message: BeginHandshake, ctx: &mut ActorContext) {
-        let mut connection = match &mut self.state {
+        let connection = match &mut self.state {
             Some(ClientState::Connected(connection)) => connection,
             _ => {
                 // let actor_ref = self.actor_ref(ctx);

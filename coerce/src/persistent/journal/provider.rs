@@ -175,7 +175,7 @@ pub mod inmemory {
             persistence_id: &str,
             sequence_id: i64,
         ) -> anyhow::Result<Option<JournalEntry>> {
-            let mut store = self.store.read();
+            let store = self.store.read();
             let journal = store.get(persistence_id);
             match journal {
                 None => Ok(None),
@@ -193,7 +193,7 @@ pub mod inmemory {
             from_sequence: i64,
             to_sequence: i64,
         ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
-            let mut store = self.store.read();
+            let store = self.store.read();
             let journal = store.get(persistence_id);
             match journal {
                 None => Ok(None),
@@ -255,7 +255,7 @@ pub mod inmemory {
             to_sequence: i64,
         ) -> anyhow::Result<()> {
             let mut store = self.store.write();
-            let mut journal = store.entry(persistence_id.to_string());
+            let journal = store.entry(persistence_id.to_string());
             if let Entry::Occupied(mut journal) = journal {
                 let journal = journal.get_mut();
 

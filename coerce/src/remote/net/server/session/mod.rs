@@ -338,7 +338,7 @@ impl StreamReceiver for SessionMessageReceiver {
                         "Notified registry - node_id={} is terminated (session_id={})",
                         &ping.node_id, &self.session_id
                     );
-                    self.close();
+                    let _ = self.close();
                 } else {
                     trace!("ping received, sending pong");
                     self.session

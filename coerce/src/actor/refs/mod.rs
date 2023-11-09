@@ -81,7 +81,7 @@ impl<A: Actor> Debug for ActorRef<A> {
 
 impl<A: Actor> Display for ActorRef<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        (self as (&dyn Debug)).fmt(f)
+        (self as &dyn Debug).fmt(f)
     }
 }
 

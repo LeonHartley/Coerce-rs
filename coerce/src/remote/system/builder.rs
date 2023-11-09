@@ -32,31 +32,30 @@ pub struct RemoteActorSystemBuilder {
     node_tag: Option<String>,
     node_version: Option<String>,
     inner: Option<ActorSystem>,
-    config_builders: Vec<ConfigBuilderFn>,
     mediator: Option<StreamMediator>,
     client_auth: Option<ClientAuth>,
     single_node_cluster: bool,
     node_attributes: HashMap<String, String>,
+    config_builder: Option<RemoteSystemConfigBuilder>,
 }
 
 impl RemoteActorSystemBuilder {
     pub fn new() -> RemoteActorSystemBuilder {
         let mediator = StreamMediator::new();
 
-        RemoteActorSystemBuilder {
+        let builder = RemoteActorSystemBuilder {
             node_id: None,
             node_tag: None,
             node_version: None,
             inner: None,
-            config_builders: vec![
-                #[cfg(feature = "sharding")]
-                Box::new(crate::sharding::sharding),
-            ],
             mediator: Some(mediator),
             single_node_cluster: false,
             client_auth: None,
             node_attributes: Default::default(),
-        }
+            config_builder: None,
+        };
+
+        builder
     }
 
     pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
@@ -79,9 +78,9 @@ impl RemoteActorSystemBuilder {
 
     pub fn configure<F>(mut self, f: F) -> Self
     where
-        F: 'static + (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
+        F: (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder),
     {
-        self.config_builders.push(Box::new(f));
+        let _ = f(&mut self.config_builder.as_mut().unwrap());
 
         self
     }
@@ -101,6 +100,7 @@ impl RemoteActorSystemBuilder {
     }
 
     pub fn with_actor_system(mut self, sys: ActorSystem) -> Self {
+        self.config_builder = Some(RemoteSystemConfigBuilder::new(sys.clone()));
         self.inner = Some(sys);
 
         self
@@ -129,6 +129,17 @@ impl RemoteActorSystemBuilder {
         self
     }
 
+    pub fn attributes<K: ToString, V: ToString, I: Iterator<Item = (K, V)>>(
+        mut self,
+        attributes: I,
+    ) -> Self {
+        for (k, v) in attributes {
+            let _ = self.node_attributes.insert(k.to_string(), v.to_string());
+        }
+
+        self
+    }
+
     pub async fn build(self) -> RemoteActorSystem {
         // TODO: This needs cleaning up!
 
@@ -136,12 +147,6 @@ impl RemoteActorSystemBuilder {
             Some(ctx) => ctx,
             None => ActorSystem::global_system(),
         };
-
-        let mut config_builder = RemoteSystemConfigBuilder::new(inner.clone());
-
-        self.config_builders.into_iter().for_each(|h| {
-            h(&mut config_builder);
-        });
 
         let node_id = self.node_id.unwrap_or_else(|| {
             let mut rand = rand::thread_rng();
@@ -153,12 +158,16 @@ impl RemoteActorSystemBuilder {
             .node_tag
             .clone()
             .unwrap_or_else(|| inner.system_name().to_string());
-        let config = config_builder.build(
-            Some(system_tag.clone()),
-            self.node_version,
-            self.client_auth,
-            self.node_attributes,
-        );
+
+        let config = self
+            .config_builder
+            .unwrap_or_else(|| RemoteSystemConfigBuilder::new(inner.clone()))
+            .build(
+                Some(system_tag.clone()),
+                self.node_version,
+                self.client_auth,
+                self.node_attributes,
+            );
 
         let handler_ref = Arc::new(parking_lot::Mutex::new(RemoteHandler::new()));
         let registry_ref = RemoteRegistry::new(&inner).await;
@@ -247,9 +256,6 @@ impl RemoteActorSystemBuilder {
     }
 }
 
-pub(crate) type ConfigBuilderFn =
-    Box<dyn (FnOnce(&mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder)>;
-
 pub struct RemoteSystemConfigBuilder {
     system: ActorSystem,
     heartbeat: Option<HeartbeatConfig>,
@@ -259,12 +265,17 @@ pub struct RemoteSystemConfigBuilder {
 
 impl RemoteSystemConfigBuilder {
     pub fn new(system: ActorSystem) -> RemoteSystemConfigBuilder {
-        RemoteSystemConfigBuilder {
+        let mut builder = RemoteSystemConfigBuilder {
             actors: HashMap::new(),
             handlers: HashMap::new(),
             system,
             heartbeat: None,
-        }
+        };
+
+        #[cfg(feature = "sharding")]
+        let _ = crate::sharding::sharding(&mut builder);
+
+        builder
     }
 
     pub fn with_handler<A: Actor, M: Message>(&mut self, identifier: &'static str) -> &mut Self

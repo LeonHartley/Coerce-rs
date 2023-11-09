@@ -143,7 +143,7 @@ impl<T: Topic> TopicSubscriberStore<T> {
     pub fn broadcast(&self, key: &str, msg: Arc<T::Message>) {
         match self.channels.get(key) {
             Some(sender) => {
-                sender.send(Receive(msg));
+                let _ = sender.send(Receive(msg));
             }
             None => {
                 trace!(
