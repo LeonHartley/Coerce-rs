@@ -19,6 +19,8 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::time::timeout;
+use crate::persistent::provider::StorageOptionsRef;
 
 pub mod proto;
 
@@ -27,11 +29,12 @@ pub struct Journal<A: PersistentActor> {
     last_sequence_id: i64,
     last_snapshot_sequence_id: Option<i64>,
     storage: JournalStorageRef,
+    options: Option<StorageOptionsRef>,
     types: Arc<JournalTypes<A>>,
 }
 
 impl<A: PersistentActor> Journal<A> {
-    pub fn new(persistence_id: String, storage: JournalStorageRef) -> Self {
+    pub fn new(persistence_id: String, storage: JournalStorageRef, options: Option<StorageOptionsRef>) -> Self {
         let last_sequence_id = 0;
         let last_snapshot_sequence_id = None;
         let types = init_journal_types::<A>();
@@ -41,7 +44,12 @@ impl<A: PersistentActor> Journal<A> {
             last_snapshot_sequence_id,
             storage,
             types,
+            options,
         }
+    }
+
+    pub fn persistence_id(&self) -> &str {
+        &self.persistence_id
     }
 
     pub fn get_types(&self) -> Arc<JournalTypes<A>> {
@@ -320,11 +328,16 @@ impl<A: PersistentActor> Journal<A> {
     }
 
     pub async fn recover_snapshot(&mut self) -> Result<Option<RecoveredPayload<A>>, anyhow::Error> {
-        if let Some(raw_snapshot) = self
+        let read_snapshot = self
             .storage
-            .read_latest_snapshot(&self.persistence_id)
-            .await?
-        {
+            .read_latest_snapshot(&self.persistence_id);
+
+        let snapshot = match self.options.as_ref().and_then(|o| o.snapshot_read_timeout) {
+            Some(timeout_duration) => timeout(timeout_duration, read_snapshot).await?,
+            None => read_snapshot.await,
+        }?;
+
+        if let Some(raw_snapshot) = snapshot {
             let handler = self
                 .types
                 .recoverable_snapshots()
@@ -358,11 +371,17 @@ impl<A: PersistentActor> Journal<A> {
         // TODO: route journal recovery through a system that we can apply limiting to so we can only
         //       recover {n} entities at a time, so we don't end up bringing down
         //       the storage backend
-        if let Some(messages) = self
+
+        let read_messages = self
             .storage
-            .read_latest_messages(&self.persistence_id, self.last_sequence_id)
-            .await?
-        {
+            .read_latest_messages(&self.persistence_id, self.last_sequence_id);
+
+        let messages = match self.options.as_ref().and_then(|o| o.journal_read_timeout) {
+            Some(timeout_duration) => timeout(timeout_duration, read_messages).await?,
+            None => read_messages.await,
+        }?;
+
+        if let Some(messages) = messages  {
             let starting_sequence = self.last_sequence_id;
             let mut recoverable_messages = vec![];
             for entry in messages {

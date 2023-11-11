@@ -204,9 +204,9 @@ where
         #[cfg(feature = "remote")]
         if let Some(remote) = &self.remote {
             debug!(
-                "[node={}] registering actor with remote registry, actor_id={}",
-                remote.node_id(),
-                &actor_id
+                node_id = remote.node_id(),
+                actor_id = actor_id.as_ref(),
+                "registering actor with remote registry"
             );
 
             remote.register_actor(actor_id, None);

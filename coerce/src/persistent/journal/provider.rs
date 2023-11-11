@@ -1,8 +1,18 @@
 use crate::persistent::journal::storage::JournalStorageRef;
 use std::sync::Arc;
+use std::time::Duration;
+
+pub struct StorageOptions {
+    pub journal_read_timeout: Option<Duration>,
+    pub snapshot_read_timeout: Option<Duration>,
+}
+
+pub type StorageOptionsRef = Arc<StorageOptions>;
 
 pub trait StorageProvider: 'static + Send + Sync {
     fn journal_storage(&self) -> Option<JournalStorageRef>;
+
+    fn options(&self) -> Option<StorageOptionsRef> { None }
 }
 
 pub type StorageProviderRef = Arc<dyn StorageProvider>;

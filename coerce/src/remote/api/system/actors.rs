@@ -50,6 +50,7 @@ pub struct ActorDescription {
     pub tags: Option<ActorTags>,
     pub supervised: Option<SupervisedDescription>,
     pub time_taken: Option<Duration>,
+    pub time_taken_str: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]
@@ -68,6 +69,7 @@ impl Default for ActorDescription {
             tags: None,
             supervised: None,
             time_taken: None,
+            time_taken_str: None,
         }
     }
 }
@@ -128,6 +130,7 @@ impl From<describe::DescribeResult> for ActorDescription {
                 tags: Some(value.tags.into()),
                 supervised: value.supervised.map(|s| s.into()),
                 time_taken: value.time_taken,
+                time_taken_str: value.time_taken.map(|v| format!("{:?}", v)),
             },
 
             describe::DescribeResult::Err {

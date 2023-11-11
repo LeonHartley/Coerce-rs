@@ -35,7 +35,11 @@ impl Actor for RemoteHttpApi {
 
         let (stop_tx, stop_rx) = oneshot::channel();
         let _ = tokio::spawn(async move {
-            info!("[node={}] http api listening on {}", node_id, &listen_addr);
+            info!(
+                node_id = node_id,
+                listen_addr = listen_addr.to_string(),
+                "http api created"
+            );
 
             let mut app = Router::new();
             for route in routes {

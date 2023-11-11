@@ -24,7 +24,7 @@ impl ActorPersistence {
             .journal_storage()
             .expect("journal storage not configured");
 
-        let journal = Journal::<A>::new(persistence_id, storage);
+        let journal = Journal::<A>::new(persistence_id, storage, self.storage_provider.options());
         self.journal = Some(Box::new(journal));
         self.journal.as_mut().unwrap().downcast_mut().unwrap()
     }

@@ -7,6 +7,8 @@ use crate::remote::api::system::actors;
     paths(
         system::health,
         system::get_stats,
+        actors::get_all,
+        cluster::get_nodes,
     ),
     components(
         schemas(
@@ -14,6 +16,15 @@ use crate::remote::api::system::actors;
             system::HealthStatus,
             system::SystemStats,
             system::SystemStats,
+            system::actors::GetAll,
+            system::actors::Actors,
+            system::actors::ActorDescription,
+            system::actors::Status,
+            system::actors::ActorTags,
+            system::actors::SupervisedDescription,
+            cluster::ClusterNodes,
+            cluster::ClusterNode,
+            cluster::NodeStatus,
         )
     ),
     tags(
@@ -21,46 +32,6 @@ use crate::remote::api::system::actors;
     )
 )]
 pub struct SystemApiDoc;
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        actors::get_all,
-    ),
-    components(
-        schemas(
-
-            system::actors::GetAll,
-            system::actors::Actors,
-            system::actors::ActorDescription,
-            system::actors::Status,
-            system::actors::ActorTags,
-            system::actors::SupervisedDescription,
-        )
-    ),
-    tags(
-        (name = "actors", description = "Actors API"),
-    )
-)]
-pub struct ActorsApiDoc;
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        cluster::get_nodes,
-    ),
-    components(
-        schemas(
-            cluster::ClusterNodes,
-            cluster::ClusterNode,
-            cluster::NodeStatus,
-        )
-    ),
-    tags(
-        (name = "cluster", description = "Cluster API"),
-    )
-)]
-pub struct ClusterApiDoc;
 
 #[cfg(feature = "sharding")]
 pub mod sharding {

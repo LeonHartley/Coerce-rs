@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::actor::scheduler::ActorCount;
-use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::system::RemoteActorSystem;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 
 use crate::actor::{ActorPath, CoreActorRef};
 use crate::remote::api::cluster::ClusterNode;
-use crate::remote::api::openapi::{ActorsApiDoc, ClusterApiDoc, SystemApiDoc};
+use crate::remote::api::openapi::SystemApiDoc;
 use crate::remote::heartbeat::{health, Heartbeat};
 
 use utoipa::OpenApi;
@@ -36,14 +36,6 @@ impl Routes for SystemApi {
                 (
                     Url::with_primary("system", "/api-docs/system.json", true),
                     SystemApiDoc::openapi(),
-                ),
-                (
-                    Url::new("cluster", "/api-docs/cluster.json"),
-                    ClusterApiDoc::openapi(),
-                ),
-                (
-                    Url::new("actors", "/api-docs/actors.json"),
-                    ActorsApiDoc::openapi(),
                 ),
                 #[cfg(feature = "sharding")]
                 (
@@ -82,7 +74,7 @@ pub struct SystemHealth {
     pub node_started_at: DateTime<Utc>,
     pub runtime_version: String,
     pub actor_response_times: HashMap<ActorPath, Option<Duration>>,
-    pub current_leader: Option<NodeId>,
+    pub current_leader: Option<u64>,
     pub nodes: Vec<ClusterNode>,
 }
 
