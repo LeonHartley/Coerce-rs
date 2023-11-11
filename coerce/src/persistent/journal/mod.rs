@@ -13,6 +13,7 @@ use crate::persistent::{PersistentActor, Recover, RecoverSnapshot};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::Actor;
 use crate::persistent::batch::EventBatch;
+use crate::persistent::provider::StorageOptionsRef;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
@@ -20,7 +21,6 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
-use crate::persistent::provider::StorageOptionsRef;
 
 pub mod proto;
 
@@ -34,7 +34,11 @@ pub struct Journal<A: PersistentActor> {
 }
 
 impl<A: PersistentActor> Journal<A> {
-    pub fn new(persistence_id: String, storage: JournalStorageRef, options: Option<StorageOptionsRef>) -> Self {
+    pub fn new(
+        persistence_id: String,
+        storage: JournalStorageRef,
+        options: Option<StorageOptionsRef>,
+    ) -> Self {
         let last_sequence_id = 0;
         let last_snapshot_sequence_id = None;
         let types = init_journal_types::<A>();
@@ -264,9 +268,9 @@ impl<A: PersistentActor> Journal<A> {
         A: Recover<M>,
     {
         trace!(
-            "persisting message, persistence_id={}, message_type={}",
-            &self.persistence_id,
-            M::type_name()
+            persistence_id = &self.persistence_id,
+            message_type = M::type_name(),
+            "persisting message"
         );
 
         let payload_type = self
@@ -286,9 +290,9 @@ impl<A: PersistentActor> Journal<A> {
             .await?;
 
         debug!(
-            "persisted message, persistence_id={}, message_type={}",
-            &self.persistence_id,
-            M::type_name()
+            persistence_id = &self.persistence_id,
+            message_type = M::type_name(),
+            "persisted message"
         );
 
         self.last_sequence_id += 1;
@@ -299,10 +303,7 @@ impl<A: PersistentActor> Journal<A> {
         &mut self,
         bytes: BytesRef,
     ) -> Result<(), PersistErr> {
-        debug!(
-            "persisting snapshot, persistence_id={}",
-            &self.persistence_id
-        );
+        debug!(persistence_id = &self.persistence_id, "persisting snapshot");
 
         let payload_type = self
             .types
@@ -328,9 +329,7 @@ impl<A: PersistentActor> Journal<A> {
     }
 
     pub async fn recover_snapshot(&mut self) -> Result<Option<RecoveredPayload<A>>, anyhow::Error> {
-        let read_snapshot = self
-            .storage
-            .read_latest_snapshot(&self.persistence_id);
+        let read_snapshot = self.storage.read_latest_snapshot(&self.persistence_id);
 
         let snapshot = match self.options.as_ref().and_then(|o| o.snapshot_read_timeout) {
             Some(timeout_duration) => timeout(timeout_duration, read_snapshot).await?,
@@ -351,8 +350,10 @@ impl<A: PersistentActor> Journal<A> {
             self.last_snapshot_sequence_id = Some(sequence);
 
             debug!(
-                "snapshot recovered (persistence_id={}), last sequence={}, type={}",
-                &self.persistence_id, &self.last_sequence_id, &raw_snapshot.payload_type
+                persistence_id = &self.persistence_id,
+                last_sequence_id = &self.last_sequence_id,
+                snapshot_type = raw_snapshot.payload_type.as_ref(),
+                "snapshot recovered"
             );
 
             Ok(handler.map(|handler| RecoveredPayload {
@@ -381,7 +382,7 @@ impl<A: PersistentActor> Journal<A> {
             None => read_messages.await,
         }?;
 
-        if let Some(messages) = messages  {
+        if let Some(messages) = messages {
             let starting_sequence = self.last_sequence_id;
             let mut recoverable_messages = vec![];
             for entry in messages {
@@ -393,11 +394,11 @@ impl<A: PersistentActor> Journal<A> {
                     .get(entry.payload_type.as_ref())
                 {
                     trace!(
-                        "message recovered (persistence_id={}), sequence={}, starting_sequence={} type={}",
-                        &self.persistence_id,
-                        &self.last_sequence_id,
-                        starting_sequence,
-                        &entry.payload_type
+                        persistence_id = &self.persistence_id,
+                        sequence_id = &self.last_sequence_id,
+                        starting_sequence = starting_sequence,
+                        message_type = &entry.payload_type.as_ref(),
+                        "message recovered"
                     );
 
                     let bytes =
@@ -409,14 +410,19 @@ impl<A: PersistentActor> Journal<A> {
                         handler: handler.clone(),
                     })
                 } else {
-                    error!("persistence_id={} recovered message (type={}) but actor is not configured to process it",  &self.persistence_id, &entry.payload_type);
+                    error!(
+                        persistence_id = &self.persistence_id,
+                        payload_type = entry.payload_type.as_ref(),
+                        "recovered message but actor is not configured to process it"
+                    );
                     // TODO: this should fail recovery
                 }
             }
 
             trace!(
-                "recovery complete, last_sequence_id={}",
-                &self.last_sequence_id
+                persistence_id = &self.persistence_id,
+                last_sequence_id = &self.last_sequence_id,
+                "recovery complete"
             );
 
             if recoverable_messages.len() == 0 {

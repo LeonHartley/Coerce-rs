@@ -86,14 +86,20 @@ async fn load_journal<A: PersistentActor>(
     ctx: &mut ActorContext,
 ) -> Result<RecoveredJournal<A>, RecoveryErr> {
     let journal = ctx.persistence_mut().init_journal::<A>(persistence_key);
-    trace!(persistence_key = journal.persistence_id(), "reading snapshot");
+    trace!(
+        persistence_key = journal.persistence_id(),
+        "reading snapshot"
+    );
 
     let snapshot = journal
         .recover_snapshot()
         .await
         .map_err(RecoveryErr::Snapshot)?;
 
-    trace!(persistence_key = journal.persistence_id(), "reading journal messages");
+    trace!(
+        persistence_key = journal.persistence_id(),
+        "reading journal messages"
+    );
 
     let messages = journal
         .recover_messages()
