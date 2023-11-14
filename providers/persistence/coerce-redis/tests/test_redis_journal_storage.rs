@@ -1,3 +1,5 @@
+use tracing::Level;
+use tracing_subscriber::fmt;
 use coerce::actor::system::ActorSystem;
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::JournalEntry;
@@ -15,6 +17,19 @@ struct RedisTestCtx {
 
 #[tokio::test]
 pub async fn test_redis_journal_read_write_snapshot() {
+    let _ = fmt()
+        // enable everything
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(true)
+        .with_thread_names(true)
+        .with_ansi(false)
+        .with_max_level(
+            Level::TRACE
+        )
+        // sets this to be the default, global collector for this application.
+        .try_init();
+
     let persistence_id = "hi";
     let ctx = new_test_context("test_redis_journal_read_write_snapshot:").await;
     let redis = ctx.storage;
@@ -133,10 +148,10 @@ async fn new_test_context(key_prefix: &str) -> RedisTestCtx {
     let system = ActorSystem::new();
     let provider = RedisStorageProvider::connect(
         RedisStorageConfig {
-            nodes: vec![TEST_REDIS_HOST.to_string()],
+            nodes: vec!["redis://localhost:63791".to_string()],
             key_prefix: key_prefix.to_string(),
-            cluster: false,
-            use_key_hashtags: false,
+            cluster: true,
+            use_key_hashtags: true,
         },
         &system,
     )

@@ -12,6 +12,9 @@ use redis::aio::ConnectionLike;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
+#[cfg(feature = "cluster")]
+use redis::cluster::ClusterClientBuilder;
+
 use tokio::sync::oneshot;
 
 pub(crate) mod actor;
@@ -39,31 +42,35 @@ where
 
 impl RedisStorageProvider {
     pub async fn connect(config: RedisStorageConfig, system: &ActorSystem) -> Self {
-        // #[cfg(feature = "cluster")]
-        // if config.cluster {
-        //     return Self::clustered(config, system).await;
-        // }
+        #[cfg(feature = "cluster")]
+        if config.cluster {
+            return Self::clustered(config, system).await;
+        }
 
         Self::single_node(config, system).await
     }
 
-    // #[cfg(feature = "cluster")]
-    // pub async fn clustered(
-    //     config: RedisStorageConfig,
-    //     system: &ActorSystem,
-    // ) -> RedisStorageProvider {
-    //     use redis::cluster::ClusterClient;
-    //
-    //     create_provider(
-    //         {
-    //             let client = ClusterClient::new(config.nodes.clone()).unwrap();
-    //             client.get_connection().unwrap()
-    //         },
-    //         config,
-    //         system,
-    //     )
-    //     .await
-    // }
+    #[cfg(feature = "cluster")]
+    pub async fn clustered(
+        config: RedisStorageConfig,
+        system: &ActorSystem,
+    ) -> RedisStorageProvider {
+        use redis::cluster::ClusterClientBuilder;
+
+        let cluster_client = ClusterClientBuilder::new(config.nodes.clone())
+            .build()
+            .expect("Failed to create Redis cluster client");
+
+        let client = cluster_client.get_async_connection().await.expect("Failed to create initial cluster client connection");
+
+        info!("connected to redis cluster");
+        create_provider(
+            client,
+            config,
+            system,
+        )
+        .await
+    }
 
     pub async fn single_node(
         config: RedisStorageConfig,

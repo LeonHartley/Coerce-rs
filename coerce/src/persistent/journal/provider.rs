@@ -2,9 +2,14 @@ use crate::persistent::journal::storage::JournalStorageRef;
 use std::sync::Arc;
 use std::time::Duration;
 
+#[derive(Default)]
 pub struct StorageOptions {
     pub journal_read_timeout: Option<Duration>,
     pub snapshot_read_timeout: Option<Duration>,
+    pub snapshot_write_timeout: Option<Duration>,
+    pub journal_write_timeout: Option<Duration>,
+    pub journal_delete_timeout: Option<Duration>,
+    pub snapshot_delete_timeout: Option<Duration>,
 }
 
 pub type StorageOptionsRef = Arc<StorageOptions>;
