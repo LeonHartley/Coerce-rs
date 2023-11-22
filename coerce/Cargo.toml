@@ -9,7 +9,7 @@ readme = "README.md"
 repository = "https://github.com/leonhartley/coerce-rs"
 
 [features]
-default = []
+default = ["full"]
 
 full = [
     "remote",

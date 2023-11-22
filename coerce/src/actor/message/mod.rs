@@ -181,7 +181,12 @@ where
             Some(sender) => sender,
             None => {
                 trace!("no result consumer, message handling complete");
-                oneshot::channel().0
+                let ch = oneshot::channel();
+                tokio::spawn(async move {
+                    // this is to ensure we don't get the "failed to send result" error when no actual sender is present
+                    let _ = ch.1.await;
+                });
+                ch.0
             }
         };
         actor
