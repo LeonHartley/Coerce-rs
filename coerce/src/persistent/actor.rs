@@ -224,7 +224,7 @@ where
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
     ) -> ActorContext {
-        ActorContext::new(system, status, boxed_ref).with_persistence()
+        ActorContext::new(system, status, boxed_ref, Self::DEFAULT_TAGS).with_persistence()
     }
 
     async fn started(&mut self, ctx: &mut ActorContext) {

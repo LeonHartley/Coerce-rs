@@ -137,10 +137,12 @@ impl RemoteActorSystem {
                 .handle_create_actor(Some(id.clone()), actor_type, recipe)
                 .await;
 
-            if local_create.is_ok() {
-                actor_addr = Some(ActorAddress::parse_from_bytes(&local_create.unwrap()).unwrap());
-            } else {
-                return Err(local_create.unwrap_err());
+            match local_create {
+                Ok(actor_addr_bytes) => {
+                    actor_addr = Some(ActorAddress::parse_from_bytes(&actor_addr_bytes).unwrap());
+                }
+
+                Err(e) => return Err(e),
             }
         } else {
             let message = CreateActorEvent {
@@ -253,16 +255,17 @@ impl RemoteActorSystem {
                 handler_type,
             });
 
-        let message_type = M::type_name();
-        let actor_type = A::type_name();
-
         match header {
             Some(header) => Ok(header),
             None => {
+                let message_type = M::type_name();
+                let actor_type = A::type_name();
+
                 error!(
                     "no handler registered actor_type={}, message_type={}",
                     &actor_type, message_type
                 );
+
                 Err(ActorRefErr::NotSupported {
                     actor_id: id.clone(),
                     message_type: message_type.to_string(),

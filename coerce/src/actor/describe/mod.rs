@@ -91,8 +91,7 @@ impl<A: Actor> Handler<Describe> for A {
             path: ctx.full_path().clone(),
             actor_type_name: A::type_name().to_string(),
             actor_context_id: ctx.ctx_id(),
-            tags: ctx.tags(),
-            // last_message_timestamp: ctx.last_message_timestamp,
+            tags: self.tags(ctx),
             supervised: None,
             time_taken: None,
         };

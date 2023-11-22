@@ -6,12 +6,13 @@ use crate::actor::message::{Handler, Message, MessageHandler};
 use crate::actor::metrics::ActorMetrics;
 use crate::actor::scheduler::{ActorType, DeregisterActor};
 use crate::actor::system::ActorSystem;
-use crate::actor::{Actor, ActorId, BoxedActorRef, LocalActorRef};
+use crate::actor::{Actor, ActorId, BoxedActorRef, CoreActorRef, LocalActorRef};
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::Instrument;
 use valuable::Valuable;
 
+use crate::actor::watch::ActorTerminated;
 use tokio::sync::oneshot::Sender;
 
 pub struct Status;
@@ -154,6 +155,13 @@ async fn actor_stopped<A: Actor>(
     if let Some(on_stopped_handlers) = ctx.take_on_stopped_handlers() {
         for sender in on_stopped_handlers {
             let _ = sender.send(());
+        }
+    }
+
+    if let Some(watchers) = ctx.take_watchers() {
+        let actor_terminated = ActorTerminated::from(ctx.boxed_actor_ref());
+        for watcher in watchers.iter() {
+            let _ = watcher.notify(actor_terminated.clone());
         }
     }
 }

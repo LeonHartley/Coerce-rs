@@ -166,7 +166,7 @@ impl Supervised {
             }
         }
 
-        info!("{} stopped {} child actors", &self.actor_id, n);
+        trace!("{} stopped {} child actors", &self.actor_id, n);
     }
 
     pub async fn on_child_stopped(&mut self, id: &ActorId) {

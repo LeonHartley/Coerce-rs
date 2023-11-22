@@ -169,16 +169,30 @@ use crate::remote::{system::NodeId, RemoteActorRef};
 pub use refs::*;
 
 pub mod blocking;
+
 pub mod context;
+
 pub mod describe;
-// pub mod event;
+
+#[cfg(feature = "actor-events")]
+pub mod event;
+
+pub mod watch;
+
 pub mod lifecycle;
+
 pub mod message;
+
 pub mod metrics;
+
 pub mod refs;
+
 pub mod scheduler;
+
 pub mod supervised;
+
 pub mod system;
+
 pub mod worker;
 
 /// A reference to a string-based `ActorId`
@@ -200,7 +214,7 @@ pub trait Actor: 'static + Send + Sync {
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
     ) -> ActorContext {
-        ActorContext::new(system, status, boxed_ref)
+        ActorContext::new(system, status, boxed_ref, Self::DEFAULT_TAGS)
     }
 
     /// Called once the Actor has been started
@@ -232,6 +246,13 @@ pub trait Actor: 'static + Send + Sync {
     {
         std::any::type_name::<Self>()
     }
+
+    fn tags(&self, ctx: &ActorContext) -> ActorTags {
+        ctx.tags()
+    }
+
+    /// Default tags used when creating the actor
+    const DEFAULT_TAGS: ActorTags = { ActorTags::None };
 }
 
 /// Trait allowing the creation of an [`Actor`][Actor] directly from itself
@@ -322,7 +343,10 @@ where
 /// statically-typed message transmission
 #[async_trait]
 pub trait MessageReceiver<M: Message>: 'static + Send + Sync + MessageReceiverClone<M> {
+    fn actor_id(&self) -> &ActorId;
+
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr>;
+
     fn notify(&self, msg: M) -> Result<(), ActorRefErr>;
 }
 
@@ -352,6 +376,10 @@ impl<A: Actor, M: Message> MessageReceiver<M> for LocalActorRef<A>
 where
     A: Handler<M>,
 {
+    fn actor_id(&self) -> &ActorId {
+        self.actor_id()
+    }
+
     async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.send(msg).await
     }
@@ -372,10 +400,19 @@ where
 
 /// Allows type-omission of [`Actor`][Actor] types but still allowing
 /// statically-typed message transmission
-#[derive(Clone)]
 pub struct Receiver<M: Message>(Box<dyn MessageReceiver<M>>);
 
+impl<M: Message> Clone for Receiver<M> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
 impl<M: Message> Receiver<M> {
+    pub fn actor_id(&self) -> &ActorId {
+        self.0.actor_id()
+    }
+
     pub async fn send(&self, msg: M) -> Result<M::Result, ActorRefErr> {
         self.0.send(msg).await
     }

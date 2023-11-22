@@ -9,11 +9,13 @@ use crate::actor::{
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
+use std::collections::HashMap;
 
 use tokio::sync::oneshot::Sender;
 use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
 use crate::actor::supervised::{ChildRef, Supervised};
+use crate::actor::watch::watchers::Watchers;
 
 #[cfg(feature = "persistence")]
 use crate::persistent::context::ActorPersistence;
@@ -34,8 +36,9 @@ pub struct ActorContext {
     supervised: Option<Supervised>,
     system: Option<ActorSystem>,
     on_actor_stopped: Option<Vec<Sender<()>>>,
-    tags: Option<ActorTags>,
+    tags: ActorTags,
     full_path: ActorPath,
+    watchers: Option<Watchers>,
 
     #[cfg(feature = "persistence")]
     persistence: Option<ActorPersistence>,
@@ -52,6 +55,7 @@ impl ActorContext {
         system: Option<ActorSystem>,
         status: ActorStatus,
         boxed_ref: BoxedActorRef,
+        tags: ActorTags,
     ) -> ActorContext {
         let context_id = system.as_ref().map_or_else(|| 0, |s| s.next_context_id());
         let full_path =
@@ -66,7 +70,8 @@ impl ActorContext {
             supervised: None,
             boxed_parent_ref: None,
             on_actor_stopped: None,
-            tags: None,
+            watchers: None,
+            tags,
             // last_message_timestamp: None,
             #[cfg(feature = "persistence")]
             persistence: None,
@@ -91,11 +96,11 @@ impl ActorContext {
 
     pub fn set_tags(&mut self, tags: impl Into<ActorTags>) {
         let tags = tags.into();
-        self.tags = Some(tags);
+        self.tags = tags;
     }
 
     pub fn tags(&self) -> ActorTags {
-        self.tags.as_ref().map_or(ActorTags::None, |t| t.clone())
+        self.tags.clone()
     }
 
     pub fn stop(&mut self, on_stopped_handler: Option<Sender<()>>) {
@@ -294,6 +299,14 @@ impl ActorContext {
             actor_path: self.full_path.clone(),
             actor_type: self.boxed_ref.actor_type(),
         }
+    }
+
+    pub fn watchers_mut(&mut self) -> &mut Watchers {
+        self.watchers.get_or_insert_with(|| Watchers::default())
+    }
+
+    pub fn take_watchers(&mut self) -> Option<Watchers> {
+        self.watchers.take()
     }
 }
 

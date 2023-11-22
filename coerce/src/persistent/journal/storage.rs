@@ -56,8 +56,8 @@ pub trait JournalStorage: Send + Sync {
 pub type JournalStorageRef = Arc<dyn JournalStorage>;
 
 impl JournalEntry {
-    pub fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
-        let journal_entry = ProtoJournalEntry::parse_from_bytes(&data);
+    pub fn read_from_slice(data: &[u8]) -> Option<Self> {
+        let journal_entry = ProtoJournalEntry::parse_from_bytes(data);
         if let Ok(journal_entry) = journal_entry {
             Some(JournalEntry {
                 sequence: journal_entry.sequence,
@@ -67,6 +67,10 @@ impl JournalEntry {
         } else {
             None
         }
+    }
+
+    pub fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
+        Self::read_from_slice(data.as_slice())
     }
 
     pub fn write_to_bytes(&self) -> Option<Vec<u8>> {

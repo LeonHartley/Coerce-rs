@@ -37,6 +37,8 @@ pub enum SessionEvent {
     Raft(RaftRequest),
 }
 
+impl SessionEvent {}
+
 #[derive(Debug)]
 pub struct ClientError {
     error: ActorRefErr,

@@ -73,11 +73,6 @@ where
         Msg: 'static + Send + Sync,
         <Msg as Message>::Result: 'static + Send + Sync,
     {
-        let message_type = Msg::type_name();
-        let actor_type = A::type_name();
-        // let span = tracing::trace_span!("RemoteActorRef::send", actor_type, message_type);
-        // let _enter = span.enter();
-
         let id = Uuid::new_v4();
 
         let (res_tx, res_rx) = oneshot::channel();

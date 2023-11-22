@@ -85,8 +85,7 @@ impl Handler<ClientWrite> for RemoteClientRegistry {
         let message = message.1;
 
         // TODO: we could open multiple clients per node and use some routing mechanism
-        //       to potentially improve throughput, whilst still maintainingnStore
-        //       message ordering
+        //       to potentially improve throughput, whilst still maintaining message ordering
 
         if let Some(client) = self.node_id_registry.get(&node_id) {
             trace!("emitting message ({:?}) to node_id={}", &message, &node_id);

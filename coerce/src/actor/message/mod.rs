@@ -211,7 +211,7 @@ pub enum EnvelopeType {
     Remote,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub enum MessageWrapErr {
     Unknown,
     NotTransmittable,

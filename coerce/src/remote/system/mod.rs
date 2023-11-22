@@ -17,7 +17,6 @@ use crate::remote::system::builder::RemoteActorSystemBuilder;
 pub mod actor;
 pub mod builder;
 pub mod cluster;
-pub mod raft;
 pub mod rpc;
 
 use crate::remote::config::RemoteSystemConfig;

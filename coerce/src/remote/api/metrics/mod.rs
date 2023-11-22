@@ -1,5 +1,5 @@
 use crate::remote::api::Routes;
-use crate::remote::system::RemoteActorSystem;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 
 use axum::response::IntoResponse;
 use axum::routing::get;
@@ -20,7 +20,11 @@ impl From<PrometheusHandle> for MetricsApi {
 }
 
 impl MetricsApi {
-    pub fn new(system: RemoteActorSystem) -> Result<MetricsApi, BuildError> {
+    pub fn create(
+        node_id: NodeId,
+        node_tag: &str,
+        cluster_name: Option<&str>,
+    ) -> Result<Self, BuildError> {
         let prometheus_builder = PrometheusBuilder::new();
 
         let mut builder = prometheus_builder.idle_timeout(
@@ -28,20 +32,30 @@ impl MetricsApi {
             Some(Duration::from_secs(60 * 30)),
         );
 
-        let node_attributes = system.config().get_attributes();
-        if let Some(cluster_name) = node_attributes.get("cluster") {
+        if let Some(cluster_name) = cluster_name {
             builder = builder.add_global_label("cluster", cluster_name.to_string());
         }
 
         builder = builder
-            .add_global_label("node_id", system.node_id().to_string())
-            .add_global_label("node_tag", system.node_tag());
+            .add_global_label("node_id", format!("{}", node_id))
+            .add_global_label("node_tag", node_tag);
 
         let recorder = builder.install_recorder()?;
-
         Ok(Self {
             recorder_handle: recorder,
         })
+    }
+
+    pub fn new(system: RemoteActorSystem) -> Result<MetricsApi, BuildError> {
+        let node_id = system.node_id();
+        let node_tag = system.node_tag();
+        let cluster_name = system
+            .config()
+            .get_attributes()
+            .get("cluster")
+            .map(|s| s.as_ref());
+
+        Self::create(node_id, node_tag, cluster_name)
     }
 }
 

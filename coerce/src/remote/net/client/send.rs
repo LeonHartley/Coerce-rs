@@ -121,7 +121,6 @@ impl RemoteClient {
             }
 
             if stream_write_error {
-                info!("stream write error, handling `Disconnected`");
                 self.handle(Disconnected, ctx).await;
             }
         } else {

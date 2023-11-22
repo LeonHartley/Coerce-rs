@@ -96,7 +96,6 @@ pub mod config;
 pub mod handler;
 pub mod heartbeat;
 pub mod net;
-pub mod raft;
 pub mod stream;
 pub mod system;
 pub mod tracing;
