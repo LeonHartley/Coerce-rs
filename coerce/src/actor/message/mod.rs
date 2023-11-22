@@ -109,6 +109,19 @@ where
     Self: Actor,
 {
     async fn handle(&mut self, message: M, ctx: &mut ActorContext) -> M::Result;
+
+    async fn handle_delayed(
+        &mut self,
+        message: M,
+        sender: oneshot::Sender<M::Result>,
+        ctx: &mut ActorContext,
+    ) {
+        let result = self.handle(message, ctx).await;
+        match sender.send(result) {
+            Ok(_) => trace!("sent result successfully"),
+            Err(_e) => warn!("failed to send result"),
+        }
+    }
 }
 
 pub(crate) struct ActorMessage<A: Actor, M: Message>
@@ -164,30 +177,32 @@ where
         let start = Instant::now();
 
         let msg = self.msg.take();
-        let result = actor
-            .handle(msg.unwrap(), ctx)
+        let sender = match self.sender.take() {
+            Some(sender) => sender,
+            None => {
+                trace!("no result consumer, message handling complete");
+                let ch = oneshot::channel();
+                tokio::spawn(async move {
+                    // this is to ensure we don't get the "failed to send result" error when no actual sender is present
+                    let _ = ch.1.await;
+                });
+                ch.0
+            }
+        };
+        actor
+            .handle_delayed(msg.unwrap(), sender, ctx)
             .instrument(self.sender_span.clone())
             .await;
 
         let message_processing_took = start.elapsed();
 
+        // this metric will be inaccurate if the actor overrides handle_delayed
         ActorMetrics::incr_messages_processed(
             A::type_name(),
             M::type_name(),
             message_waited_for,
             message_processing_took,
         );
-
-        match self.sender.take() {
-            Some(sender) => match sender.send(result) {
-                Ok(_) => trace!("sent result successfully"),
-                Err(_e) => warn!("failed to send result"),
-            },
-            None => {
-                trace!("no result consumer, message handling complete");
-                return;
-            }
-        }
     }
 }
 

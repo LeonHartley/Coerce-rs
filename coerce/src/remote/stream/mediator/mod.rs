@@ -66,6 +66,7 @@ pub enum PublishErr {
 pub enum Reach {
     Local,
     Cluster,
+    Nodes(Vec<NodeId>),
 }
 
 pub struct Publish<T: Topic> {
@@ -193,7 +194,12 @@ impl<T: Topic> Handler<Publish<T>> for StreamMediator {
                     let remote = self.remote().clone();
                     let topic = T::topic_name().to_string();
                     let key = message.topic.key();
-                    let nodes: Vec<NodeId> = self.nodes.iter().copied().collect();
+
+                    let nodes = if let Reach::Nodes(n) = message.reach {
+                        n
+                    } else {
+                        self.nodes.iter().copied().collect()
+                    };
 
                     tokio::spawn(async move {
                         let message = bytes;
@@ -282,6 +288,7 @@ impl Reach {
         match &self {
             Self::Local => false,
             Self::Cluster => true,
+            Self::Nodes(n) => !n.is_empty(),
         }
     }
 }
