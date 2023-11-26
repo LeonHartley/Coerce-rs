@@ -26,11 +26,6 @@ impl RedisTest {
         let nodes = if cluster {
             vec![
                 "redis://127.0.0.1:7000/".to_string(),
-                "redis://127.0.0.1:7001/".to_string(),
-                "redis://127.0.0.1:7002/".to_string(),
-                "redis://127.0.0.1:7003/".to_string(),
-                "redis://127.0.0.1:7004/".to_string(),
-                "redis://127.0.0.1:7005/".to_string(),
             ]
         } else {
             vec![
