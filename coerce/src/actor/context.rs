@@ -9,9 +9,9 @@ use crate::actor::{
 };
 use futures::{Stream, StreamExt};
 use std::any::Any;
-use std::collections::HashMap;
-
 use tokio::sync::oneshot::Sender;
+
+#[cfg(feature = "tracing-unstable")]
 use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
 use crate::actor::supervised::{ChildRef, Supervised};
@@ -310,6 +310,8 @@ impl ActorContext {
     }
 }
 
+
+#[cfg(feature = "tracing-unstable")]
 static LOG_CONTEXT_FIELDS: &[NamedField<'static>] =
     &[NamedField::new("actor_path"), NamedField::new("actor_type")];
 

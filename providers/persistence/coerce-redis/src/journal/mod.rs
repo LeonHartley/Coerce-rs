@@ -61,15 +61,12 @@ impl RedisStorageProvider {
             .build()
             .expect("Failed to create Redis cluster client");
 
-        let client = cluster_client.get_async_connection().await.expect("Failed to create initial cluster client connection");
+        let client = cluster_client
+            .get_async_connection()
+            .await
+            .expect("Failed to create initial cluster client connection");
 
-        info!("connected to redis cluster");
-        create_provider(
-            client,
-            config,
-            system,
-        )
-        .await
+        create_provider(client, config, system).await
     }
 
     pub async fn single_node(
