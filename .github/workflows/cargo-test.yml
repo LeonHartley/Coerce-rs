@@ -18,7 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: install redis cluster service
-        uses: pfapi/redis-cluster-service@v1
+        uses: pfapi/redis-cluster-service@v
+      - name: start redis cluster
+        run: sudo systemctl start redis-cluster1
+      - name: start redis server
+        run: sudo systemctl start redis-server
       - uses: actions-rs/cargo@v1
         with:
           command: test
