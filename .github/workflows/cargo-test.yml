@@ -16,6 +16,7 @@ jobs:
     name: Coerce Runtime Test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@master
       - name: install redis cluster service
         uses: pfapi/redis-cluster-service@v1
       - uses: actions-rs/cargo@v1
