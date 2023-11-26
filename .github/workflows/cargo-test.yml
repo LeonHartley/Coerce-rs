@@ -20,7 +20,7 @@ jobs:
       - name: install redis cluster service
         uses: pfapi/redis-cluster-service@v1
       - name: start redis cluster
-        run: sudo systemctl start redis-cluster1
+        run: sudo systemctl start redis-cluster
       - name: start redis server
         run: sudo systemctl start redis-server
       - uses: actions-rs/cargo@v1
