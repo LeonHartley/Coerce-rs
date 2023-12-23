@@ -10,7 +10,7 @@ use crate::remote::actor::message::{NodeTerminated, SetRemote};
 use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
 use crate::remote::net::proto::network::PongEvent;
 use crate::remote::stream::pubsub::PubSub;
-use crate::remote::stream::system::ClusterEvent::LeaderChanged;
+use crate::remote::stream::system::ClusterEvent::{LeaderChanged, MemberUp};
 use crate::remote::stream::system::{SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc};
@@ -41,6 +41,7 @@ pub struct HeartbeatConfig {
     pub ping_timeout: Duration,
     pub unhealthy_node_heartbeat_timeout: Duration,
     pub terminated_node_heartbeat_timeout: Duration,
+    pub minimum_cluster_size: Option<usize>,
 }
 
 impl Heartbeat {
@@ -121,6 +122,7 @@ impl Default for HeartbeatConfig {
             ping_timeout: Duration::from_secs(15),
             unhealthy_node_heartbeat_timeout: Duration::from_millis(1500),
             terminated_node_heartbeat_timeout: Duration::from_secs(30),
+            minimum_cluster_size: None
         }
     }
 }
@@ -301,6 +303,21 @@ impl Heartbeat {
         while let Some(on_leader_changed_cb) = self.on_next_leader_changed.pop_front() {
             let _ = on_leader_changed_cb.send(node_id);
         }
+    }
+
+    fn on_min_cluster_size_reached(&mut self) {
+        let system = self.system.as_ref().unwrap();
+
+        let sys = system.clone();
+        tokio::spawn(async move {
+            let _ = PubSub::publish_locally(
+                SystemTopic,
+                SystemEvent::Cluster(MemberUp),
+                &sys,
+            )
+                .await;
+        });
+
     }
 }
 

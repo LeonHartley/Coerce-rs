@@ -14,6 +14,7 @@ pub struct SystemTopic;
 
 #[derive(Debug)]
 pub enum ClusterEvent {
+    MemberUp,
     NodeAdded(Arc<RemoteNode>),
     NodeRemoved(Arc<RemoteNode>),
     LeaderChanged(NodeId),

@@ -70,6 +70,8 @@ api = ["remote", "dep:axum", "dep:utoipa", "dep:utoipa-swagger-ui"]
 
 client-auth-jwt = ["dep:jwt", "dep:hmac", "dep:sha2"]
 
+singleton = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
