@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package coerce.singleton;
+
+message GetStatus {
+  uint64 source_node_id = 1;
+}
+
+message ManagerStatus {
+  SingletonState singleton_state = 1;
+}
+
+enum SingletonState {
+  IDLE = 0;
+  STARTING = 1;
+  RUNNING = 2;
+  STOPPING = 3;
+}

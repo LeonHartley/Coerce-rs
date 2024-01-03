@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
+use crate::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes};
 
 use crate::sharding::coordinator::ShardId;
 
@@ -40,8 +40,7 @@ impl Message for GetShardStats {
         proto::GetShardStats {
             ..Default::default()
         }
-        .write_to_bytes()
-        .map_or_else(|_e| Err(MessageWrapErr::SerializationErr), |m| Ok(m))
+        .to_bytes()
     }
 
     fn from_bytes(_: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
@@ -68,7 +67,6 @@ impl Message for GetShardStats {
             entities: res.entities.into_iter().map(|e| e.to_string()).collect(),
             ..Default::default()
         }
-        .write_to_bytes()
-        .map_or_else(|_| Err(MessageWrapErr::SerializationErr), |b| Ok(b))
+        .to_bytes()
     }
 }

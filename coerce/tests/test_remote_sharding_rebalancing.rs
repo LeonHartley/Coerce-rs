@@ -116,6 +116,7 @@ async fn create_system(
                 ping_timeout: Duration::from_millis(10),
                 unhealthy_node_heartbeat_timeout: Duration::from_millis(750),
                 terminated_node_heartbeat_timeout: Duration::from_millis(1000),
+                ..Default::default()
             })
         })
         .with_id(node_id)

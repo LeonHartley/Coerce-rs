@@ -85,7 +85,8 @@ impl ClusterWorkerBuilder {
             .expect("failed to start server");
 
         if let Some(seed_addr) = self.seed_addr.take() {
-            // TODO: this check only works if the listen addr & cluster node addr are equal, should we perform a resolution via `lookup_host` instead?
+            // TODO: this check only works if the listen addr & cluster node addr are equal,
+            //        should we perform a resolution via `lookup_host` instead?
 
             if self.seed_addr.as_ref() != Some(&cluster_node_addr) {
                 discover_peers(seed_addr, &self.system).await;

@@ -188,6 +188,7 @@ enum SystemEvent {
   ClusterNewNode = 0;
   ClusterNodeRemoved = 1;
   ClusterLeaderChanged = 2;
+  ClusterMemberUp = 3;
 }
 
 message NewNodeEvent {
@@ -206,6 +207,14 @@ message LeaderChangedEvent {
   uint64 node_id = 1;
 
   string trace_id = 2;
+}
+
+message MemberUpEvent {
+  uint64 leader_id  = 1;
+
+  repeated RemoteNode nodes = 2;
+
+  string trace_id = 3;
 }
 
 message RaftRequest {

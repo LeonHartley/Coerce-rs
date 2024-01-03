@@ -23,6 +23,10 @@ fn main() -> std::io::Result<()> {
                 "coerce/src/sharding/proto",
             ),
             (
+                "coerce/src/protocol/singleton.proto",
+                "coerce/src/remote/cluster/singleton/proto",
+            ),
+            (
                 "coerce/src/protocol/persistent/journal.proto",
                 "coerce/src/persistent/journal/proto",
             ),
@@ -53,6 +57,6 @@ fn compile_proto<I: Iterator<Item = (&'static str, &'static str)>>(
             .input(file.0)
             .include(include_dir)
             .run()
-            .unwrap_or_else(|_| panic!("protoc {}", file.0));
+            .unwrap_or_else(|e| panic!("protoc {}, error={}", file.0, e));
     }
 }

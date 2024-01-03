@@ -170,7 +170,7 @@ impl RemoteActorSystemBuilder {
             .await
             .expect("unable to create NodeDiscovery actor");
 
-        let heartbeat_ref = Heartbeat::start(&inner).await;
+        let heartbeat_ref = Heartbeat::start(&inner, config.heartbeat_config().clone()).await;
 
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");

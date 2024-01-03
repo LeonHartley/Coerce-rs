@@ -29,13 +29,16 @@ use tokio::sync::oneshot::Sender;
 
 pub struct Heartbeat {
     system: Option<RemoteActorSystem>,
+    cluster_member_up: bool,
     heartbeat_timer: Option<Timer>,
     last_heartbeat: Option<DateTime<Utc>>,
     node_pings: HashMap<NodeId, NodePing>,
     on_next_leader_changed: VecDeque<Sender<NodeId>>,
     health_check_actors: Vec<BoxedActorRef>,
+    config: HeartbeatConfig,
 }
 
+#[derive(Clone)]
 pub struct HeartbeatConfig {
     pub interval: Duration,
     pub ping_timeout: Duration,
@@ -45,14 +48,16 @@ pub struct HeartbeatConfig {
 }
 
 impl Heartbeat {
-    pub async fn start(sys: &ActorSystem) -> LocalActorRef<Heartbeat> {
+    pub async fn start(sys: &ActorSystem, config: HeartbeatConfig) -> LocalActorRef<Heartbeat> {
         Heartbeat {
             system: None,
+            cluster_member_up: false,
             heartbeat_timer: None,
             last_heartbeat: None,
             node_pings: HashMap::new(),
             on_next_leader_changed: VecDeque::new(),
             health_check_actors: Vec::new(),
+            config,
         }
         .into_actor(Some("heartbeat"), sys)
         .await
@@ -82,16 +87,15 @@ impl Heartbeat {
 impl Handler<SetRemote> for Heartbeat {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         let system = message.0;
-        let heartbeat_config = system.config().heartbeat_config();
         debug!(
             "starting heartbeat timer (tick duration={} millis), node_id={}",
-            heartbeat_config.interval.as_millis(),
+            self.config.interval.as_millis(),
             system.node_id()
         );
 
         self.heartbeat_timer = Some(Timer::start(
             self.actor_ref(ctx),
-            heartbeat_config.interval,
+            self.config.interval,
             HeartbeatTick,
         ));
 
@@ -122,7 +126,7 @@ impl Default for HeartbeatConfig {
             ping_timeout: Duration::from_secs(15),
             unhealthy_node_heartbeat_timeout: Duration::from_millis(1500),
             terminated_node_heartbeat_timeout: Duration::from_secs(30),
-            minimum_cluster_size: None
+            minimum_cluster_size: None,
         }
     }
 }
@@ -198,7 +202,7 @@ impl Handler<OnLeaderChanged> for Heartbeat {
 #[async_trait]
 impl Handler<HeartbeatTick> for Heartbeat {
     async fn handle(&mut self, _msg: HeartbeatTick, _ctx: &mut ActorContext) {
-        let system = self.system.as_ref().unwrap();
+        let system = self.system.as_ref().unwrap().clone();
 
         let node_tag = system.node_tag();
         let current_node = system.node_id();
@@ -235,7 +239,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 current_node,
                 node,
                 self.node_pings.get(&node_id).map(|r| r.1.clone()),
-                system.config().heartbeat_config(),
+                &self.config,
             ));
         }
 
@@ -255,6 +259,17 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 ordering => ordering,
             }
         });
+
+        if !self.cluster_member_up {
+            let min_cluster_size_reached = match self.config.minimum_cluster_size {
+                None => true,
+                Some(n) => n >= self.node_pings.len(),
+            };
+
+            if min_cluster_size_reached {
+                self.on_min_cluster_size_reached()
+            }
+        }
 
         if self.last_heartbeat.is_some() {
             let oldest_healthy_node = updates.iter().filter(|n| n.status.is_healthy()).next();
@@ -306,18 +321,14 @@ impl Heartbeat {
     }
 
     fn on_min_cluster_size_reached(&mut self) {
+        self.cluster_member_up = true;
         let system = self.system.as_ref().unwrap();
 
         let sys = system.clone();
         tokio::spawn(async move {
-            let _ = PubSub::publish_locally(
-                SystemTopic,
-                SystemEvent::Cluster(MemberUp),
-                &sys,
-            )
-                .await;
+            let _ =
+                PubSub::publish_locally(SystemTopic, SystemEvent::Cluster(MemberUp), &sys).await;
         });
-
     }
 }
 
