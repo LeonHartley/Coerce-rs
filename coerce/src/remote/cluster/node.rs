@@ -194,7 +194,7 @@ impl From<RemoteNodeState> for RemoteNode {
             addr: s.addr,
             tag: s.tag,
             node_started_at: s.node_started_at,
-            attributes: s.attributes.clone(),
+            attributes: s.attributes,
         }
     }
 }

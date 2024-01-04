@@ -135,7 +135,7 @@ impl Handler<Receive<SystemTopic>> for CoordinatorSpawner {
                         );
                     }
                 }
-                ClusterEvent::MemberUp => {
+                ClusterEvent::MemberUp(member_up) => {
                     // TODO: coordinator should not start until memberup has been signalled.
                 }
             },

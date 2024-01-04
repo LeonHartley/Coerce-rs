@@ -7,11 +7,11 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, IntoActor, LocalActorRef};
 use crate::actor::{ActorId, CoreActorRef};
 use crate::remote::actor::message::{NodeTerminated, SetRemote};
-use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
+use crate::remote::cluster::node::{NodeStatus, RemoteNodeRef, RemoteNodeState};
 use crate::remote::net::proto::network::PongEvent;
 use crate::remote::stream::pubsub::PubSub;
 use crate::remote::stream::system::ClusterEvent::{LeaderChanged, MemberUp};
-use crate::remote::stream::system::{SystemEvent, SystemTopic};
+use crate::remote::stream::system::{ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc};
 
@@ -19,6 +19,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 
 use std::ops::Add;
+use std::sync::Arc;
 
 use crate::remote::heartbeat::health::{
     GetHealth, RegisterHealthCheck, RemoveHealthCheck, SystemHealth,
@@ -260,17 +261,6 @@ impl Handler<HeartbeatTick> for Heartbeat {
             }
         });
 
-        if !self.cluster_member_up {
-            let min_cluster_size_reached = match self.config.minimum_cluster_size {
-                None => true,
-                Some(n) => n >= self.node_pings.len(),
-            };
-
-            if min_cluster_size_reached {
-                self.on_min_cluster_size_reached()
-            }
-        }
-
         if self.last_heartbeat.is_some() {
             let oldest_healthy_node = updates.iter().filter(|n| n.status.is_healthy()).next();
 
@@ -291,12 +281,27 @@ impl Handler<HeartbeatTick> for Heartbeat {
             }
         }
 
-        system.update_nodes(updates).await;
-        self.last_heartbeat = Some(Utc::now());
+        system.update_nodes(updates.clone()).await;
 
         if let Some(new_leader_id) = new_leader_id {
+            if !self.cluster_member_up {
+                let min_cluster_size_reached = match self.config.minimum_cluster_size {
+                    None => true,
+                    Some(n) => n >= self.node_pings.len(),
+                };
+
+                if min_cluster_size_reached {
+                    self.on_min_cluster_size_reached(
+                        new_leader_id,
+                        updates.into_iter().map(|n| Arc::new(n.into())).collect(),
+                    );
+                }
+            }
+
             self.update_leader(new_leader_id);
         }
+
+        self.last_heartbeat = Some(Utc::now());
     }
 }
 
@@ -320,14 +325,18 @@ impl Heartbeat {
         }
     }
 
-    fn on_min_cluster_size_reached(&mut self) {
+    fn on_min_cluster_size_reached(&mut self, leader_id: NodeId, nodes: Vec<RemoteNodeRef>) {
         self.cluster_member_up = true;
         let system = self.system.as_ref().unwrap();
 
         let sys = system.clone();
         tokio::spawn(async move {
-            let _ =
-                PubSub::publish_locally(SystemTopic, SystemEvent::Cluster(MemberUp), &sys).await;
+            let _ = PubSub::publish_locally(
+                SystemTopic,
+                SystemEvent::Cluster(MemberUp(ClusterMemberUp { leader_id, nodes })),
+                &sys,
+            )
+            .await;
         });
     }
 }

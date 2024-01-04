@@ -20,8 +20,9 @@ pub enum ClusterEvent {
     LeaderChanged(NodeId),
 }
 
+#[derive(Debug)]
 pub struct ClusterMemberUp {
-    pub leader: NodeId,
+    pub leader_id: NodeId,
     pub nodes: Vec<RemoteNodeRef>,
 }
 
@@ -60,8 +61,11 @@ impl From<LeaderChangedEvent> for SystemEvent {
 }
 
 impl From<MemberUpEvent> for SystemEvent {
-    fn from(_: MemberUpEvent) -> Self {
-        SystemEvent::Cluster(ClusterEvent::MemberUp)
+    fn from(e: MemberUpEvent) -> Self {
+        SystemEvent::Cluster(ClusterEvent::MemberUp(ClusterMemberUp {
+            leader_id: e.leader_id,
+            nodes: e.nodes.into_iter().map(|n| Arc::new(n.into())).collect(),
+        }))
     }
 }
 
@@ -119,8 +123,10 @@ impl StreamData for SystemEvent {
                     write_event(SysEvent::ClusterLeaderChanged, event.write_to_bytes())
                 }
 
-                ClusterEvent::MemberUp => {
+                ClusterEvent::MemberUp(member_up) => {
                     let event = MemberUpEvent {
+                        leader_id: member_up.leader_id,
+                        nodes: member_up.nodes.iter().map(|n| n.as_ref().clone().into()).collect(),
                         ..Default::default()
                     };
 

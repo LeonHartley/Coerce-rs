@@ -69,12 +69,17 @@ impl<F: SingletonFactory> Manager<F> {
     }
 
     pub async fn grant_lease(&self, node_id: NodeId) {
-        self.notify_manager(
-            node_id,
-            LeaseAck {
-                source_node_id: self.node_id,
-            },
-        )
+        if let Err(e) = self
+            .notify_manager(
+                node_id,
+                LeaseAck {
+                    source_node_id: self.node_id,
+                },
+            )
+            .await
+        {
+            error!("Failed to grant lease to node={}, e={}", node_id, e)
+        }
     }
 
     pub async fn on_lease_ack(&mut self, node_id: NodeId) {

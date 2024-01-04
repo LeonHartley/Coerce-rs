@@ -6,6 +6,7 @@ use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::{Manager, State};
 use crate::remote::cluster::singleton::proto::singleton as proto;
 use crate::remote::system::NodeId;
+use protobuf::EnumOrUnknown;
 
 pub struct GetStatus {
     source_node_id: NodeId,
@@ -32,7 +33,7 @@ impl<F: SingletonFactory> Handler<GetStatus> for Manager<F> {
 
         let singleton_state = match &self.state {
             State::Idle => SingletonState::Idle,
-            State::Starting => SingletonState::Starting,
+            State::Starting { .. } => SingletonState::Starting,
             State::Running { .. } => SingletonState::Running,
             State::Stopping { .. } => SingletonState::Stopping,
         };
@@ -60,7 +61,7 @@ impl Message for GetStatus {
 
     fn write_remote_result(res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
         proto::ManagerStatus {
-            singleton_state: Some(res.singleton_state.into()).into(),
+            singleton_state: EnumOrUnknown::new(res.singleton_state.into()),
             ..Default::default()
         }
         .to_bytes()

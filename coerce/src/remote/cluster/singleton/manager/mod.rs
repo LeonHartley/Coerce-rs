@@ -10,7 +10,7 @@ use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
-use std::collections::btree_map::Entry;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 
 pub struct Manager<F: SingletonFactory> {
@@ -92,24 +92,18 @@ impl<F: SingletonFactory> Manager<F> {
             None => return,
         };
 
+        let _ = actor_ref.notify_stop();
+
         self.state = State::Stopping {
             actor_ref,
             lease_requested_by: node_id,
         };
-
-        let _ = actor_ref.notify_stop();
     }
 
     pub async fn on_leader_changed(&mut self, new_leader_id: NodeId, sys: &RemoteActorSystem) {
-        if new_leader_id == sys.node_id() {
-            if !self.state.is_running() {
-                self.begin_starting(sys).await;
-            }
+        if new_leader_id == sys.node_id() && !self.state.is_running() {
+            self.begin_starting(sys).await;
         }
-    }
-
-    fn create_remote_ref(&self, node_id: NodeId, sys: &RemoteActorSystem) -> ActorRef<Self> {
-        RemoteActorRef::new(self.manager_actor_id.clone(), node_id, sys.clone()).into()
     }
 }
 
@@ -156,18 +150,20 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
         let sys = ctx.system().remote();
         match message.0.as_ref() {
             SystemEvent::Cluster(e) => match e {
-                ClusterEvent::MemberUp(ClusterMemberUp { leader, nodes }) => {
+                ClusterEvent::MemberUp(ClusterMemberUp {
+                    leader_id: leader,
+                    nodes,
+                }) => {
                     for node in nodes {
-                        if !self.selector.includes(node.as_ref()) {
+                        if !self.selector.includes(node.as_ref()) && node.id != &self.node_id {
                             continue;
                         }
 
                         self.managers
-                            .insert(node.id, self.create_remote_ref(node.id, &sys));
+                            .insert(node.id, RemoteActorRef::new(self.manager_actor_id.clone(), node.id, sys.clone()).into());
                     }
 
-                    if leader == self.node_id {
-                        // TODO: start
+                    if leader == &self.node_id {
                         self.begin_starting(&sys).await;
                     }
                 }
@@ -180,9 +176,10 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
 
                 ClusterEvent::NodeAdded(node) => {
                     if self.selector.includes(node.as_ref()) {
-                        let entry = self.managers.entry(node.id);
-                        if let Entry::Vacant(e) = entry {
-                            e.insert(self.create_remote_ref(node.id, &sys));
+                        let mut entry = self.managers.entry(node.id);
+                        if let Entry::Vacant(mut entry) = entry {
+                            let remote_ref = RemoteActorRef::new(self.manager_actor_id.clone(), node.id, sys.clone()).into();
+                            entry.insert(remote_ref);
                         }
                     }
                 }
