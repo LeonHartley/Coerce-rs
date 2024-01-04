@@ -126,7 +126,11 @@ impl StreamData for SystemEvent {
                 ClusterEvent::MemberUp(member_up) => {
                     let event = MemberUpEvent {
                         leader_id: member_up.leader_id,
-                        nodes: member_up.nodes.iter().map(|n| n.as_ref().clone().into()).collect(),
+                        nodes: member_up
+                            .nodes
+                            .iter()
+                            .map(|n| n.as_ref().clone().into())
+                            .collect(),
                         ..Default::default()
                     };
 

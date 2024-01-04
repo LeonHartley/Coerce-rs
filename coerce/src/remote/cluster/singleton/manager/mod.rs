@@ -155,12 +155,19 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     nodes,
                 }) => {
                     for node in nodes {
-                        if !self.selector.includes(node.as_ref()) && node.id != &self.node_id {
+                        if !self.selector.includes(node.as_ref()) && node.id != self.node_id {
                             continue;
                         }
 
-                        self.managers
-                            .insert(node.id, RemoteActorRef::new(self.manager_actor_id.clone(), node.id, sys.clone()).into());
+                        self.managers.insert(
+                            node.id,
+                            RemoteActorRef::new(
+                                self.manager_actor_id.clone(),
+                                node.id,
+                                sys.clone(),
+                            )
+                            .into(),
+                        );
                     }
 
                     if leader == &self.node_id {
@@ -178,7 +185,12 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     if self.selector.includes(node.as_ref()) {
                         let mut entry = self.managers.entry(node.id);
                         if let Entry::Vacant(mut entry) = entry {
-                            let remote_ref = RemoteActorRef::new(self.manager_actor_id.clone(), node.id, sys.clone()).into();
+                            let remote_ref = RemoteActorRef::new(
+                                self.manager_actor_id.clone(),
+                                node.id,
+                                sys.clone(),
+                            )
+                            .into();
                             entry.insert(remote_ref);
                         }
                     }
