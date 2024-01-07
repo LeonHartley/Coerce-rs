@@ -1,9 +1,10 @@
 mod lease;
+mod start;
 mod status;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, LocalActorRef};
+use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
@@ -23,6 +24,30 @@ pub struct Manager<F: SingletonFactory> {
     managers: HashMap<NodeId, ActorRef<Self>>,
     factory: F,
     selector: NodeSelector,
+    sys: RemoteActorSystem,
+}
+
+impl<F: SingletonFactory> Manager<F> {
+    pub fn new(
+        sys: RemoteActorSystem,
+        factory: F,
+        manager_actor_id: ActorId,
+        singleton_actor_id: ActorId,
+        selector: NodeSelector,
+    ) -> Self {
+        Self {
+            system_event_subscription: None,
+            state: State::default(),
+            current_leader_node: None,
+            node_id: sys.node_id(),
+            manager_actor_id,
+            singleton_actor_id,
+            managers: Default::default(),
+            factory,
+            selector,
+            sys,
+        }
+    }
 }
 
 impl<A: Actor> Default for State<A> {
@@ -77,7 +102,7 @@ impl<F: SingletonFactory> Manager<F> {
         }
     }
 
-    pub async fn begin_starting(&mut self, sys: &RemoteActorSystem) {
+    pub async fn begin_starting(&mut self) {
         self.state = State::Starting {
             acknowledged_nodes: HashSet::new(),
         };
@@ -100,9 +125,9 @@ impl<F: SingletonFactory> Manager<F> {
         };
     }
 
-    pub async fn on_leader_changed(&mut self, new_leader_id: NodeId, sys: &RemoteActorSystem) {
-        if new_leader_id == sys.node_id() && !self.state.is_running() {
-            self.begin_starting(sys).await;
+    pub async fn on_leader_changed(&mut self, new_leader_id: NodeId) {
+        if new_leader_id == self.node_id && !self.state.is_running() {
+            self.begin_starting().await;
         }
     }
 }
@@ -171,14 +196,14 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     }
 
                     if leader == &self.node_id {
-                        self.begin_starting(&sys).await;
+                        self.begin_starting().await;
                     }
                 }
 
                 ClusterEvent::LeaderChanged(leader) => {
                     let sys = ctx.system().remote();
 
-                    self.on_leader_changed(*leader, &sys).await;
+                    self.on_leader_changed(*leader).await;
                 }
 
                 ClusterEvent::NodeAdded(node) => {

@@ -16,3 +16,15 @@ enum SingletonState {
   RUNNING = 2;
   STOPPING = 3;
 }
+
+message RequestLease {
+    uint64 source_node_id = 1;
+}
+
+message LeaseAck {
+    uint64 source_node_id = 1;
+}
+
+message LeaseNack {
+    uint64 source_node_id = 1;
+}

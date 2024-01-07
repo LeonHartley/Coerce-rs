@@ -4,7 +4,7 @@ use crate::actor::Actor;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::status::SingletonState;
 use crate::remote::cluster::singleton::manager::{Manager, State};
-use crate::remote::system::NodeId;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 
 #[derive(Clone)]
 pub struct RequestLease {
@@ -13,6 +13,8 @@ pub struct RequestLease {
 
 impl Message for RequestLease {
     type Result = ();
+
+
 }
 
 pub struct LeaseAck {
@@ -47,7 +49,7 @@ impl<F: SingletonFactory> Handler<RequestLease> for Manager<F> {
 #[async_trait]
 impl<F: SingletonFactory> Handler<LeaseAck> for Manager<F> {
     async fn handle(&mut self, message: LeaseAck, ctx: &mut ActorContext) {
-        self.on_lease_ack(message.source_node_id).await;
+        self.on_lease_ack(message.source_node_id, ctx).await;
     }
 }
 
@@ -82,7 +84,7 @@ impl<F: SingletonFactory> Manager<F> {
         }
     }
 
-    pub async fn on_lease_ack(&mut self, node_id: NodeId) {
+    pub async fn on_lease_ack(&mut self, node_id: NodeId, ctx: &ActorContext) {
         match &mut self.state {
             State::Starting { acknowledged_nodes } => {
                 acknowledged_nodes.insert(node_id);
@@ -90,6 +92,7 @@ impl<F: SingletonFactory> Manager<F> {
                 // TODO: Can we do it with a quorum rather than *all managers*?
                 if acknowledged_nodes.len() == self.managers.len() {
                     info!("starting singleton on node={}", self.node_id);
+                    self.start_actor(ctx).await;
                 }
             }
 

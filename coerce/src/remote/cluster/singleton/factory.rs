@@ -5,3 +5,14 @@ pub trait SingletonFactory: 'static + Sync + Send {
 
     fn create(&self) -> Self::Actor;
 }
+
+impl<A: Actor, F> SingletonFactory for F
+where
+    F: Fn() -> A + 'static + Sync + Send,
+{
+    type Actor = A;
+
+    fn create(&self) -> A {
+        self()
+    }
+}
