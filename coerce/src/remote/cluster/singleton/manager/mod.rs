@@ -4,7 +4,7 @@ mod status;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef};
+use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
@@ -259,7 +259,7 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                         self.managers.insert(
                             node.id,
                             RemoteActorRef::new(
-                                self.manager_actor_id.clone(),
+                                format!("{}-{}", &self.manager_actor_id, node.id).to_actor_id(),
                                 node.id,
                                 sys.clone(),
                             )
@@ -281,7 +281,7 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                         let mut entry = self.managers.entry(node.id);
                         if let Entry::Vacant(mut entry) = entry {
                             let remote_ref = RemoteActorRef::new(
-                                self.manager_actor_id.clone(),
+                                format!("{}-{}", &self.manager_actor_id, node.id).to_actor_id(),
                                 node.id,
                                 sys.clone(),
                             )

@@ -1,7 +1,5 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,
-};
+use crate::actor::{Actor, ActorFactory, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
@@ -43,14 +41,15 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
 
     pub async fn build(mut self) -> Singleton<F::Actor, F> {
         let factory = self.factory.expect("factory");
-        let manager_actor_id = self.manager_id.expect("manager actor id");
+        let base_manager_id = self.manager_id.expect("manager actor id");
+        let manager_actor_id = format!("{}-{}", &base_manager_id, self.system.node_id()).to_actor_id();
         let singleton_actor_id = self.singleton_id.expect("singleton actor id");
         let actor_system = self.system.actor_system().clone();
 
         let manager = Manager::new(
             self.system,
             factory,
-            manager_actor_id.clone(),
+            base_manager_id,
             singleton_actor_id,
             self.node_selector,
         )
