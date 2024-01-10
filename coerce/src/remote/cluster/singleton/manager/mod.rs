@@ -1,4 +1,4 @@
-mod lease;
+pub(crate) mod lease;
 mod start;
 mod status;
 
@@ -13,6 +13,8 @@ use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Debug, Formatter};
+use std::time::Duration;
 
 pub struct Manager<F: SingletonFactory> {
     system_event_subscription: Option<Subscription>,
@@ -70,9 +72,36 @@ pub enum State<A: Actor> {
     },
 }
 
+impl<A: Actor> Debug for State<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            State::Idle => write!(f, "Idle"),
+            State::Starting { .. } => write!(f, "Starting"),
+            State::Running { .. } => write!(f, "Running"),
+            State::Stopping { .. } => write!(f, "Stopping"),
+        }
+    }
+}
+
+struct Notify<M>(NodeId, M);
+
+impl<M: Message> Message for Notify<M> {
+    type Result = ();
+}
+
+#[async_trait]
+impl<F: SingletonFactory, M: Message + Clone> Handler<Notify<M>> for Manager<F>
+where
+    Self: Handler<M>,
+{
+    async fn handle(&mut self, message: Notify<M>, ctx: &mut ActorContext) {
+        self.notify_manager(message.0, message.1, ctx).await;
+    }
+}
+
 impl<A: Actor> State<A> {
     pub fn is_running(&self) -> bool {
-        matches!(self, Self::Running { .. })
+        matches!(self, Self::Running { .. } | Self::Starting { .. })
     }
 
     pub fn get_actor(&self) -> Option<LocalActorRef<A>> {
@@ -86,28 +115,65 @@ impl<A: Actor> State<A> {
 }
 
 impl<F: SingletonFactory> Manager<F> {
-    pub async fn notify_manager<M: Message>(
+    pub async fn notify_manager<M: Message + Clone>(
         &self,
         node_id: NodeId,
         message: M,
-    ) -> Result<(), ActorRefErr>
-    where
+        ctx: &ActorContext,
+    ) where
         Self: Handler<M>,
     {
         if let Some(manager) = self.managers.get(&node_id) {
-            manager.notify(message).await
-        } else {
-            // TODO: WARN
-            Err(ActorRefErr::ActorUnavailable)
+            info!(
+                source_node_id = self.node_id,
+                node_id = &node_id,
+                message = M::type_name(),
+                manager = format!("{:?}", &manager),
+                "notifying manager"
+            );
+
+            let res = manager.notify(message.clone()).await;
+            if res.is_err() {
+                let msg = message.clone();
+                let self_ref = self.actor_ref(ctx);
+                let _ = self_ref.scheduled_notify::<Notify<M>>(
+                    Notify::<M>(manager.node_id().unwrap(), msg),
+                    Duration::from_secs(2),
+                );
+            }
+        }
+    }
+    pub async fn notify_managers<M: Message>(&self, message: M, ctx: &ActorContext)
+    where
+        Self: Handler<M>,
+        M: Clone,
+    {
+        for manager in self.managers.values() {
+            info!(
+                source_node_id = self.node_id,
+                node_id = manager.node_id(),
+                message = M::type_name(),
+                "notifying manager"
+            );
+
+            let res = manager.notify(message.clone()).await;
+            if res.is_err() {
+                let msg = message.clone();
+                let self_ref = self.actor_ref(ctx);
+                let _ = self_ref.scheduled_notify::<Notify<M>>(
+                    Notify::<M>(manager.node_id().unwrap(), msg),
+                    Duration::from_secs(2),
+                );
+            }
         }
     }
 
-    pub async fn begin_starting(&mut self) {
+    pub async fn begin_starting(&mut self, ctx: &ActorContext) {
         self.state = State::Starting {
             acknowledged_nodes: HashSet::new(),
         };
 
-        self.request_lease().await;
+        self.request_lease(ctx).await;
     }
 
     pub fn begin_stopping(&mut self, node_id: NodeId) {
@@ -125,9 +191,9 @@ impl<F: SingletonFactory> Manager<F> {
         };
     }
 
-    pub async fn on_leader_changed(&mut self, new_leader_id: NodeId) {
+    pub async fn on_leader_changed(&mut self, new_leader_id: NodeId, ctx: &ActorContext) {
         if new_leader_id == self.node_id && !self.state.is_running() {
-            self.begin_starting().await;
+            self.begin_starting(ctx).await;
         }
     }
 }
@@ -143,6 +209,12 @@ impl<F: SingletonFactory> Actor for Manager<F> {
 
         let sys = ctx.system().remote();
         self.current_leader_node = sys.current_leader();
+
+        info!(
+            node_id = self.node_id,
+            singleton = F::Actor::type_name(),
+            "manager started"
+        )
     }
 
     async fn on_child_stopped(&mut self, id: &ActorId, ctx: &mut ActorContext) {
@@ -160,7 +232,7 @@ impl<F: SingletonFactory> Actor for Manager<F> {
             State::Stopping {
                 lease_requested_by, ..
             } => {
-                self.grant_lease(*lease_requested_by).await;
+                self.grant_lease(*lease_requested_by, ctx).await;
                 self.state = State::Idle;
             }
 
@@ -180,7 +252,7 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     nodes,
                 }) => {
                     for node in nodes {
-                        if !self.selector.includes(node.as_ref()) && node.id != self.node_id {
+                        if node.id == self.node_id || !self.selector.includes(node.as_ref()) {
                             continue;
                         }
 
@@ -196,18 +268,16 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     }
 
                     if leader == &self.node_id {
-                        self.begin_starting().await;
+                        self.begin_starting(ctx).await;
                     }
                 }
 
                 ClusterEvent::LeaderChanged(leader) => {
-                    let sys = ctx.system().remote();
-
-                    self.on_leader_changed(*leader).await;
+                    self.on_leader_changed(*leader, ctx).await;
                 }
 
                 ClusterEvent::NodeAdded(node) => {
-                    if self.selector.includes(node.as_ref()) {
+                    if node.id != self.node_id && self.selector.includes(node.as_ref()) {
                         let mut entry = self.managers.entry(node.id);
                         if let Entry::Vacant(mut entry) = entry {
                             let remote_ref = RemoteActorRef::new(

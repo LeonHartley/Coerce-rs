@@ -1,8 +1,12 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorFactory, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef};
+use crate::actor::{
+    Actor, ActorFactory, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,
+};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
+use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
 use crate::remote::cluster::singleton::manager::Manager;
+use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 
 pub mod factory;
@@ -72,4 +76,16 @@ impl<A: Actor, F: SingletonFactory<Actor = A>> Singleton<A, F> {
     {
         unimplemented!()
     }
+}
+
+pub fn singleton<F: SingletonFactory>(
+    builder: &mut RemoteSystemConfigBuilder,
+) -> &mut RemoteSystemConfigBuilder {
+    let actor_type = F::Actor::type_name();
+    builder
+        .with_handler::<Manager<F>, RequestLease>(format!(
+            "SingletonManager<{}>.RequestLease",
+            actor_type
+        ))
+        .with_handler::<Manager<F>, LeaseAck>(format!("SingletonManager<{}>.LeaseAck", actor_type))
 }
