@@ -4,7 +4,9 @@ mod status;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef, ToActorId};
+use crate::actor::{
+    Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef, ToActorId,
+};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
@@ -124,47 +126,43 @@ impl<F: SingletonFactory> Manager<F> {
         Self: Handler<M>,
     {
         if let Some(manager) = self.managers.get(&node_id) {
-            info!(
-                source_node_id = self.node_id,
-                node_id = &node_id,
-                message = M::type_name(),
-                manager = format!("{:?}", &manager),
-                "notifying manager"
-            );
-
-            let res = manager.notify(message.clone()).await;
-            if res.is_err() {
-                let msg = message.clone();
-                let self_ref = self.actor_ref(ctx);
-                let _ = self_ref.scheduled_notify::<Notify<M>>(
-                    Notify::<M>(manager.node_id().unwrap(), msg),
-                    Duration::from_secs(2),
-                );
-            }
+            self.notify(message, &manager, ctx).await;
         }
     }
+
     pub async fn notify_managers<M: Message>(&self, message: M, ctx: &ActorContext)
     where
         Self: Handler<M>,
         M: Clone,
     {
         for manager in self.managers.values() {
-            info!(
-                source_node_id = self.node_id,
-                node_id = manager.node_id(),
-                message = M::type_name(),
-                "notifying manager"
-            );
+            self.notify(message.clone(), &manager, ctx).await;
+        }
+    }
 
-            let res = manager.notify(message.clone()).await;
-            if res.is_err() {
-                let msg = message.clone();
-                let self_ref = self.actor_ref(ctx);
-                let _ = self_ref.scheduled_notify::<Notify<M>>(
-                    Notify::<M>(manager.node_id().unwrap(), msg),
-                    Duration::from_secs(2),
-                );
-            }
+    async fn notify<M: Message + Clone>(
+        &self,
+        message: M,
+        manager: &ActorRef<Self>,
+        ctx: &ActorContext,
+    ) where
+        Self: Handler<M>,
+    {
+        info!(
+            source_node_id = self.node_id,
+            node_id = manager.node_id(),
+            message = M::type_name(),
+            "notifying manager"
+        );
+
+        let res = manager.notify(message.clone()).await;
+        if res.is_err() {
+            let msg = message.clone();
+            let self_ref = self.actor_ref(ctx);
+            let _ = self_ref.scheduled_notify::<Notify<M>>(
+                Notify::<M>(manager.node_id().unwrap(), msg),
+                Duration::from_secs(2),
+            );
         }
     }
 

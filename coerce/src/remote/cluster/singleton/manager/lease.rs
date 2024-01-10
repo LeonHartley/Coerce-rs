@@ -111,7 +111,10 @@ impl<F: SingletonFactory> Manager<F> {
     }
 
     pub async fn grant_lease(&self, node_id: NodeId, ctx: &ActorContext) {
-        info!("sending LeaseAck to node={} from node={}", node_id, self.node_id);
+        info!(
+            "sending LeaseAck to node={} from node={}",
+            node_id, self.node_id
+        );
         self.notify_manager(
             node_id,
             LeaseAck {
