@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 
 pub mod send;
 
-pub enum ProxyState<A> {
+pub enum ProxyState<A: Actor> {
     Buffered {
         request_queue: VecDeque<Box<dyn Buffered<A>>>,
     },
@@ -45,7 +45,7 @@ pub struct SingletonStarted<A: Actor> {
 
 pub struct SingletonStopping {}
 
-impl<A> Message for SingletonStarted<A> {
+impl<A: Actor> Message for SingletonStarted<A> {
     type Result = ();
 }
 

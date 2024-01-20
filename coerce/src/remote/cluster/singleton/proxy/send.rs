@@ -20,7 +20,9 @@ impl<M: Message> Send<M> {
         tokio::spawn(async move {
             let res = actor.send(message).await;
             match res {
-                Ok(r) => result_channel.send(r),
+                Ok(r) => {
+                    let _ = result_channel.send(r);
+                }
                 Err(_) => {}
             }
         });
@@ -53,10 +55,16 @@ where
         match &mut self.state {
             ProxyState::Buffered { request_queue } => {
                 request_queue.push_back(Box::new(message));
+                debug!(
+                    "singleton proxy buffered message (msg_type={}, total_buffered={})",
+                    M::type_name(),
+                    request_queue.len()
+                );
             }
 
             ProxyState::Active { actor_ref } => {
                 message.deliver(actor_ref.clone());
+                debug!("singleton proxy sent message (msg_type={})", M::type_name());
             }
         }
     }

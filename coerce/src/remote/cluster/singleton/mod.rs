@@ -24,6 +24,7 @@ pub struct SingletonBuilder<F: SingletonFactory> {
     factory: Option<F>,
     singleton_id: Option<ActorId>,
     manager_id: Option<ActorId>,
+    proxy_id: Option<ActorId>,
     node_selector: NodeSelector,
     system: RemoteActorSystem,
 }
@@ -34,7 +35,8 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
             system,
             factory: None,
             singleton_id: Some(F::Actor::type_name().into_actor_id()),
-            manager_id: Some(Manager::<F>::type_name().into_actor_id()),
+            manager_id: Some(format!("singleton-manager<{}>", F::Actor::type_name()).into_actor_id()),
+            proxy_id: Some(format!("singleton-proxy<{}>", F::Actor::type_name()).into_actor_id()),
             node_selector: NodeSelector::All,
         }
     }
@@ -49,10 +51,10 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
 
         let node_id = self.system.node_id();
         let base_manager_id = self.manager_id.expect("manager actor id");
+        let base_proxy_id = self.proxy_id.expect("proxy actor id");
 
         let manager_actor_id = format!("{}-{}", &base_manager_id, node_id).to_actor_id();
-
-        let proxy_actor_id = format!("{}-{}-proxy", &base_manager_id, node_id).to_actor_id();
+        let proxy_actor_id = format!("{}-{}", &base_proxy_id, node_id).to_actor_id();
 
         let singleton_actor_id = self.singleton_id.expect("singleton actor id");
         let actor_system = self.system.actor_system().clone();
