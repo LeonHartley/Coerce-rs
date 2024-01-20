@@ -9,12 +9,13 @@ use crate::actor::{
 };
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
+use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::time::Duration;
 
@@ -29,6 +30,7 @@ pub struct Manager<F: SingletonFactory> {
     factory: F,
     selector: NodeSelector,
     sys: RemoteActorSystem,
+    proxy: LocalActorRef<Proxy<F::Actor>>,
 }
 
 impl<F: SingletonFactory> Manager<F> {
@@ -38,6 +40,7 @@ impl<F: SingletonFactory> Manager<F> {
         manager_actor_id: ActorId,
         singleton_actor_id: ActorId,
         selector: NodeSelector,
+        proxy: LocalActorRef<Proxy<F::Actor>>,
     ) -> Self {
         Self {
             system_event_subscription: None,
@@ -50,6 +53,7 @@ impl<F: SingletonFactory> Manager<F> {
             factory,
             selector,
             sys,
+            proxy,
         }
     }
 }

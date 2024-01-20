@@ -10,6 +10,7 @@ use crate::actor::supervised::Terminated;
 use crate::actor::{Actor, ActorId, ActorPath};
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
+use std::future::Future;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -595,5 +596,31 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
         ActorRef {
             inner_ref: Ref::Remote(r),
         }
+    }
+}
+
+pub trait PipeTo<A: Actor>
+where
+    A: Handler<Self::Message>,
+{
+    type Message: Message;
+
+    fn pipe_to(self, actor_ref: ActorRef<A>);
+}
+
+impl<A, F: Future> PipeTo<A> for F
+where
+    F::Output: Message,
+    A: Handler<F::Output>,
+    F: 'static + Send,
+{
+    type Message = F::Output;
+
+    fn pipe_to(self, actor_ref: ActorRef<A>) {
+        let fut = self;
+        tokio::spawn(async move {
+            let result = fut.await;
+            let _ = actor_ref.notify(result).await;
+        });
     }
 }

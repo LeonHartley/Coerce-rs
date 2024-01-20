@@ -6,15 +6,18 @@ use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
 use crate::remote::cluster::singleton::manager::Manager;
+use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 
 pub mod factory;
 pub mod manager;
 pub mod proto;
+pub mod proxy;
 
 pub struct Singleton<A: Actor, F: SingletonFactory<Actor = A>> {
     manager: LocalActorRef<Manager<F>>,
+    proxy: LocalActorRef<Proxy<A>>,
 }
 
 pub struct SingletonBuilder<F: SingletonFactory> {
@@ -43,11 +46,21 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
 
     pub async fn build(mut self) -> Singleton<F::Actor, F> {
         let factory = self.factory.expect("factory");
+
+        let node_id = self.system.node_id();
         let base_manager_id = self.manager_id.expect("manager actor id");
-        let manager_actor_id =
-            format!("{}-{}", &base_manager_id, self.system.node_id()).to_actor_id();
+
+        let manager_actor_id = format!("{}-{}", &base_manager_id, node_id).to_actor_id();
+
+        let proxy_actor_id = format!("{}-{}-proxy", &base_manager_id, node_id).to_actor_id();
+
         let singleton_actor_id = self.singleton_id.expect("singleton actor id");
         let actor_system = self.system.actor_system().clone();
+
+        let proxy = Proxy::<F::Actor>::new()
+            .into_actor(Some(proxy_actor_id), &actor_system)
+            .await
+            .expect("start proxy actor");
 
         let manager = Manager::new(
             self.system,
@@ -55,12 +68,13 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
             base_manager_id,
             singleton_actor_id,
             self.node_selector,
+            proxy.clone(),
         )
         .into_actor(Some(manager_actor_id), &actor_system)
         .await
         .expect("start manager actor");
 
-        Singleton { manager }
+        Singleton { manager, proxy }
     }
 }
 
