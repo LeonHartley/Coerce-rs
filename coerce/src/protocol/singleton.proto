@@ -28,3 +28,7 @@ message LeaseAck {
 message LeaseNack {
     uint64 source_node_id = 1;
 }
+
+message SingletonStarted {
+    uint64 source_node_id = 1;
+}
