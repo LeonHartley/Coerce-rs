@@ -5,7 +5,7 @@ use crate::actor::{
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
-use crate::remote::cluster::singleton::manager::Manager;
+use crate::remote::cluster::singleton::manager::{Manager, SingletonStarted, SingletonStopped};
 use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
@@ -35,7 +35,9 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
             system,
             factory: None,
             singleton_id: Some(F::Actor::type_name().into_actor_id()),
-            manager_id: Some(format!("singleton-manager<{}>", F::Actor::type_name()).into_actor_id()),
+            manager_id: Some(
+                format!("singleton-manager<{}>", F::Actor::type_name()).into_actor_id(),
+            ),
             proxy_id: Some(format!("singleton-proxy<{}>", F::Actor::type_name()).into_actor_id()),
             node_selector: NodeSelector::All,
         }
@@ -106,4 +108,12 @@ pub fn singleton<F: SingletonFactory>(
             actor_type
         ))
         .with_handler::<Manager<F>, LeaseAck>(format!("SingletonManager<{}>.LeaseAck", actor_type))
+        .with_handler::<Manager<F>, SingletonStarted>(format!(
+            "SingletonManager<{}>.SingletonStarted",
+            actor_type
+        ))
+        .with_handler::<Manager<F>, SingletonStopped>(format!(
+            "SingletonManager<{}>.SingletonStopped",
+            actor_type
+        ))
 }

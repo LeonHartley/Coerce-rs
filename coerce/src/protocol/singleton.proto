@@ -33,6 +33,10 @@ message SingletonStarted {
     uint64 source_node_id = 1;
 }
 
+message SingletonStopping {
+  uint64 source_node_id = 1;
+}
+
 message SingletonStopped {
   uint64 source_node_id = 1;
 }

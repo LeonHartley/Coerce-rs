@@ -2,7 +2,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef, PipeTo};
 use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::{Manager, State};
+use crate::remote::cluster::singleton::manager::{Manager, SingletonStarted, State};
 
 pub enum ActorStartResult<A: Actor> {
     Started(LocalActorRef<A>),
@@ -44,9 +44,14 @@ impl<F: SingletonFactory> Handler<ActorStartResult<F::Actor>> for Manager<F> {
                     }
                 }
 
-                self.state = State::Running { actor_ref }
-
-                // TODO: broadcast to all managers that we're running the actor
+                self.state = State::Running { actor_ref };
+                self.notify_managers(
+                    SingletonStarted {
+                        source_node_id: self.node_id,
+                    },
+                    ctx,
+                )
+                .await;
             }
             ActorStartResult::Failed(e) => {}
         }

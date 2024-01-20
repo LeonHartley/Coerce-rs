@@ -88,7 +88,7 @@ impl<F: SingletonFactory> Handler<RequestLease> for Manager<F> {
                 F::Actor::type_name()
             );
 
-            self.begin_stopping(message.source_node_id);
+            self.begin_stopping(message.source_node_id, ctx).await;
         }
     }
 }

@@ -3,12 +3,15 @@ mod start;
 mod status;
 
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::{
+    FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
+};
 use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef, ToActorId,
 };
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
+use crate::remote::cluster::singleton::proto;
 use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
@@ -178,7 +181,7 @@ impl<F: SingletonFactory> Manager<F> {
         self.request_lease(ctx).await;
     }
 
-    pub fn begin_stopping(&mut self, node_id: NodeId) {
+    pub async fn begin_stopping(&mut self, node_id: NodeId, ctx: &ActorContext) {
         let actor_ref = self.state.get_actor();
         let actor_ref = match actor_ref {
             Some(actor_ref) => actor_ref,
@@ -186,6 +189,13 @@ impl<F: SingletonFactory> Manager<F> {
         };
 
         let _ = actor_ref.notify_stop();
+        self.notify_managers(
+            SingletonStopped {
+                source_node_id: self.node_id,
+            },
+            ctx,
+        )
+        .await;
 
         self.state = State::Stopping {
             actor_ref,
@@ -303,5 +313,81 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                 _ => {}
             },
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct SingletonStarted {
+    source_node_id: NodeId,
+}
+
+#[derive(Clone)]
+pub struct SingletonStopped {
+    source_node_id: NodeId,
+}
+
+#[async_trait]
+impl<F: SingletonFactory> Handler<SingletonStarted> for Manager<F> {
+    async fn handle(&mut self, message: SingletonStarted, ctx: &mut ActorContext) {
+        info!("received started notification, notifying proxy");
+    }
+}
+
+#[async_trait]
+impl<F: SingletonFactory> Handler<SingletonStopped> for Manager<F> {
+    async fn handle(&mut self, message: SingletonStopped, ctx: &mut ActorContext) {
+        info!("received stopped notification, notifying proxy");
+    }
+}
+
+impl Message for SingletonStarted {
+    type Result = ();
+
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
+        proto::singleton::SingletonStarted {
+            source_node_id: self.source_node_id,
+            ..Default::default()
+        }
+        .to_bytes()
+    }
+
+    fn from_bytes(buf: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        proto::singleton::SingletonStarted::from_bytes(buf).map(|l| Self {
+            source_node_id: l.source_node_id,
+        })
+    }
+
+    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Ok(())
+    }
+
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        Ok(vec![])
+    }
+}
+
+impl Message for SingletonStopped {
+    type Result = ();
+
+    fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
+        proto::singleton::SingletonStopped {
+            source_node_id: self.source_node_id,
+            ..Default::default()
+        }
+        .to_bytes()
+    }
+
+    fn from_bytes(buf: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        proto::singleton::SingletonStopped::from_bytes(buf).map(|l| Self {
+            source_node_id: l.source_node_id,
+        })
+    }
+
+    fn read_remote_result(_: Vec<u8>) -> Result<Self::Result, MessageUnwrapErr> {
+        Ok(())
+    }
+
+    fn write_remote_result(_res: Self::Result) -> Result<Vec<u8>, MessageWrapErr> {
+        Ok(vec![])
     }
 }
