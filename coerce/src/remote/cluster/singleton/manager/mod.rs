@@ -11,8 +11,8 @@ use crate::actor::{
 };
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::proto;
 use crate::remote::cluster::singleton::proxy::Proxy;
+use crate::remote::cluster::singleton::{proto, proxy};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
@@ -329,14 +329,31 @@ pub struct SingletonStopped {
 #[async_trait]
 impl<F: SingletonFactory> Handler<SingletonStarted> for Manager<F> {
     async fn handle(&mut self, message: SingletonStarted, ctx: &mut ActorContext) {
-        info!("received started notification, notifying proxy");
+        info!(
+            source_node_id = message.source_node_id,
+            "received started notification, notifying proxy"
+        );
+
+        let actor_ref = RemoteActorRef::new(
+            self.singleton_actor_id.clone(),
+            message.source_node_id,
+            self.sys.clone(),
+        )
+        .into();
+
+        let _ = self.proxy.notify(proxy::SingletonStarted::new(actor_ref));
     }
 }
 
 #[async_trait]
 impl<F: SingletonFactory> Handler<SingletonStopped> for Manager<F> {
     async fn handle(&mut self, message: SingletonStopped, ctx: &mut ActorContext) {
-        info!("received stopped notification, notifying proxy");
+        info!(
+            source_node_id = message.source_node_id,
+            "received stopped notification, notifying proxy"
+        );
+
+        let _ = self.proxy.notify(proxy::SingletonStopping);
     }
 }
 

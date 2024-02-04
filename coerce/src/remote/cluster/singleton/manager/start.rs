@@ -3,6 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef, PipeTo};
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::{Manager, SingletonStarted, State};
+use crate::remote::cluster::singleton::proxy;
 
 pub enum ActorStartResult<A: Actor> {
     Started(LocalActorRef<A>),
@@ -44,7 +45,13 @@ impl<F: SingletonFactory> Handler<ActorStartResult<F::Actor>> for Manager<F> {
                     }
                 }
 
-                self.state = State::Running { actor_ref };
+                self.state = State::Running {
+                    actor_ref: actor_ref.clone(),
+                };
+                let _ = self
+                    .proxy
+                    .notify(proxy::SingletonStarted::new(actor_ref.clone().into()));
+
                 self.notify_managers(
                     SingletonStarted {
                         source_node_id: self.node_id,
@@ -53,7 +60,9 @@ impl<F: SingletonFactory> Handler<ActorStartResult<F::Actor>> for Manager<F> {
                 )
                 .await;
             }
-            ActorStartResult::Failed(e) => {}
+            ActorStartResult::Failed(e) => {
+                error!(error = format!("{}", e), "singleton actor failed to start")
+            }
         }
     }
 }

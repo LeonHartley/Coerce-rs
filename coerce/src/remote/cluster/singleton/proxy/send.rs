@@ -5,12 +5,21 @@ use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::proxy::{Proxy, ProxyState};
 use tokio::sync::oneshot::Sender;
 
-pub struct Send<M: Message> {
+pub struct Deliver<M: Message> {
     message: Option<M>,
-    result_channel: Option<Sender<M::Result>>,
+    result_channel: Option<Sender<Result<M::Result, ActorRefErr>>>,
 }
 
-impl<M: Message> Send<M> {
+impl<M: Message> Deliver<M> {
+    pub fn new(message: M, result_channel: Option<Sender<Result<M::Result, ActorRefErr>>>) -> Self {
+        Self {
+            message: Some(message),
+            result_channel,
+        }
+    }
+}
+
+impl<M: Message> Deliver<M> {
     pub fn deliver<A>(&mut self, actor: ActorRef<A>)
     where
         A: Handler<M>,
@@ -19,21 +28,16 @@ impl<M: Message> Send<M> {
         let result_channel = self.result_channel.take().unwrap();
         tokio::spawn(async move {
             let res = actor.send(message).await;
-            match res {
-                Ok(r) => {
-                    let _ = result_channel.send(r);
-                }
-                Err(_) => {}
-            }
+            result_channel.send(res)
         });
     }
 }
 
-pub trait Buffered<A: Actor>: 'static + Sync + std::marker::Send {
+pub trait Buffered<A: Actor>: 'static + Sync + Send {
     fn send(&mut self, actor_ref: ActorRef<A>);
 }
 
-impl<A: Actor, M: Message> Buffered<A> for Send<M>
+impl<A: Actor, M: Message> Buffered<A> for Deliver<M>
 where
     A: Handler<M>,
 {
@@ -42,29 +46,29 @@ where
     }
 }
 
-impl<M: Message> Message for Send<M> {
+impl<M: Message> Message for Deliver<M> {
     type Result = ();
 }
 
 #[async_trait]
-impl<A: Actor, M: Message> Handler<Send<M>> for Proxy<A>
+impl<A: Actor, M: Message> Handler<Deliver<M>> for Proxy<A>
 where
     A: Handler<M>,
 {
-    async fn handle(&mut self, mut message: Send<M>, ctx: &mut ActorContext) {
+    async fn handle(&mut self, mut message: Deliver<M>, ctx: &mut ActorContext) {
         match &mut self.state {
             ProxyState::Buffered { request_queue } => {
                 request_queue.push_back(Box::new(message));
                 debug!(
-                    "singleton proxy buffered message (msg_type={}, total_buffered={})",
-                    M::type_name(),
-                    request_queue.len()
+                    msg_type = M::type_name(),
+                    buffered_msgs = request_queue.len(),
+                    "singleton proxy buffered message",
                 );
             }
 
             ProxyState::Active { actor_ref } => {
                 message.deliver(actor_ref.clone());
-                debug!("singleton proxy sent message (msg_type={})", M::type_name());
+                debug!(msg_type = M::type_name(), "singleton proxy sent message");
             }
         }
     }

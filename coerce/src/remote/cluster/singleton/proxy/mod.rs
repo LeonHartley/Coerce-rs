@@ -43,7 +43,13 @@ pub struct SingletonStarted<A: Actor> {
     actor_ref: ActorRef<A>,
 }
 
-pub struct SingletonStopping {}
+impl<A: Actor> SingletonStarted<A> {
+    pub fn new(actor_ref: ActorRef<A>) -> Self {
+        Self { actor_ref }
+    }
+}
+
+pub struct SingletonStopping;
 
 impl<A: Actor> Message for SingletonStarted<A> {
     type Result = ();
@@ -61,9 +67,9 @@ impl<A: Actor> Handler<SingletonStarted<A>> for Proxy<A> {
         match &mut self.state {
             ProxyState::Buffered { request_queue } => {
                 debug!(
-                    "emitting {} buffered messages to {}",
-                    request_queue.len(),
-                    &actor_ref
+                    buffered_msgs = request_queue.len(),
+                    actor_ref = format!("{}", &actor_ref),
+                    "emitting buffered messages",
                 );
 
                 while let Some(mut buffered) = request_queue.pop_front() {

@@ -79,13 +79,17 @@ pub struct LeaseNack {
 impl<F: SingletonFactory> Handler<RequestLease> for Manager<F> {
     async fn handle(&mut self, message: RequestLease, ctx: &mut ActorContext) {
         if !self.state.is_running() {
-            info!("received RequestLease from {}", message.source_node_id);
+            info!(
+                source_node_id = message.source_node_id,
+                "received RequestLease"
+            );
+
             self.grant_lease(message.source_node_id, ctx).await;
         } else {
             info!(
-                "node_id={} already running singleton={}, stopping",
-                self.node_id,
-                F::Actor::type_name()
+                node_id = self.node_id,
+                singleton = F::Actor::type_name(),
+                "singleton already running, stopping",
             );
 
             self.begin_stopping(message.source_node_id, ctx).await;
@@ -111,10 +115,8 @@ impl<F: SingletonFactory> Manager<F> {
     }
 
     pub async fn grant_lease(&self, node_id: NodeId, ctx: &ActorContext) {
-        info!(
-            "sending LeaseAck to node={} from node={}",
-            node_id, self.node_id
-        );
+        info!(target_node_id = node_id, "sending LeaseAck");
+
         self.notify_manager(
             node_id,
             LeaseAck {
@@ -138,7 +140,7 @@ impl<F: SingletonFactory> Manager<F> {
 
                 // TODO: Can we do it with a quorum rather than *all managers*?
                 if acknowledged_nodes.len() == self.managers.len() {
-                    info!("starting singleton on node={}", self.node_id);
+                    info!(node_id = self.node_id, "starting singleton");
                     self.start_actor(ctx).await;
                 }
             }

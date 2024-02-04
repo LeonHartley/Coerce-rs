@@ -6,9 +6,11 @@ use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
 use crate::remote::cluster::singleton::manager::{Manager, SingletonStarted, SingletonStopped};
+use crate::remote::cluster::singleton::proxy::send::Deliver;
 use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
+use tokio::sync::oneshot;
 
 pub mod factory;
 pub mod manager;
@@ -87,14 +89,19 @@ impl<A: Actor, F: SingletonFactory<Actor = A>> Singleton<A, F> {
     where
         A: Handler<M>,
     {
-        unimplemented!()
+        let (tx, rx) = oneshot::channel();
+        if let Err(e) = self.proxy.notify(Deliver::new(message, Some(tx))) {
+            return Err(e);
+        }
+
+        rx.await.unwrap()
     }
 
     pub async fn notify<M: Message>(&self, message: M) -> Result<(), ActorRefErr>
     where
         A: Handler<M>,
     {
-        unimplemented!()
+        self.proxy.notify(Deliver::new(message, None))
     }
 }
 
