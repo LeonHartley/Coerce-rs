@@ -210,7 +210,7 @@ impl ::protobuf::Message for ManagerStatus {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if self.singleton_state != ::protobuf::EnumOrUnknown::new(SingletonState::IDLE) {
+        if self.singleton_state != ::protobuf::EnumOrUnknown::new(SingletonState::JOINING) {
             my_size += ::protobuf::rt::int32_size(1, self.singleton_state.value());
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -219,7 +219,7 @@ impl ::protobuf::Message for ManagerStatus {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if self.singleton_state != ::protobuf::EnumOrUnknown::new(SingletonState::IDLE) {
+        if self.singleton_state != ::protobuf::EnumOrUnknown::new(SingletonState::JOINING) {
             os.write_enum(1, ::protobuf::EnumOrUnknown::value(&self.singleton_state))?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -239,7 +239,7 @@ impl ::protobuf::Message for ManagerStatus {
     }
 
     fn clear(&mut self) {
-        self.singleton_state = ::protobuf::EnumOrUnknown::new(SingletonState::IDLE);
+        self.singleton_state = ::protobuf::EnumOrUnknown::new(SingletonState::JOINING);
         self.special_fields.clear();
     }
 
@@ -1004,14 +1004,16 @@ impl ::protobuf::reflect::ProtobufValue for SingletonStopped {
 #[derive(Clone,Copy,PartialEq,Eq,Debug,Hash)]
 // @@protoc_insertion_point(enum:coerce.singleton.SingletonState)
 pub enum SingletonState {
+    // @@protoc_insertion_point(enum_value:coerce.singleton.SingletonState.JOINING)
+    JOINING = 0,
     // @@protoc_insertion_point(enum_value:coerce.singleton.SingletonState.IDLE)
-    IDLE = 0,
+    IDLE = 1,
     // @@protoc_insertion_point(enum_value:coerce.singleton.SingletonState.STARTING)
-    STARTING = 1,
+    STARTING = 2,
     // @@protoc_insertion_point(enum_value:coerce.singleton.SingletonState.RUNNING)
-    RUNNING = 2,
+    RUNNING = 3,
     // @@protoc_insertion_point(enum_value:coerce.singleton.SingletonState.STOPPING)
-    STOPPING = 3,
+    STOPPING = 4,
 }
 
 impl ::protobuf::Enum for SingletonState {
@@ -1023,15 +1025,17 @@ impl ::protobuf::Enum for SingletonState {
 
     fn from_i32(value: i32) -> ::std::option::Option<SingletonState> {
         match value {
-            0 => ::std::option::Option::Some(SingletonState::IDLE),
-            1 => ::std::option::Option::Some(SingletonState::STARTING),
-            2 => ::std::option::Option::Some(SingletonState::RUNNING),
-            3 => ::std::option::Option::Some(SingletonState::STOPPING),
+            0 => ::std::option::Option::Some(SingletonState::JOINING),
+            1 => ::std::option::Option::Some(SingletonState::IDLE),
+            2 => ::std::option::Option::Some(SingletonState::STARTING),
+            3 => ::std::option::Option::Some(SingletonState::RUNNING),
+            4 => ::std::option::Option::Some(SingletonState::STOPPING),
             _ => ::std::option::Option::None
         }
     }
 
     const VALUES: &'static [SingletonState] = &[
+        SingletonState::JOINING,
         SingletonState::IDLE,
         SingletonState::STARTING,
         SingletonState::RUNNING,
@@ -1053,7 +1057,7 @@ impl ::protobuf::EnumFull for SingletonState {
 
 impl ::std::default::Default for SingletonState {
     fn default() -> Self {
-        SingletonState::IDLE
+        SingletonState::JOINING
     }
 }
 
@@ -1074,9 +1078,10 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     etonStarted\x12$\n\x0esource_node_id\x18\x01\x20\x01(\x04R\x0csourceNode\
     Id\"9\n\x11SingletonStopping\x12$\n\x0esource_node_id\x18\x01\x20\x01(\
     \x04R\x0csourceNodeId\"8\n\x10SingletonStopped\x12$\n\x0esource_node_id\
-    \x18\x01\x20\x01(\x04R\x0csourceNodeId*C\n\x0eSingletonState\x12\x08\n\
-    \x04IDLE\x10\0\x12\x0c\n\x08STARTING\x10\x01\x12\x0b\n\x07RUNNING\x10\
-    \x02\x12\x0c\n\x08STOPPING\x10\x03b\x06proto3\
+    \x18\x01\x20\x01(\x04R\x0csourceNodeId*P\n\x0eSingletonState\x12\x0b\n\
+    \x07JOINING\x10\0\x12\x08\n\x04IDLE\x10\x01\x12\x0c\n\x08STARTING\x10\
+    \x02\x12\x0b\n\x07RUNNING\x10\x03\x12\x0c\n\x08STOPPING\x10\x04b\x06prot\
+    o3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

@@ -11,10 +11,11 @@ message ManagerStatus {
 }
 
 enum SingletonState {
-  IDLE = 0;
-  STARTING = 1;
-  RUNNING = 2;
-  STOPPING = 3;
+  JOINING = 0;
+  IDLE = 1;
+  STARTING = 2;
+  RUNNING = 3;
+  STOPPING = 4;
 }
 
 message RequestLease {

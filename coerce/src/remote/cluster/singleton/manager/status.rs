@@ -17,6 +17,7 @@ pub struct ManagerStatus {
 }
 
 pub enum SingletonState {
+    Joining,
     Idle,
     Starting,
     Running,
@@ -32,6 +33,7 @@ impl<F: SingletonFactory> Handler<GetStatus> for Manager<F> {
         );
 
         let singleton_state = match &self.state {
+            State::Joining {..} => SingletonState::Joining,
             State::Idle => SingletonState::Idle,
             State::Starting { .. } => SingletonState::Starting,
             State::Running { .. } => SingletonState::Running,
@@ -71,6 +73,7 @@ impl Message for GetStatus {
 impl Into<proto::SingletonState> for SingletonState {
     fn into(self) -> proto::SingletonState {
         match self {
+            SingletonState::Joining => proto::SingletonState::JOINING,
             SingletonState::Idle => proto::SingletonState::IDLE,
             SingletonState::Starting => proto::SingletonState::STARTING,
             SingletonState::Running => proto::SingletonState::RUNNING,
@@ -82,6 +85,7 @@ impl Into<proto::SingletonState> for SingletonState {
 impl From<proto::SingletonState> for SingletonState {
     fn from(value: proto::SingletonState) -> Self {
         match value {
+            proto::SingletonState::JOINING => Self::Joining,
             proto::SingletonState::IDLE => Self::Idle,
             proto::SingletonState::STARTING => Self::Starting,
             proto::SingletonState::RUNNING => Self::Running,

@@ -11,6 +11,7 @@ use crate::actor::{
 };
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
+use crate::remote::cluster::singleton::manager::lease::LeaseAck;
 use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::cluster::singleton::{proto, proxy};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
@@ -20,6 +21,7 @@ use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
+use std::mem;
 use std::time::Duration;
 
 pub struct Manager<F: SingletonFactory> {
@@ -65,11 +67,16 @@ impl<F: SingletonFactory> Manager<F> {
 
 impl<A: Actor> Default for State<A> {
     fn default() -> Self {
-        Self::Idle
+        Self::Joining {
+            acknowledgement_pending: None,
+        }
     }
 }
 
 pub enum State<A: Actor> {
+    Joining {
+        acknowledgement_pending: Option<NodeId>,
+    },
     Idle,
     Starting {
         acknowledged_nodes: HashSet<NodeId>,
@@ -86,6 +93,7 @@ pub enum State<A: Actor> {
 impl<A: Actor> Debug for State<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self {
+            State::Joining { .. } => write!(f, "Joining"),
             State::Idle => write!(f, "Idle"),
             State::Starting { .. } => write!(f, "Starting"),
             State::Running { .. } => write!(f, "Running"),
@@ -265,7 +273,21 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     leader_id: leader,
                     nodes,
                 }) => {
-                    self.cluster_up = true;
+                    match mem::replace(&mut self.state, State::Idle) {
+                        State::Joining {
+                            acknowledgement_pending: Some(node_id),
+                        } => {
+                            self.notify_manager(
+                                node_id,
+                                LeaseAck {
+                                    source_node_id: self.node_id,
+                                },
+                                ctx,
+                            )
+                            .await;
+                        }
+                        _ => {}
+                    }
 
                     for node in nodes {
                         if node.id == self.node_id || !self.selector.includes(node.as_ref()) {

@@ -114,17 +114,27 @@ impl<F: SingletonFactory> Manager<F> {
         self.notify_managers(request, ctx).await;
     }
 
-    pub async fn grant_lease(&self, node_id: NodeId, ctx: &ActorContext) {
+    pub async fn grant_lease(&mut self, node_id: NodeId, ctx: &ActorContext) {
         info!(target_node_id = node_id, "sending LeaseAck");
 
-        self.notify_manager(
-            node_id,
-            LeaseAck {
-                source_node_id: self.node_id,
-            },
-            ctx,
-        )
-        .await;
+        match &mut self.state {
+            State::Joining {
+                acknowledgement_pending,
+            } => {
+                acknowledgement_pending.replace(node_id);
+            }
+
+            _ => {
+                self.notify_manager(
+                    node_id,
+                    LeaseAck {
+                        source_node_id: self.node_id,
+                    },
+                    ctx,
+                )
+                .await;
+            }
+        }
     }
 
     pub async fn on_lease_ack(&mut self, node_id: NodeId, ctx: &ActorContext) {
