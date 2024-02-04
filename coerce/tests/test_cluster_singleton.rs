@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr};
 use coerce::actor::system::builder::ActorSystemBuilder;
@@ -7,7 +8,6 @@ use coerce::remote::cluster::singleton::factory::SingletonFactory;
 use coerce::remote::cluster::singleton::{singleton, SingletonBuilder};
 use coerce::remote::system::RemoteActorSystem;
 use std::time::Duration;
-use async_trait::async_trait;
 use tokio::time::sleep;
 use tracing::Level;
 

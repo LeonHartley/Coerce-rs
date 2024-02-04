@@ -140,8 +140,7 @@ impl<F: SingletonFactory> Manager<F> {
 
                 // TODO: Can we do it with a quorum rather than *all managers*?
                 if acknowledged_nodes.len() == self.managers.len() {
-                    info!(node_id = self.node_id, "starting singleton");
-                    self.start_actor(ctx).await;
+                    self.on_all_managers_acknowledged(ctx).await;
                 }
             }
 
@@ -154,6 +153,11 @@ impl<F: SingletonFactory> Manager<F> {
                 );
             }
         }
+    }
+
+    pub async fn on_all_managers_acknowledged(&mut self, ctx: &ActorContext) {
+        info!(node_id = self.node_id, "starting singleton");
+        self.start_actor(ctx).await;
     }
 
     pub async fn deny_lease(&self, node_id: NodeId) {}

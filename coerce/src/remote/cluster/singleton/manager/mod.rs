@@ -306,8 +306,13 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                 ClusterEvent::NodeRemoved(node) => {
                     self.managers.remove(&node.id);
 
-                    // TODO: If we're pending a lease ack from this node - can we re-evaluate now that the node
-                    //       has been removed?
+                    if let State::Starting { acknowledged_nodes } = &mut self.state {
+                        acknowledged_nodes.remove(&node.id);
+
+                        if acknowledged_nodes.len() == self.managers.len() {
+                            self.on_all_managers_acknowledged(ctx).await;
+                        }
+                    }
                 }
 
                 _ => {}

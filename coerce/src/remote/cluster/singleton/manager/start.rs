@@ -48,9 +48,10 @@ impl<F: SingletonFactory> Handler<ActorStartResult<F::Actor>> for Manager<F> {
                 self.state = State::Running {
                     actor_ref: actor_ref.clone(),
                 };
+
                 let _ = self
                     .proxy
-                    .notify(proxy::SingletonStarted::new(actor_ref.clone().into()));
+                    .notify(proxy::SingletonStarted::new(actor_ref.into()));
 
                 self.notify_managers(
                     SingletonStarted {
