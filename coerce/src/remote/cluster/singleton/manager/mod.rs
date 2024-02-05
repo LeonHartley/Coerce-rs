@@ -148,6 +148,12 @@ impl<F: SingletonFactory> Manager<F> {
     {
         if let Some(manager) = self.managers.get(&node_id) {
             self.notify(message, &manager, ctx).await;
+        } else {
+            warn!(
+                node_id = node_id,
+                message = M::type_name(),
+                "attempted to notify manager that doesn't exist"
+            )
         }
     }
 
