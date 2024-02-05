@@ -38,7 +38,7 @@ impl<F: SingletonFactory> Handler<ActorStartResult<F::Actor>> for Manager<F> {
             ActorStartResult::Started(actor_ref) => {
                 match &self.state {
                     State::Starting { .. } => {
-                        info!("singleton actor started");
+                        debug!("singleton actor started");
                     }
                     _ => {
                         warn!("Invalid state, expected `Starting`");

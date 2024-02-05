@@ -79,14 +79,14 @@ pub struct LeaseNack {
 impl<F: SingletonFactory> Handler<RequestLease> for Manager<F> {
     async fn handle(&mut self, message: RequestLease, ctx: &mut ActorContext) {
         if !self.state.is_running() {
-            info!(
+            debug!(
                 source_node_id = message.source_node_id,
                 "received RequestLease"
             );
 
             self.grant_lease(message.source_node_id, ctx).await;
         } else {
-            info!(
+            debug!(
                 node_id = self.node_id,
                 singleton = F::Actor::type_name(),
                 "singleton already running, stopping",
@@ -110,17 +110,21 @@ impl<F: SingletonFactory> Manager<F> {
             source_node_id: self.node_id,
         };
 
-        info!(source_node_id = self.node_id, "requesting lease");
+        debug!(source_node_id = self.node_id, "requesting lease");
         self.notify_managers(request, ctx).await;
     }
 
     pub async fn grant_lease(&mut self, node_id: NodeId, ctx: &ActorContext) {
-        info!(target_node_id = node_id, "sending LeaseAck");
+        debug!(target_node_id = node_id, "sending LeaseAck");
 
         match &mut self.state {
             State::Joining {
                 acknowledgement_pending,
             } => {
+                debug!(
+                    target_node_id = node_id,
+                    "manager still joining, buffering acknowledgement until `MemberUp` received"
+                );
                 acknowledgement_pending.replace(node_id);
             }
 
@@ -144,8 +148,8 @@ impl<F: SingletonFactory> Manager<F> {
 
                 info!(
                     source_node_id = node_id,
-                    "received LeaseAck, total_acknowledgements={}",
-                    acknowledged_nodes.len()
+                    total_acknowledgements = acknowledged_nodes.len(),
+                    "received LeaseAck",
                 );
 
                 // TODO: Can we do it with a quorum rather than *all managers*?
@@ -166,7 +170,7 @@ impl<F: SingletonFactory> Manager<F> {
     }
 
     pub async fn on_all_managers_acknowledged(&mut self, ctx: &ActorContext) {
-        info!(node_id = self.node_id, "starting singleton");
+        debug!(node_id = self.node_id, "starting singleton");
         self.start_actor(ctx).await;
     }
 

@@ -175,7 +175,7 @@ impl<F: SingletonFactory> Manager<F> {
     ) where
         Self: Handler<M>,
     {
-        info!(
+        debug!(
             source_node_id = self.node_id,
             node_id = manager.node_id(),
             message = M::type_name(),
@@ -242,7 +242,7 @@ impl<F: SingletonFactory> Actor for Manager<F> {
         let sys = ctx.system().remote();
         self.current_leader_node = sys.current_leader();
 
-        info!(
+        debug!(
             node_id = self.node_id,
             singleton = F::Actor::type_name(),
             "manager started"
@@ -298,6 +298,12 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                         }
                         _ => {}
                     }
+
+                    debug!(
+                        leader = leader,
+                        nodes_len = nodes.len(),
+                        "manager received `MemberUp`"
+                    );
 
                     for node in nodes {
                         if node.id == self.node_id || !self.selector.includes(node.as_ref()) {
@@ -374,7 +380,7 @@ pub struct SingletonStopped {
 #[async_trait]
 impl<F: SingletonFactory> Handler<SingletonStarted> for Manager<F> {
     async fn handle(&mut self, message: SingletonStarted, ctx: &mut ActorContext) {
-        info!(
+        debug!(
             source_node_id = message.source_node_id,
             "received started notification, notifying proxy"
         );
@@ -393,7 +399,7 @@ impl<F: SingletonFactory> Handler<SingletonStarted> for Manager<F> {
 #[async_trait]
 impl<F: SingletonFactory> Handler<SingletonStopped> for Manager<F> {
     async fn handle(&mut self, message: SingletonStopped, ctx: &mut ActorContext) {
-        info!(
+        debug!(
             source_node_id = message.source_node_id,
             "received stopped notification, notifying proxy"
         );
