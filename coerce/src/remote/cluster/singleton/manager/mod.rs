@@ -283,22 +283,6 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     leader_id: leader,
                     nodes,
                 }) => {
-                    match mem::replace(&mut self.state, State::Idle) {
-                        State::Joining {
-                            acknowledgement_pending: Some(node_id),
-                        } => {
-                            self.notify_manager(
-                                node_id,
-                                LeaseAck {
-                                    source_node_id: self.node_id,
-                                },
-                                ctx,
-                            )
-                            .await;
-                        }
-                        _ => {}
-                    }
-
                     debug!(
                         leader = leader,
                         nodes_len = nodes.len(),
@@ -319,6 +303,22 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                             )
                             .into(),
                         );
+                    }
+
+                    match mem::replace(&mut self.state, State::Idle) {
+                        State::Joining {
+                            acknowledgement_pending: Some(node_id),
+                        } => {
+                            self.notify_manager(
+                                node_id,
+                                LeaseAck {
+                                    source_node_id: self.node_id,
+                                },
+                                ctx,
+                            )
+                                .await;
+                        }
+                        _ => {}
                     }
 
                     if leader == &self.node_id {
