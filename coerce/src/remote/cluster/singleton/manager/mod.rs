@@ -123,6 +123,10 @@ impl<A: Actor> State<A> {
         matches!(self, Self::Running { .. } | Self::Starting { .. })
     }
 
+    pub fn is_joining(&self) -> bool {
+        matches!(self, Self::Joining { .. })
+    }
+
     pub fn get_actor(&self) -> Option<LocalActorRef<A>> {
         match &self {
             Self::Running { actor_ref } | Self::Stopping { actor_ref, .. } => {
@@ -311,11 +315,9 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                 }
 
                 ClusterEvent::LeaderChanged(leader) => {
-                    if !self.cluster_up {
-                        return;
+                    if !self.state.is_joining() {
+                        self.on_leader_changed(*leader, ctx).await;
                     }
-
-                    self.on_leader_changed(*leader, ctx).await;
                 }
 
                 ClusterEvent::NodeAdded(node) => {
@@ -336,7 +338,7 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                 ClusterEvent::NodeRemoved(node) => {
                     self.managers.remove(&node.id);
 
-                    if self.cluster_up {
+                    if !self.state.is_joining() {
                         if let State::Starting { acknowledged_nodes } = &mut self.state {
                             acknowledged_nodes.remove(&node.id);
 

@@ -33,7 +33,7 @@ impl<F: SingletonFactory> Handler<GetStatus> for Manager<F> {
         );
 
         let singleton_state = match &self.state {
-            State::Joining {..} => SingletonState::Joining,
+            State::Joining { .. } => SingletonState::Joining,
             State::Idle => SingletonState::Idle,
             State::Starting { .. } => SingletonState::Starting,
             State::Running { .. } => SingletonState::Running,
