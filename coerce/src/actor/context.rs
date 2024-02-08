@@ -385,27 +385,41 @@ fn on_context_dropped(
         ActorStatus::Started => {
             if let Some(true) = system_terminated {
                 debug!(
-                    "actor (id={}, type={}) has stopped due to system shutdown",
-                    actor_id, actor_type
+                    actor_id = actor_id.as_ref(),
+                    actor_type = actor_type,
+                    "actor stopped due to system shutdown",
                 );
             } else {
-                debug!("actor (id={}) has stopped unexpectedly", actor.0.actor_id());
+                debug!(
+                    actor_id = actor.0.actor_id().as_ref(),
+                    actor_type = actor_type,
+                    "actor stopped unexpectedly"
+                );
             }
         }
 
         ActorStatus::Stopping => {
             if let Some(true) = system_terminated {
-                trace!("actor (id={}) has stopped due to system shutdown", actor_id,);
+                trace!(
+                    actor_id = actor_id.as_ref(),
+                    actor_type = actor_type,
+                    "actor stopped due to system shutdown"
+                );
             } else {
                 debug!(
-                    "actor (id={}) was stopping but did not complete the stop procedure",
-                    actor_id,
+                    actor_id = actor_id.as_ref(),
+                    actor_type = actor_type,
+                    "actor was stopping but did not complete the stop procedure",
                 );
             }
         }
 
         ActorStatus::Stopped => {
-            debug!("actor (id={}) stopped, context dropped", actor_id);
+            debug!(
+                actor_id = actor_id.as_ref(),
+                actor_type = actor_type,
+                "actor stopped, context dropped"
+            );
         }
     }
 

@@ -80,8 +80,8 @@ impl Handler<EntityRequest> for ShardHost {
                 message,
                 ctx.system().remote_owned(),
             ));
-        } else if ctx.system().remote().current_leader().is_some() {
-            let leader = self.get_coordinator(&ctx).await;
+        } else {
+            let leader = self.get_coordinator();
 
             let buffered_requests = self.requests_pending_shard_allocation.entry(shard_id);
             let buffered_requests = buffered_requests.or_insert_with(|| vec![]);
@@ -116,13 +116,6 @@ impl Handler<EntityRequest> for ShardHost {
                     Err(_e) => {}
                 }
             });
-        } else {
-            self.requests_pending_leader_allocation.push_back(message);
-
-            debug!(
-                "no leader allocated, buffering message (requests_pending_leader_allocation={})",
-                self.requests_pending_leader_allocation.len()
-            );
         }
     }
 }

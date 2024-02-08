@@ -124,3 +124,12 @@ pub fn singleton<F: SingletonFactory>(
             actor_type
         ))
 }
+
+impl<A: Actor, F: SingletonFactory<Actor = A>> Clone for Singleton<A, F> {
+    fn clone(&self) -> Self {
+        Self {
+            manager: self.manager.clone(),
+            proxy: self.proxy.clone(),
+        }
+    }
+}

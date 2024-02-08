@@ -6,9 +6,7 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
-use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRef, ActorRefErr, IntoActor, LocalActorRef, ToActorId,
-};
+use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, IntoActor, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
 use crate::remote::cluster::singleton::manager::lease::LeaseAck;
@@ -19,7 +17,7 @@ use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, 
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::time::Duration;
@@ -316,7 +314,7 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                                 },
                                 ctx,
                             )
-                                .await;
+                            .await;
                         }
                         _ => {}
                     }

@@ -136,7 +136,7 @@ async fn create_system(
 
 #[tokio::test]
 pub async fn test_shard_rebalancing_upon_node_termination() {
-    util::create_logger(Some(Level::WARN));
+    util::create_logger(Some(Level::DEBUG));
 
     let persistence = Persistence::from(InMemoryStorageProvider::new());
     let (remote_a, server_a) = create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;

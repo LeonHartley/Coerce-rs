@@ -27,6 +27,8 @@ impl<M: Message> Deliver<M> {
         let message = self.message.take().unwrap();
         let result_channel = self.result_channel.take().unwrap();
         tokio::spawn(async move {
+            debug!(msg_type = M::type_name(), "delivering message to singleton");
+
             let res = actor.send(message).await;
             result_channel.send(res)
         });

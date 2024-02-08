@@ -38,9 +38,9 @@ impl ActorSystem {
             Ok(_) => Ok(actor_ref),
             Err(_e) => {
                 error!(
-                    "actor not started, actor_id={}, type={}",
-                    &id,
-                    A::type_name()
+                    actor_id = id.as_ref(),
+                    actor_type = A::type_name(),
+                    "actor not started",
                 );
                 Err(ActorRefErr::ActorStartFailed)
             }

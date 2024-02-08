@@ -61,7 +61,7 @@ impl ActorLoop {
             .new_context(system.clone(), Starting, actor_ref.clone().into())
             .with_parent(parent_ref);
 
-        trace!("[{}] starting", ctx.full_path());
+        trace!(actor = ctx.full_path().as_ref(), "actor starting");
 
         actor.started(&mut ctx).await;
         ActorMetrics::incr_actor_created(A::type_name());
@@ -72,7 +72,7 @@ impl ActorLoop {
 
         ctx.set_status(Started);
 
-        trace!("[{}] ready", ctx.full_path());
+        trace!(actor = ctx.full_path().as_ref(), "actor ready");
 
         if let Some(on_start) = on_start.take() {
             let _ = on_start.send(());
@@ -102,7 +102,11 @@ impl ActorLoop {
                     message_type = msg.name(),
                 );
 
-                trace!("[{}] received {}", ctx.full_path(), msg.name(),);
+                trace!(
+                    actor = ctx.full_path().as_ref(),
+                    msg_type = msg.name(),
+                    "actor message received"
+                );
 
                 let handle_fut = msg.handle(&mut actor, &mut ctx);
 
@@ -111,7 +115,11 @@ impl ActorLoop {
 
                 handle_fut.await;
 
-                trace!("[{}] processed {}", ctx.full_path(), msg.name());
+                trace!(
+                    actor = ctx.full_path().as_ref(),
+                    msg_type = msg.name(),
+                    "actor message processed"
+                );
             }
 
             if ctx.get_status() == &Stopping {
@@ -119,7 +127,7 @@ impl ActorLoop {
             }
         }
 
-        trace!("[{}] stopping", ctx.full_path());
+        trace!(actor = ctx.full_path().as_ref(), "actor stopping");
 
         ctx.set_status(Stopping);
 
@@ -141,7 +149,7 @@ async fn actor_stopped<A: Actor>(
     if actor_type.is_tracked() {
         if let Some(system) = system.take() {
             if !system.is_terminated() {
-                trace!("de-registering actor {}", &actor_id);
+                trace!(actor_id = actor_id.as_ref(), "de-registering actor");
 
                 system
                     .scheduler()

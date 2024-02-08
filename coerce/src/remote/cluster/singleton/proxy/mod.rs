@@ -66,19 +66,25 @@ impl<A: Actor> Handler<SingletonStarted<A>> for Proxy<A> {
 
         match &mut self.state {
             ProxyState::Buffered { request_queue } => {
-                debug!(
-                    buffered_msgs = request_queue.len(),
-                    actor_ref = format!("{}", &actor_ref),
-                    "emitting buffered messages",
-                );
+                if request_queue.len() > 0 {
+                    debug!(
+                        buffered_msgs = request_queue.len(),
+                        actor_ref = format!("{}", &actor_ref),
+                        "emitting buffered messages",
+                    );
 
-                while let Some(mut buffered) = request_queue.pop_front() {
-                    buffered.send(actor_ref.clone());
+                    while let Some(mut buffered) = request_queue.pop_front() {
+                        buffered.send(actor_ref.clone());
+                    }
                 }
             }
             _ => {}
         }
 
+        debug!(
+            singleton_actor = format!("{}", actor_ref),
+            "singleton proxy active - singleton started"
+        );
         self.state = ProxyState::Active { actor_ref };
     }
 }
