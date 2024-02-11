@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRef, ActorRefErr};
-use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::proxy::{Proxy, ProxyState};
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::proxy::{Proxy, ProxyState};
 use tokio::sync::oneshot::Sender;
 
 pub struct Deliver<M: Message> {

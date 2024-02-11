@@ -7,7 +7,7 @@ use crate::actor::{
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-use crate::remote::cluster::singleton::{singleton, Singleton, SingletonBuilder};
+use crate::singleton::{singleton, Singleton, SingletonBuilder};
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 use crate::sharding::coordinator::allocation::AllocateShard;

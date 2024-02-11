@@ -1,5 +1,5 @@
 use crate::actor::LocalActorRef;
-use crate::remote::cluster::singleton::factory::SingletonFactory;
+use crate::singleton::factory::SingletonFactory;
 use crate::sharding::coordinator::ShardCoordinator;
 use crate::sharding::host::ShardHost;
 

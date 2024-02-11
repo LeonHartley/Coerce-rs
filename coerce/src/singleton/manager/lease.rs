@@ -3,10 +3,10 @@ use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
 use crate::actor::Actor;
-use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::status::SingletonState;
-use crate::remote::cluster::singleton::manager::{Manager, State};
-use crate::remote::cluster::singleton::proto::singleton as proto;
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::manager::status::SingletonState;
+use crate::singleton::manager::{Manager, State};
+use crate::singleton::proto::singleton as proto;
 use crate::remote::system::{NodeId, RemoteActorSystem};
 
 #[derive(Clone)]

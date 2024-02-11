@@ -179,5 +179,7 @@ pub mod remote;
 
 #[cfg(feature = "sharding")]
 pub mod sharding;
+#[cfg(feature = "singleton")]
+pub mod singleton;
 
 pub(crate) const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");

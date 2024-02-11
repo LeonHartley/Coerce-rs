@@ -1,9 +1,9 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRefErr, IntoActor, LocalActorRef, PipeTo};
-use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::{Manager, SingletonStarted, State};
-use crate::remote::cluster::singleton::proxy;
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::manager::{Manager, SingletonStarted, State};
+use crate::singleton::proxy;
 
 pub enum ActorStartResult<A: Actor> {
     Started(LocalActorRef<A>),

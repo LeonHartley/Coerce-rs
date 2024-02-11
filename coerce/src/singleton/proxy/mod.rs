@@ -1,7 +1,7 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRef, ToActorId};
-use crate::remote::cluster::singleton::proxy::send::Buffered;
+use crate::singleton::proxy::send::Buffered;
 use std::collections::VecDeque;
 
 pub mod send;

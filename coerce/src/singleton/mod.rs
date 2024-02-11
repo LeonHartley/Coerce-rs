@@ -3,11 +3,11 @@ use crate::actor::{
     Actor, ActorFactory, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef, ToActorId,
 };
 use crate::remote::cluster::node::NodeSelector;
-use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
-use crate::remote::cluster::singleton::manager::{Manager, SingletonStarted, SingletonStopped};
-use crate::remote::cluster::singleton::proxy::send::Deliver;
-use crate::remote::cluster::singleton::proxy::Proxy;
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::manager::lease::{LeaseAck, RequestLease};
+use crate::singleton::manager::{Manager, SingletonStarted, SingletonStopped};
+use crate::singleton::proxy::send::Deliver;
+use crate::singleton::proxy::Proxy;
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 use tokio::sync::oneshot;

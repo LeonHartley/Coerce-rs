@@ -2,9 +2,9 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
-use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::{Manager, State};
-use crate::remote::cluster::singleton::proto::singleton as proto;
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::manager::{Manager, State};
+use crate::singleton::proto::singleton as proto;
 use crate::remote::system::NodeId;
 use protobuf::EnumOrUnknown;
 

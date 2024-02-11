@@ -8,10 +8,10 @@ use crate::actor::message::{
 };
 use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, IntoActor, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
-use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
-use crate::remote::cluster::singleton::proxy::Proxy;
-use crate::remote::cluster::singleton::{proto, proxy};
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::manager::lease::{LeaseAck, RequestLease};
+use crate::singleton::proxy::Proxy;
+use crate::singleton::{proto, proxy};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
@@ -370,6 +370,7 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                 ClusterEvent::NodeRemoved(node) => {
                     self.managers.remove(&node.id);
 
+                    debug!(node_id = node.id, "node removed");
                     if !self.state.is_joining() {
                         if let State::Starting { acknowledged_nodes } = &mut self.state {
                             acknowledged_nodes.remove(&node.id);
