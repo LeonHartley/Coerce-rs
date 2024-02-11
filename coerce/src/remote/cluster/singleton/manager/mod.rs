@@ -9,7 +9,7 @@ use crate::actor::message::{
 use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, IntoActor, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::cluster::singleton::factory::SingletonFactory;
-use crate::remote::cluster::singleton::manager::lease::LeaseAck;
+use crate::remote::cluster::singleton::manager::lease::{LeaseAck, RequestLease};
 use crate::remote::cluster::singleton::proxy::Proxy;
 use crate::remote::cluster::singleton::{proto, proxy};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
@@ -336,12 +336,32 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                     if node.id != self.node_id && self.selector.includes(node.as_ref()) {
                         let mut entry = self.managers.entry(node.id);
                         if let Entry::Vacant(mut entry) = entry {
-                            let remote_ref = RemoteActorRef::new(
+                            let remote_ref: ActorRef<Manager<F>> = RemoteActorRef::new(
                                 format!("{}-{}", &self.manager_actor_id, node.id).to_actor_id(),
                                 node.id,
                                 sys.clone(),
                             )
                             .into();
+
+                            match &self.state {
+                                State::Starting { .. } => {
+                                    let _ = remote_ref
+                                        .notify(RequestLease {
+                                            source_node_id: self.node_id,
+                                        })
+                                        .await;
+                                }
+                                State::Running { .. } => {
+                                    let _ = remote_ref
+                                        .notify(SingletonStarted {
+                                            source_node_id: self.node_id,
+                                        })
+                                        .await;
+                                }
+
+                                _ => {}
+                            }
+
                             entry.insert(remote_ref);
                         }
                     }
