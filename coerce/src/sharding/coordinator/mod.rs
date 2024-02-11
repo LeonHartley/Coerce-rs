@@ -92,8 +92,8 @@ impl PersistentActor for ShardCoordinator {
         //       or rebalance/rehydrate if necessary
 
         info!(
-            "shard coordinator started (shard_entity={})",
-            &self.shard_entity
+            shard_entity = &self.shard_entity,
+            "shard coordinator started",
         );
 
         self.system_event_subscription = Some(

@@ -105,12 +105,22 @@ impl<F: SingletonFactory> Handler<LeaseAck> for Manager<F> {
 }
 
 impl<F: SingletonFactory> Manager<F> {
-    pub async fn request_lease(&self, ctx: &ActorContext) {
+    pub async fn request_lease(&mut self, ctx: &ActorContext) {
+        if self.managers.len() == 0 {
+            self.on_all_managers_acknowledged(ctx).await;
+            return;
+        }
+
         let request = RequestLease {
             source_node_id: self.node_id,
         };
 
-        debug!(source_node_id = self.node_id, "requesting lease");
+        let manager_count = self.managers.len();
+        debug!(
+            source_node_id = self.node_id,
+            manager_count = manager_count,
+            "requesting lease"
+        );
         self.notify_managers(request, ctx).await;
     }
 

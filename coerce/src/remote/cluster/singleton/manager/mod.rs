@@ -331,6 +331,8 @@ impl<F: SingletonFactory> Handler<Receive<SystemTopic>> for Manager<F> {
                 }
 
                 ClusterEvent::NodeAdded(node) => {
+                    debug!(node_id = node.id, "node added");
+
                     if node.id != self.node_id && self.selector.includes(node.as_ref()) {
                         let mut entry = self.managers.entry(node.id);
                         if let Entry::Vacant(mut entry) = entry {
