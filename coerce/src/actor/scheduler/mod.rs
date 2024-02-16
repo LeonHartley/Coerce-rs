@@ -50,34 +50,35 @@ impl ActorScheduler {
 
 #[async_trait]
 impl Actor for ActorScheduler {
-    async fn started(&mut self, _ctx: &mut ActorContext) {
-        tracing::trace!("started on system {}", self.system_id);
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        debug!(actor_id = ctx.id().as_ref(), "scheduler started");
     }
 
     async fn stopped(&mut self, _ctx: &mut ActorContext) {
         debug!(
-            "scheduler stopping, total tracked actors={}",
-            self.actors.len()
+            total_tracked_actors = self.actors.len(),
+            "scheduler stopping",
         );
 
         let start_time = Instant::now();
         let stop_results =
             futures::future::join_all(self.actors.iter().map(|(id, actor)| async move {
-                debug!("stopping actor (id={})", &actor.actor_id());
+                debug!(actor_id = actor.actor_id().as_ref(), "stopping actor");
                 (id.clone(), actor.stop().await)
             }))
             .await;
 
         debug!(
-            "stopped {} actors in {:?}",
-            stop_results.len(),
-            start_time.elapsed()
+            stopped_count = stop_results.len(),
+            time_taken = format!("{:?}", start_time.elapsed()),
+            "stopped all actors",
         );
+
         for stop_result in stop_results {
             debug!(
-                "stopped actor (id={}, stop_successful={})",
-                stop_result.0,
-                stop_result.1.is_ok()
+                actor_id = stop_result.0.as_ref(),
+                successful = stop_result.1.is_ok(),
+                "actor stopped",
             );
         }
 
@@ -195,18 +196,21 @@ where
             .insert(actor_id.clone(), BoxedActorRef::from(message.actor_ref));
 
         if let Some(previous_actor) = previous_actor {
-            warn!("actor({previous_actor}) has been replaced with a new reference and is no longer tracked by the scheduler", previous_actor = previous_actor);
+            warn!(
+                previous_actor = previous_actor.actor_id().as_ref(),
+                "actor replaced with a new reference and is no longer tracked by the scheduler"
+            );
             return;
         }
 
-        debug!("actor {} registered", &actor_id);
+        debug!(actor_id = actor_id.as_ref(), "actor registered");
 
         #[cfg(feature = "remote")]
         if let Some(remote) = &self.remote {
             debug!(
-                "[node={}] registering actor with remote registry, actor_id={}",
-                remote.node_id(),
-                &actor_id
+                node_id = remote.node_id(),
+                actor_id = actor_id.as_ref(),
+                "registering actor with remote registry",
             );
 
             remote.register_actor(actor_id, None);

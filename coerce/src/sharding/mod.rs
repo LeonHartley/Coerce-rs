@@ -7,7 +7,6 @@ use crate::actor::{
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-use crate::singleton::{singleton, Singleton, SingletonBuilder};
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 use crate::sharding::coordinator::allocation::AllocateShard;
@@ -20,6 +19,7 @@ use crate::sharding::host::{
 };
 use crate::sharding::shard::stats::GetShardStats;
 use crate::sharding::shard::Shard;
+use crate::singleton::{singleton, Singleton, SingletonBuilder};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::sync::oneshot;

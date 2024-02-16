@@ -230,7 +230,7 @@ impl Actor for RemoteClient {
                     let _res = connection.write.close().await;
                     connection.receive_task.abort();
                 }
-                ClientState::Quarantined { .. } => {}
+                ClientState::Terminated { .. } => {}
             },
         }
 
@@ -243,14 +243,21 @@ impl Actor for RemoteClient {
 }
 
 pub enum ClientState {
-    Idle {
-        connection_attempts: usize,
-    },
+    Idle { connection_attempts: usize },
     Connected(ConnectionState),
-    Quarantined {
-        since: DateTime<Utc>,
-        connection_attempts: usize,
-    },
+    Terminated,
+}
+
+impl ClientState {
+    pub fn connection_attempts(&self) -> Option<usize> {
+        match &self {
+            ClientState::Idle {
+                connection_attempts,
+            } => Some(*connection_attempts),
+            ClientState::Connected(_) => None,
+            ClientState::Terminated => None,
+        }
+    }
 }
 
 pub struct ConnectionState {
@@ -299,10 +306,6 @@ pub struct BeginHandshake {
 
 impl Message for BeginHandshake {
     type Result = ();
-}
-
-impl ConnectionState {
-    pub async fn disconnected(&mut self) {}
 }
 
 impl ClientState {

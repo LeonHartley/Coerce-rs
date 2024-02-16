@@ -1,8 +1,8 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::Timer;
-use crate::actor::{Actor, LocalActorRef};
-use crate::remote::actor::message::ClientConnected;
+use crate::actor::{Actor, CoreActorRef, LocalActorRef};
+use crate::remote::actor::message::{ClientConnected, RemoveClient};
 use crate::remote::cluster::discovery::{Discover, Seed};
 use crate::remote::cluster::node::RemoteNode;
 use crate::remote::net::client::ping::PingTick;
@@ -17,6 +17,7 @@ use crate::remote::net::proto::network::{self as proto, IdentifyEvent};
 use crate::remote::net::{receive_loop, StreamData};
 
 use bytes::Bytes;
+use chrono::Utc;
 use protobuf::EnumOrUnknown;
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -115,7 +116,7 @@ impl RemoteClient {
 
 pub struct Disconnected;
 
-const RECONNECT_DELAY: Duration = Duration::from_millis(1000);
+const RECONNECT_DELAY: Duration = Duration::from_millis(5000);
 
 #[async_trait]
 impl Handler<Connect> for RemoteClient {
@@ -275,57 +276,69 @@ impl Handler<Disconnected> for RemoteClient {
     async fn handle(&mut self, _msg: Disconnected, ctx: &mut ActorContext) {
         if let Some(true) = self.state.as_ref().map(|n| n.is_connected()) {
             warn!(
-                "RemoteClient disconnected from node (addr={}), attempting re-connection in {}ms",
-                &self.addr,
-                RECONNECT_DELAY.as_millis()
+                addr = &self.addr,
+                reconnect_delay_millis = RECONNECT_DELAY.as_millis(),
+                "RemoteClient disconnected from node",
             );
         } else {
             warn!(
-                "failed to connect to node (addr={}) retrying in {}ms",
-                &self.addr,
-                RECONNECT_DELAY.as_millis()
+                addr = &self.addr,
+                reconnect_delay_millis = RECONNECT_DELAY.as_millis(),
+                "RemoteClient failed to re-connect to node",
             );
         }
 
+        let mut reconnect = true;
         let state = match self.state.take().unwrap() {
             ClientState::Idle {
                 connection_attempts,
             } => {
                 let connection_attempts = connection_attempts + 1;
+                if connection_attempts > 10 {
+                    reconnect = false;
 
-                ClientState::Idle {
-                    connection_attempts,
+                    warn!(
+                        addr = &self.addr,
+                        connection_attempts = connection_attempts,
+                        "client terminating, no longer attempting to re-connect"
+                    );
+
+                    ClientState::Terminated
+                } else {
+                    ClientState::Idle {
+                        connection_attempts,
+                    }
                 }
             }
 
-            ClientState::Quarantined {
-                since,
-                connection_attempts,
-            } => {
-                let connection_attempts = connection_attempts + 1;
+            ClientState::Connected(mut state) => ClientState::Idle {
+                connection_attempts: 1,
+            },
 
-                ClientState::Quarantined {
-                    since,
-                    connection_attempts,
-                }
-            }
-
-            ClientState::Connected(mut state) => {
-                state.disconnected().await;
-
-                ClientState::Idle {
-                    connection_attempts: 1,
-                }
-            }
+            state => state,
         };
 
         self.state = Some(state);
 
-        let self_ref = self.actor_ref(ctx);
-        tokio::spawn(async move {
-            tokio::time::sleep(RECONNECT_DELAY).await;
-            let _res = self_ref.send(Connect).await;
-        });
+        if reconnect {
+            let self_ref = self.actor_ref(ctx);
+            tokio::spawn(async move {
+                tokio::time::sleep(RECONNECT_DELAY).await;
+                let _res = self_ref.send(Connect).await;
+            });
+        } else {
+            let _ = ctx
+                .system()
+                .remote()
+                .client_registry()
+                .send(RemoveClient {
+                    addr: self.addr.clone(),
+                    node_id: self.node_id,
+                })
+                .await;
+
+            let _ = ctx.boxed_actor_ref().notify_stop();
+        }
     }
 }
 

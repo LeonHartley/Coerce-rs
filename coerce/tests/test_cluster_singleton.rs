@@ -4,9 +4,9 @@ use coerce::actor::message::{Handler, Message, MessageUnwrapErr, MessageWrapErr}
 use coerce::actor::system::builder::ActorSystemBuilder;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::Actor;
+use coerce::remote::system::RemoteActorSystem;
 use coerce::singleton::factory::SingletonFactory;
 use coerce::singleton::{singleton, SingletonBuilder};
-use coerce::remote::system::RemoteActorSystem;
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::Level;

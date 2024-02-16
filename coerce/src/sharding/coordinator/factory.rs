@@ -1,7 +1,7 @@
 use crate::actor::LocalActorRef;
-use crate::singleton::factory::SingletonFactory;
 use crate::sharding::coordinator::ShardCoordinator;
 use crate::sharding::host::ShardHost;
+use crate::singleton::factory::SingletonFactory;
 
 pub struct CoordinatorFactory {
     shard_entity: String,

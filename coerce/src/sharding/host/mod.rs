@@ -16,9 +16,9 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 
 use crate::actor::scheduler::ActorType;
+use crate::sharding::coordinator::factory::CoordinatorFactory;
 use crate::singleton::factory::SingletonFactory;
 use crate::singleton::Singleton;
-use crate::sharding::coordinator::factory::CoordinatorFactory;
 use uuid::Uuid;
 
 pub mod request;

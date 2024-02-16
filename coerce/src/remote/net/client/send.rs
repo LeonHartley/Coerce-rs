@@ -83,7 +83,7 @@ impl RemoteClient {
             let mut buffer_message = None;
 
             let stream_write_error = match &mut self.state.as_mut().unwrap() {
-                ClientState::Idle { .. } | ClientState::Quarantined { .. } => {
+                ClientState::Idle { .. } => {
                     buffer_message = Some(bytes);
 
                     debug!("attempt to write to addr={} but no connection is established, buffering message (total_buffered={})",
@@ -114,6 +114,8 @@ impl RemoteClient {
                         false
                     }
                 }
+
+                ClientState::Terminated => true,
             };
 
             if let Some(message_bytes) = buffer_message {

@@ -8,14 +8,14 @@ use crate::actor::message::{
 };
 use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, IntoActor, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
-use crate::singleton::factory::SingletonFactory;
-use crate::singleton::manager::lease::{LeaseAck, RequestLease};
-use crate::singleton::proxy::Proxy;
-use crate::singleton::{proto, proxy};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::manager::lease::{LeaseAck, RequestLease};
+use crate::singleton::proxy::Proxy;
+use crate::singleton::{proto, proxy};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};

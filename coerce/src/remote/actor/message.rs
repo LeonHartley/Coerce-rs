@@ -44,6 +44,15 @@ impl Message for NewClient {
     type Result = Option<LocalActorRef<RemoteClient>>;
 }
 
+pub struct RemoveClient {
+    pub addr: String,
+    pub node_id: Option<NodeId>,
+}
+
+impl Message for RemoveClient {
+    type Result = ();
+}
+
 pub struct ClientConnected {
     pub addr: String,
     pub remote_node_id: NodeId,

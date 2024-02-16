@@ -3,11 +3,11 @@ use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
 use crate::actor::Actor;
+use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::singleton::factory::SingletonFactory;
 use crate::singleton::manager::status::SingletonState;
 use crate::singleton::manager::{Manager, State};
 use crate::singleton::proto::singleton as proto;
-use crate::remote::system::{NodeId, RemoteActorSystem};
 
 #[derive(Clone)]
 pub struct RequestLease {
