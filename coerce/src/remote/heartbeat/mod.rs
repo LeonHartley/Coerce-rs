@@ -7,11 +7,11 @@ use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, BoxedActorRef, IntoActor, LocalActorRef};
 use crate::actor::{ActorId, CoreActorRef};
 use crate::remote::actor::message::{NodeTerminated, SetRemote};
-use crate::remote::cluster::node::{NodeStatus, RemoteNodeState};
+use crate::remote::cluster::node::{NodeStatus, RemoteNodeRef, RemoteNodeState};
 use crate::remote::net::proto::network::PongEvent;
 use crate::remote::stream::pubsub::PubSub;
-use crate::remote::stream::system::ClusterEvent::LeaderChanged;
-use crate::remote::stream::system::{SystemEvent, SystemTopic};
+use crate::remote::stream::system::ClusterEvent::{LeaderChanged, MemberUp};
+use crate::remote::stream::system::{ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use chrono::{DateTime, Utc};
 
@@ -19,6 +19,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 
 use std::ops::Add;
+use std::sync::Arc;
 
 use crate::remote::heartbeat::health::{
     GetHealth, RegisterHealthCheck, RemoveHealthCheck, SystemHealth,
@@ -29,29 +30,35 @@ use tokio::sync::oneshot::Sender;
 
 pub struct Heartbeat {
     system: Option<RemoteActorSystem>,
+    cluster_member_up: bool,
     heartbeat_timer: Option<Timer>,
     last_heartbeat: Option<DateTime<Utc>>,
     node_pings: HashMap<NodeId, NodePing>,
     on_next_leader_changed: VecDeque<Sender<NodeId>>,
     health_check_actors: Vec<BoxedActorRef>,
+    config: HeartbeatConfig,
 }
 
+#[derive(Clone)]
 pub struct HeartbeatConfig {
     pub interval: Duration,
     pub ping_timeout: Duration,
     pub unhealthy_node_heartbeat_timeout: Duration,
     pub terminated_node_heartbeat_timeout: Duration,
+    pub minimum_cluster_size: Option<usize>,
 }
 
 impl Heartbeat {
-    pub async fn start(sys: &ActorSystem) -> LocalActorRef<Heartbeat> {
+    pub async fn start(sys: &ActorSystem, config: HeartbeatConfig) -> LocalActorRef<Heartbeat> {
         Heartbeat {
             system: None,
+            cluster_member_up: false,
             heartbeat_timer: None,
             last_heartbeat: None,
             node_pings: HashMap::new(),
             on_next_leader_changed: VecDeque::new(),
             health_check_actors: Vec::new(),
+            config,
         }
         .into_actor(Some("heartbeat"), sys)
         .await
@@ -81,16 +88,15 @@ impl Heartbeat {
 impl Handler<SetRemote> for Heartbeat {
     async fn handle(&mut self, message: SetRemote, ctx: &mut ActorContext) {
         let system = message.0;
-        let heartbeat_config = system.config().heartbeat_config();
         debug!(
             "starting heartbeat timer (tick duration={} millis), node_id={}",
-            heartbeat_config.interval.as_millis(),
+            self.config.interval.as_millis(),
             system.node_id()
         );
 
         self.heartbeat_timer = Some(Timer::start(
             self.actor_ref(ctx),
-            heartbeat_config.interval,
+            self.config.interval,
             HeartbeatTick,
         ));
 
@@ -121,6 +127,7 @@ impl Default for HeartbeatConfig {
             ping_timeout: Duration::from_secs(15),
             unhealthy_node_heartbeat_timeout: Duration::from_millis(1500),
             terminated_node_heartbeat_timeout: Duration::from_secs(30),
+            minimum_cluster_size: None,
         }
     }
 }
@@ -196,7 +203,7 @@ impl Handler<OnLeaderChanged> for Heartbeat {
 #[async_trait]
 impl Handler<HeartbeatTick> for Heartbeat {
     async fn handle(&mut self, _msg: HeartbeatTick, _ctx: &mut ActorContext) {
-        let system = self.system.as_ref().unwrap();
+        let system = self.system.as_ref().unwrap().clone();
 
         let node_tag = system.node_tag();
         let current_node = system.node_id();
@@ -233,7 +240,7 @@ impl Handler<HeartbeatTick> for Heartbeat {
                 current_node,
                 node,
                 self.node_pings.get(&node_id).map(|r| r.1.clone()),
-                system.config().heartbeat_config(),
+                &self.config,
             ));
         }
 
@@ -274,12 +281,27 @@ impl Handler<HeartbeatTick> for Heartbeat {
             }
         }
 
-        system.update_nodes(updates).await;
-        self.last_heartbeat = Some(Utc::now());
+        system.update_nodes(updates.clone()).await;
 
         if let Some(new_leader_id) = new_leader_id {
+            if !self.cluster_member_up {
+                let min_cluster_size_reached = match self.config.minimum_cluster_size {
+                    None => true,
+                    Some(n) => n >= self.node_pings.len(),
+                };
+
+                if min_cluster_size_reached {
+                    self.on_min_cluster_size_reached(
+                        new_leader_id,
+                        updates.into_iter().map(|n| Arc::new(n.into())).collect(),
+                    );
+                }
+            }
+
             self.update_leader(new_leader_id);
         }
+
+        self.last_heartbeat = Some(Utc::now());
     }
 }
 
@@ -301,6 +323,21 @@ impl Heartbeat {
         while let Some(on_leader_changed_cb) = self.on_next_leader_changed.pop_front() {
             let _ = on_leader_changed_cb.send(node_id);
         }
+    }
+
+    fn on_min_cluster_size_reached(&mut self, leader_id: NodeId, nodes: Vec<RemoteNodeRef>) {
+        self.cluster_member_up = true;
+        let system = self.system.as_ref().unwrap();
+
+        let sys = system.clone();
+        tokio::spawn(async move {
+            let _ = PubSub::publish_locally(
+                SystemTopic,
+                SystemEvent::Cluster(MemberUp(ClusterMemberUp { leader_id, nodes })),
+                &sys,
+            )
+            .await;
+        });
     }
 }
 

@@ -2,24 +2,24 @@
 
 use crate::actor::message::{Handler, Message};
 use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRecipe, ActorRef, ActorRefErr, IntoActor, IntoActorId,
-    LocalActorRef,
+    Actor, ActorFactory, ActorId, ActorRecipe, ActorRefErr, IntoActor, IntoActorId, LocalActorRef,
 };
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-use crate::remote::system::builder::{RemoteActorSystemBuilder, RemoteSystemConfigBuilder};
+use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
 use crate::sharding::coordinator::allocation::AllocateShard;
-use crate::sharding::coordinator::spawner::CoordinatorSpawner;
+use crate::sharding::coordinator::factory::CoordinatorFactory;
 use crate::sharding::coordinator::stats::GetShardingStats;
 use crate::sharding::coordinator::ShardCoordinator;
 use crate::sharding::host::request::{EntityRequest, RemoteEntityRequest};
 use crate::sharding::host::{
-    ShardAllocated, ShardAllocator, ShardHost, ShardReallocating, StopShard,
+    Init, ShardAllocated, ShardAllocator, ShardHost, ShardReallocating, StopShard,
 };
 use crate::sharding::shard::stats::GetShardStats;
 use crate::sharding::shard::Shard;
+use crate::singleton::{singleton, Singleton, SingletonBuilder};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -38,7 +38,7 @@ pub struct Sharding<A: ActorFactory> {
 
 struct ShardingCore {
     host: LocalActorRef<ShardHost>,
-    coordinator_spawner: LocalActorRef<CoordinatorSpawner>,
+    coordinator: Singleton<ShardCoordinator, CoordinatorFactory>,
     shard_entity: String,
     system: RemoteActorSystem,
 }
@@ -88,20 +88,18 @@ impl<A: ActorFactory> Sharding<A> {
             .await
             .map_err(|e| e.into_host_err(&shard_entity))?;
 
-        let coordinator_spawner =
-            CoordinatorSpawner::new(system.node_id(), shard_entity.clone(), host.clone())
-                .into_actor(
-                    Some(format!("shard-coordinator-spawner-{}", &shard_entity).into_actor_id()),
-                    system.actor_system(),
-                )
-                .await
-                .map_err(|e| e.into_coordinator_err(&shard_entity))?;
+        let coordinator = SingletonBuilder::new(system.clone())
+            .factory(CoordinatorFactory::new(shard_entity.clone(), host.clone()))
+            .build()
+            .await;
+
+        let _ = host.send(Init(coordinator.clone())).await;
 
         Ok(Self {
             core: Arc::new(ShardingCore {
                 host,
                 system,
-                coordinator_spawner,
+                coordinator,
                 shard_entity,
             }),
             _a: PhantomData,
@@ -152,10 +150,6 @@ impl<A: ActorFactory> Sharding<A> {
     pub fn shard_entity(&self) -> &String {
         &self.core.shard_entity
     }
-
-    pub fn coordinator_spawner(&self) -> &LocalActorRef<CoordinatorSpawner> {
-        &self.core.coordinator_spawner
-    }
 }
 
 impl ShardingCore {
@@ -200,10 +194,8 @@ impl<A: Actor> Sharded<A> {
         if let Ok(result) = result {
             let result =
                 result.map(|res| M::read_remote_result(res).map_err(ActorRefErr::Deserialisation));
-            match result {
-                Ok(res) => res,
-                Err(e) => Err(e),
-            }
+
+            result.unwrap_or_else(|e| Err(e))
         } else {
             Err(ActorRefErr::ResultChannelClosed)
         }
@@ -211,7 +203,7 @@ impl<A: Actor> Sharded<A> {
 }
 
 pub fn sharding(builder: &mut RemoteSystemConfigBuilder) -> &mut RemoteSystemConfigBuilder {
-    builder
+    singleton::<CoordinatorFactory>(builder)
         .with_handler::<ShardCoordinator, AllocateShard>("ShardCoordinator.AllocateShard")
         .with_handler::<ShardCoordinator, GetShardingStats>("ShardCoordinator.GetShardingStats")
         .with_handler::<ShardHost, ShardAllocated>("ShardHost.ShardAllocated")

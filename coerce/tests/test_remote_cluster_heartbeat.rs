@@ -26,6 +26,7 @@ pub async fn test_remote_cluster_heartbeat() {
             ping_timeout: Duration::from_millis(10),
             unhealthy_node_heartbeat_timeout: Duration::from_millis(750),
             terminated_node_heartbeat_timeout: Duration::from_millis(1000),
+            ..Default::default()
         })
     }
 

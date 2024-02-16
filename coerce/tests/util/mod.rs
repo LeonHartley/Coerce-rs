@@ -170,10 +170,7 @@ pub fn create_trace_logger() {
 
 pub fn create_logger(level: Option<Level>) {
     let _ = tracing_subscriber::fmt()
-        // enable everything
-        .with_file(true)
-        .with_line_number(true)
-        .with_target(true)
+        .compact()
         .with_thread_names(true)
         .with_span_events(FmtSpan::NONE)
         .with_ansi(false)

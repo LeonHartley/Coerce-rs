@@ -5,25 +5,33 @@ use crate::sharding::coordinator::balancing::Rebalance;
 use crate::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardHostStatus};
 use crate::sharding::host::ShardHost;
 
+use crate::remote::stream::pubsub::Receive;
+use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
+use crate::remote::system::NodeId;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
-pub struct NodeDiscovered(pub Arc<RemoteNode>);
-
-pub struct NodeForgotten(pub Arc<RemoteNode>);
-
-impl Message for NodeDiscovered {
-    type Result = ();
-}
-
-impl Message for NodeForgotten {
-    type Result = ();
-}
-
 #[async_trait]
-impl Handler<NodeDiscovered> for ShardCoordinator {
-    async fn handle(&mut self, message: NodeDiscovered, ctx: &mut ActorContext) {
-        let new_node = message.0;
+impl Handler<Receive<SystemTopic>> for ShardCoordinator {
+    async fn handle(&mut self, message: Receive<SystemTopic>, ctx: &mut ActorContext) {
+        match message.0.as_ref() {
+            SystemEvent::Cluster(event) => match event {
+                ClusterEvent::NodeAdded(node) => {
+                    self.on_node_discovered(node.as_ref(), ctx);
+                }
+
+                ClusterEvent::NodeRemoved(node) => {
+                    self.on_node_removed(node.id, ctx).await;
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+}
+
+impl ShardCoordinator {
+    pub fn on_node_discovered(&mut self, new_node: &RemoteNode, ctx: &ActorContext) {
         match self.hosts.entry(new_node.id) {
             Entry::Occupied(mut node) => {
                 let node = node.get_mut();
@@ -40,6 +48,7 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
                     "new shard host (node_id={}, tag={}, addr={})",
                     new_node.id, &new_node.tag, &new_node.addr
                 );
+
                 vacant_entry.insert(ShardHostState {
                     node_id: new_node.id,
                     node_tag: new_node.tag.clone(),
@@ -52,16 +61,10 @@ impl Handler<NodeDiscovered> for ShardCoordinator {
             }
         }
     }
-}
 
-#[async_trait]
-impl Handler<NodeForgotten> for ShardCoordinator {
-    async fn handle(&mut self, message: NodeForgotten, ctx: &mut ActorContext) {
-        match self.hosts.entry(message.0.id) {
-            Entry::Occupied(_) => {
-                self.handle(Rebalance::NodeUnavailable(message.0.id), ctx)
-                    .await
-            }
+    pub async fn on_node_removed(&mut self, node_id: NodeId, ctx: &mut ActorContext) {
+        match self.hosts.entry(node_id) {
+            Entry::Occupied(_) => self.handle(Rebalance::NodeUnavailable(node_id), ctx).await,
             Entry::Vacant(_) => {}
         }
     }

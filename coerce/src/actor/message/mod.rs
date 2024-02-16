@@ -208,6 +208,33 @@ pub enum MessageWrapErr {
     SerializationErr,
 }
 
+pub trait ToBytes {
+    fn to_bytes(self) -> Result<Vec<u8>, MessageWrapErr>;
+}
+
+pub trait FromBytes
+where
+    Self: Sized,
+{
+    fn from_bytes(buf: Vec<u8>) -> Result<Self, MessageUnwrapErr>;
+}
+
+impl<T: protobuf::Message> ToBytes for T {
+    fn to_bytes(self) -> Result<Vec<u8>, MessageWrapErr> {
+        self.write_to_bytes()
+            .map_err(|_| MessageWrapErr::SerializationErr)
+    }
+}
+
+impl<T: protobuf::Message> FromBytes for T
+where
+    Self: Sized,
+{
+    fn from_bytes(buf: Vec<u8>) -> Result<Self, MessageUnwrapErr> {
+        Self::parse_from_bytes(&buf).map_err(|_| MessageUnwrapErr::DeserializationErr)
+    }
+}
+
 impl Display for MessageWrapErr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self {

@@ -116,6 +116,7 @@ async fn create_system(
                 ping_timeout: Duration::from_millis(10),
                 unhealthy_node_heartbeat_timeout: Duration::from_millis(750),
                 terminated_node_heartbeat_timeout: Duration::from_millis(1000),
+                ..Default::default()
             })
         })
         .with_id(node_id)
@@ -135,7 +136,7 @@ async fn create_system(
 
 #[tokio::test]
 pub async fn test_shard_rebalancing_upon_node_termination() {
-    util::create_logger(Some(Level::WARN));
+    util::create_logger(Some(Level::DEBUG));
 
     let persistence = Persistence::from(InMemoryStorageProvider::new());
     let (remote_a, server_a) = create_system(persistence.clone(), "127.0.0.1:31101", 1, None).await;

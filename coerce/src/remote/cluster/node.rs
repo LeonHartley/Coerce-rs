@@ -5,8 +5,10 @@ use hashring::HashRing;
 use crate::remote::config::SystemCapabilities;
 use crate::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
 use crate::remote::net::proto::network;
+use crate::remote::stream::system::ClusterEvent::NodeAdded;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,6 +31,8 @@ impl NodeStatus {
         return matches!(&self, Self::Healthy);
     }
 }
+
+pub type NodeAttribute = (Arc<str>, Arc<str>);
 
 pub type NodeAttributes = HashMap<Arc<str>, Arc<str>>;
 
@@ -54,6 +58,26 @@ pub struct RemoteNode {
     pub node_started_at: Option<DateTime<Utc>>,
     pub attributes: NodeAttributesRef,
 }
+
+pub enum NodeSelector {
+    All,
+    Attribute(NodeAttribute),
+}
+
+impl NodeSelector {
+    pub fn from_attribute(key: Arc<str>, value: Arc<str>) -> Self {
+        Self::Attribute((key, value))
+    }
+
+    pub fn includes(&self, node: &RemoteNode) -> bool {
+        match &self {
+            NodeSelector::All => true,
+            NodeSelector::Attribute((key, value)) => node.attributes.get(key) == Some(value),
+        }
+    }
+}
+
+pub type RemoteNodeRef = Arc<RemoteNode>;
 
 impl Hash for RemoteNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -170,7 +194,7 @@ impl From<RemoteNodeState> for RemoteNode {
             addr: s.addr,
             tag: s.tag,
             node_started_at: s.node_started_at,
-            attributes: s.attributes.clone(),
+            attributes: s.attributes,
         }
     }
 }
@@ -297,9 +321,9 @@ impl RemoteNode {
     }
 }
 
-impl ToString for RemoteNode {
-    fn to_string(&self) -> String {
-        format!("{}|{}", self.addr, self.id)
+impl Display for RemoteNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("{}|{}", self.addr, self.id))
     }
 }
 

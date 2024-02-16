@@ -11,9 +11,8 @@ use crate::remote::system::NodeId;
 use crate::actor::message::Handler;
 use crate::remote::cluster::node::NodeStatus::{Healthy, Joining};
 use crate::remote::heartbeat::Heartbeat;
-use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
+use crate::remote::stream::pubsub::{PubSub, Subscription};
 use crate::remote::stream::system::SystemTopic;
-
 use crate::sharding::coordinator::balancing::Rebalance;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -21,7 +20,7 @@ use std::time::Duration;
 pub mod allocation;
 pub mod balancing;
 pub mod discovery;
-pub mod spawner;
+pub mod factory;
 pub mod stats;
 pub mod stream;
 
@@ -64,11 +63,6 @@ pub struct ShardCoordinator {
 type ScheduledRebalance = ScheduledNotify<ShardCoordinator, Rebalance>;
 
 #[async_trait]
-impl Handler<Receive<SystemTopic>> for ShardCoordinator {
-    async fn handle(&mut self, _message: Receive<SystemTopic>, _ctx: &mut ActorContext) {}
-}
-
-#[async_trait]
 impl PersistentActor for ShardCoordinator {
     fn persistence_key(&self, _ctx: &ActorContext) -> String {
         format!("{}-ShardCoordinator", &self.shard_entity)
@@ -98,8 +92,8 @@ impl PersistentActor for ShardCoordinator {
         //       or rebalance/rehydrate if necessary
 
         info!(
-            "shard coordinator started (shard_entity={})",
-            &self.shard_entity
+            shard_entity = &self.shard_entity,
+            "shard coordinator started",
         );
 
         self.system_event_subscription = Some(

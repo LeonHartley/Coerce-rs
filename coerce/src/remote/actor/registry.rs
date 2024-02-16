@@ -242,19 +242,19 @@ impl Handler<Receive<SystemTopic>> for RemoteRegistry {
                 let registry_ref = self.actor_ref(ctx);
                 //
                 // // TODO: remove all of this stuff
-                tokio::spawn(async move {
-                    let sys = system;
-                    let actor_ids = sys
-                        .actor_system()
-                        .scheduler()
-                        .exec::<_, Vec<ActorId>>(|s| s.actors.keys().map(|k| k.clone()).collect())
-                        .await
-                        .expect("unable to get active actor ids from scheduler");
-
-                    for actor_id in actor_ids {
-                        let _ = registry_ref.notify(RegisterActor::new(actor_id, None));
-                    }
-                });
+                // tokio::spawn(async move {
+                //     let sys = system;
+                //     let actor_ids = sys
+                //         .actor_system()
+                //         .scheduler()
+                //         .exec::<_, Vec<ActorId>>(|s| s.actors.keys().map(|k| k.clone()).collect())
+                //         .await
+                //         .expect("unable to get active actor ids from scheduler");
+                //
+                //     for actor_id in actor_ids {
+                //         let _ = registry_ref.notify(RegisterActor::new(actor_id, None));
+                //     }
+                // });
             }
         }
     }

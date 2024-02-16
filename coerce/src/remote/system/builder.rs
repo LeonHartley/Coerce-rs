@@ -170,7 +170,7 @@ impl RemoteActorSystemBuilder {
             .await
             .expect("unable to create NodeDiscovery actor");
 
-        let heartbeat_ref = Heartbeat::start(&inner).await;
+        let heartbeat_ref = Heartbeat::start(&inner, config.heartbeat_config().clone()).await;
 
         let mediator_ref = if let Some(mediator) = self.mediator {
             trace!("mediator set");
@@ -267,12 +267,12 @@ impl RemoteSystemConfigBuilder {
         }
     }
 
-    pub fn with_handler<A: Actor, M: Message>(&mut self, identifier: &'static str) -> &mut Self
+    pub fn with_handler<A: Actor, M: Message>(&mut self, identifier: impl ToString) -> &mut Self
     where
         A: Handler<M>,
     {
         let handler = RemoteActorMessageHandler::<A, M>::new(self.system.clone());
-        self.handlers.insert(String::from(identifier), handler);
+        self.handlers.insert(identifier.to_string(), handler);
 
         self
     }

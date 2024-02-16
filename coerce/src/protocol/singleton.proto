@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package coerce.singleton;
+
+message GetStatus {
+  uint64 source_node_id = 1;
+}
+
+message ManagerStatus {
+  SingletonState singleton_state = 1;
+}
+
+enum SingletonState {
+  JOINING = 0;
+  IDLE = 1;
+  STARTING = 2;
+  RUNNING = 3;
+  STOPPING = 4;
+}
+
+message RequestLease {
+    uint64 source_node_id = 1;
+}
+
+message LeaseAck {
+    uint64 source_node_id = 1;
+}
+
+message LeaseNack {
+    uint64 source_node_id = 1;
+}
+
+message SingletonStarted {
+    uint64 source_node_id = 1;
+}
+
+message SingletonStopping {
+  uint64 source_node_id = 1;
+}
+
+message SingletonStopped {
+  uint64 source_node_id = 1;
+}

@@ -16,6 +16,9 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 
 use crate::actor::scheduler::ActorType;
+use crate::sharding::coordinator::factory::CoordinatorFactory;
+use crate::singleton::factory::SingletonFactory;
+use crate::singleton::Singleton;
 use uuid::Uuid;
 
 pub mod request;
@@ -41,9 +44,9 @@ pub struct ShardHost {
     actor_handler: BoxedActorHandler,
     hosted_shards: HashMap<ShardId, ShardState>,
     remote_shards: HashMap<ShardId, ActorRef<Shard>>,
-    requests_pending_leader_allocation: VecDeque<EntityRequest>,
     requests_pending_shard_allocation: HashMap<ShardId, Vec<EntityRequest>>,
     allocator: Box<dyn ShardAllocator>,
+    coordinator: Option<Singleton<ShardCoordinator, CoordinatorFactory>>,
 }
 
 impl ShardHost {
@@ -65,14 +68,14 @@ impl ShardHost {
     }
 }
 
-pub trait ShardAllocator: 'static + Send + Sync {
-    fn allocate(&mut self, actor_id: &ActorId) -> ShardId;
+pub struct Init(pub Singleton<ShardCoordinator, CoordinatorFactory>);
+
+impl Message for Init {
+    type Result = ();
 }
 
-pub struct LeaderAllocated;
-
-impl Message for LeaderAllocated {
-    type Result = ();
+pub trait ShardAllocator: 'static + Send + Sync {
+    fn allocate(&mut self, actor_id: &ActorId) -> ShardId;
 }
 
 #[async_trait]
@@ -94,35 +97,33 @@ impl ShardHost {
             hosted_shards: Default::default(),
             remote_shards: Default::default(),
             requests_pending_shard_allocation: Default::default(),
-            requests_pending_leader_allocation: Default::default(),
             allocator: allocator.map_or_else(
                 || Box::new(DefaultAllocator::default()) as Box<dyn ShardAllocator>,
                 |s| s,
             ),
+            coordinator: None,
         }
     }
 
-    pub async fn get_coordinator(&self, ctx: &ActorContext) -> ActorRef<ShardCoordinator> {
-        let actor_id = format!("shard-coordinator-{}", &self.shard_entity).into_actor_id();
-        let remote = ctx.system().remote();
-        let leader = remote.current_leader();
-        if leader == Some(remote.node_id()) {
-            ctx.system()
-                .get_tracked_actor::<ShardCoordinator>(actor_id)
-                .await
-                .expect("get local coordinator")
-                .into()
-        } else {
-            RemoteActorRef::<ShardCoordinator>::new(actor_id, leader.unwrap(), remote.clone())
-                .into()
-        }
+    pub fn get_coordinator(&self) -> Singleton<ShardCoordinator, CoordinatorFactory> {
+        self.coordinator
+            .as_ref()
+            .expect("coordinator singleton reference")
+            .clone()
+    }
+}
+
+#[async_trait]
+impl Handler<Init> for ShardHost {
+    async fn handle(&mut self, message: Init, ctx: &mut ActorContext) {
+        self.coordinator = Some(message.0);
     }
 }
 
 pub struct GetCoordinator;
 
 impl Message for GetCoordinator {
-    type Result = ActorRef<ShardCoordinator>;
+    type Result = Singleton<ShardCoordinator, CoordinatorFactory>;
 }
 
 pub struct ShardAllocated(pub ShardId, pub NodeId);
@@ -167,25 +168,9 @@ impl Handler<GetCoordinator> for ShardHost {
     async fn handle(
         &mut self,
         _message: GetCoordinator,
-        ctx: &mut ActorContext,
-    ) -> ActorRef<ShardCoordinator> {
-        self.get_coordinator(&ctx).await
-    }
-}
-
-#[async_trait]
-impl Handler<LeaderAllocated> for ShardHost {
-    async fn handle(&mut self, _message: LeaderAllocated, ctx: &mut ActorContext) {
-        if self.requests_pending_leader_allocation.len() > 0 {
-            debug!(
-                "processing {} buffered requests_pending_leader_allocation",
-                self.requests_pending_leader_allocation.len(),
-            );
-
-            while let Some(request) = self.requests_pending_leader_allocation.pop_front() {
-                self.handle(request, ctx).await;
-            }
-        }
+        _: &mut ActorContext,
+    ) -> Singleton<ShardCoordinator, CoordinatorFactory> {
+        self.coordinator.as_ref().unwrap().clone()
     }
 }
 

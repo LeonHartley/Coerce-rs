@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-coerce = { version = "0.8.10", features = ["full"] }
+coerce = { path = "../../coerce", features = ["full"] }
 coerce-macros = { version = "0.2.0" }
-coerce-redis = { version = "0.4.3" }
+coerce-redis = { path = "../../providers/persistence/coerce-redis" }
 coerce-k8s = { version = "0.1.7" }
 
 tokio = { version = "1.28.1", features = ["full"] }

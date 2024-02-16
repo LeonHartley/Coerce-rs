@@ -141,7 +141,6 @@ impl Supervised {
     }
 
     pub async fn stop_all(&mut self) {
-        let n = self.children.len();
         let stop_results = futures::future::join_all(
             self.children
                 .iter()
@@ -152,28 +151,27 @@ impl Supervised {
         for (actor_id, stop_result) in stop_results {
             match stop_result {
                 Ok(_) => {
-                    trace!("actor stopped ({})", actor_id);
+                    trace!(actor_id = actor_id.as_ref(), "actor stopped");
                     self.children.remove(&actor_id);
                 }
                 Err(e) => match e {
-                    ActorRefErr::InvalidRef => {
-                        warn!("invalid ref, actor_id={} already stopped", &actor_id);
-                    }
+                    ActorRefErr::InvalidRef => {},
                     e => {
-                        warn!("failed to stop child actor_id={}, err={}", actor_id, e);
+                        warn!(actor_id = actor_id.as_ref(), error = format!("{}", e), "failed to stop child");
                     }
                 },
             }
         }
-
-        trace!("{} stopped {} child actors", &self.actor_id, n);
+        
+        let n = self.children.len();
+        trace!(actor_id = self.actor_id.as_ref(), total_children = n, "all child actors stopped");
     }
 
     pub async fn on_child_stopped(&mut self, id: &ActorId) {
         if let Some(_) = self.children.remove(id) {
-            trace!("child actor (id={}) stopped", id);
+            trace!(actor_id = id.as_ref(), "child actor stopped");
         } else {
-            trace!("unknown child actor (id={}) stopped", id);
+            trace!(actor_id = id.as_ref(), "unknown child actor stopped");
         }
     }
 }

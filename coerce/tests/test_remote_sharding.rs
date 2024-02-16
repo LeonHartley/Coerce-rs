@@ -204,7 +204,7 @@ pub async fn test_shard_host_actor_request() {
                     .with_handler::<TestActor, SetStatusRequest>("SetStatusRequest")
             })
             .with_id(1)
-            .single_node()
+            // .single_node()
             .build()
             .await;
 

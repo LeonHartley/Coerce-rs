@@ -10,9 +10,11 @@ use crate::actor::supervised::Terminated;
 use crate::actor::{Actor, ActorId, ActorPath};
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
+use std::future::Future;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 
@@ -384,7 +386,7 @@ impl<A: Actor> LocalActorRef<A> {
         let message_type = msg.name();
         let actor_type = A::type_name();
 
-        ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
+        ActorMetrics::incr_messages_sent(actor_type, message_type);
 
         // let timeout_task = tokio::spawn(async move {
         //    tokio::time::sleep(Duration::from_millis(1000)).await;
@@ -410,6 +412,28 @@ impl<A: Actor> LocalActorRef<A> {
                 Err(_e) => Err(ActorRefErr::ResultChannelClosed),
             },
             Err(_e) => Err(ActorRefErr::InvalidRef),
+        }
+    }
+
+    /// Sends a message to the target [`Actor`][Actor], with the added benefit of passing in a custom oneshot sender,
+    /// allowing the use of a separate channel rather than creating one directly as part of the `send` operation
+    pub fn deliver<M: Message>(
+        &self,
+        msg: M,
+        result_sender: oneshot::Sender<M::Result>,
+    ) -> Result<(), ActorRefErr>
+    where
+        A: Handler<M>,
+    {
+        ActorMetrics::incr_messages_sent(A::type_name(), msg.name());
+
+        match self
+            .inner
+            .sender
+            .send(Box::new(ActorMessage::new(msg, Some(result_sender))))
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ActorRefErr::InvalidRef),
         }
     }
 
@@ -595,5 +619,31 @@ impl<A: Actor> From<RemoteActorRef<A>> for ActorRef<A> {
         ActorRef {
             inner_ref: Ref::Remote(r),
         }
+    }
+}
+
+pub trait PipeTo<A: Actor>
+where
+    A: Handler<Self::Message>,
+{
+    type Message: Message;
+
+    fn pipe_to(self, actor_ref: ActorRef<A>);
+}
+
+impl<A, F: Future> PipeTo<A> for F
+where
+    F::Output: Message,
+    A: Handler<F::Output>,
+    F: 'static + Send,
+{
+    type Message = F::Output;
+
+    fn pipe_to(self, actor_ref: ActorRef<A>) {
+        let fut = self;
+        tokio::spawn(async move {
+            let result = fut.await;
+            let _ = actor_ref.notify(result).await;
+        });
     }
 }

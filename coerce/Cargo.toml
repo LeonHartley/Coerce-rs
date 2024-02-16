@@ -2,7 +2,7 @@
 name = "coerce"
 description = "Async actor runtime and distributed systems framework"
 license = "Apache-2.0"
-version = "0.8.11"
+version = "0.8.12"
 authors = ["Leon Hartley <ljph@outlook.com>"]
 edition = "2021"
 readme = "README.md"
@@ -20,6 +20,7 @@ full = [
     "actor-tracing",
     "actor-tracing-info",
     "client-auth-jwt",
+    "singleton",
 ]
 
 remote = [
@@ -69,6 +70,8 @@ actor-tracing-debug = ["actor-tracing"]
 api = ["remote", "dep:axum", "dep:utoipa", "dep:utoipa-swagger-ui"]
 
 client-auth-jwt = ["dep:jwt", "dep:hmac", "dep:sha2"]
+
+singleton = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

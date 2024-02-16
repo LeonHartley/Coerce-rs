@@ -1,22 +1,29 @@
 use crate::remote::net::proto::network::{
-    LeaderChangedEvent, NewNodeEvent, NodeRemovedEvent, SystemEvent as SysEvent,
+    LeaderChangedEvent, MemberUpEvent, NewNodeEvent, NodeRemovedEvent, SystemEvent as SysEvent,
 };
 use crate::remote::net::StreamData;
 use crate::remote::stream::pubsub::Topic;
 use std::sync::Arc;
 
-use crate::remote::cluster::node::RemoteNode;
-
 use crate::remote::system::NodeId;
 use protobuf::{Enum, Error, Message};
+
+use crate::remote::cluster::node::RemoteNodeRef;
 
 pub struct SystemTopic;
 
 #[derive(Debug)]
 pub enum ClusterEvent {
-    NodeAdded(Arc<RemoteNode>),
-    NodeRemoved(Arc<RemoteNode>),
+    MemberUp(ClusterMemberUp),
+    NodeAdded(RemoteNodeRef),
+    NodeRemoved(RemoteNodeRef),
     LeaderChanged(NodeId),
+}
+
+#[derive(Debug)]
+pub struct ClusterMemberUp {
+    pub leader_id: NodeId,
+    pub nodes: Vec<RemoteNodeRef>,
 }
 
 #[derive(Debug)]
@@ -53,6 +60,15 @@ impl From<LeaderChangedEvent> for SystemEvent {
     }
 }
 
+impl From<MemberUpEvent> for SystemEvent {
+    fn from(e: MemberUpEvent) -> Self {
+        SystemEvent::Cluster(ClusterEvent::MemberUp(ClusterMemberUp {
+            leader_id: e.leader_id,
+            nodes: e.nodes.into_iter().map(|n| Arc::new(n.into())).collect(),
+        }))
+    }
+}
+
 impl StreamData for SystemEvent {
     fn read_from_bytes(data: Vec<u8>) -> Option<Self> {
         match data.split_first() {
@@ -68,6 +84,9 @@ impl StreamData for SystemEvent {
                         .unwrap()
                         .into(),
                 ),
+                Some(SysEvent::ClusterMemberUp) => {
+                    Some(MemberUpEvent::parse_from_bytes(message).unwrap().into())
+                }
                 None => None,
             },
             None => None,
@@ -80,26 +99,42 @@ impl StreamData for SystemEvent {
                 ClusterEvent::NodeAdded(node) => {
                     let event = NewNodeEvent {
                         node: Some(node.as_ref().into()).into(),
-                        ..NewNodeEvent::default()
+                        ..Default::default()
                     };
 
                     write_event(SysEvent::ClusterNewNode, event.write_to_bytes())
                 }
+
                 ClusterEvent::NodeRemoved(node) => {
                     let event = NodeRemovedEvent {
                         node: Some(node.as_ref().into()).into(),
-                        ..NodeRemovedEvent::default()
+                        ..Default::default()
                     };
 
                     write_event(SysEvent::ClusterNodeRemoved, event.write_to_bytes())
                 }
+
                 ClusterEvent::LeaderChanged(node_id) => {
                     let event = LeaderChangedEvent {
                         node_id: *node_id,
-                        ..LeaderChangedEvent::default()
+                        ..Default::default()
                     };
 
                     write_event(SysEvent::ClusterLeaderChanged, event.write_to_bytes())
+                }
+
+                ClusterEvent::MemberUp(member_up) => {
+                    let event = MemberUpEvent {
+                        leader_id: member_up.leader_id,
+                        nodes: member_up
+                            .nodes
+                            .iter()
+                            .map(|n| n.as_ref().clone().into())
+                            .collect(),
+                        ..Default::default()
+                    };
+
+                    write_event(SysEvent::ClusterMemberUp, event.write_to_bytes())
                 }
             },
         }

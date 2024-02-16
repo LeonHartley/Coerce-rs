@@ -3,7 +3,7 @@ use crate::actor::message::Handler;
 use crate::actor::scheduler::ActorType;
 use crate::actor::system::ActorSystem;
 use crate::actor::{Actor, LocalActorRef};
-use crate::remote::actor::message::{ClientConnected, ClientWrite, NewClient};
+use crate::remote::actor::message::{ClientConnected, ClientWrite, NewClient, RemoveClient};
 use crate::remote::net::client::send::Write;
 use crate::remote::net::client::RemoteClient;
 use crate::remote::system::NodeId;
@@ -67,6 +67,23 @@ impl Handler<NewClient> for RemoteClientRegistry {
         entry.insert(client_actor.clone());
 
         Some(client_actor)
+    }
+}
+
+#[async_trait]
+impl Handler<RemoveClient> for RemoteClientRegistry {
+    async fn handle(&mut self, message: RemoveClient, _: &mut ActorContext) {
+        if let Some(node_id) = message.node_id {
+            self.node_id_registry.remove(&node_id);
+        }
+
+        self.node_addr_registry.remove(&message.addr);
+
+        debug!(
+            addr = &message.addr,
+            node_id = &message.node_id,
+            "client removed"
+        )
     }
 }
 

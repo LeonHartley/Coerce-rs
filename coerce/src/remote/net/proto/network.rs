@@ -3193,6 +3193,165 @@ impl ::protobuf::reflect::ProtobufValue for LeaderChangedEvent {
 }
 
 #[derive(PartialEq,Clone,Default,Debug)]
+// @@protoc_insertion_point(message:coerce.network.MemberUpEvent)
+pub struct MemberUpEvent {
+    // message fields
+    // @@protoc_insertion_point(field:coerce.network.MemberUpEvent.leader_id)
+    pub leader_id: u64,
+    // @@protoc_insertion_point(field:coerce.network.MemberUpEvent.nodes)
+    pub nodes: ::std::vec::Vec<RemoteNode>,
+    // @@protoc_insertion_point(field:coerce.network.MemberUpEvent.trace_id)
+    pub trace_id: ::std::string::String,
+    // special fields
+    // @@protoc_insertion_point(special_field:coerce.network.MemberUpEvent.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a MemberUpEvent {
+    fn default() -> &'a MemberUpEvent {
+        <MemberUpEvent as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl MemberUpEvent {
+    pub fn new() -> MemberUpEvent {
+        ::std::default::Default::default()
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(3);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "leader_id",
+            |m: &MemberUpEvent| { &m.leader_id },
+            |m: &mut MemberUpEvent| { &mut m.leader_id },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+            "nodes",
+            |m: &MemberUpEvent| { &m.nodes },
+            |m: &mut MemberUpEvent| { &mut m.nodes },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "trace_id",
+            |m: &MemberUpEvent| { &m.trace_id },
+            |m: &mut MemberUpEvent| { &mut m.trace_id },
+        ));
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<MemberUpEvent>(
+            "MemberUpEvent",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for MemberUpEvent {
+    const NAME: &'static str = "MemberUpEvent";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                8 => {
+                    self.leader_id = is.read_uint64()?;
+                },
+                18 => {
+                    self.nodes.push(is.read_message()?);
+                },
+                26 => {
+                    self.trace_id = is.read_string()?;
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        if self.leader_id != 0 {
+            my_size += ::protobuf::rt::uint64_size(1, self.leader_id);
+        }
+        for value in &self.nodes {
+            let len = value.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        };
+        if !self.trace_id.is_empty() {
+            my_size += ::protobuf::rt::string_size(3, &self.trace_id);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if self.leader_id != 0 {
+            os.write_uint64(1, self.leader_id)?;
+        }
+        for v in &self.nodes {
+            ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        };
+        if !self.trace_id.is_empty() {
+            os.write_string(3, &self.trace_id)?;
+        }
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> MemberUpEvent {
+        MemberUpEvent::new()
+    }
+
+    fn clear(&mut self) {
+        self.leader_id = 0;
+        self.nodes.clear();
+        self.trace_id.clear();
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static MemberUpEvent {
+        static instance: MemberUpEvent = MemberUpEvent {
+            leader_id: 0,
+            nodes: ::std::vec::Vec::new(),
+            trace_id: ::std::string::String::new(),
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for MemberUpEvent {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("MemberUpEvent").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for MemberUpEvent {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for MemberUpEvent {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
+#[derive(PartialEq,Clone,Default,Debug)]
 // @@protoc_insertion_point(message:coerce.network.RaftRequest)
 pub struct RaftRequest {
     // message fields
@@ -3838,6 +3997,8 @@ pub enum SystemEvent {
     ClusterNodeRemoved = 1,
     // @@protoc_insertion_point(enum_value:coerce.network.SystemEvent.ClusterLeaderChanged)
     ClusterLeaderChanged = 2,
+    // @@protoc_insertion_point(enum_value:coerce.network.SystemEvent.ClusterMemberUp)
+    ClusterMemberUp = 3,
 }
 
 impl ::protobuf::Enum for SystemEvent {
@@ -3852,6 +4013,7 @@ impl ::protobuf::Enum for SystemEvent {
             0 => ::std::option::Option::Some(SystemEvent::ClusterNewNode),
             1 => ::std::option::Option::Some(SystemEvent::ClusterNodeRemoved),
             2 => ::std::option::Option::Some(SystemEvent::ClusterLeaderChanged),
+            3 => ::std::option::Option::Some(SystemEvent::ClusterMemberUp),
             _ => ::std::option::Option::None
         }
     }
@@ -3860,6 +4022,7 @@ impl ::protobuf::Enum for SystemEvent {
         SystemEvent::ClusterNewNode,
         SystemEvent::ClusterNodeRemoved,
         SystemEvent::ClusterLeaderChanged,
+        SystemEvent::ClusterMemberUp,
     ];
 }
 
@@ -4074,36 +4237,40 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x10NodeRemovedEvent\x12.\n\x04node\x18\x01\x20\x01(\x0b2\x1a.coerce.net\
     work.RemoteNodeR\x04node\x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07tr\
     aceId\"H\n\x12LeaderChangedEvent\x12\x17\n\x07node_id\x18\x01\x20\x01(\
-    \x04R\x06nodeId\x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"i\
-    \n\x0bRaftRequest\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\
-    \x12!\n\x0crequest_type\x18\x02\x20\x01(\rR\x0brequestType\x12\x18\n\x07\
-    payload\x18\x03\x20\x01(\x0cR\x07payload\"\xee\x04\n\x0bActorRefErr\x129\
-    \n\x04type\x18\x01\x20\x01(\x0e2%.coerce.network.ActorRefErr.ErrorTypeR\
-    \x04type\x12\x19\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorId\x12!\n\x0c\
-    message_type\x18\x03\x20\x01(\tR\x0bmessageType\x12\x1d\n\nactor_type\
-    \x18\x04\x20\x01(\tR\tactorType\x12*\n\x11time_taken_millis\x18\x05\x20\
-    \x01(\x04R\x0ftimeTakenMillis\x12O\n\x13serialization_error\x18\x06\x20\
-    \x01(\x0e2\x1e.coerce.network.MessageWrapErrR\x12serializationError\x12U\
-    \n\x15deserialization_error\x18\x07\x20\x01(\x0e2\x20.coerce.network.Mes\
-    sageUnwrapErrR\x14deserializationError\"\xf2\x01\n\tErrorType\x12\x14\n\
-    \x10ActorUnavailable\x10\0\x12\x0c\n\x08NotFound\x10\x01\x12\x11\n\rAlre\
-    adyExists\x10\x02\x12\x11\n\rSerialisation\x10\x03\x12\x13\n\x0fDeserial\
-    isation\x10\x04\x12\x0b\n\x07Timeout\x10\x05\x12\x14\n\x10ActorStartFail\
-    ed\x10\x06\x12\x0e\n\nInvalidRef\x10\x07\x12\x17\n\x13ResultChannelClose\
-    d\x10\x08\x12\x14\n\x10ResultSendFailed\x10\t\x12\x10\n\x0cNotSupported\
-    \x10\n\x12\x12\n\x0eNotImplemented\x10\x0b*\xbc\x01\n\x05Event\x12\x0c\n\
-    \x08Identify\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\
-    \x12\x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\
-    \x10\x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\
-    \x11\n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\r\
-    StreamPublish\x10\n\x12\x08\n\x04Raft\x10\x0b\x12\x0c\n\x08Identity\x10\
-    \x0c*$\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01*S\
-    \n\x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12Cluster\
-    NodeRemoved\x10\x01\x12\x18\n\x14ClusterLeaderChanged\x10\x02*W\n\x10Mes\
-    sageUnwrapErr\x12\x14\n\x10UnknownUnwrapErr\x10\0\x12\x15\n\x11UnwrapUns\
-    upported\x10\x01\x12\x16\n\x12DeserializationErr\x10\x02*O\n\x0eMessageW\
-    rapErr\x12\x12\n\x0eUnknownWrapErr\x10\0\x12\x13\n\x0fWrapUnsupported\
-    \x10\x01\x12\x14\n\x10SerializationErr\x10\x02b\x06proto3\
+    \x04R\x06nodeId\x12\x19\n\x08trace_id\x18\x02\x20\x01(\tR\x07traceId\"y\
+    \n\rMemberUpEvent\x12\x1b\n\tleader_id\x18\x01\x20\x01(\x04R\x08leaderId\
+    \x120\n\x05nodes\x18\x02\x20\x03(\x0b2\x1a.coerce.network.RemoteNodeR\
+    \x05nodes\x12\x19\n\x08trace_id\x18\x03\x20\x01(\tR\x07traceId\"i\n\x0bR\
+    aftRequest\x12\x1d\n\nmessage_id\x18\x01\x20\x01(\tR\tmessageId\x12!\n\
+    \x0crequest_type\x18\x02\x20\x01(\rR\x0brequestType\x12\x18\n\x07payload\
+    \x18\x03\x20\x01(\x0cR\x07payload\"\xee\x04\n\x0bActorRefErr\x129\n\x04t\
+    ype\x18\x01\x20\x01(\x0e2%.coerce.network.ActorRefErr.ErrorTypeR\x04type\
+    \x12\x19\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorId\x12!\n\x0cmessage_\
+    type\x18\x03\x20\x01(\tR\x0bmessageType\x12\x1d\n\nactor_type\x18\x04\
+    \x20\x01(\tR\tactorType\x12*\n\x11time_taken_millis\x18\x05\x20\x01(\x04\
+    R\x0ftimeTakenMillis\x12O\n\x13serialization_error\x18\x06\x20\x01(\x0e2\
+    \x1e.coerce.network.MessageWrapErrR\x12serializationError\x12U\n\x15dese\
+    rialization_error\x18\x07\x20\x01(\x0e2\x20.coerce.network.MessageUnwrap\
+    ErrR\x14deserializationError\"\xf2\x01\n\tErrorType\x12\x14\n\x10ActorUn\
+    available\x10\0\x12\x0c\n\x08NotFound\x10\x01\x12\x11\n\rAlreadyExists\
+    \x10\x02\x12\x11\n\rSerialisation\x10\x03\x12\x13\n\x0fDeserialisation\
+    \x10\x04\x12\x0b\n\x07Timeout\x10\x05\x12\x14\n\x10ActorStartFailed\x10\
+    \x06\x12\x0e\n\nInvalidRef\x10\x07\x12\x17\n\x13ResultChannelClosed\x10\
+    \x08\x12\x14\n\x10ResultSendFailed\x10\t\x12\x10\n\x0cNotSupported\x10\n\
+    \x12\x12\n\x0eNotImplemented\x10\x0b*\xbc\x01\n\x05Event\x12\x0c\n\x08Id\
+    entify\x10\0\x12\r\n\tHandshake\x10\x01\x12\n\n\x06Result\x10\x02\x12\
+    \x07\n\x03Err\x10\x03\x12\x08\n\x04Ping\x10\x04\x12\x08\n\x04Pong\x10\
+    \x05\x12\x0f\n\x0bCreateActor\x10\x06\x12\r\n\tFindActor\x10\x07\x12\x11\
+    \n\rRegisterActor\x10\x08\x12\x0f\n\x0bNotifyActor\x10\t\x12\x11\n\rStre\
+    amPublish\x10\n\x12\x08\n\x04Raft\x10\x0b\x12\x0c\n\x08Identity\x10\x0c*\
+    $\n\nClientType\x12\n\n\x06Client\x10\0\x12\n\n\x06Worker\x10\x01*h\n\
+    \x0bSystemEvent\x12\x12\n\x0eClusterNewNode\x10\0\x12\x16\n\x12ClusterNo\
+    deRemoved\x10\x01\x12\x18\n\x14ClusterLeaderChanged\x10\x02\x12\x13\n\
+    \x0fClusterMemberUp\x10\x03*W\n\x10MessageUnwrapErr\x12\x14\n\x10Unknown\
+    UnwrapErr\x10\0\x12\x15\n\x11UnwrapUnsupported\x10\x01\x12\x16\n\x12Dese\
+    rializationErr\x10\x02*O\n\x0eMessageWrapErr\x12\x12\n\x0eUnknownWrapErr\
+    \x10\0\x12\x13\n\x0fWrapUnsupported\x10\x01\x12\x14\n\x10SerializationEr\
+    r\x10\x02b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -4123,7 +4290,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             let mut deps = ::std::vec::Vec::with_capacity(2);
             deps.push(::protobuf::well_known_types::wrappers::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::timestamp::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(20);
+            let mut messages = ::std::vec::Vec::with_capacity(21);
             messages.push(RemoteNode::generated_message_descriptor_data());
             messages.push(IdentifyEvent::generated_message_descriptor_data());
             messages.push(NodeIdentity::generated_message_descriptor_data());
@@ -4142,6 +4309,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(NewNodeEvent::generated_message_descriptor_data());
             messages.push(NodeRemovedEvent::generated_message_descriptor_data());
             messages.push(LeaderChangedEvent::generated_message_descriptor_data());
+            messages.push(MemberUpEvent::generated_message_descriptor_data());
             messages.push(RaftRequest::generated_message_descriptor_data());
             messages.push(ActorRefErr::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(6);
