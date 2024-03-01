@@ -7,7 +7,7 @@ use crate::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
 use crate::remote::net::proto::network;
 use crate::remote::stream::system::ClusterEvent::NodeAdded;
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -62,6 +62,7 @@ pub struct RemoteNode {
 pub enum NodeSelector {
     All,
     Attribute(NodeAttribute),
+    Ids(HashSet<NodeId>)
 }
 
 impl NodeSelector {
@@ -73,6 +74,7 @@ impl NodeSelector {
         match &self {
             NodeSelector::All => true,
             NodeSelector::Attribute((key, value)) => node.attributes.get(key) == Some(value),
+            NodeSelector::Ids(ids) => ids.contains(&node.id),
         }
     }
 }

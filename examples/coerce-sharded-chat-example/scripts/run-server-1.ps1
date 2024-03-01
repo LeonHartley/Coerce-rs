@@ -1,1 +1,1 @@
-cargo run --bin sharded-chat-server -- --node_id 0 --remote_seed_addr 127.0.0.1:31101 --remote_listen_addr 0.0.0.0:31101 --websocket_listen_addr  localhost:31102 --cluster_api_listen_addr  127.0.0.1:31103 --log_level DEBUG
+cargo run --bin sharded-chat-server -- --node_id 0 --remote_seed_addr 127.0.0.1:31101 --remote_listen_addr 0.0.0.0:31101 --websocket_listen_addr  localhost:31102 --cluster_api_listen_addr  127.0.0.1:31103 --log_level DEBUG --redis_addr redis://localhost:6379

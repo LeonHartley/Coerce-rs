@@ -543,6 +543,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "coerce-replication"
+version = "0.1.0"
+
+[[package]]
 name = "coerce-sharded-chat-example"
 version = "0.1.0"
 dependencies = [

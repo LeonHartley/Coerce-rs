@@ -7,7 +7,7 @@ use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
 use crate::actor::{Actor, ActorFactory, ActorId, ActorRef, IntoActor, LocalActorRef, ToActorId};
-use crate::remote::cluster::node::NodeSelector;
+use crate::remote::cluster::node::{NodeSelector, RemoteNodeRef};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
@@ -35,6 +35,12 @@ pub struct Manager<F: SingletonFactory> {
     sys: RemoteActorSystem,
     proxy: LocalActorRef<Proxy<F::Actor>>,
     cluster_up: bool,
+}
+
+struct NodeGroup {
+    node_id: NodeId,
+    manager_actor: ActorRef<Self>,
+    node: RemoteNodeRef,
 }
 
 impl<F: SingletonFactory> Manager<F> {

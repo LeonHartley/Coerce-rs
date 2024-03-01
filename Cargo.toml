@@ -5,8 +5,8 @@ members = [
     "examples/coerce-cluster-example",
     "examples/coerce-sharded-chat-example",
     "coerce/tools/coerce-proto-build",
-    "providers/persistence/coerce-redis",
-    "providers/discovery/coerce-k8s"
-]
+    "modules/persistence/coerce-redis",
+    "modules/discovery/coerce-k8s"
+, "modules/replication/coerce-replication"]
 
 resolver = "2"
