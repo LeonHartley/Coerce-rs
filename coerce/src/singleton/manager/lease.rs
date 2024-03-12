@@ -106,7 +106,7 @@ impl<F: SingletonFactory> Handler<LeaseAck> for Manager<F> {
 
 impl<F: SingletonFactory> Manager<F> {
     pub async fn request_lease(&mut self, ctx: &ActorContext) {
-        if self.managers.len() == 0 {
+        if self.nodes.len() == 0 {
             self.on_all_managers_acknowledged(ctx).await;
             return;
         }
@@ -115,7 +115,7 @@ impl<F: SingletonFactory> Manager<F> {
             source_node_id: self.node_id,
         };
 
-        let manager_count = self.managers.len();
+        let manager_count = self.nodes.len();
         debug!(
             source_node_id = self.node_id,
             manager_count = manager_count,
@@ -163,7 +163,7 @@ impl<F: SingletonFactory> Manager<F> {
                 );
 
                 // TODO: Can we do it with a quorum rather than *all managers*?
-                if acknowledged_nodes.len() == self.managers.len() {
+                if acknowledged_nodes.len() == self.nodes.len() {
                     self.on_all_managers_acknowledged(ctx).await;
                 }
             }

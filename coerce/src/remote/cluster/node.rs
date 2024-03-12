@@ -59,10 +59,11 @@ pub struct RemoteNode {
     pub attributes: NodeAttributesRef,
 }
 
+#[derive(Clone)]
 pub enum NodeSelector {
     All,
     Attribute(NodeAttribute),
-    Ids(HashSet<NodeId>)
+    Ids(HashSet<NodeId>),
 }
 
 impl NodeSelector {

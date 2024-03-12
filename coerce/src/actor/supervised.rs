@@ -155,16 +155,24 @@ impl Supervised {
                     self.children.remove(&actor_id);
                 }
                 Err(e) => match e {
-                    ActorRefErr::InvalidRef => {},
+                    ActorRefErr::InvalidRef => {}
                     e => {
-                        warn!(actor_id = actor_id.as_ref(), error = format!("{}", e), "failed to stop child");
+                        warn!(
+                            actor_id = actor_id.as_ref(),
+                            error = format!("{}", e),
+                            "failed to stop child"
+                        );
                     }
                 },
             }
         }
-        
+
         let n = self.children.len();
-        trace!(actor_id = self.actor_id.as_ref(), total_children = n, "all child actors stopped");
+        trace!(
+            actor_id = self.actor_id.as_ref(),
+            total_children = n,
+            "all child actors stopped"
+        );
     }
 
     pub async fn on_child_stopped(&mut self, id: &ActorId) {

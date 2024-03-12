@@ -1,4 +1,5 @@
 pub mod health;
+mod topic;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
