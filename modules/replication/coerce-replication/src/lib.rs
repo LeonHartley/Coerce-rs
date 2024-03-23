@@ -1,16 +1,10 @@
-mod simple;
+#[macro_use]
+extern crate async_trait;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+#[macro_use]
+extern crate tracing;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod simple;
+pub mod storage;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod protocol;

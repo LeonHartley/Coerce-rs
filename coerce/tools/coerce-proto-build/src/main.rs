@@ -24,7 +24,7 @@ fn main() -> std::io::Result<()> {
             ),
             (
                 "coerce/src/protocol/singleton.proto",
-                "coerce/src/remote/cluster/singleton/proto",
+                "coerce/src/singleton/proto",
             ),
             (
                 "coerce/src/protocol/persistent/journal.proto",
@@ -39,6 +39,15 @@ fn main() -> std::io::Result<()> {
         vec![(
             "examples/coerce-sharded-chat-example/src/protocol/chat.proto",
             "examples/coerce-sharded-chat-example/src/protocol",
+        )]
+        .into_iter(),
+    );
+
+    compile_proto(
+        "modules/replication/coerce-replication/src/protocol/",
+        vec![(
+            "modules/replication/coerce-replication/src/protocol/simple.proto",
+            "modules/replication/coerce-replication/src/protocol",
         )]
         .into_iter(),
     );

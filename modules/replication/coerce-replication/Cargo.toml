@@ -6,3 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = "0.1"
+coerce = { path = "../../../coerce", features = ["full"] }
+tokio = { version = "1.36.0", features = ["sync"]}
+uuid = { version = "1.4.1", features = ["v4"] }
+protobuf = { version = "=3.2.0" }
+tracing = { version = "0.1" }
+
+[dev-dependencies]
+tracing-subscriber = { features = ["json"], version = "0.3.17" }

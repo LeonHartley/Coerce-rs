@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+message RemoteRead {
+  string request_id = 1;
+
+  uint64 source_node_id = 2;
+
+  bytes key = 3;
+}
+
+enum ErrorType {
+  NOT_READY = 0;
+  STORAGE = 1;
+}
+
+enum StorageError {
+  NONE = 0;
+}
+
+message Error {
+  ErrorType error_type = 1;
+
+  StorageError storage_err = 2;
+}
+
+message RemoteReadResult {
+  oneof result {
+    bytes value = 1;
+
+    Error error = 2;
+  }
+}
