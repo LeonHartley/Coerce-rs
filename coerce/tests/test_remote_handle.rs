@@ -67,12 +67,13 @@ pub async fn test_remote_handle_from_json() {
             "TestActor.SetStatusRequest",
             actor.id.clone(),
             b"{\"status\": \"Active\"}",
+            true,
         )
         .await;
 
     let current_status = actor.send(GetStatusRequest).await;
 
-    assert_eq!(res, Ok(b"\"Ok\"".to_vec()));
+    assert_eq!(res, Ok(Some(b"\"Ok\"".to_vec())));
 
     assert_eq!(initial_status, Ok(GetStatusResponse::None));
     assert_eq!(
