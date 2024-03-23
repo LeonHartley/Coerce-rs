@@ -75,16 +75,16 @@ impl ActorIdProvider for ManagerActorIdProvider {
 #[async_trait]
 impl<F: SingletonFactory> Actor for Manager<F> {
     async fn started(&mut self, ctx: &mut ActorContext) {
+        let self_ref = self.actor_ref(ctx).into();
+
         self.group = Some(
-            NodeGroup::new(
-                format!("singleton-manager<{}>", F::Actor::type_name()),
-                ManagerActorIdProvider,
-                self.selector.clone(),
-                self.actor_ref(ctx).into(),
-                &self.sys,
-            )
-            .await
-            .expect("create node group"),
+            NodeGroup::builder()
+                .group_name(format!("singleton-manager<{}>", F::Actor::type_name()))
+                .receiver(self_ref)
+                .node_selector(self.selector.clone())
+                .build(&self.sys)
+                .await
+                .expect("create node group"),
         );
 
         debug!(

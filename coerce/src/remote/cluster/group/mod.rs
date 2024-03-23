@@ -1,3 +1,5 @@
+mod builder;
+
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::system::ActorSystem;
@@ -5,6 +7,7 @@ use crate::actor::{
     Actor, ActorId, ActorRef, ActorRefErr, IntoActor, IntoActorId, LocalActorRef, Receiver,
     ToActorId,
 };
+use crate::remote::cluster::group::builder::NodeGroupBuilder;
 use crate::remote::cluster::node::{NodeSelector, RemoteNodeRef};
 use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
@@ -18,6 +21,7 @@ use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::mem;
+use std::sync::Arc;
 
 pub enum NodeGroupEvent<A: Actor> {
     MemberUp {
@@ -59,6 +63,53 @@ pub struct NodeGroup<A: Actor> {
     min_node_count: Option<usize>,
 }
 
+impl<A: Actor> NodeGroup<A> {
+    pub async fn on_member_up(
+        &mut self,
+        leader_id: NodeId,
+        nodes: &Vec<RemoteNodeRef>,
+        sys: &RemoteActorSystem,
+    ) {
+        debug!(
+            cluster_leader = leader_id,
+            nodes_len = nodes.len(),
+            "nodegroup received `MemberUp`"
+        );
+
+        for node in nodes {
+            if !self.selector.includes(node.as_ref()) {
+                continue;
+            }
+
+            let actor_id = self
+                .actor_id_provider
+                .get_actor_id(self.group_name.as_ref(), node.id);
+
+            let actor_ref = RemoteActorRef::new(actor_id, node.id, sys.clone()).into();
+
+            let node = Node::new(node.id, actor_ref, node.clone());
+
+            self.nodes.insert(node.node_id, node);
+        }
+
+        let group_leader = self.leader_id();
+
+        if let Some(group_leader) = group_leader {
+            self.current_group_leader = Some(group_leader);
+
+            self.broadcast(NodeGroupEvent::MemberUp {
+                leader_id: group_leader,
+                nodes: self
+                    .nodes
+                    .values()
+                    .filter(|n| n.node_id != self.node_id)
+                    .cloned()
+                    .collect(),
+            })
+        }
+    }
+}
+
 pub struct Node<A: Actor> {
     pub node_id: NodeId,
     pub actor: ActorRef<A>,
@@ -78,6 +129,23 @@ impl<A: Actor> Clone for Node<A> {
 #[async_trait]
 impl<A: Actor> Actor for NodeGroup<A> {
     async fn started(&mut self, ctx: &mut ActorContext) {
+        let system = ctx.system().remote_owned();
+        if let Some(leader_id) = system.current_leader() {
+            info!(
+                leader_id = leader_id,
+                "nodegroup created, leader already allocated"
+            );
+
+            let nodes = system
+                .get_nodes()
+                .await
+                .into_iter()
+                .map(|n| Arc::new(n.into()))
+                .collect();
+
+            self.on_member_up(leader_id, &nodes, &system).await;
+        }
+
         self.subscription = Some(
             PubSub::subscribe::<Self, _>(SystemTopic, &ctx)
                 .await
@@ -87,11 +155,15 @@ impl<A: Actor> Actor for NodeGroup<A> {
 }
 
 impl<A: Actor> NodeGroup<A> {
+    pub fn builder() -> NodeGroupBuilder<A> {
+        NodeGroupBuilder::new()
+    }
+
     pub async fn new(
         group_name: impl ToString,
-        actor_id_provider: impl ActorIdProvider,
+        actor_id_provider: impl Into<Box<dyn ActorIdProvider>>,
         selector: NodeSelector,
-        receiver: Receiver<NodeGroupEvent<A>>,
+        receivers: Vec<Receiver<NodeGroupEvent<A>>>,
         system: &RemoteActorSystem,
     ) -> Result<LocalActorRef<Self>, ActorRefErr> {
         let group_name = group_name.to_string();
@@ -101,8 +173,8 @@ impl<A: Actor> NodeGroup<A> {
             selector,
             nodes: Default::default(),
             subscription: None,
-            receivers: vec![receiver],
-            actor_id_provider: Box::new(actor_id_provider),
+            receivers,
+            actor_id_provider: actor_id_provider.into(),
             current_group_leader: None,
             min_node_count: None,
         }
@@ -141,6 +213,28 @@ impl<A: Actor> NodeGroup<A> {
     }
 }
 
+pub struct Subscribe<A: Actor>(pub Receiver<NodeGroupEvent<A>>);
+
+impl<A: Actor> Message for Subscribe<A> {
+    type Result = ();
+}
+
+#[async_trait]
+impl<A: Actor> Handler<Subscribe<A>> for NodeGroup<A> {
+    async fn handle(&mut self, message: Subscribe<A>, _ctx: &mut ActorContext) {
+        if let Some(group_leader) = self.leader_id() {
+            info!("notifying MemberUp");
+
+            let _ = message.0.notify(NodeGroupEvent::MemberUp {
+                leader_id: group_leader,
+                nodes: self.nodes.values().cloned().collect(),
+            });
+        }
+
+        self.receivers.push(message.0);
+    }
+}
+
 #[async_trait]
 impl<A: Actor> Handler<Receive<SystemTopic>> for NodeGroup<A> {
     async fn handle(&mut self, message: Receive<SystemTopic>, ctx: &mut ActorContext) {
@@ -148,43 +242,7 @@ impl<A: Actor> Handler<Receive<SystemTopic>> for NodeGroup<A> {
         match message.0.as_ref() {
             SystemEvent::Cluster(e) => match e {
                 ClusterEvent::MemberUp(ClusterMemberUp { leader_id, nodes }) => {
-                    debug!(
-                        cluster_leader = leader_id,
-                        nodes_len = nodes.len(),
-                        "nodegroup received `MemberUp`"
-                    );
-
-                    for node in nodes {
-                        if !self.selector.includes(node.as_ref()) {
-                            continue;
-                        }
-
-                        let actor_id = self
-                            .actor_id_provider
-                            .get_actor_id(self.group_name.as_ref(), node.id);
-
-                        let actor_ref = RemoteActorRef::new(actor_id, node.id, sys.clone()).into();
-
-                        let node = Node::new(node.id, actor_ref, node.clone());
-
-                        self.nodes.insert(node.node_id, node);
-                    }
-
-                    let group_leader = self.leader_id();
-
-                    if let Some(group_leader) = group_leader {
-                        self.current_group_leader = Some(group_leader);
-
-                        self.broadcast(NodeGroupEvent::MemberUp {
-                            leader_id: group_leader,
-                            nodes: self
-                                .nodes
-                                .values()
-                                .filter(|n| n.node_id != self.node_id)
-                                .cloned()
-                                .collect(),
-                        })
-                    }
+                    self.on_member_up(*leader_id, nodes, &sys).await;
                 }
 
                 ClusterEvent::NodeAdded(node) => {
@@ -250,8 +308,10 @@ pub trait ActorIdProvider: 'static + Sync + Send {
     fn get_actor_id(&self, node_group: &str, node_id: NodeId) -> ActorId;
 }
 
-impl<F: Fn(&str, NodeId) -> String + 'static + Sync + Send> ActorIdProvider for F {
+pub struct DefaultActorIdProvider;
+
+impl ActorIdProvider for DefaultActorIdProvider {
     fn get_actor_id(&self, node_group: &str, node_id: NodeId) -> ActorId {
-        self(node_group, node_id).into_actor_id()
+        format!("{}-{}", node_group, node_id).into_actor_id()
     }
 }

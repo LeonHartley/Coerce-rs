@@ -63,8 +63,21 @@ impl ActorLoop {
 
         trace!(actor = ctx.full_path().as_ref(), "actor starting");
 
-        actor.started(&mut ctx).await;
-        ActorMetrics::incr_actor_created(A::type_name());
+        let log = ctx.log();
+
+        {
+            #[cfg(feature = "actor-tracing-info")]
+            let span = tracing::info_span!("actor.start", ctx = log.as_value(),);
+
+            #[cfg(feature = "actor-tracing-debug")]
+            let span = tracing::debug_span!("actor.start", ctx = log.as_value(),);
+
+            #[cfg(feature = "actor-tracing-trace")]
+            let span = tracing::trace_span!("actor.start", ctx = log.as_value(),);
+
+            actor.started(&mut ctx).await;
+            ActorMetrics::incr_actor_created(A::type_name());
+        }
 
         if ctx.get_status() == &Stopping {
             return actor_stopped(&mut actor, actor_type, &mut system, &actor_id, &mut ctx).await;
@@ -78,7 +91,6 @@ impl ActorLoop {
             let _ = on_start.send(());
         }
 
-        let log = ctx.log();
         while let Some(mut msg) = receiver.recv().await {
             {
                 #[cfg(feature = "actor-tracing-info")]

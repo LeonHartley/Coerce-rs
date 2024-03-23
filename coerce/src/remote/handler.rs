@@ -38,8 +38,9 @@ pub trait ActorMessageHandler: Any {
         &self,
         actor: ActorId,
         buffer: &[u8],
-        res: Sender<Result<Vec<u8>, ActorRefErr>>,
+        res: Sender<Result<Option<Vec<u8>>, ActorRefErr>>,
         attempt: usize,
+        requires_response: bool,
     );
 
     async fn handle_direct(
@@ -248,8 +249,9 @@ where
         &self,
         actor_id: ActorId,
         buffer: &[u8],
-        res: Sender<Result<Vec<u8>, ActorRefErr>>,
+        res: Sender<Result<Option<Vec<u8>>, ActorRefErr>>,
         attempt: usize,
+        requires_response: bool,
     ) {
         let actor = get_actor_ref::<A>(&self.system, &actor_id).await;
         if let Some(actor) = actor {
@@ -258,18 +260,22 @@ where
                 Ok(m) => {
                     let result = actor.send(m).await;
                     if let Ok(result) = result {
-                        match M::write_remote_result(result) {
-                            Ok(buffer) => {
-                                let send_res = res.send(Ok(buffer));
-                                if let Err(_) = send_res {
-                                    error!("failed to send result back to sender");
+                        if requires_response {
+                            match M::write_remote_result(result) {
+                                Ok(buffer) => {
+                                    let send_res = res.send(Ok(Some(buffer)));
+                                    if let Err(_) = send_res {
+                                        error!("failed to send result back to sender");
+                                    }
+                                }
+
+                                Err(e) => {
+                                    error!("failed to encode message result");
+                                    let _ = res.send(Err(ActorRefErr::Serialisation(e)));
                                 }
                             }
-
-                            Err(e) => {
-                                error!("failed to encode message result");
-                                let _ = res.send(Err(ActorRefErr::Serialisation(e)));
-                            }
+                        } else {
+                            let _ = res.send(Ok(None));
                         }
                     }
                 }
@@ -300,7 +306,7 @@ where
             );
 
             tokio::time::sleep(Duration::from_millis(RETRY_DELAY_MILLIS)).await;
-            self.handle_attempt(actor_id, buffer, res, next_attempt)
+            self.handle_attempt(actor_id, buffer, res, next_attempt, requires_response)
                 .await;
         }
     }

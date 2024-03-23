@@ -546,11 +546,12 @@ async fn session_handle_message(
             msg.handler_type.as_str(),
             actor_id.clone(),
             msg.message.as_slice(),
+            msg.requires_response,
         )
         .await
     {
         Ok(buf) => {
-            if msg.requires_response {
+            if let Some(buf) = buf {
                 send_result(msg.message_id.parse().unwrap(), buf, session_id, session).await;
             }
         }
