@@ -151,6 +151,12 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 pub use refs::*;
 
+#[cfg(feature = "remote")]
+use crate::actor::message::Envelope;
+
+#[cfg(feature = "remote")]
+use crate::remote::{system::NodeId, RemoteActorRef};
+
 pub mod blocking;
 
 pub mod context;

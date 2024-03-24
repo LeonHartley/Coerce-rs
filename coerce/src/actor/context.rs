@@ -11,7 +11,8 @@ use futures::{Stream, StreamExt};
 use std::any::Any;
 
 use tokio::sync::oneshot::Sender;
-use valuable::NamedField;
+
+use valuable::{Fields, NamedField, NamedValues, StructDef, Structable, Valuable, Value, Visit};
 
 use crate::actor::supervised::{ChildRef, Supervised};
 use crate::actor::watch::watchers::Watchers;
