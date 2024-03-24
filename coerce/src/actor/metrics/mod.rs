@@ -17,26 +17,24 @@ impl ActorMetrics {
     #[inline]
     pub fn incr_actor_created(actor_type: &'static str) {
         #[cfg(feature = "metrics")]
-        increment_counter!(METRIC_ACTOR_CREATED,
-            LABEL_ACTOR_TYPE => actor_type,
-        );
+        counter!(METRIC_ACTOR_CREATED, LABEL_ACTOR_TYPE => actor_type).increment(1);
     }
 
     #[inline]
     pub fn incr_actor_stopped(actor_type: &'static str) {
         #[cfg(feature = "metrics")]
-        increment_counter!(METRIC_ACTOR_STOPPED,
-            LABEL_ACTOR_TYPE => actor_type,
-        );
+        counter!(METRIC_ACTOR_STOPPED, LABEL_ACTOR_TYPE => actor_type).increment(1)
     }
 
     #[inline]
     pub fn incr_messages_sent(actor_type: &'static str, msg_type: &'static str) {
         #[cfg(feature = "metrics")]
-        increment_counter!(METRIC_ACTOR_MESSAGES_SENT_TOTAL,
+        counter!(
+            METRIC_ACTOR_MESSAGES_SENT_TOTAL,
             LABEL_ACTOR_TYPE => actor_type,
             LABEL_MESSAGE_TYPE => msg_type
-        );
+        )
+        .increment(1)
     }
 
     #[inline]
@@ -48,20 +46,21 @@ impl ActorMetrics {
     ) {
         #[cfg(feature = "metrics")]
         {
-            increment_counter!(METRIC_ACTOR_MESSAGES_PROCESSED_TOTAL,
+            counter!(METRIC_ACTOR_MESSAGES_PROCESSED_TOTAL,
                 LABEL_ACTOR_TYPE => actor_type,
                 LABEL_MESSAGE_TYPE => msg_type
-            );
+            )
+            .increment(1);
 
             histogram!(METRIC_ACTOR_MESSAGE_WAIT_TIME,
-                wait_time,
-                LABEL_ACTOR_TYPE => actor_type,
-                LABEL_MESSAGE_TYPE => msg_type);
-
-            histogram!(METRIC_ACTOR_MESSAGE_PROCESSING_TIME,
-                processing_time,
                 LABEL_ACTOR_TYPE => actor_type,
                 LABEL_MESSAGE_TYPE => msg_type)
+            .record(wait_time);
+
+            histogram!(METRIC_ACTOR_MESSAGE_PROCESSING_TIME,
+                LABEL_ACTOR_TYPE => actor_type,
+                LABEL_MESSAGE_TYPE => msg_type)
+            .record(processing_time);
         }
     }
 }

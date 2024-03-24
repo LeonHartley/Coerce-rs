@@ -9,7 +9,7 @@ use tokio::time;
 use tokio::time::Instant;
 use uuid::Uuid;
 
-pub trait TimerTick: Message {}
+pub trait TimerTick: Message + Clone {}
 
 enum TimerMode {
     Notify,
@@ -28,7 +28,6 @@ impl Timer {
     ) -> Timer
     where
         A: 'static + Handler<T> + Sync + Send,
-        T: 'static + Clone + Sync + Send,
         T::Result: 'static + Sync + Send,
     {
         let (stop, stop_rx) = oneshot::channel();
@@ -40,7 +39,6 @@ impl Timer {
     pub fn start<A: Actor, T: TimerTick>(actor: LocalActorRef<A>, tick: Duration, msg: T) -> Timer
     where
         A: 'static + Handler<T> + Sync + Send,
-        T: 'static + Clone + Sync + Send,
         T::Result: 'static + Sync + Send,
     {
         let (stop, stop_rx) = oneshot::channel();
@@ -74,7 +72,6 @@ async fn timer_loop<A: Actor, T: TimerTick>(
     mode: TimerMode,
 ) where
     A: Handler<T>,
-    T: 'static + Clone + Sync + Send,
 {
     let start = if tick_immediately {
         Instant::now()

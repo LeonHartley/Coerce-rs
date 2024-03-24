@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
 message RemoteRead {
   string request_id = 1;
 
@@ -29,4 +32,12 @@ message RemoteReadResult {
 
     Error error = 2;
   }
+}
+
+message Heartbeat {
+  uint64 source_node_id = 1;
+
+  google.protobuf.UInt64Value last_commit_index = 2;
+
+  google.protobuf.Timestamp timestamp = 3;
 }

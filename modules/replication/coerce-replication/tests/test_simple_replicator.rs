@@ -3,16 +3,18 @@ use coerce::actor::message::{FromBytes, MessageUnwrapErr, MessageWrapErr, ToByte
 use coerce::actor::system::ActorSystem;
 use coerce::persistent::Persistence;
 use coerce::remote::cluster::node::NodeSelector;
-use coerce::remote::heartbeat::HeartbeatConfig;
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
-use coerce_replication::simple::{Error, Read, RemoteRead, Replicator};
+use coerce_replication::simple::Replicator;
 use coerce_replication::storage::{Key, Snapshot, Storage, StorageErr, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::oneshot;
+use tracing::Level;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::FmtSpan;
+use coerce_replication::simple::heartbeat::Heartbeat;
+use coerce_replication::simple::read::{Read, RemoteRead};
 
 #[derive(Clone)]
 struct TestKey(String);
@@ -64,8 +66,8 @@ impl Storage for TestStorage {
 
     type Snapshot = TestSnapshot;
 
-    fn current_version(&self) -> Option<u64> {
-        todo!()
+    fn last_commit_index(&self) -> Option<u64> {
+        Some(1)
     }
 
     async fn read(&mut self, key: Self::Key) -> Result<Self::Value, StorageErr> {
@@ -76,7 +78,11 @@ impl Storage for TestStorage {
         todo!()
     }
 
-    fn snapshot(&mut self) -> Result<Self::Snapshot, Error> {
+    fn recover_snapshot(&mut self, snapshot: Self::Snapshot) -> Result<(), StorageErr> {
+        Ok(())
+    }
+
+    fn snapshot(&mut self) -> Result<Self::Snapshot, StorageErr> {
         todo!()
     }
 }
@@ -123,6 +129,8 @@ pub async fn test_simple_replicator_read() {
             tracing::info!("received {:?} error", &e);
         }
     }
+
+    tokio::time::sleep(Duration::from_secs(5)).await;
 }
 
 async fn create_system(
@@ -137,7 +145,7 @@ async fn create_system(
         .with_actors(|a| {
             a.with_handler::<Replicator<TestStorage>, RemoteRead<TestKey>>(
                 "TestReplicator.RemoteRead",
-            )
+            ).with_handler::<Replicator<TestStorage>, Heartbeat>("TestReplicator.Heartbeat")
         })
         .with_id(node_id)
         .build()
@@ -155,14 +163,10 @@ async fn create_system(
 
 pub fn create_trace_logger() {
     let _ = tracing_subscriber::fmt()
-        // enable everything
-        .with_file(true)
-        .with_line_number(true)
-        .with_target(true)
+        .compact()
         .with_thread_names(true)
         .with_span_events(FmtSpan::NONE)
         .with_ansi(false)
-        .with_max_level(LevelFilter::DEBUG)
-        // sets this to be the default, global collector for this application.
+        .with_max_level(Level::DEBUG)
         .try_init();
 }

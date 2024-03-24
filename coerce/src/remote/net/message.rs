@@ -6,7 +6,7 @@ use crate::remote::net::proto::network::{
     SessionHandshake, StreamPublishEvent,
 };
 use crate::remote::net::{proto, StreamData};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use protobuf::{Enum, Error, Message};
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::Arc;
@@ -179,10 +179,7 @@ pub fn datetime_to_timestamp(
 pub fn timestamp_to_datetime(
     timestamp: protobuf::well_known_types::timestamp::Timestamp,
 ) -> DateTime<Utc> {
-    DateTime::<Utc>::from_utc(
-        NaiveDateTime::from_timestamp_opt(timestamp.seconds, timestamp.nanos as u32).unwrap(),
-        Utc,
-    )
+    DateTime::<Utc>::from_timestamp(timestamp.seconds, timestamp.nanos as u32).unwrap()
 }
 
 impl From<ActorRefErr> for proto::network::ActorRefErr {

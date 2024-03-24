@@ -42,8 +42,8 @@ impl Actor for RemoteHttpApi {
                 app = route.routes(app);
             }
 
-            axum::Server::bind(&listen_addr)
-                .serve(app.into_make_service())
+            let listener = tokio::net::TcpListener::bind(&listen_addr).await.unwrap();
+            axum::serve(listener, app)
                 .with_graceful_shutdown(async { stop_rx.await.unwrap() })
                 .await
                 .unwrap()

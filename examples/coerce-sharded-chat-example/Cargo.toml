@@ -9,14 +9,14 @@ edition = "2021"
 coerce = { path = "../../coerce", features = ["full"] }
 coerce-macros = { version = "0.2.0" }
 coerce-redis = { path = "../../modules/persistence/coerce-redis" }
-coerce-k8s = { version = "0.1.7" }
+coerce-k8s = { path = "../../modules/discovery/coerce-k8s" }
 
 tokio = { version = "1.36.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 async-trait = { version = "0.1" }
-tungstenite = "0.17.3"
-tokio-tungstenite = { version = "0.17.2", features = ["stream", "connect"] }
+tungstenite = "0.21.0"
+tokio-tungstenite = { version = "0.21.0", features = ["stream", "connect"] }
 futures = { version = "0.3"}
 futures-io = { version = "0.3"}
 futures-util = { version = "0.3" }
@@ -25,11 +25,10 @@ tracing-subscriber = { version = "0.3", features = ["json"] }
 chrono = { version = "0.4" }
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
 clap = { version = "4.0", features = ["env", "derive"]}
-metrics-util= "0.14.0"
-metrics-exporter-prometheus = "0.11.0"
-env_logger = "0.9"
-protobuf = "3.2.0"
-metrics-process = "1.0.10"
+metrics-util= "0.16.3"
+metrics-exporter-prometheus = "0.14.0"
+protobuf = "3.4.0"
+metrics-process = "1.2.0"
 
 #jemallocator = { version = "0.3.0", features = ["profiling", "debug"] }
 #console-subscriber = "0.1.6"

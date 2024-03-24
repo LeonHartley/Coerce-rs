@@ -1,4 +1,3 @@
-use crate::simple::Error;
 use coerce::actor::message::{FromBytes, ToBytes};
 
 pub trait Key: 'static + Clone + Sync + Send + FromBytes + ToBytes {}
@@ -18,11 +17,13 @@ pub trait Storage: 'static + Sync + Send {
 
     type Snapshot: Snapshot;
 
-    fn current_version(&self) -> Option<u64>;
+    fn last_commit_index(&self) -> Option<u64>;
 
     async fn read(&mut self, key: Self::Key) -> Result<Self::Value, StorageErr>;
 
     async fn write(&mut self, key: Self::Key, value: Self::Value) -> Result<(), StorageErr>;
 
-    fn snapshot(&mut self) -> Result<Self::Snapshot, Error>;
+    fn snapshot(&mut self) -> Result<Self::Snapshot, StorageErr>;
+
+    fn recover_snapshot(&mut self, snapshot: Self::Snapshot) -> Result<(), StorageErr>;
 }
