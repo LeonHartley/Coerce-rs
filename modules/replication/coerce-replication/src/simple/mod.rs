@@ -13,26 +13,21 @@ pub mod heartbeat;
 pub mod read;
 pub mod write;
 
-use crate::protocol::simple as proto;
 use crate::simple::heartbeat::HeartbeatTick;
 use crate::simple::read::Read;
 use crate::simple::write::Write;
-use crate::storage::{Key, Storage, StorageErr, Value};
+use crate::storage::{Key, Storage, Value};
 use coerce::actor::context::ActorContext;
-use coerce::actor::message::{
-    FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
-};
+use coerce::actor::message::{Handler, Message};
 use coerce::actor::scheduler::timer::Timer;
 use coerce::actor::{Actor, ActorRef, ActorRefErr, IntoActor, LocalActorRef};
 use coerce::remote::cluster::group::{Node, NodeGroup, NodeGroupEvent, Subscribe};
 use coerce::remote::cluster::node::NodeSelector;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
-use protobuf::EnumOrUnknown;
+
 use std::collections::{HashMap, VecDeque};
 use std::mem;
 use std::time::Duration;
-use tokio::sync::oneshot;
-use uuid::Uuid;
 
 pub enum Request<K: Key, V: Value> {
     Read(Read<K, V>),

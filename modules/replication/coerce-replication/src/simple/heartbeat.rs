@@ -8,8 +8,8 @@ use coerce::actor::message::{
 };
 use coerce::actor::scheduler::timer::TimerTick;
 use coerce::remote::net::message::{datetime_to_timestamp, timestamp_to_datetime};
-use protobuf::well_known_types::wrappers::UInt64Value;
-use protobuf::{Message as ProtoMessage, MessageField};
+
+use protobuf::Message as ProtoMessage;
 
 #[derive(Debug, Clone)]
 pub struct Heartbeat {
@@ -44,7 +44,7 @@ impl<S: Storage> Handler<HeartbeatTick> for Replicator<S> {
 
 #[async_trait]
 impl<S: Storage> Handler<Heartbeat> for Replicator<S> {
-    async fn handle(&mut self, message: Heartbeat, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: Heartbeat, _ctx: &mut ActorContext) {
         debug!(
             source_node_id = message.source_node_id,
             "received heartbeat"

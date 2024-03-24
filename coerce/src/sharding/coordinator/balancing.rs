@@ -10,7 +10,6 @@ use futures::future::join_all;
 use std::mem;
 use std::time::Instant;
 use tokio::sync::oneshot;
-use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum Rebalance {
@@ -149,7 +148,7 @@ impl ShardCoordinator {
         debug!("beginning re-balance of shards hosted on node={}", node_id);
 
         let shards_to_rebalance = {
-            let mut shard_host_state = match self.hosts.get_mut(&node_id) {
+            let shard_host_state = match self.hosts.get_mut(&node_id) {
                 None => return,
                 Some(shard_host_state) => shard_host_state,
             };

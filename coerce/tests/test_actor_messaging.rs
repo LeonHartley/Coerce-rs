@@ -87,7 +87,7 @@ pub async fn test_actor_exec_mutation() {
     let initial_status = actor_ref.send(GetStatusRequest).await;
 
     actor_ref
-        .exec(|mut actor| {
+        .exec(|actor| {
             actor.status = Some(TestActorStatus::Active);
         })
         .await
@@ -109,12 +109,12 @@ pub async fn test_actor_exec_chain_mutation() {
         .unwrap();
 
     let _a = actor_ref
-        .exec(|mut actor| {
+        .exec(|actor| {
             actor.counter = 1;
         })
         .await;
 
-    let _ = actor_ref.exec(|mut actor| actor.counter = 2).await;
+    let _ = actor_ref.exec(|actor| actor.counter = 2).await;
 
     let counter = actor_ref.exec(|actor| actor.counter).await;
     assert_eq!(counter, Ok(2));
@@ -128,7 +128,7 @@ pub async fn test_actor_notify() {
         .unwrap();
 
     for i in 1..=25_i32 {
-        let _ = actor_ref.notify_exec(move |mut actor| actor.counter = i);
+        let _ = actor_ref.notify_exec(move |actor| actor.counter = i);
     }
 
     let counter = actor_ref.exec(|actor| actor.counter).await;

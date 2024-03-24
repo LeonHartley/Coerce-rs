@@ -1,7 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::Message;
-use crate::actor::Actor;
-use crate::persistent::storage::JournalEntry;
+
 use crate::persistent::types::JournalTypes;
 use crate::persistent::{PersistentActor, Recover};
 use std::sync::Arc;

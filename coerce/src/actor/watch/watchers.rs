@@ -1,5 +1,5 @@
 use crate::actor::watch::ActorTerminated;
-use crate::actor::{ActorId, BoxedActorRef, Receiver};
+use crate::actor::{ActorId, Receiver};
 use std::collections::HashMap;
 
 #[derive(Default)]

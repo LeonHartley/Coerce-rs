@@ -67,7 +67,7 @@ impl ActorLoop {
 
         {
             #[cfg(feature = "actor-tracing-info")]
-            let span = tracing::info_span!("actor.start", ctx = log.as_value(),);
+            let _span = tracing::info_span!("actor.start", ctx = log.as_value(),);
 
             #[cfg(feature = "actor-tracing-debug")]
             let span = tracing::debug_span!("actor.start", ctx = log.as_value(),);

@@ -17,5 +17,5 @@ impl<K: Key, V: Value> Message for Write<K, V> {
 
 #[async_trait]
 impl<S: Storage> Handler<Write<S::Key, S::Value>> for Replicator<S> {
-    async fn handle(&mut self, message: Write<S::Key, S::Value>, ctx: &mut ActorContext) {}
+    async fn handle(&mut self, _message: Write<S::Key, S::Value>, _ctx: &mut ActorContext) {}
 }

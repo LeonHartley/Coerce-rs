@@ -11,7 +11,6 @@ use crate::remote::{RemoteActorRef, RemoteMessageHeader};
 use protobuf::well_known_types::wrappers::UInt64Value;
 use protobuf::{Message as ProtoMessage, MessageField};
 use tokio::sync::oneshot;
-use uuid::Uuid;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum RemoteActorErr {

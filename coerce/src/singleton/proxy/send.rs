@@ -1,7 +1,7 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::{Actor, ActorRef, ActorRefErr};
-use crate::singleton::factory::SingletonFactory;
+
 use crate::singleton::proxy::{Proxy, ProxyState};
 use tokio::sync::oneshot::Sender;
 
@@ -57,7 +57,7 @@ impl<A: Actor, M: Message> Handler<Deliver<M>> for Proxy<A>
 where
     A: Handler<M>,
 {
-    async fn handle(&mut self, mut message: Deliver<M>, ctx: &mut ActorContext) {
+    async fn handle(&mut self, mut message: Deliver<M>, _ctx: &mut ActorContext) {
         match &mut self.state {
             ProxyState::Buffered { request_queue } => {
                 request_queue.push_back(Box::new(message));

@@ -1,13 +1,11 @@
 use crate::util::{
     GetStatusRequest, GetStatusResponse, SetStatusRequest, TestActor, TestActorStatus,
 };
-use std::sync::Arc;
+
 use std::time::Duration;
-use tokio::sync::oneshot;
+
 use tracing::Level;
 
-use coerce::actor::describe::DescribeAll;
-use coerce::actor::describe::DescribeOptions;
 use coerce::actor::message::Message;
 use coerce::actor::system::ActorSystem;
 use coerce::actor::{
@@ -175,7 +173,7 @@ pub async fn test_shard_rebalancing_upon_node_termination() {
 
     // stop the system, and start a new one (sharing the same persistence backplane)
     {
-        let mut server_a = server_a;
+        let server_a = server_a;
         server_a.stop();
         remote_a.actor_system().shutdown().await;
     }

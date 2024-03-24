@@ -3,8 +3,6 @@ use protobuf::Message as ProtoMessage;
 use std::time::Instant;
 use tokio::sync::oneshot;
 
-use uuid::Uuid;
-
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::timer::TimerTick;

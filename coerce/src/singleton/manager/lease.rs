@@ -3,7 +3,7 @@ use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
 use crate::actor::Actor;
-use crate::remote::system::{NodeId, RemoteActorSystem};
+use crate::remote::system::NodeId;
 use crate::singleton::factory::SingletonFactory;
 use crate::singleton::manager::status::SingletonState;
 use crate::singleton::manager::{Manager, State};
@@ -184,5 +184,5 @@ impl<F: SingletonFactory> Manager<F> {
         self.start_actor(ctx).await;
     }
 
-    pub async fn deny_lease(&self, node_id: NodeId) {}
+    pub async fn deny_lease(&self, _node_id: NodeId) {}
 }

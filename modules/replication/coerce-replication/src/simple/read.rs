@@ -9,7 +9,6 @@ use coerce::actor::{ActorRef, ActorRefErr};
 use coerce::remote::system::{NodeId, RemoteActorSystem};
 use protobuf::EnumOrUnknown;
 use tokio::sync::oneshot;
-use uuid::Uuid;
 
 pub struct Read<K: Key, V: Value> {
     pub key: K,
@@ -137,7 +136,7 @@ async fn remote_read<S: Storage>(
 
 #[async_trait]
 impl<S: Storage> Handler<RemoteRead<S::Key>> for Replicator<S> {
-    async fn handle(&mut self, message: RemoteRead<S::Key>, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: RemoteRead<S::Key>, _ctx: &mut ActorContext) {
         debug!(
             request_id = message.request_id,
             source_node_id = message.source_node_id,

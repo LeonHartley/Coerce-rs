@@ -3,7 +3,6 @@ use crate::actor::ActorRefErr;
 use crate::remote::handler::{ActorHandler, ActorMessageHandler};
 
 use std::collections::HashMap;
-use uuid::Uuid;
 
 pub mod clients;
 pub mod message;

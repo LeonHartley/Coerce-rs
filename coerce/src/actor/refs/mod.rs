@@ -14,7 +14,7 @@ use std::future::Future;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
-use tokio::sync::mpsc::error::SendError;
+
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 
@@ -83,7 +83,7 @@ impl<A: Actor> Debug for ActorRef<A> {
 
 impl<A: Actor> Display for ActorRef<A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        (self as (&dyn Debug)).fmt(f)
+        (self as &dyn Debug).fmt(f)
     }
 }
 

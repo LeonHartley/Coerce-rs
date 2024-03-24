@@ -2,7 +2,6 @@ use coerce::actor::system::ActorSystem;
 use coerce::persistent::journal::provider::StorageProvider;
 use coerce::persistent::journal::storage::JournalEntry;
 use coerce::persistent::storage::JournalStorageRef;
-use coerce::persistent::Persistence;
 
 use coerce_redis::journal::{RedisStorageConfig, RedisStorageProvider};
 

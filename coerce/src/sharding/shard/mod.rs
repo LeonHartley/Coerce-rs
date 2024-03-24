@@ -176,7 +176,7 @@ impl PersistentActor for Shard {
             .notify(ShardReady(self.shard_id, self.actor_ref(ctx)));
     }
 
-    async fn on_child_stopped(&mut self, id: &ActorId, _ctx: &mut ActorContext) {}
+    async fn on_child_stopped(&mut self, _id: &ActorId, _ctx: &mut ActorContext) {}
 }
 
 impl Shard {

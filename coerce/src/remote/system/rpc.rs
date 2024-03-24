@@ -2,7 +2,6 @@ use protobuf::Message as ProtoMessage;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use tokio::sync::oneshot;
-use uuid::Uuid;
 
 use crate::actor::{ActorId, ActorRefErr};
 use crate::remote::actor::{RemoteRequest, RemoteResponse};

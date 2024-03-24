@@ -26,14 +26,14 @@ use protobuf::{Message as ProtoMessage, MessageField};
 use bytes::Bytes;
 use std::io::Error;
 use std::net::SocketAddr;
-use std::str::FromStr;
+
 use std::sync::Arc;
 use tokio::io::{ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use tokio_util::sync::CancellationToken;
-use uuid::Uuid;
+
 use valuable::Valuable;
 
 pub mod store;

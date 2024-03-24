@@ -13,13 +13,12 @@ use protobuf::Message as ProtoMessage;
 use crate::remote::actor::BoxedActorHandler;
 use crate::remote::heartbeat::Heartbeat;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 use crate::actor::scheduler::ActorType;
 use crate::sharding::coordinator::factory::CoordinatorFactory;
-use crate::singleton::factory::SingletonFactory;
+
 use crate::singleton::Singleton;
-use uuid::Uuid;
 
 pub mod request;
 pub mod stats;
@@ -115,7 +114,7 @@ impl ShardHost {
 
 #[async_trait]
 impl Handler<Init> for ShardHost {
-    async fn handle(&mut self, message: Init, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: Init, _ctx: &mut ActorContext) {
         self.coordinator = Some(message.0);
     }
 }

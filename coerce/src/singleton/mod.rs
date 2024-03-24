@@ -1,7 +1,5 @@
 use crate::actor::message::{Handler, Message};
-use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef, ToActorId,
-};
+use crate::actor::{Actor, ActorId, ActorRefErr, IntoActor, IntoActorId, LocalActorRef, ToActorId};
 use crate::remote::cluster::node::NodeSelector;
 use crate::remote::system::builder::RemoteSystemConfigBuilder;
 use crate::remote::system::RemoteActorSystem;
@@ -50,7 +48,7 @@ impl<F: SingletonFactory> SingletonBuilder<F> {
         self
     }
 
-    pub async fn build(mut self) -> Singleton<F::Actor, F> {
+    pub async fn build(self) -> Singleton<F::Actor, F> {
         let factory = self.factory.expect("factory");
 
         let node_id = self.system.node_id();

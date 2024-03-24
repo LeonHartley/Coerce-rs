@@ -6,13 +6,10 @@ use crate::actor::context::ActorContext;
 use crate::actor::message::{
     FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
 };
-use crate::actor::{
-    Actor, ActorFactory, ActorId, ActorRef, IntoActor, IntoActorId, LocalActorRef, ToActorId,
-};
-use crate::remote::cluster::group::{ActorIdProvider, Node, NodeGroup, NodeGroupEvent};
-use crate::remote::cluster::node::{NodeSelector, RemoteNodeRef};
-use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
-use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
+use crate::actor::{Actor, ActorId, ActorRef, IntoActorId, LocalActorRef};
+use crate::remote::cluster::group::{ActorIdProvider, NodeGroup, NodeGroupEvent};
+use crate::remote::cluster::node::NodeSelector;
+
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
 use crate::singleton::factory::SingletonFactory;
@@ -335,9 +332,9 @@ impl<F: SingletonFactory> Handler<NodeGroupEvent<Self>> for Manager<F> {
 
             NodeGroupEvent::NodeAdded(node) => {
                 debug!(node_id = node.node_id, "node added");
-                let mut entry = self.nodes.entry(node.node_id);
+                let entry = self.nodes.entry(node.node_id);
 
-                if let Entry::Vacant(mut entry) = entry {
+                if let Entry::Vacant(entry) = entry {
                     match &self.state {
                         State::Starting { .. } => {
                             let _ = node
@@ -393,7 +390,7 @@ pub struct SingletonStopped {
 
 #[async_trait]
 impl<F: SingletonFactory> Handler<SingletonStarted> for Manager<F> {
-    async fn handle(&mut self, message: SingletonStarted, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SingletonStarted, _ctx: &mut ActorContext) {
         debug!(
             source_node_id = message.source_node_id,
             "received started notification, notifying proxy"
@@ -412,7 +409,7 @@ impl<F: SingletonFactory> Handler<SingletonStarted> for Manager<F> {
 
 #[async_trait]
 impl<F: SingletonFactory> Handler<SingletonStopped> for Manager<F> {
-    async fn handle(&mut self, message: SingletonStopped, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SingletonStopped, _ctx: &mut ActorContext) {
         debug!(
             source_node_id = message.source_node_id,
             "received stopped notification, notifying proxy"

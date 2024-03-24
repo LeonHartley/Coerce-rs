@@ -18,7 +18,7 @@ pub async fn test_system_global_get_actor() {
     let actor_ref = new_actor(TestActor::new()).await.unwrap();
 
     let _ = actor_ref
-        .exec(|mut actor| {
+        .exec(|actor| {
             actor.counter = 1337;
         })
         .await;
@@ -41,7 +41,7 @@ pub async fn test_system_get_tracked_actor() {
     let actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 
     let _ = actor_ref
-        .exec(|mut actor| {
+        .exec(|actor| {
             actor.counter = 1337;
         })
         .await;
@@ -74,7 +74,7 @@ pub async fn test_system_stop_tracked_actor_get_not_found() {
     let actor_ref = ctx.new_tracked_actor(TestActor::new()).await.unwrap();
 
     let _ = actor_ref
-        .exec(|mut actor| {
+        .exec(|actor| {
             actor.counter = 1337;
         })
         .await;

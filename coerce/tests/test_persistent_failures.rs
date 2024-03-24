@@ -237,8 +237,8 @@ impl JournalStorage for MockPersistence {
 
     async fn write_message_batch(
         &self,
-        persistent_id: &str,
-        entries: Vec<JournalEntry>,
+        _persistent_id: &str,
+        _entries: Vec<JournalEntry>,
     ) -> anyhow::Result<()> {
         todo!()
     }
@@ -270,25 +270,25 @@ impl JournalStorage for MockPersistence {
 
     async fn read_message(
         &self,
-        persistence_id: &str,
-        sequence_id: i64,
+        _persistence_id: &str,
+        _sequence_id: i64,
     ) -> anyhow::Result<Option<JournalEntry>> {
         todo!()
     }
 
     async fn read_messages(
         &self,
-        persistence_id: &str,
-        from_sequence: i64,
-        to_sequence: i64,
+        _persistence_id: &str,
+        _from_sequence: i64,
+        _to_sequence: i64,
     ) -> anyhow::Result<Option<Vec<JournalEntry>>> {
         todo!()
     }
 
     async fn delete_messages_to(
         &self,
-        persistence_id: &str,
-        to_sequence: i64,
+        _persistence_id: &str,
+        _to_sequence: i64,
     ) -> anyhow::Result<()> {
         todo!()
     }

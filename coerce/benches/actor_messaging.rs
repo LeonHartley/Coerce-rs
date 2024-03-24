@@ -9,7 +9,7 @@ use coerce::actor::context::ActorContext;
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::scheduler::ActorType::Anonymous;
 use coerce::actor::system::ActorSystem;
-use coerce::actor::{Actor, IntoActorId, LocalActorRef, ToActorId};
+use coerce::actor::{Actor, IntoActorId, LocalActorRef};
 use tokio::runtime::Runtime;
 
 struct BenchmarkActor;

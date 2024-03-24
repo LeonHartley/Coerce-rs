@@ -11,8 +11,6 @@ use std::marker::PhantomData;
 
 use tokio::sync::oneshot;
 
-use uuid::Uuid;
-
 pub struct RemoteActorRef<A: Actor>
 where
     A: 'static + Sync + Send,

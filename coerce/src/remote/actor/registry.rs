@@ -16,7 +16,6 @@ use crate::remote::system::{NodeId, RemoteActorSystem};
 use protobuf::well_known_types::wrappers::UInt64Value;
 use protobuf::Message;
 use std::collections::HashMap;
-use uuid::Uuid;
 
 pub struct RemoteRegistry {
     nodes: RemoteNodeStore,
@@ -238,8 +237,8 @@ impl Handler<Receive<SystemTopic>> for RemoteRegistry {
         match event.0.as_ref() {
             SystemEvent::Cluster(e) => {
                 debug!("cluster event - {:?}", e);
-                let system = self.system.as_ref().unwrap().clone();
-                let registry_ref = self.actor_ref(ctx);
+                let _system = self.system.as_ref().unwrap().clone();
+                let _registry_ref = self.actor_ref(ctx);
                 //
                 // // TODO: remove all of this stuff
                 // tokio::spawn(async move {

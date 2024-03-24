@@ -3,7 +3,7 @@ use crate::actor::message::{Handler, Message};
 use crate::remote::net::client::connect::Disconnected;
 use crate::remote::net::client::{ClientState, ConnectionState, RemoteClient, RemoteClientErr};
 use crate::remote::net::StreamData;
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use futures::SinkExt;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;

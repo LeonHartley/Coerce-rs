@@ -4,7 +4,6 @@ use crate::actor::{Actor, IntoActorId, LocalActorRef};
 use crate::remote::net::message::ClientEvent;
 use crate::remote::net::server::session::RemoteSession;
 use std::collections::HashMap;
-use uuid::Uuid;
 
 pub struct RemoteSessionStore {
     sessions: HashMap<i64, LocalActorRef<RemoteSession>>,

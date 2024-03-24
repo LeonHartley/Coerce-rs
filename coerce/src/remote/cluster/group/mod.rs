@@ -2,10 +2,9 @@ mod builder;
 
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::system::ActorSystem;
+
 use crate::actor::{
     Actor, ActorId, ActorRef, ActorRefErr, IntoActor, IntoActorId, LocalActorRef, Receiver,
-    ToActorId,
 };
 use crate::remote::cluster::group::builder::NodeGroupBuilder;
 use crate::remote::cluster::node::{NodeSelector, RemoteNodeRef};
@@ -13,14 +12,12 @@ use crate::remote::stream::pubsub::{PubSub, Receive, Subscription};
 use crate::remote::stream::system::{ClusterEvent, ClusterMemberUp, SystemEvent, SystemTopic};
 use crate::remote::system::{NodeId, RemoteActorSystem};
 use crate::remote::RemoteActorRef;
-use crate::singleton::factory::SingletonFactory;
-use crate::singleton::manager::lease::{LeaseAck, RequestLease};
-use crate::singleton::manager::{Manager, SingletonStarted, State};
+
 use chrono::{DateTime, Utc};
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::mem;
+
 use std::sync::Arc;
 
 pub enum NodeGroupEvent<A: Actor> {
@@ -250,8 +247,8 @@ impl<A: Actor> Handler<Receive<SystemTopic>> for NodeGroup<A> {
                     let mut event = None;
 
                     if self.selector.includes(node.as_ref()) {
-                        let mut entry = self.nodes.entry(node.id);
-                        if let Entry::Vacant(mut entry) = entry {
+                        let entry = self.nodes.entry(node.id);
+                        if let Entry::Vacant(entry) = entry {
                             let actor_id = self
                                 .actor_id_provider
                                 .get_actor_id(self.group_name.as_ref(), node.id);

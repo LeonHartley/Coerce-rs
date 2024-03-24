@@ -21,7 +21,7 @@ pub mod rpc;
 
 use crate::remote::config::RemoteSystemConfig;
 pub use actor::*;
-pub use cluster::*;
+
 pub use rpc::*;
 
 #[derive(Clone)]

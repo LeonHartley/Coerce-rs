@@ -17,7 +17,7 @@ use crate::remote::net::proto::network::{self as proto, IdentifyEvent};
 use crate::remote::net::{receive_loop, StreamData};
 
 use bytes::Bytes;
-use chrono::Utc;
+
 use protobuf::EnumOrUnknown;
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -172,7 +172,7 @@ impl Handler<Connect> for RemoteClient {
 #[async_trait]
 impl Handler<BeginHandshake> for RemoteClient {
     async fn handle(&mut self, message: BeginHandshake, ctx: &mut ActorContext) {
-        let mut connection = match &mut self.state {
+        let connection = match &mut self.state {
             Some(ClientState::Connected(connection)) => connection,
             _ => {
                 // let actor_ref = self.actor_ref(ctx);
@@ -311,7 +311,7 @@ impl Handler<Disconnected> for RemoteClient {
                 }
             }
 
-            ClientState::Connected(mut state) => ClientState::Idle {
+            ClientState::Connected(_state) => ClientState::Idle {
                 connection_attempts: 1,
             },
 

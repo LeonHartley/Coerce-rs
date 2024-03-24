@@ -8,7 +8,6 @@ use crate::sharding::host::ShardHost;
 
 use crate::remote::system::NodeId;
 
-use crate::actor::message::Handler;
 use crate::remote::cluster::node::NodeStatus::{Healthy, Joining};
 use crate::remote::heartbeat::Heartbeat;
 use crate::remote::stream::pubsub::{PubSub, Subscription};

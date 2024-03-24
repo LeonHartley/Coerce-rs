@@ -1,6 +1,6 @@
 use crate::actor::context::ActorContext;
 use crate::actor::message::{Handler, Message};
-use crate::actor::{Actor, ActorRef, ToActorId};
+use crate::actor::{Actor, ActorRef};
 use crate::singleton::proxy::send::Buffered;
 use std::collections::VecDeque;
 
@@ -61,7 +61,7 @@ impl Message for SingletonStopping {
 
 #[async_trait]
 impl<A: Actor> Handler<SingletonStarted<A>> for Proxy<A> {
-    async fn handle(&mut self, message: SingletonStarted<A>, ctx: &mut ActorContext) {
+    async fn handle(&mut self, message: SingletonStarted<A>, _ctx: &mut ActorContext) {
         let actor_ref = message.actor_ref;
 
         match &mut self.state {
@@ -91,7 +91,7 @@ impl<A: Actor> Handler<SingletonStarted<A>> for Proxy<A> {
 
 #[async_trait]
 impl<A: Actor> Handler<SingletonStopping> for Proxy<A> {
-    async fn handle(&mut self, _: SingletonStopping, ctx: &mut ActorContext) {
+    async fn handle(&mut self, _: SingletonStopping, _ctx: &mut ActorContext) {
         debug!("singleton actor stopped, buffering messages");
 
         if self.state.is_active() {

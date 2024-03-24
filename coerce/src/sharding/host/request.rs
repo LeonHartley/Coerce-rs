@@ -10,10 +10,9 @@ use crate::sharding::shard::Shard;
 
 use crate::sharding::coordinator::ShardId;
 use protobuf::Message as ProtoMessage;
-use std::str::FromStr;
+
 use std::sync::Arc;
 use tokio::sync::oneshot::{channel, Sender};
-use uuid::Uuid;
 
 pub struct EntityRequest {
     pub actor_id: ActorId,

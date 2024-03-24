@@ -1,5 +1,5 @@
 use crate::actor::context::ActorContext;
-use crate::actor::message::{Handler, Message};
+use crate::actor::message::Handler;
 use crate::remote::cluster::node::RemoteNode;
 use crate::sharding::coordinator::balancing::Rebalance;
 use crate::sharding::coordinator::{ShardCoordinator, ShardHostState, ShardHostStatus};
@@ -9,7 +9,6 @@ use crate::remote::stream::pubsub::Receive;
 use crate::remote::stream::system::{ClusterEvent, SystemEvent, SystemTopic};
 use crate::remote::system::NodeId;
 use std::collections::hash_map::Entry;
-use std::sync::Arc;
 
 #[async_trait]
 impl Handler<Receive<SystemTopic>> for ShardCoordinator {

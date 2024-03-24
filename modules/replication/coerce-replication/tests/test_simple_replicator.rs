@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use coerce::actor::message::{FromBytes, MessageUnwrapErr, MessageWrapErr, ToBytes};
 use coerce::actor::system::ActorSystem;
-use coerce::persistent::Persistence;
+
 use coerce::remote::cluster::node::NodeSelector;
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
@@ -10,14 +10,11 @@ use coerce_replication::simple::read::{Read, RemoteRead};
 use coerce_replication::simple::Replicator;
 use coerce_replication::storage::{Key, Snapshot, Storage, StorageErr, Value};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+
 use tokio::sync::oneshot;
 use tracing::Level;
-use tracing_subscriber::filter::LevelFilter;
+
 use tracing_subscriber::fmt::format::FmtSpan;
-use uuid::Uuid;
 
 #[derive(Clone)]
 struct TestKey(String);
@@ -77,11 +74,11 @@ impl Storage for TestStorage {
         Ok(TestValue(format!("{}-hello", key.0)))
     }
 
-    async fn write(&mut self, key: Self::Key, value: Self::Value) -> Result<(), StorageErr> {
+    async fn write(&mut self, _key: Self::Key, _value: Self::Value) -> Result<(), StorageErr> {
         todo!()
     }
 
-    fn recover_snapshot(&mut self, snapshot: Self::Snapshot) -> Result<(), StorageErr> {
+    fn recover_snapshot(&mut self, _snapshot: Self::Snapshot) -> Result<(), StorageErr> {
         Ok(())
     }
 
@@ -102,10 +99,10 @@ pub async fn test_simple_replicator_read() {
         data: HashMap::new(),
     };
 
-    let (remote_1, server_1) = create_system("localhost:10011", 1, None).await;
-    let (remote_2, server_2) = create_system("localhost:10012", 2, Some("localhost:10011")).await;
+    let (remote_1, _server_1) = create_system("localhost:10011", 1, None).await;
+    let (remote_2, _server_2) = create_system("localhost:10012", 2, Some("localhost:10011")).await;
 
-    let replicator_1 =
+    let _replicator_1 =
         Replicator::<TestStorage>::new("test-replicator", &remote_1, NodeSelector::All, storage_1)
             .await
             .unwrap();
