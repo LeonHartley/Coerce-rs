@@ -1,6 +1,6 @@
-use coerce::actor::ActorRefErr;
-use coerce::actor::message::{MessageUnwrapErr, MessageWrapErr};
 use crate::storage::StorageErr;
+use coerce::actor::message::{MessageUnwrapErr, MessageWrapErr};
+use coerce::actor::ActorRefErr;
 
 #[derive(Debug)]
 pub enum Error {

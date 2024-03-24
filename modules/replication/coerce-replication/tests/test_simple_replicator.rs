@@ -5,19 +5,19 @@ use coerce::persistent::Persistence;
 use coerce::remote::cluster::node::NodeSelector;
 use coerce::remote::net::server::RemoteServer;
 use coerce::remote::system::{NodeId, RemoteActorSystem};
+use coerce_replication::simple::heartbeat::Heartbeat;
+use coerce_replication::simple::read::{Read, RemoteRead};
 use coerce_replication::simple::Replicator;
 use coerce_replication::storage::{Key, Snapshot, Storage, StorageErr, Value};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
 use tracing::Level;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::FmtSpan;
 use uuid::Uuid;
-use coerce_replication::simple::heartbeat::Heartbeat;
-use coerce_replication::simple::read::{Read, RemoteRead};
 
 #[derive(Clone)]
 struct TestKey(String);
@@ -146,7 +146,8 @@ async fn create_system(
         .with_actors(|a| {
             a.with_handler::<Replicator<TestStorage>, RemoteRead<TestKey>>(
                 "TestReplicator.RemoteRead",
-            ).with_handler::<Replicator<TestStorage>, Heartbeat>("TestReplicator.Heartbeat")
+            )
+            .with_handler::<Replicator<TestStorage>, Heartbeat>("TestReplicator.Heartbeat")
         })
         .with_id(node_id)
         .build()

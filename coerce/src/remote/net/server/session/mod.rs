@@ -373,21 +373,19 @@ impl StreamReceiver for SessionMessageReceiver {
 
             SessionEvent::Raft(_req) => {}
 
-            SessionEvent::Result(res) => {
-                match sys.pop_request(res.message_id) {
-                    Some(res_tx) => {
-                        let _ = res_tx.send(RemoteResponse::Ok(res.result));
-                    }
-                    None => {
-                        warn!(
-                            "node_tag={}, node_id={}, received unknown request result (id={})",
-                            sys.node_tag(),
-                            sys.node_id(),
-                            res.message_id
-                        );
-                    }
+            SessionEvent::Result(res) => match sys.pop_request(res.message_id) {
+                Some(res_tx) => {
+                    let _ = res_tx.send(RemoteResponse::Ok(res.result));
                 }
-            }
+                None => {
+                    warn!(
+                        "node_tag={}, node_id={}, received unknown request result (id={})",
+                        sys.node_tag(),
+                        sys.node_id(),
+                        res.message_id
+                    );
+                }
+            },
             SessionEvent::Err(err) => {
                 let e = err.error.unwrap().into();
                 match sys.pop_request(err.message_id) {

@@ -8,13 +8,15 @@
 //!
 
 pub mod consensus;
+pub mod error;
 pub mod heartbeat;
 pub mod read;
 pub mod write;
-pub mod error;
 
 use crate::protocol::simple as proto;
 use crate::simple::heartbeat::HeartbeatTick;
+use crate::simple::read::Read;
+use crate::simple::write::Write;
 use crate::storage::{Key, Storage, StorageErr, Value};
 use coerce::actor::context::ActorContext;
 use coerce::actor::message::{
@@ -31,8 +33,6 @@ use std::mem;
 use std::time::Duration;
 use tokio::sync::oneshot;
 use uuid::Uuid;
-use crate::simple::read::Read;
-use crate::simple::write::Write;
 
 pub enum Request<K: Key, V: Value> {
     Read(Read<K, V>),

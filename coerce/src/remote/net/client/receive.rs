@@ -106,21 +106,19 @@ impl StreamReceiver for ClientMessageReceiver {
                     warn!("error sending handshake_tx");
                 }
             }
-            ClientEvent::Result(res) => {
-                match sys.pop_request(res.message_id) {
-                    Some(res_tx) => {
-                        let _ = res_tx.send(RemoteResponse::Ok(res.result));
-                    }
-                    None => {
-                        trace!(
-                            "node_tag={}, node_id={}, received unknown request result (id={})",
-                            sys.node_tag(),
-                            sys.node_id(),
-                            res.message_id
-                        );
-                    }
+            ClientEvent::Result(res) => match sys.pop_request(res.message_id) {
+                Some(res_tx) => {
+                    let _ = res_tx.send(RemoteResponse::Ok(res.result));
                 }
-            }
+                None => {
+                    trace!(
+                        "node_tag={}, node_id={}, received unknown request result (id={})",
+                        sys.node_tag(),
+                        sys.node_id(),
+                        res.message_id
+                    );
+                }
+            },
             ClientEvent::Err(e) => {
                 debug!("received client error!");
                 match sys.pop_request(e.message_id) {

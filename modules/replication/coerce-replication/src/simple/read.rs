@@ -1,13 +1,15 @@
+use crate::simple::error::Error;
+use crate::simple::{Replicator, Request, State};
+use crate::storage::{Key, Storage, Value};
+use coerce::actor::context::ActorContext;
+use coerce::actor::message::{
+    FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes,
+};
+use coerce::actor::{ActorRef, ActorRefErr};
+use coerce::remote::system::{NodeId, RemoteActorSystem};
 use protobuf::EnumOrUnknown;
 use tokio::sync::oneshot;
 use uuid::Uuid;
-use coerce::actor::{ActorRef, ActorRefErr};
-use coerce::actor::context::ActorContext;
-use coerce::actor::message::{FromBytes, Handler, Message, MessageUnwrapErr, MessageWrapErr, ToBytes};
-use coerce::remote::system::{NodeId, RemoteActorSystem};
-use crate::simple::{Replicator, Request, State};
-use crate::simple::error::Error;
-use crate::storage::{Key, Storage, Value};
 
 pub struct Read<K: Key, V: Value> {
     pub key: K,
@@ -156,7 +158,7 @@ impl<S: Storage> Handler<RemoteRead<S::Key>> for Replicator<S> {
                 Ok(value) => RemoteReadResult::Ok(value),
                 Err(e) => RemoteReadResult::Err(e.into()),
             }
-                .to_bytes();
+            .to_bytes();
 
             match result {
                 Ok(bytes) => {
@@ -190,15 +192,21 @@ impl<V: Value> ToBytes for RemoteReadResult<V> {
     fn to_bytes(self) -> Result<Vec<u8>, MessageWrapErr> {
         crate::protocol::simple::RemoteReadResult {
             result: match self {
-                Self::Ok(v) => Some(crate::protocol::simple::remote_read_result::Result::Value(v.to_bytes()?)),
-                Self::Err(_) => Some(crate::protocol::simple::remote_read_result::Result::Error(crate::protocol::simple::Error {
-                    error_type: EnumOrUnknown::from(crate::protocol::simple::ErrorType::NOT_READY),
-                    ..Default::default()
-                })),
+                Self::Ok(v) => Some(crate::protocol::simple::remote_read_result::Result::Value(
+                    v.to_bytes()?,
+                )),
+                Self::Err(_) => Some(crate::protocol::simple::remote_read_result::Result::Error(
+                    crate::protocol::simple::Error {
+                        error_type: EnumOrUnknown::from(
+                            crate::protocol::simple::ErrorType::NOT_READY,
+                        ),
+                        ..Default::default()
+                    },
+                )),
             },
             ..Default::default()
         }
-            .to_bytes()
+        .to_bytes()
     }
 }
 
@@ -227,7 +235,7 @@ impl<K: Key> Message for RemoteRead<K> {
             key: self.key.clone().to_bytes()?,
             ..Default::default()
         }
-            .to_bytes()
+        .to_bytes()
     }
 
     fn from_bytes(bytes: Vec<u8>) -> Result<Self, MessageUnwrapErr> {

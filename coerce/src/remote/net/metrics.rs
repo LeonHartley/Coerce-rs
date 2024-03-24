@@ -10,8 +10,10 @@ impl NetworkMetrics {
     #[inline]
     pub fn incr_bytes_received(len: u64, src_addr: &str) {
         #[cfg(feature = "metrics")]
-        counter!(METRIC_NETWORK_BYTES_RECV, 
-            LABEL_SRC_ADDR => src_addr.to_owned())
+        counter!(
+            METRIC_NETWORK_BYTES_RECV,
+            LABEL_SRC_ADDR => src_addr.to_owned()
+        )
         .increment(len)
     }
 
