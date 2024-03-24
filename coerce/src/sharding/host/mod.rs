@@ -36,7 +36,7 @@ pub enum ShardState {
 
 pub struct StopRequested {
     origin_node_id: NodeId,
-    request_id: Uuid,
+    request_id: u64,
 }
 
 pub struct ShardHost {
@@ -144,7 +144,7 @@ pub struct ShardStopped {
 pub struct StopShard {
     pub shard_id: ShardId,
     pub origin_node_id: NodeId,
-    pub request_id: Uuid,
+    pub request_id: u64,
 }
 
 pub struct GetShards;
@@ -443,7 +443,7 @@ impl Message for StopShard {
     fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::StopShard {
             shard_id: self.shard_id,
-            request_id: self.request_id.to_string(),
+            request_id: self.request_id,
             origin_node_id: self.origin_node_id,
             ..Default::default()
         }
@@ -455,7 +455,7 @@ impl Message for StopShard {
         proto::StopShard::parse_from_bytes(&b)
             .map(|r| Self {
                 shard_id: r.shard_id,
-                request_id: Uuid::parse_str(&r.request_id).unwrap(),
+                request_id: r.request_id,
                 origin_node_id: r.origin_node_id,
             })
             .map_err(|_e| MessageUnwrapErr::DeserializationErr)

@@ -27,7 +27,7 @@ message StopShard {
 
   uint64 origin_node_id = 2;
 
-  string request_id = 3;
+  uint64 request_id = 3;
 }
 
 message ShardStopped {
@@ -63,7 +63,7 @@ message RemoteEntityRequest {
     bytes recipe = 1;
   }
 
-  string request_id = 1;
+  uint64 request_id = 1;
 
   string actor_id = 2;
 

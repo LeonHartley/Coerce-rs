@@ -559,7 +559,7 @@ pub struct StopShard {
     // @@protoc_insertion_point(field:coerce.sharding.StopShard.origin_node_id)
     pub origin_node_id: u64,
     // @@protoc_insertion_point(field:coerce.sharding.StopShard.request_id)
-    pub request_id: ::std::string::String,
+    pub request_id: u64,
     // special fields
     // @@protoc_insertion_point(special_field:coerce.sharding.StopShard.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -618,8 +618,8 @@ impl ::protobuf::Message for StopShard {
                 16 => {
                     self.origin_node_id = is.read_uint64()?;
                 },
-                26 => {
-                    self.request_id = is.read_string()?;
+                24 => {
+                    self.request_id = is.read_uint64()?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -639,8 +639,8 @@ impl ::protobuf::Message for StopShard {
         if self.origin_node_id != 0 {
             my_size += ::protobuf::rt::uint64_size(2, self.origin_node_id);
         }
-        if !self.request_id.is_empty() {
-            my_size += ::protobuf::rt::string_size(3, &self.request_id);
+        if self.request_id != 0 {
+            my_size += ::protobuf::rt::uint64_size(3, self.request_id);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
@@ -654,8 +654,8 @@ impl ::protobuf::Message for StopShard {
         if self.origin_node_id != 0 {
             os.write_uint64(2, self.origin_node_id)?;
         }
-        if !self.request_id.is_empty() {
-            os.write_string(3, &self.request_id)?;
+        if self.request_id != 0 {
+            os.write_uint64(3, self.request_id)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -676,7 +676,7 @@ impl ::protobuf::Message for StopShard {
     fn clear(&mut self) {
         self.shard_id = 0;
         self.origin_node_id = 0;
-        self.request_id.clear();
+        self.request_id = 0;
         self.special_fields.clear();
     }
 
@@ -684,7 +684,7 @@ impl ::protobuf::Message for StopShard {
         static instance: StopShard = StopShard {
             shard_id: 0,
             origin_node_id: 0,
-            request_id: ::std::string::String::new(),
+            request_id: 0,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1167,7 +1167,7 @@ pub mod allocate_shard_result {
 pub struct RemoteEntityRequest {
     // message fields
     // @@protoc_insertion_point(field:coerce.sharding.RemoteEntityRequest.request_id)
-    pub request_id: ::std::string::String,
+    pub request_id: u64,
     // @@protoc_insertion_point(field:coerce.sharding.RemoteEntityRequest.actor_id)
     pub actor_id: ::std::string::String,
     // @@protoc_insertion_point(field:coerce.sharding.RemoteEntityRequest.message_type)
@@ -1245,8 +1245,8 @@ impl ::protobuf::Message for RemoteEntityRequest {
     fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
-                10 => {
-                    self.request_id = is.read_string()?;
+                8 => {
+                    self.request_id = is.read_uint64()?;
                 },
                 18 => {
                     self.actor_id = is.read_string()?;
@@ -1275,8 +1275,8 @@ impl ::protobuf::Message for RemoteEntityRequest {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if !self.request_id.is_empty() {
-            my_size += ::protobuf::rt::string_size(1, &self.request_id);
+        if self.request_id != 0 {
+            my_size += ::protobuf::rt::uint64_size(1, self.request_id);
         }
         if !self.actor_id.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.actor_id);
@@ -1300,8 +1300,8 @@ impl ::protobuf::Message for RemoteEntityRequest {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if !self.request_id.is_empty() {
-            os.write_string(1, &self.request_id)?;
+        if self.request_id != 0 {
+            os.write_uint64(1, self.request_id)?;
         }
         if !self.actor_id.is_empty() {
             os.write_string(2, &self.actor_id)?;
@@ -1335,7 +1335,7 @@ impl ::protobuf::Message for RemoteEntityRequest {
     }
 
     fn clear(&mut self) {
-        self.request_id.clear();
+        self.request_id = 0;
         self.actor_id.clear();
         self.message_type.clear();
         self.message.clear();
@@ -1346,7 +1346,7 @@ impl ::protobuf::Message for RemoteEntityRequest {
 
     fn default_instance() -> &'static RemoteEntityRequest {
         static instance: RemoteEntityRequest = RemoteEntityRequest {
-            request_id: ::std::string::String::new(),
+            request_id: 0,
             actor_id: ::std::string::String::new(),
             message_type: ::std::string::String::new(),
             message: ::std::vec::Vec::new(),
@@ -3053,8 +3053,8 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     cating\x12\x19\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardId\"k\n\tStopSh\
     ard\x12\x19\n\x08shard_id\x18\x01\x20\x01(\rR\x07shardId\x12$\n\x0eorigi\
     n_node_id\x18\x02\x20\x01(\x04R\x0coriginNodeId\x12\x1d\n\nrequest_id\
-    \x18\x03\x20\x01(\tR\trequestId\"t\n\x0cShardStopped\x12\x19\n\x08shard_\
-    id\x18\x01\x20\x01(\rR\x07shardId\x12$\n\x0eorigin_node_id\x18\x02\x20\
+    \x18\x03\x20\x01(\x04R\trequestId\"t\n\x0cShardStopped\x12\x19\n\x08shar\
+    d_id\x18\x01\x20\x01(\rR\x07shardId\x12$\n\x0eorigin_node_id\x18\x02\x20\
     \x01(\x04R\x0coriginNodeId\x12#\n\ris_successful\x18\x03\x20\x01(\x08R\
     \x0cisSuccessful\"\xe4\x02\n\x13AllocateShardResult\x12J\n\x0bresult_typ\
     e\x18\x01\x20\x01(\x0e2).coerce.sharding.AllocateShardResult.TypeR\nresu\
@@ -3064,7 +3064,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     OCATED\x10\0\x12\x15\n\x11ALREADY_ALLOCATED\x10\x01\x12\x11\n\rNOT_ALLOC\
     ATED\x10\x02\x12\x07\n\x03ERR\x10\x03\"0\n\x10AllocateShardErr\x12\x0b\n\
     \x07UNKNOWN\x10\0\x12\x0f\n\x0bPERSISTENCE\x10\x01\"\x94\x02\n\x13Remote\
-    EntityRequest\x12\x1d\n\nrequest_id\x18\x01\x20\x01(\tR\trequestId\x12\
+    EntityRequest\x12\x1d\n\nrequest_id\x18\x01\x20\x01(\x04R\trequestId\x12\
     \x19\n\x08actor_id\x18\x02\x20\x01(\tR\x07actorId\x12!\n\x0cmessage_type\
     \x18\x03\x20\x01(\tR\x0bmessageType\x12\x18\n\x07message\x18\x04\x20\x01\
     (\x0cR\x07message\x12C\n\x06recipe\x18\x05\x20\x01(\x0b2+.coerce.shardin\

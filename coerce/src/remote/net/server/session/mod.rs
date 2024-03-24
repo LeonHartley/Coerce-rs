@@ -297,7 +297,7 @@ impl StreamReceiver for SessionMessageReceiver {
                     &find_actor.actor_id
                 );
                 tokio::spawn(session_handle_lookup(
-                    Uuid::from_str(&find_actor.message_id).unwrap(),
+                    find_actor.message_id,
                     find_actor.actor_id.into_actor_id(),
                     self.session_id,
                     sys.clone(),
@@ -374,7 +374,7 @@ impl StreamReceiver for SessionMessageReceiver {
             SessionEvent::Raft(_req) => {}
 
             SessionEvent::Result(res) => {
-                match sys.pop_request(Uuid::from_str(&res.message_id).unwrap()) {
+                match sys.pop_request(res.message_id) {
                     Some(res_tx) => {
                         let _ = res_tx.send(RemoteResponse::Ok(res.result));
                     }
@@ -390,7 +390,7 @@ impl StreamReceiver for SessionMessageReceiver {
             }
             SessionEvent::Err(err) => {
                 let e = err.error.unwrap().into();
-                match sys.pop_request(Uuid::from_str(&err.message_id).unwrap()) {
+                match sys.pop_request(err.message_id) {
                     Some(res_tx) => {
                         let _ = res_tx.send(RemoteResponse::Err(e));
                     }
@@ -552,20 +552,20 @@ async fn session_handle_message(
     {
         Ok(buf) => {
             if let Some(buf) = buf {
-                send_result(msg.message_id.parse().unwrap(), buf, session_id, session).await;
+                send_result(msg.message_id, buf, session_id, session).await;
             }
         }
         Err(e) => {
             error!("[node={}] failed to handle message (handler_type={}, target_actor_id={}), error={:?}", ctx.node_id(), &msg.handler_type, &actor_id, e);
             let _ = ctx
-                .notify_rpc_err(msg.message_id.parse().unwrap(), e, msg.origin_node_id)
+                .notify_rpc_err(msg.message_id, e, msg.origin_node_id)
                 .await;
         }
     }
 }
 
 async fn session_handle_lookup(
-    msg_id: Uuid,
+    msg_id: u64,
     id: ActorId,
     session_id: i64,
     ctx: RemoteActorSystem,
@@ -612,7 +612,7 @@ async fn session_create_actor(
         .handle_create_actor(actor_id, msg.actor_type, msg.recipe)
         .await
     {
-        Ok(buf) => send_result(msg_id.parse().unwrap(), buf.to_vec(), session_id, session).await,
+        Ok(buf) => send_result(msg_id, buf.to_vec(), session_id, session).await,
         Err(_) => {
             error!("failed to handle message, todo: send err");
         }
@@ -627,16 +627,16 @@ async fn session_stream_publish(msg: Arc<StreamPublishEvent>, sys: RemoteActorSy
 }
 
 async fn send_result(
-    msg_id: Uuid,
-    res: Vec<u8>,
+    message_id: u64,
+    result: Vec<u8>,
     session_id: i64,
     session: LocalActorRef<RemoteSession>,
 ) {
     trace!("sending result");
 
     let event = ClientEvent::Result(ClientResult {
-        message_id: msg_id.to_string(),
-        result: res,
+        message_id,
+        result,
         ..ClientResult::default()
     });
 

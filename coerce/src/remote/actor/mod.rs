@@ -14,15 +14,15 @@ pub(crate) type BoxedActorHandler = Box<dyn ActorHandler + Send + Sync>;
 pub(crate) type BoxedMessageHandler = Box<dyn ActorMessageHandler + Send + Sync>;
 
 pub struct RemoteHandler {
-    requests: HashMap<Uuid, RemoteRequest>,
+    requests: HashMap<u64, RemoteRequest>,
 }
 
 impl RemoteHandler {
-    pub fn push_request(&mut self, message_id: Uuid, request: RemoteRequest) {
+    pub fn push_request(&mut self, message_id: u64, request: RemoteRequest) {
         self.requests.insert(message_id, request);
     }
 
-    pub fn pop_request(&mut self, message_id: Uuid) -> Option<RemoteRequest> {
+    pub fn pop_request(&mut self, message_id: u64) -> Option<RemoteRequest> {
         self.requests.remove(&message_id)
     }
 

@@ -104,7 +104,7 @@ impl ShardCoordinator {
 
                 let sys = system.clone();
                 shard_reallocation_tasks.push(async move {
-                    let request_id = Uuid::new_v4();
+                    let request_id = sys.next_msg_id();
 
                     let (tx, rx) = oneshot::channel();
                     sys.push_request(request_id, tx);

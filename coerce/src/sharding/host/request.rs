@@ -24,7 +24,7 @@ pub struct EntityRequest {
 }
 
 pub struct RemoteEntityRequest {
-    pub request_id: Uuid,
+    pub request_id: u64,
     pub actor_id: ActorId,
     pub message_type: String,
     pub message: Vec<u8>,
@@ -128,7 +128,7 @@ async fn remote_entity_request(
     // TODO: We need a way to buffer and re-distribute this request if we get a signal that the node is terminated
     //       after we have already submitted the request..
 
-    let request_id = Uuid::new_v4();
+    let request_id = system.next_msg_id();
     let (tx, rx) = channel();
     system.push_request(request_id, tx);
 
@@ -201,7 +201,7 @@ impl Message for RemoteEntityRequest {
 
     fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         proto::RemoteEntityRequest {
-            request_id: self.request_id.to_string(),
+            request_id: self.request_id,
             actor_id: self.actor_id.to_string(),
             message_type: self.message_type.clone(),
             message: self.message.clone(),
@@ -227,7 +227,7 @@ impl Message for RemoteEntityRequest {
             |_e| Err(MessageUnwrapErr::DeserializationErr),
             |proto| {
                 Ok(RemoteEntityRequest {
-                    request_id: Uuid::from_str(&proto.request_id).unwrap(),
+                    request_id: proto.request_id,
                     actor_id: proto.actor_id.into_actor_id(),
                     message_type: proto.message_type,
                     message: proto.message,

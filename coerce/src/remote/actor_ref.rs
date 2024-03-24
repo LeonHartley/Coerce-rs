@@ -59,8 +59,7 @@ where
         // let span = tracing::trace_span!("RemoteActorRef::notify", actor_type, message_type);
         // let _enter = span.enter();
 
-        let id = Uuid::new_v4();
-
+        let id = self.system.next_msg_id();
         let request = self.create_request(msg, String::new(), id, false)?;
         self.system.notify_node(self.node_id, request).await;
 
@@ -73,8 +72,7 @@ where
         Msg: 'static + Send + Sync,
         <Msg as Message>::Result: 'static + Send + Sync,
     {
-        let id = Uuid::new_v4();
-
+        let id = self.system.next_msg_id();
         let (res_tx, res_rx) = oneshot::channel();
         self.system.push_request(id, res_tx);
 
@@ -102,7 +100,7 @@ where
         &self,
         msg: Envelope<Msg>,
         trace_id: String,
-        id: Uuid,
+        message_id: u64,
         requires_response: bool,
     ) -> Result<SessionEvent, ActorRefErr>
     where
@@ -118,7 +116,7 @@ where
             let actor_id = header.actor_id.to_string();
             let origin_node_id = self.system.node_id();
             SessionEvent::NotifyActor(MessageRequest {
-                message_id: id.to_string(),
+                message_id,
                 handler_type,
                 actor_id,
                 trace_id,

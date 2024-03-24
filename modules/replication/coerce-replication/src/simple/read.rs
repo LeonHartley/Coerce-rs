@@ -69,7 +69,7 @@ impl<S: Storage> Handler<Read<S::Key, S::Value>> for Replicator<S> {
 }
 
 pub struct RemoteRead<K: Key> {
-    request_id: Uuid,
+    request_id: u64,
     source_node_id: NodeId,
     key: K,
 }
@@ -94,12 +94,11 @@ async fn remote_read<S: Storage>(
     on_completion: oneshot::Sender<Result<S::Value, Error>>,
     system: RemoteActorSystem,
 ) {
-    let request_id = Uuid::new_v4();
+    let request_id = system.next_msg_id();
     let (tx, rx) = oneshot::channel();
     system.push_request(request_id, tx);
 
-    let request_id_str = request_id.to_string();
-    debug!(request_id = &request_id_str, "remote read request pushed");
+    debug!(request_id = request_id, "remote read request pushed");
 
     leader_ref
         .notify(RemoteRead {
@@ -110,7 +109,7 @@ async fn remote_read<S: Storage>(
         .await
         .expect("notify leader");
 
-    debug!(request_id = &request_id_str, "remote leader notified");
+    debug!(request_id = &request_id, "remote leader notified");
 
     let result = rx
         .await
@@ -127,7 +126,7 @@ async fn remote_read<S: Storage>(
         });
 
     debug!(
-        request_id = &request_id_str,
+        request_id = request_id,
         "remote read request result received"
     );
 
@@ -137,9 +136,8 @@ async fn remote_read<S: Storage>(
 #[async_trait]
 impl<S: Storage> Handler<RemoteRead<S::Key>> for Replicator<S> {
     async fn handle(&mut self, message: RemoteRead<S::Key>, ctx: &mut ActorContext) {
-        let request_id_str = message.request_id.to_string();
         debug!(
-            request_id = request_id_str,
+            request_id = message.request_id,
             source_node_id = message.source_node_id,
             "received remote read request"
         );
@@ -163,7 +161,7 @@ impl<S: Storage> Handler<RemoteRead<S::Key>> for Replicator<S> {
             match result {
                 Ok(bytes) => {
                     debug!(
-                        request_id = request_id_str,
+                        request_id = request_id,
                         source_node_id = message.source_node_id,
                         "remote result sent (OK)"
                     );
@@ -174,7 +172,7 @@ impl<S: Storage> Handler<RemoteRead<S::Key>> for Replicator<S> {
                 }
                 Err(e) => {
                     debug!(
-                        request_id = request_id_str,
+                        request_id = request_id,
                         source_node_id = message.source_node_id,
                         "received remote read request (ERR)"
                     );
@@ -224,7 +222,7 @@ impl<K: Key> Message for RemoteRead<K> {
 
     fn as_bytes(&self) -> Result<Vec<u8>, MessageWrapErr> {
         crate::protocol::simple::RemoteRead {
-            request_id: self.request_id.to_string(),
+            request_id: self.request_id,
             source_node_id: self.source_node_id,
             key: self.key.clone().to_bytes()?,
             ..Default::default()
@@ -236,7 +234,7 @@ impl<K: Key> Message for RemoteRead<K> {
         let proto = crate::protocol::simple::RemoteRead::from_bytes(bytes)?;
 
         Ok(Self {
-            request_id: Uuid::parse_str(&proto.request_id).unwrap(),
+            request_id: proto.request_id,
             source_node_id: proto.source_node_id,
             key: K::from_bytes(proto.key)?,
         })

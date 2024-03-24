@@ -144,8 +144,8 @@ impl Handler<GetActorNode> for RemoteRegistry {
                 // let span = tracing::trace_span!("RemoteRegistry::GetActorNode::Remote");
                 // let _enter = span.enter();
 
-                let message_id = Uuid::new_v4();
                 let system = system;
+                let message_id = system.next_msg_id();
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
 
                 trace!("remote request={}", message_id);
@@ -157,7 +157,7 @@ impl Handler<GetActorNode> for RemoteRegistry {
                     .notify_node(
                         assigned_registry_node,
                         SessionEvent::FindActor(FindActorEvent {
-                            message_id: message_id.to_string(),
+                            message_id,
                             actor_id: id.to_string(),
                             trace_id,
                             ..Default::default()

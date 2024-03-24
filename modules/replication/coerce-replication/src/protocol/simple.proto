@@ -4,7 +4,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
 message RemoteRead {
-  string request_id = 1;
+  uint64 request_id = 1;
 
   uint64 source_node_id = 2;
 

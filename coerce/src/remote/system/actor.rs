@@ -129,7 +129,7 @@ impl RemoteActorSystem {
         }
 
         let recipe = recipe.unwrap();
-        let message_id = Uuid::new_v4();
+        let message_id = self.next_msg_id();
 
         let mut actor_addr = None;
         if node == self_id {
@@ -147,7 +147,7 @@ impl RemoteActorSystem {
         } else {
             let message = CreateActorEvent {
                 actor_type,
-                message_id: message_id.to_string(),
+                message_id,
                 actor_id: id.to_string(),
                 recipe,
                 ..Default::default()

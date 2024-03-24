@@ -30,7 +30,7 @@ const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_3_4_0;
 pub struct RemoteRead {
     // message fields
     // @@protoc_insertion_point(field:RemoteRead.request_id)
-    pub request_id: ::std::string::String,
+    pub request_id: u64,
     // @@protoc_insertion_point(field:RemoteRead.source_node_id)
     pub source_node_id: u64,
     // @@protoc_insertion_point(field:RemoteRead.key)
@@ -87,8 +87,8 @@ impl ::protobuf::Message for RemoteRead {
     fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
-                10 => {
-                    self.request_id = is.read_string()?;
+                8 => {
+                    self.request_id = is.read_uint64()?;
                 },
                 16 => {
                     self.source_node_id = is.read_uint64()?;
@@ -108,8 +108,8 @@ impl ::protobuf::Message for RemoteRead {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if !self.request_id.is_empty() {
-            my_size += ::protobuf::rt::string_size(1, &self.request_id);
+        if self.request_id != 0 {
+            my_size += ::protobuf::rt::uint64_size(1, self.request_id);
         }
         if self.source_node_id != 0 {
             my_size += ::protobuf::rt::uint64_size(2, self.source_node_id);
@@ -123,8 +123,8 @@ impl ::protobuf::Message for RemoteRead {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if !self.request_id.is_empty() {
-            os.write_string(1, &self.request_id)?;
+        if self.request_id != 0 {
+            os.write_uint64(1, self.request_id)?;
         }
         if self.source_node_id != 0 {
             os.write_uint64(2, self.source_node_id)?;
@@ -149,7 +149,7 @@ impl ::protobuf::Message for RemoteRead {
     }
 
     fn clear(&mut self) {
-        self.request_id.clear();
+        self.request_id = 0;
         self.source_node_id = 0;
         self.key.clear();
         self.special_fields.clear();
@@ -157,7 +157,7 @@ impl ::protobuf::Message for RemoteRead {
 
     fn default_instance() -> &'static RemoteRead {
         static instance: RemoteRead = RemoteRead {
-            request_id: ::std::string::String::new(),
+            request_id: 0,
             source_node_id: 0,
             key: ::std::vec::Vec::new(),
             special_fields: ::protobuf::SpecialFields::new(),
@@ -882,7 +882,7 @@ impl StorageError {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0csimple.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/\
     protobuf/wrappers.proto\"c\n\nRemoteRead\x12\x1d\n\nrequest_id\x18\x01\
-    \x20\x01(\tR\trequestId\x12$\n\x0esource_node_id\x18\x02\x20\x01(\x04R\
+    \x20\x01(\x04R\trequestId\x12$\n\x0esource_node_id\x18\x02\x20\x01(\x04R\
     \x0csourceNodeId\x12\x10\n\x03key\x18\x03\x20\x01(\x0cR\x03key\"b\n\x05E\
     rror\x12)\n\nerror_type\x18\x01\x20\x01(\x0e2\n.ErrorTypeR\terrorType\
     \x12.\n\x0bstorage_err\x18\x02\x20\x01(\x0e2\r.StorageErrorR\nstorageErr\

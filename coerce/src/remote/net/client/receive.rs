@@ -107,7 +107,7 @@ impl StreamReceiver for ClientMessageReceiver {
                 }
             }
             ClientEvent::Result(res) => {
-                match sys.pop_request(Uuid::from_str(&res.message_id).unwrap()) {
+                match sys.pop_request(res.message_id) {
                     Some(res_tx) => {
                         let _ = res_tx.send(RemoteResponse::Ok(res.result));
                     }
@@ -122,20 +122,20 @@ impl StreamReceiver for ClientMessageReceiver {
                 }
             }
             ClientEvent::Err(e) => {
-                info!("received client error!");
-                match sys.pop_request(Uuid::from_str(&e.message_id).unwrap()) {
+                debug!("received client error!");
+                match sys.pop_request(e.message_id) {
                     Some(res_tx) => {
                         let _ = res_tx.send(RemoteResponse::Err(e.error.unwrap().into()));
                     }
                     None => {
                         //                                          :P
-                        warn!("received unsolicited pong");
+                        warn!("received unsolicited client error");
                     }
                 }
             }
             ClientEvent::Ping(_ping) => {}
             ClientEvent::Pong(pong) => {
-                match sys.pop_request(Uuid::from_str(&pong.message_id).unwrap()) {
+                match sys.pop_request(pong.message_id) {
                     Some(res_tx) => {
                         let _ = res_tx.send(RemoteResponse::Ok(
                             PongEvent {
@@ -147,7 +147,7 @@ impl StreamReceiver for ClientMessageReceiver {
                         ));
                     }
                     None => {
-                        //                                          :P
+                        //                          :P
                         warn!("received unsolicited pong");
                     }
                 }

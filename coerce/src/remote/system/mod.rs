@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use std::sync::atomic::AtomicI64;
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::actor::system::ActorSystem;
@@ -45,6 +45,7 @@ pub struct RemoteSystemCore {
     mediator_ref: Option<LocalActorRef<StreamMediator>>,
     config: Arc<RemoteSystemConfig>,
     current_leader: Arc<AtomicNodeId>,
+    next_message_id: Arc<AtomicU64>,
 }
 
 impl RemoteActorSystem {
@@ -124,6 +125,10 @@ impl RemoteActorSystem {
 
     pub fn actor_system(&self) -> &ActorSystem {
         &self.inner.actor_system()
+    }
+
+    pub fn next_msg_id(&self) -> u64 {
+        self.inner.next_message_id.fetch_add(1, Ordering::Relaxed)
     }
 }
 

@@ -214,7 +214,7 @@ impl Actor for RemoteClient {
                         );
 
                         let ping_event = SessionEvent::Ping(PingEvent {
-                            message_id: Uuid::new_v4().to_string(),
+                            message_id: 0,
                             node_id: ctx.system().remote().node_id(),
                             system_terminated: true,
                             ..PingEvent::default()

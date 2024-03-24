@@ -30,7 +30,7 @@ impl Error for NodeRpcErr {}
 impl RemoteActorSystem {
     pub async fn node_rpc_proto<T: ProtoMessage>(
         &self,
-        message_id: Uuid,
+        message_id: u64,
         event: SessionEvent,
         node_id: NodeId,
     ) -> Result<T, NodeRpcErr> {
@@ -57,7 +57,7 @@ impl RemoteActorSystem {
 
     pub async fn node_rpc<T: StreamData>(
         &self,
-        message_id: Uuid,
+        message_id: u64,
         event: SessionEvent,
         node_id: NodeId,
     ) -> Result<T, NodeRpcErr> {
@@ -84,7 +84,7 @@ impl RemoteActorSystem {
 
     pub async fn node_rpc_raw(
         &self,
-        message_id: Uuid,
+        message_id: u64,
         event: SessionEvent,
         node_id: NodeId,
     ) -> Result<Vec<u8>, NodeRpcErr> {
@@ -114,16 +114,15 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn notify_raw_rpc_result(&self, request_id: Uuid, result: Vec<u8>, node_id: NodeId) {
+    pub async fn notify_raw_rpc_result(&self, request_id: u64, result: Vec<u8>, node_id: NodeId) {
         if node_id == self.node_id() {
             let result_sender = self.pop_request(request_id);
             if let Some(result_sender) = result_sender {
                 let _ = result_sender.send(RemoteResponse::Ok(result));
             }
         } else {
-            let message_id = request_id.to_string();
             let result = SessionEvent::Result(ClientResult {
-                message_id,
+                message_id: request_id,
                 result,
                 ..Default::default()
             });
@@ -137,7 +136,7 @@ impl RemoteActorSystem {
         }
     }
 
-    pub async fn notify_rpc_err(&self, request_id: Uuid, error: ActorRefErr, node_id: NodeId) {
+    pub async fn notify_rpc_err(&self, request_id: u64, error: ActorRefErr, node_id: NodeId) {
         info!(
             "notifying error, e={}, node_id={}, request_id={}",
             &error, node_id, &request_id
@@ -148,10 +147,8 @@ impl RemoteActorSystem {
                 let _ = result_sender.send(RemoteResponse::Err(error));
             }
         } else {
-            let message_id = request_id.to_string();
-
             let result = SessionEvent::Err(ClientErr {
-                message_id,
+                message_id: request_id,
                 error: Some(error.into()).into(),
                 ..Default::default()
             });
@@ -191,12 +188,12 @@ impl RemoteActorSystem {
         }
     }
 
-    pub fn push_request(&self, id: Uuid, res_tx: oneshot::Sender<RemoteResponse>) {
+    pub fn push_request(&self, id: u64, res_tx: oneshot::Sender<RemoteResponse>) {
         let mut handler = self.inner.handler_ref.lock();
         handler.push_request(id, RemoteRequest { res_tx });
     }
 
-    pub fn pop_request(&self, id: Uuid) -> Option<oneshot::Sender<RemoteResponse>> {
+    pub fn pop_request(&self, id: u64) -> Option<oneshot::Sender<RemoteResponse>> {
         let mut handler = self.inner.handler_ref.lock();
         handler.pop_request(id).map(|r| r.res_tx)
     }

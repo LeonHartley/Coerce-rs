@@ -85,7 +85,7 @@ message ClientHandshake {
 }
 
 message ClientResult {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   bytes result = 2;
 
@@ -93,7 +93,7 @@ message ClientResult {
 }
 
 message ClientErr {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   ActorRefErr error = 2;
 
@@ -101,7 +101,7 @@ message ClientErr {
 }
 
 message PingEvent {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   string trace_id = 2;
 
@@ -111,13 +111,13 @@ message PingEvent {
 }
 
 message PongEvent {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   string trace_id = 2;
 }
 
 message CreateActorEvent {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   string actor_id = 2;
 
@@ -129,7 +129,7 @@ message CreateActorEvent {
 }
 
 message FindActorEvent {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   string actor_id = 2;
 
@@ -145,7 +145,7 @@ message ActorAddress {
 }
 
 message MessageRequest {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   string handler_type = 2;
 
@@ -218,7 +218,7 @@ message MemberUpEvent {
 }
 
 message RaftRequest {
-  string message_id = 1;
+  uint64 message_id = 1;
 
   uint32 request_type = 2;
 

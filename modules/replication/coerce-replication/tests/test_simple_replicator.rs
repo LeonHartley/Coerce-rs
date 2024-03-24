@@ -8,11 +8,14 @@ use coerce::remote::system::{NodeId, RemoteActorSystem};
 use coerce_replication::simple::Replicator;
 use coerce_replication::storage::{Key, Snapshot, Storage, StorageErr, Value};
 use std::collections::HashMap;
-use std::time::Duration;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
 use tracing::Level;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::FmtSpan;
+use uuid::Uuid;
 use coerce_replication::simple::heartbeat::Heartbeat;
 use coerce_replication::simple::read::{Read, RemoteRead};
 
@@ -129,8 +132,6 @@ pub async fn test_simple_replicator_read() {
             tracing::info!("received {:?} error", &e);
         }
     }
-
-    tokio::time::sleep(Duration::from_secs(5)).await;
 }
 
 async fn create_system(

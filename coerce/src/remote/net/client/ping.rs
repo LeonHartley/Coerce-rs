@@ -63,11 +63,12 @@ impl Handler<PingTick> for RemoteClient {
         };
 
         let (res_tx, res_rx) = oneshot::channel();
-        let message_id = Uuid::new_v4();
+
+        let message_id = remote.next_msg_id();
         remote.push_request(message_id, res_tx);
 
         let ping_event = SessionEvent::Ping(PingEvent {
-            message_id: message_id.to_string(),
+            message_id,
             node_id: remote.node_id(),
             ..PingEvent::default()
         });
