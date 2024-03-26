@@ -17,6 +17,8 @@ pub trait Storage: 'static + Sync + Send {
 
     type Snapshot: Snapshot;
 
+    fn set_last_commit_index(&mut self, commit_index: u64) -> Result<(), StorageErr>;
+
     fn last_commit_index(&self) -> Option<u64>;
 
     async fn read(&mut self, key: Self::Key) -> Result<Self::Value, StorageErr>;

@@ -1,1 +1,1 @@
-pub struct Replicate {}
+pub struct Replicate<K, V> {}

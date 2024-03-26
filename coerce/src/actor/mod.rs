@@ -142,6 +142,7 @@ use crate::actor::message::{Handler, Message};
 use crate::actor::scheduler::ActorType::{Anonymous, Tracked};
 use crate::actor::system::ActorSystem;
 
+pub use refs::*;
 use std::fmt::Debug;
 use std::hash::Hasher;
 use std::marker::PhantomData;
@@ -149,7 +150,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
-pub use refs::*;
 
 #[cfg(feature = "remote")]
 use crate::actor::message::Envelope;

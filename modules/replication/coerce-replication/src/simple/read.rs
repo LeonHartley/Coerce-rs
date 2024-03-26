@@ -37,34 +37,28 @@ impl<S: Storage> Handler<Read<S::Key, S::Value>> for Replicator<S> {
                 );
             }
 
-            State::Recovering { cluster } => {
-                debug!("node is currently recovering, forwarding to leader actor");
+            State::Available { cluster, .. } | State::Recovering { cluster, .. } => {
+                let on_completion = message.on_completion.take().unwrap();
+
+                debug!("forwarding request to leader node");
 
                 tokio::spawn(remote_read(
                     cluster.leader_actor.clone(),
                     message.key,
-                    message.on_completion.take().unwrap(),
+                    on_completion,
                     self.system.clone(),
                 ));
             }
 
-            State::Available { cluster, .. } => {
+            State::Leader { .. } => {
                 let on_completion = message.on_completion.take().unwrap();
+                let data = self.storage.read(message.key).await;
 
-                if cluster.current_leader == self.system.node_id() {
-                    let data = self.storage.read(message.key).await;
-
-                    debug!("local read, node is leader, emitting result");
-                    let _ = on_completion.send(data.map_err(|e| e.into()));
-                } else {
-                    tokio::spawn(remote_read(
-                        cluster.leader_actor.clone(),
-                        message.key,
-                        on_completion,
-                        self.system.clone(),
-                    ));
-                }
+                debug!("local read, node is leader, emitting result");
+                let _ = on_completion.send(data.map_err(|e| e.into()));
             }
+
+            _ => {}
         }
     }
 }
